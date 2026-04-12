@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await auth();
-  const role = (session?.user as Record<string, unknown> | undefined)?.role;
+  const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
   if (!session?.user || role !== "ADMIN") {
     throw new Error("Accès refusé");
   }

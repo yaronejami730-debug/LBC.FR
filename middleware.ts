@@ -9,7 +9,7 @@ const PROTECTED = ["/messages", "/profile", "/post"];
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const pathname = req.nextUrl.pathname;
-  const role = (req.auth?.user as Record<string, unknown> | undefined)?.role as string | undefined;
+  const role = (req.auth?.user as unknown as Record<string, unknown> | undefined)?.role as string | undefined;
 
   // Admin routes: must be logged in AND have ADMIN role
   if (pathname.startsWith("/admin")) {
