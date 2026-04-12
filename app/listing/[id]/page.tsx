@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
@@ -8,6 +9,41 @@ import AdRotator from "./AdRotator";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "./SellerActions";
 import OwnerActions from "./OwnerActions";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const listing = await prisma.listing.findUnique({
+    where: { id },
+    select: { title: true, description: true, images: true, price: true, location: true },
+  }).catch(() => null);
+
+  if (!listing) return {};
+
+  const images = JSON.parse(listing.images) as string[];
+  const mainImg = images[0];
+  const priceStr = listing.price.toLocaleString("fr-FR") + " €";
+
+  return {
+    title: `${listing.title} — ${priceStr}`,
+    description: `${listing.description.slice(0, 150)}… · ${listing.location}`,
+    openGraph: {
+      title: `${listing.title} — ${priceStr}`,
+      description: `${listing.description.slice(0, 150)}… · ${listing.location}`,
+      images: mainImg ? [{ url: mainImg, width: 1200, height: 630 }] : [],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${listing.title} — ${priceStr}`,
+      description: `${listing.description.slice(0, 150)}… · ${listing.location}`,
+      images: mainImg ? [mainImg] : [],
+    },
+  };
+}
 
 export default async function ListingPage({
   params,
