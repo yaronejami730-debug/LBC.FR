@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import Link from "next/link";
+import CategoryDrawer from "./CategoryDrawer";
 
 const NAV = [
   { href: "/", label: "Accueil", key: "accueil" },
@@ -22,13 +23,16 @@ export default async function Navbar({
   return (
     <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-[0_16px_32px_rgba(21,21,125,0.06)]">
       <div className="flex items-center justify-between px-6 py-4 w-full max-w-7xl mx-auto">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="text-2xl font-extrabold text-[#15157d] tracking-tighter font-['Manrope'] flex-shrink-0"
-        >
-          PrèsDeToi
-        </Link>
+        {/* Left slot with Logo & Hamburger */}
+        <div className="flex items-center">
+          <CategoryDrawer />
+          <Link
+            href="/"
+            className="text-2xl font-extrabold text-[#15157d] tracking-tighter font-['Manrope'] flex-shrink-0"
+          >
+            PrèsDeToi
+          </Link>
+        </div>
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-7 text-slate-500 font-medium">
