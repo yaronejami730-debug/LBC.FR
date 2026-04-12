@@ -43,7 +43,7 @@ export default async function SearchPage({
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
       take: 3,
-    }),
+    }).catch(() => [] as { id: string; title: string; description: string; imageUrl: string; destinationUrl: string; isActive: boolean; createdAt: Date }[]),
   ]);
 
   const totalPages = Math.ceil(total / perPage);

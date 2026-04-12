@@ -17,7 +17,7 @@ export default async function Home() {
       where: { isActive: true },
       orderBy: { createdAt: "desc" },
       take: 2,
-    }),
+    }).catch(() => [] as { id: string; title: string; description: string; imageUrl: string; destinationUrl: string; isActive: boolean; createdAt: Date }[]),
   ]);
 
   return (
