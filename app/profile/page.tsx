@@ -35,7 +35,7 @@ export default async function ProfilePage() {
     <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
       <Navbar active="profil" right={<SignOutButton />} />
 
-      <main className="pt-32 pb-10 px-6 max-w-3xl mx-auto">
+      <main className="pt-36 pb-10 px-6 max-w-3xl mx-auto">
         {/* Profile card */}
         <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] flex items-center gap-5 mb-8">
           <AvatarUpload currentAvatar={user.avatar} initials={initials} />

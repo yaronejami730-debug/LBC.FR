@@ -25,7 +25,7 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero / Search Section */}
-      <header className="pt-32 pb-6 px-6 max-w-7xl mx-auto">
+      <header className="pt-40 pb-6 px-6 max-w-7xl mx-auto">
 
         <div className="relative bg-primary-container bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 md:p-16 overflow-hidden">
           <div className="relative z-10 max-w-2xl">

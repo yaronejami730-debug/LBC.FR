@@ -73,6 +73,18 @@ export const CATEGORIES: Category[] = [
     subcategories: ["BTP / chantier", "Restauration", "Agriculture", "Industrie"],
   },
   {
+    id: "bebe-enfant",
+    label: "Bébé & Enfant",
+    icon: "child_care",
+    subcategories: ["Puériculture", "Vêtements enfant", "Jeux & jouets enfant", "Mobilier enfant"],
+  },
+  {
+    id: "vacances",
+    label: "Vacances",
+    icon: "beach_access",
+    subcategories: ["Locations saisonnières", "Échanges de maisons", "Camping", "Séjours & circuits"],
+  },
+  {
     id: "divers",
     label: "Divers",
     icon: "more_horiz",

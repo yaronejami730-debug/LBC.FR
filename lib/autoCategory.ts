@@ -105,16 +105,16 @@ const CATEGORY_MAP: Record<string, { id: string; subcategories: Record<string, s
     },
   },
   BEBE_ENFANT: {
-    id: "divers",
+    id: "bebe-enfant",
     subcategories: {
-      "Puériculture":   "Tout le reste",
-      "Vêtements enfant":"Tout le reste",
+      "Puériculture":    "Puériculture",
+      "Vêtements enfant":"Vêtements enfant",
     },
   },
   VACANCES: {
-    id: "immobilier",
+    id: "vacances",
     subcategories: {
-      "Locations saisonnières": "Locations de vacances",
+      "Locations saisonnières": "Locations saisonnières",
     },
   },
 };
