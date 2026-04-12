@@ -13,13 +13,14 @@ export default auth((req) => {
 
   // Admin routes: must be logged in AND have ADMIN role
   if (pathname.startsWith("/admin")) {
+    // Allow the admin login page through without auth
+    if (pathname === "/admin/login") return NextResponse.next();
+
     if (!isLoggedIn) {
-      const loginUrl = new URL("/login", req.nextUrl.origin);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
     }
     if (role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.nextUrl.origin));
+      return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
     }
     return NextResponse.next();
   }
