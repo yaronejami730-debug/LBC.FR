@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { createAdvertisement, deleteAdvertisement, updateAdvertisement } from "@/app/admin/actions";
+import { createAdvertisement, deleteAdvertisement, toggleAdStatus, updateAdvertisement } from "@/app/admin/actions";
 
 type Ad = {
   id: string;
@@ -359,13 +359,23 @@ function AdCard({
       {/* Actions */}
       <div className="px-4 pb-4 flex items-center gap-2">
         <button
+          onClick={() => startTransition(async () => { await toggleAdStatus(ad.id, !ad.isActive); })}
+          disabled={isPending}
+          className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors disabled:opacity-50 ${ad.isActive ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-[#f2f4f6] text-[#777683] hover:bg-[#eceef0]"}`}
+          title={ad.isActive ? "Désactiver" : "Activer"}
+        >
+          <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {ad.isActive ? "toggle_on" : "toggle_off"}
+          </span>
+        </button>
+        <button
           onClick={() => { setEditing((v) => !v); setEditError(""); }}
           disabled={isPending}
           className="flex-1 text-xs font-semibold py-1.5 rounded-lg bg-[#e1e0ff] text-[#15157d] hover:bg-[#c7c5ff] transition-colors disabled:opacity-50"
         >
           <span className="inline-flex items-center gap-1 justify-center">
             <span className="material-symbols-outlined text-[14px]">edit</span>
-            {editing ? "Annuler" : "Modifier la publicité"}
+            {editing ? "Annuler" : "Modifier"}
           </span>
         </button>
         <button
