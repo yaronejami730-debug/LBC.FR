@@ -9,7 +9,6 @@ config({ path: ".env.local" });
 const DATABASE_URL = process.env.DATABASE_URL!;
 
 export default defineConfig({
-  earlyAccess: true,
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
