@@ -34,7 +34,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
     <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
       <Navbar active="" />
 
-      <main className="pt-24 pb-10 px-6 max-w-3xl mx-auto">
+      <main className="pt-32 pb-10 px-6 max-w-3xl mx-auto">
         <div className="bg-white rounded-3xl p-8 shadow-[0_16px_48px_rgba(21,21,125,0.08)] mb-8">
           <div className="flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-surface-container flex items-center justify-center mb-4 border-4 border-white shadow-lg">

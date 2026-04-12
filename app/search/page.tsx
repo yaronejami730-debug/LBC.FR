@@ -54,7 +54,7 @@ export default async function SearchPage({
     <div className="bg-background text-on-surface">
       <Navbar active="recherche" />
 
-      <main className="pt-24 pb-32 px-6 max-w-7xl mx-auto">
+      <main className="pt-32 pb-32 px-6 max-w-7xl mx-auto">
         {/* Filter Bar */}
         <section className="mb-12">
           <div className="flex flex-col gap-6">

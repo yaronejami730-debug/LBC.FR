@@ -182,7 +182,7 @@ export default function PostForm() {
         <div className="bg-slate-100/50 h-[1px]" />
       </header>
 
-      <main className="max-w-3xl mx-auto pt-24 px-6">
+      <main className="max-w-3xl mx-auto pt-32 px-6">
         <div className="space-y-10">
           <section className="space-y-1">
             <p className="text-sm font-semibold text-primary uppercase tracking-[0.05em]">Pour commencer</p>

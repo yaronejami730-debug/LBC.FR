@@ -115,7 +115,7 @@ export default async function ListingPage({
       />
 
       {/* Content Canvas */}
-      <main className="pt-20 max-w-7xl mx-auto pb-12">
+      <main className="pt-32 max-w-7xl mx-auto pb-12">
         {/* Large Asymmetric Image Gallery */}
         <section className="px-4 md:px-6 mt-4">
           <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[300px] md:h-[500px]">

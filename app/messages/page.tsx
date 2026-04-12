@@ -33,7 +33,7 @@ export default async function MessagesPage() {
       <Navbar active="messages" />
 
       {/* Main Content Canvas */}
-      <main className="pt-24 px-4 max-w-2xl mx-auto">
+      <main className="pt-32 px-4 max-w-2xl mx-auto">
         {/* Editorial Header */}
         <div className="mb-8 px-2 flex items-end justify-between">
           <div>

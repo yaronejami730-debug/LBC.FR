@@ -124,7 +124,7 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
         <div className="bg-slate-100/50 h-[1px]" />
       </header>
 
-      <main className="max-w-3xl mx-auto pt-24 px-6 space-y-10">
+      <main className="max-w-3xl mx-auto pt-32 px-6 space-y-10">
         {/* Photos */}
         <section className="space-y-4">
           <div className="flex items-end justify-between">
