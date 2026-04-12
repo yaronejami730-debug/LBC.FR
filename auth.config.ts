@@ -11,5 +11,10 @@ export const authConfig = {
     authorized({ auth }) {
       return !!auth?.user;
     },
+    session({ session, token }) {
+      if (token.id) session.user.id = token.id as string;
+      if (token.role) (session.user as unknown as Record<string, unknown>).role = token.role as string;
+      return session;
+    },
   },
 } satisfies NextAuthConfig;
