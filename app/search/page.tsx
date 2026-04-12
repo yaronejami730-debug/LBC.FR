@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
+import { CATEGORIES } from "@/lib/categories";
 
 export default async function SearchPage({
   searchParams,
@@ -69,24 +70,31 @@ export default async function SearchPage({
               </form>
             </div>
             {/* Chips/Filters */}
-            <div className="flex flex-wrap gap-3">
-              {["Électronique", "Véhicules", "Meubles", "Immobilier", "Mode", "Emplois"].map((cat) => (
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/search"
+                className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                  activeCategory === "All"
+                    ? "bg-primary text-white shadow-lg"
+                    : "bg-surface-container-lowest text-on-surface-variant border border-outline-variant/10 hover:bg-slate-50"
+                }`}
+              >
+                Toutes
+              </Link>
+              {CATEGORIES.map((cat) => (
                 <Link
-                  key={cat}
-                  href={`/search?category=${cat}${q ? `&q=${q}` : ""}`}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-transform active:scale-95 ${
-                    activeCategory === cat
+                  key={cat.id}
+                  href={`/search?category=${encodeURIComponent(cat.label)}${q ? `&q=${q}` : ""}`}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                    activeCategory === cat.label
                       ? "bg-primary text-white shadow-lg shadow-primary/20"
-                      : "bg-surface-container-lowest text-on-surface-variant border border-outline-variant/15 hover:bg-surface-container-low"
+                      : "bg-surface-container-lowest text-on-surface-variant border border-outline-variant/10 hover:bg-slate-50"
                   }`}
                 >
-                  {cat}
+                  <span className="material-symbols-outlined text-sm">{cat.icon}</span>
+                  {cat.label}
                 </Link>
               ))}
-              <button className="flex items-center gap-2 px-5 py-2.5 bg-tertiary-container text-tertiary-fixed-dim rounded-full text-sm font-bold">
-                <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                <span>Vérifié uniquement</span>
-              </button>
             </div>
           </div>
         </section>
@@ -136,11 +144,6 @@ export default async function SearchPage({
                       {listing.isPremium && (
                         <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                           Premium
-                        </span>
-                      )}
-                      {listing.user.verified && !listing.isPremium && (
-                        <span className="absolute top-2 left-2 bg-tertiary-container text-tertiary-fixed-dim text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          Vérifié
                         </span>
                       )}
                     </div>

@@ -8,7 +8,7 @@ import BottomNav from "@/components/BottomNav";
 export default async function Home() {
   const [listings, ads] = await Promise.all([
     prisma.listing.findMany({
-      where: { status: "APPROVED", deletedAt: null },
+      where: { status: "APPROVED", deletedAt: null } as any,
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { user: { select: { name: true, verified: true } } },
@@ -60,13 +60,13 @@ export default async function Home() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { cat: "Véhicules", label: "Voitures", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuBGMEyVAsY5RW4Yei9LtUSa92B7hQ2kPt8EdekXCUM9h3j7ZcDyUJHYxwJ0mb-4-QamClSjIg8RnjpAANyCePb3fhrOjVA2L0t5k7Rl3D1zh6oYexSNqqbyLW3pygORjeicNryZ6it1mEzuPhOT9zAeXaCTu5mBWuZdsI4wF9V7YBu95kW25E51BN9CKmlsBigwQeS7x3AW_HBzZZDo3E9aFdI4Xl__Vd5xAMJ4H80ljzvlZ4am1kTbfj1f9v50sst7_ApbhRtCnY2_" },
-            { cat: "Immobilier", label: "Immobilier", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAt-0kv_wITShSbU9nfI_E9TtW5TdTuw5hn_DluMsuR3tQbQXBkRXA_3FBmkrVgkDc8gTKQ1a89eMsiiBKwJxpvOKkhcmV_H7p9ZpIMBiBgqmp93hWzAhg7HuozYI-hBs3Ycm7STGtp47eGoFUKE07MF0yIyk5imrhRUSZCamG0oTX8XMTGnyOmk-FzCXAyd7HtUr0xNdYhIzFbIW1IXlxk3hmdApYxJterZ5B0mTXD2XP_tLbDOOCjpOdUcAh0wwGojhYLc87qf7gA" },
-            { cat: "Mode", label: "Mode", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAh42sdJERo4cvL_P118M-1bQmxaifGrDge0kVugUyS1msBPe9uUPNjGiudAk-iSrL6diy7aBN4uFtaj6ea6MQFDkIo-hWfZwPERRBiCuufUuwTxxepEdU0QBfPd6-bNEoZRYOQQ2ODh0y_oonMoVOSHBjU0lK919C1te5WXVUGifu1THI8gsk3RzG3uWmsPndQWKiGiiqcQiCvef7rsybA6lB5Eapf7xHk136aU_wkfWgUQmF1zmjeUC6CSIyCqdFTy7g0efbSr6tX" },
-            { cat: "Meubles", label: "Maison", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3" },
-            { cat: "Emplois", label: "Emplois", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR" },
-          ].map(({ cat, label, src }) => (
-            <Link key={cat} href={`/search?category=${encodeURIComponent(cat)}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
+            { id: "vehicules", label: "Véhicules", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuBGMEyVAsY5RW4Yei9LtUSa92B7hQ2kPt8EdekXCUM9h3j7ZcDyUJHYxwJ0mb-4-QamClSjIg8RnjpAANyCePb3fhrOjVA2L0t5k7Rl3D1zh6oYexSNqqbyLW3pygORjeicNryZ6it1mEzuPhOT9zAeXaCTu5mBWuZdsI4wF9V7YBu95kW25E51BN9CKmlsBigwQeS7x3AW_HBzZZDo3E9aFdI4Xl__Vd5xAMJ4H80ljzvlZ4am1kTbfj1f9v50sst7_ApbhRtCnY2_" },
+            { id: "immobilier", label: "Immobilier", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAt-0kv_wITShSbU9nfI_E9TtW5TdTuw5hn_DluMsuR3tQbQXBkRXA_3FBmkrVgkDc8gTKQ1a89eMsiiBKwJxpvOKkhcmV_H7p9ZpIMBiBgqmp93hWzAhg7HuozYI-hBs3Ycm7STGtp47eGoFUKE07MF0yIyk5imrhRUSZCamG0oTX8XMTGnyOmk-FzCXAyd7HtUr0xNdYhIzFbIW1IXlxk3hmdApYxJterZ5B0mTXD2XP_tLbDOOCjpOdUcAh0wwGojhYLc87qf7gA" },
+            { id: "mode", label: "Mode", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAh42sdJERo4cvL_P118M-1bQmxaifGrDge0kVugUyS1msBPe9uUPNjGiudAk-iSrL6diy7aBN4uFtaj6ea6MQFDkIo-hWfZwPERRBiCuufUuwTxxepEdU0QBfPd6-bNEoZRYOQQ2ODh0y_oonMoVOSHBjU0lK919C1te5WXVUGifu1THI8gsk3RzG3uWmsPndQWKiGiiqcQiCvef7rsybA6lB5Eapf7xHk136aU_wkfWgUQmF1zmjeUC6CSIyCqdFTy7g0efbSr6tX" },
+            { id: "maison", label: "Maison", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3" },
+            { id: "services", label: "Services", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR" },
+          ].map(({ id, label, src }) => (
+            <Link key={id} href={`/search?category=${encodeURIComponent(label)}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
               <img className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={label} src={src} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="relative z-10">
@@ -126,11 +126,6 @@ export default async function Home() {
                     {listing.isPremium && (
                       <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                         Premium
-                      </span>
-                    )}
-                    {listing.user.verified && !listing.isPremium && (
-                      <span className="absolute top-2 left-2 bg-tertiary-container text-tertiary-fixed-dim text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                        Vérifié
                       </span>
                     )}
                   </div>

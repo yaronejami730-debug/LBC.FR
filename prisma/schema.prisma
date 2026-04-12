@@ -28,6 +28,7 @@ model Listing {
   description     String
   price           Float
   category        String
+  subcategory     String?
   location        String
   condition       String         @default("Good")
   brand           String?

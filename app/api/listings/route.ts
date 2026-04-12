@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, price, category, description, location, condition, images, metadata } = body;
+    const { title, price, category, subcategory, description, location, condition, images, metadata } = body;
 
     if (!title || price === undefined || price === null || !category || !description || !location) {
       return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
@@ -60,13 +60,14 @@ export async function POST(req: NextRequest) {
         title,
         price: parsedPrice,
         category,
+        subcategory,
         description,
         location,
         condition: condition || "Bon état",
         images: JSON.stringify(images || []),
         metadata: metadata || "{}",
         userId: session.user.id,
-      },
+      } as any,
     });
 
     return NextResponse.json(listing, { status: 201 });

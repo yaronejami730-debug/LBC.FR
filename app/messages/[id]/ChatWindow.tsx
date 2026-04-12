@@ -102,13 +102,13 @@ export default function ChatWindow({
   }
 
   return (
-    <div className="bg-background text-on-surface flex flex-col h-screen">
+    <div className="bg-[#f8f9fc] text-on-surface flex flex-col h-[100dvh]">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-xl border-b border-outline-variant/10 z-50 px-4 py-3 flex items-center gap-4 shadow-[0_8px_24px_rgba(21,21,125,0.04)]">
-        <Link href="/messages" className="material-symbols-outlined text-[#15157d] active:scale-95 transition-transform">
-          arrow_back
+      <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 z-50 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <Link href="/messages" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-[#15157d]">arrow_back</span>
         </Link>
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
           {otherUser?.avatar ? (
             <img src={otherUser.avatar} alt={otherUser?.name} className="w-full h-full object-cover" />
           ) : (
@@ -116,34 +116,35 @@ export default function ChatWindow({
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <h2 className="font-bold text-on-surface truncate">{otherUser?.name || "Unknown"}</h2>
+          <div className="flex items-center gap-1.5 leading-tight">
+            <h2 className="font-extrabold text-[#15157d] truncate text-base">{otherUser?.name || "Unknown"}</h2>
             {otherUser?.verified && (
-              <span className="material-symbols-outlined text-tertiary-fixed-dim text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+              <span className="material-symbols-outlined text-[#00a67e] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
             )}
           </div>
-          <p className="text-xs text-outline truncate">{listing.title}</p>
+          <p className="text-[10px] text-slate-500 truncate font-medium">Répond généralement en 1h</p>
         </div>
+        
         {/* Listing mini-card */}
-        <Link href={`/listing/${listing.id}`} className="flex items-center gap-2 bg-surface-container-low px-3 py-2 rounded-xl ml-auto flex-shrink-0">
+        <Link href={`/listing/${listing.id}`} className="flex items-center gap-2 bg-[#f0f2f9] px-2 py-1.5 rounded-2xl border border-white shadow-sm flex-shrink-0">
           {listing.image && (
-            <img src={listing.image} alt={listing.title} className="w-10 h-10 rounded-lg object-cover" />
+            <img src={listing.image} alt={listing.title} className="w-9 h-9 rounded-xl object-cover" />
           )}
-          <div>
-            <p className="text-xs font-semibold text-on-surface line-clamp-1 max-w-[80px]">{listing.title}</p>
-            <p className="text-primary font-bold text-sm">{listing.price.toLocaleString("fr-FR")} €</p>
+          <div className="pr-1">
+            <p className="text-[9px] font-bold text-[#15157d] line-clamp-1 max-w-[60px]">{listing.title}</p>
+            <p className="text-[#15157d] font-black text-xs">{listing.price.toLocaleString("fr-FR")} €</p>
           </div>
         </Link>
       </header>
 
       {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-4 max-w-2xl w-full mx-auto">
+      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-3xl w-full mx-auto no-scrollbar">
         {messages.map((msg) => {
           const isMe = msg.senderId === currentUserId;
           return (
-            <div key={msg.id} className={`flex gap-3 ${isMe ? "flex-row-reverse" : ""}`}>
+            <div key={msg.id} className={`flex gap-3 ${isMe ? "justify-end" : "justify-start"}`}>
               {!isMe && (
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-surface-container flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 mt-auto">
                   {msg.senderAvatar ? (
                     <img src={msg.senderAvatar} alt={msg.senderName} className="w-full h-full object-cover" />
                   ) : (
@@ -151,17 +152,17 @@ export default function ChatWindow({
                   )}
                 </div>
               )}
-              <div className={`max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1`}>
+              <div className={`max-w-[80%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
                 <div
-                  className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                  className={`px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
                     isMe
-                      ? "bg-gradient-to-br from-primary to-primary-container text-white rounded-tr-sm"
-                      : "bg-surface-container-lowest text-on-surface rounded-tl-sm shadow-sm"
+                      ? "bg-[#252595] text-white rounded-[20px] rounded-br-[4px]"
+                      : "bg-white text-on-surface rounded-[20px] rounded-bl-[4px]"
                   }`}
                 >
                   {msg.content}
                 </div>
-                <span className="text-[10px] text-outline px-1">{formatTime(msg.createdAt)}</span>
+                <span className="text-[9px] text-slate-400 font-bold px-2 uppercase tracking-tight">{formatTime(msg.createdAt)}</span>
               </div>
             </div>
           );
@@ -170,32 +171,35 @@ export default function ChatWindow({
       </main>
 
       {/* Input */}
-      <form
-        onSubmit={sendMessage}
-        className="bg-white/90 backdrop-blur-xl border-t border-outline-variant/10 px-4 py-4 flex items-center gap-3 max-w-2xl w-full mx-auto"
-      >
-        <div className="flex-1 flex items-center bg-surface-container-low rounded-full px-4 py-3 gap-2">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none text-on-surface placeholder:text-outline/60"
-            placeholder="Écrivez un message..."
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage(e);
-              }
-            }}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={!text.trim() || sending}
-          className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-container text-white flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50"
+      <div className="bg-white/95 backdrop-blur-xl border-t border-slate-100 px-4 py-3 md:pb-6 z-50">
+        <form
+          onSubmit={sendMessage}
+          className="max-w-3xl w-full mx-auto flex items-center gap-3"
         >
-          <span className="material-symbols-outlined text-sm">send</span>
-        </button>
-      </form>
+          <div className="flex-1 flex items-center bg-[#f1f3f5] rounded-full px-5 py-3 transition-all focus-within:bg-white focus-within:ring-2 focus-within:ring-[#15157d]/10">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none text-on-surface placeholder:text-slate-400"
+              placeholder="Écrivez un message..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(e);
+                }
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!text.trim() || sending}
+            className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90
+              ${!text.trim() ? "bg-slate-100 text-slate-300" : "bg-[#8b8dc8] text-white shadow-[#8b8dc8]/20"}`}
+          >
+            <span className="material-symbols-outlined text-xl transform rotate-[-45deg] translate-x-0.5">send</span>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

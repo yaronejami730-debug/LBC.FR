@@ -4,7 +4,8 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const CATEGORIES = ["Électronique", "Véhicules", "Meubles", "Immobilier", "Loisirs", "Mode", "Emplois"];
+import { CATEGORIES } from "@/lib/categories";
+
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
 const TRANSMISSIONS = ["Manuelle", "Automatique"];
@@ -34,7 +35,8 @@ export default function PostForm() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("Électronique");
+  const [categoryId, setCategoryId] = useState("maison");
+  const [subcategory, setSubcategory] = useState("Ameublement");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [condition, setCondition] = useState("Bon état");
@@ -111,9 +113,12 @@ export default function PostForm() {
 
   async function handlePublish() {
     if (!title || !price || !description || !location) return;
+    const activeCategory = CATEGORIES.find(c => c.id === categoryId);
+    const categoryLabel = activeCategory?.label || "Divers";
+    
     setPublishing(true);
     setPublishError(null);
-    const metadata = category === "Véhicules" ? JSON.stringify(vehicle) : "{}";
+    const metadata = categoryId === "vehicules" ? JSON.stringify(vehicle) : "{}";
     try {
       // Clean images before sending (remove empty strings if any)
       const cleanImages = images.filter(Boolean);
@@ -124,7 +129,8 @@ export default function PostForm() {
         body: JSON.stringify({ 
           title, 
           price: parseFloat(price), 
-          category, 
+          category: categoryLabel,
+          subcategory, 
           description, 
           location, 
           condition, 
@@ -342,20 +348,45 @@ export default function PostForm() {
             </div>
 
             {/* Catégorie */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="block text-xs font-bold text-primary tracking-widest uppercase">Catégorie</label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {CATEGORIES.map((cat) => (
-                  <button key={cat} type="button" onClick={() => setCategory(cat)}
-                    className={`px-4 py-2 rounded-full font-semibold text-sm transition-all ${category === cat ? "bg-primary text-white" : "bg-surface-container-high text-on-surface-variant hover:bg-primary hover:text-white"}`}>
-                    {cat}
+                  <button 
+                    key={cat.id} 
+                    type="button" 
+                    onClick={() => {
+                      setCategoryId(cat.id);
+                      setSubcategory(cat.subcategories[0]);
+                    }}
+                    className={`px-3 py-3 rounded-2xl flex flex-col items-center gap-2 transition-all border ${categoryId === cat.id ? "bg-primary/5 border-primary text-primary" : "bg-white border-slate-100 text-slate-500 hover:border-slate-300"}`}
+                  >
+                    <span className="material-symbols-outlined text-2xl">{cat.icon}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-tight text-center">{cat.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sous-catégorie */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-primary tracking-widest uppercase">Sous-catégorie</label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.find(c => c.id === categoryId)?.subcategories.map((sub) => (
+                  <button 
+                    key={sub} 
+                    type="button" 
+                    onClick={() => setSubcategory(sub)}
+                    className={`px-4 py-2 rounded-full font-semibold text-sm transition-all ${subcategory === sub ? "bg-primary text-white" : "bg-surface-container-high text-on-surface-variant hover:bg-primary/10 hover:text-primary"}`}
+                  >
+                    {sub}
                   </button>
                 ))}
               </div>
             </div>
 
             {/* ── CHAMPS VÉHICULES ─────────────────────────────── */}
-            {category === "Véhicules" && (
+            {categoryId === "vehicules" && (
               <div className="space-y-6 border-t border-surface-container pt-6">
                 <p className="text-xs font-bold text-primary tracking-widest uppercase">Caractéristiques du véhicule</p>
 
