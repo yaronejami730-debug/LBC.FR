@@ -27,11 +27,11 @@ export default function CategoryDrawer() {
 
       {/* Drawer */}
       <div
-        className={`fixed top-0 left-0 h-full w-[85vw] max-w-sm bg-white z-[101] shadow-2xl transition-transform duration-300 ease-out transform ${
+        className={`fixed top-0 left-0 h-[100dvh] w-[85vw] max-w-sm bg-white z-[101] shadow-2xl transition-transform duration-300 ease-out transform overflow-hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-white">
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
             <div>
