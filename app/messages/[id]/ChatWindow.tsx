@@ -46,8 +46,15 @@ export default function ChatWindow({
 
   // Auto-scroll to bottom
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
+
+  // Handle focus to scroll to bottom (keyboard appearing)
+  const handleFocus = () => {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "auto" });
+    }, 300);
+  };
 
   // Poll for new messages every 2 seconds
   const lastIdRef = useRef<string | undefined>(
@@ -138,36 +145,38 @@ export default function ChatWindow({
       </header>
 
       {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-3xl w-full mx-auto no-scrollbar">
-        {messages.map((msg) => {
-          const isMe = msg.senderId === currentUserId;
-          return (
-            <div key={msg.id} className={`flex gap-3 ${isMe ? "justify-end" : "justify-start"}`}>
-              {!isMe && (
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 mt-auto">
-                  {msg.senderAvatar ? (
-                    <img src={msg.senderAvatar} alt={msg.senderName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="material-symbols-outlined text-sm text-outline">person</span>
-                  )}
+      <main className="flex-1 overflow-y-auto px-4 max-w-3xl w-full mx-auto no-scrollbar scroll-smooth">
+        <div className="flex flex-col justify-end min-h-full py-6 space-y-6">
+          {messages.map((msg) => {
+            const isMe = msg.senderId === currentUserId;
+            return (
+              <div key={msg.id} className={`flex gap-3 ${isMe ? "justify-end" : "justify-start"}`}>
+                {!isMe && (
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 mt-auto">
+                    {msg.senderAvatar ? (
+                      <img src={msg.senderAvatar} alt={msg.senderName} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="material-symbols-outlined text-sm text-outline">person</span>
+                    )}
+                  </div>
+                )}
+                <div className={`max-w-[80%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
+                  <div
+                    className={`px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
+                      isMe
+                        ? "bg-[#252595] text-white rounded-[20px] rounded-br-[4px]"
+                        : "bg-white text-on-surface rounded-[20px] rounded-bl-[4px]"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                  <span className="text-[9px] text-slate-400 font-bold px-2 uppercase tracking-tight">{formatTime(msg.createdAt)}</span>
                 </div>
-              )}
-              <div className={`max-w-[80%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
-                <div
-                  className={`px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
-                    isMe
-                      ? "bg-[#252595] text-white rounded-[20px] rounded-br-[4px]"
-                      : "bg-white text-on-surface rounded-[20px] rounded-bl-[4px]"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-                <span className="text-[9px] text-slate-400 font-bold px-2 uppercase tracking-tight">{formatTime(msg.createdAt)}</span>
               </div>
-            </div>
-          );
-        })}
-        <div ref={bottomRef} />
+            );
+          })}
+          <div ref={bottomRef} className="h-2" />
+        </div>
       </main>
 
       {/* Input */}
@@ -180,6 +189,7 @@ export default function ChatWindow({
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onFocus={handleFocus}
               className="flex-1 bg-transparent border-none focus:ring-0 text-base outline-none text-on-surface placeholder:text-slate-400"
               placeholder="Écrivez un message..."
               onKeyDown={(e) => {
