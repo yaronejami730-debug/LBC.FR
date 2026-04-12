@@ -52,12 +52,14 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
               </div>
             )}
             
-            <div className="grid grid-cols-2 gap-4 w-full mt-8">
-              <div className="bg-slate-50 p-4 rounded-2xl">
-                <span className="block text-outline text-[10px] uppercase font-bold tracking-widest mb-1">Temps de réponse</span>
-                <span className="text-[#15157d] font-bold text-lg">{responseTime}</span>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-2xl">
+            <div className={`grid ${responseTime ? "grid-cols-2" : "grid-cols-1"} gap-4 w-full mt-8`}>
+              {responseTime && (
+                <div className="bg-slate-50 p-4 rounded-2xl text-center">
+                  <span className="block text-outline text-[10px] uppercase font-bold tracking-widest mb-1">Temps de réponse</span>
+                  <span className="text-[#15157d] font-bold text-lg">{responseTime}</span>
+                </div>
+              )}
+              <div className="bg-slate-50 p-4 rounded-2xl text-center">
                 <span className="block text-outline text-[10px] uppercase font-bold tracking-widest mb-1">Membre depuis</span>
                 <span className="text-[#15157d] font-bold text-lg">{user.memberSince}</span>
               </div>

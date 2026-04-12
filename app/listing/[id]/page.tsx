@@ -3,9 +3,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
-import ContactButtons from "./ContactButtons";
 import ListingHeader from "./ListingHeader";
 import { getUserResponseTime } from "@/lib/user-stats";
+import SellerActions from "./SellerActions";
 
 export default async function ListingPage({
   params,
@@ -56,12 +56,12 @@ export default async function ListingPage({
   const listingUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/listing/${listing.id}`;
 
   return (
-    <div className="bg-surface text-on-surface mb-24">
+    <div className="bg-surface text-on-surface mb-24 md:mb-12">
       {/* Navbar (Share, Favorites) */}
       <ListingHeader title={listing.title} url={listingUrl} />
 
       {/* Content Canvas */}
-      <main className="pt-20 max-w-7xl mx-auto">
+      <main className="pt-20 max-w-7xl mx-auto pb-12">
         {/* Large Asymmetric Image Gallery */}
         <section className="px-4 md:px-6 mt-4">
           <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[300px] md:h-[500px]">
@@ -192,8 +192,8 @@ export default async function ListingPage({
             {/* Description */}
             <div className="space-y-4">
               <h2 className="text-xl font-bold tracking-tight">Description</h2>
-              <div className="bg-surface-container-low p-6 rounded-2xl">
-                <p className="text-on-surface-variant leading-relaxed font-body whitespace-pre-wrap">
+              <div className="bg-slate-50 p-6 rounded-2xl">
+                <p className="text-slate-600 leading-relaxed font-body whitespace-pre-wrap">
                   {listing.description}
                 </p>
               </div>
@@ -213,7 +213,7 @@ export default async function ListingPage({
                 <iframe
                   width="100%"
                   height="100%"
-                  style={{ border: 0, filter: "grayscale(0.2) contrast(1.1) brightness(0.95)" }}
+                  style={{ border: 0 }}
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
@@ -222,7 +222,7 @@ export default async function ListingPage({
                 ></iframe>
                 
                 {/* Overlay gradient for premium feel */}
-                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/20 via-transparent to-transparent z-10"></div>
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/10 via-transparent to-transparent z-10"></div>
                 
                 {/* Location Pill */}
                 <div className="absolute bottom-4 left-4 z-20 bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20 flex items-center gap-2 transform group-hover:translate-y-[-2px] transition-transform duration-300">
@@ -246,7 +246,7 @@ export default async function ListingPage({
           <div className="lg:col-span-4">
             <div className="sticky top-28 space-y-6">
               {/* Seller Card */}
-              <div className="bg-surface-container-lowest p-6 rounded-3xl shadow-[0_16px_32px_rgba(21,21,125,0.06)] space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-[0_16px_32px_rgba(21,21,125,0.06)] border border-slate-50 space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-container flex items-center justify-center">
                     {listing.user.avatar ? (
@@ -265,41 +265,46 @@ export default async function ListingPage({
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                
+                <div className={`grid ${responseTime ? "grid-cols-2" : "grid-cols-1"} gap-3`}>
+                  {responseTime && (
+                    <div className="bg-slate-50 p-3 rounded-xl text-center">
+                      <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter text-slate-500">Réponse moyenne</span>
+                      <span className="text-[#15157d] font-bold text-sm">{responseTime}</span>
+                    </div>
+                  )}
                   <div className="bg-slate-50 p-3 rounded-xl text-center">
-                    <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter">Réponse moyenne</span>
-                    <span className="text-[#15157d] font-bold text-sm">{responseTime}</span>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-xl text-center">
-                    <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter">Membre depuis</span>
+                    <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter text-slate-500">Membre depuis</span>
                     <span className="text-[#15157d] font-bold text-sm">{listing.user.memberSince}</span>
                   </div>
                 </div>
-                <Link 
-                  href={`/u/${listing.userId}`}
-                  className="w-full py-3 rounded-xl bg-slate-100 text-[#15157d] font-bold text-sm hover:bg-primary/5 transition-colors text-center block"
-                >
-                  Voir le profil
-                </Link>
+
+                {/* Seller Actions (Voir profil, Message, Téléphone) */}
+                {!isOwner && (
+                  <SellerActions listingId={listing.id} sellerId={listing.userId} />
+                )}
+                {isOwner && (
+                  <Link 
+                    href="/profile"
+                    className="w-full py-4 rounded-2xl bg-slate-100 text-[#15157d] font-bold text-sm hover:bg-slate-200 transition-all text-center block"
+                  >
+                    Mon profil
+                  </Link>
+                )}
               </div>
 
               {/* Conseil de sécurité */}
-              <div className="bg-tertiary-container/10 p-5 rounded-3xl flex items-start gap-4">
-                <span className="material-symbols-outlined text-tertiary-fixed-dim">security</span>
+              <div className="bg-blue-50/50 p-5 rounded-3xl flex items-start gap-4 border border-blue-100/50">
+                <span className="material-symbols-outlined text-blue-500">security</span>
                 <div>
-                  <span className="block font-bold text-tertiary text-sm">Conseil de sécurité</span>
-                  <p className="text-on-surface-variant text-xs mt-1 leading-snug">Rencontrez-vous dans des lieux publics et ne payez jamais avant d&apos;avoir vu l&apos;article.</p>
+                  <span className="block font-bold text-blue-900 text-sm">Conseil de sécurité</span>
+                  <p className="text-blue-800/70 text-xs mt-1 leading-snug">Rencontrez-vous dans des lieux publics et ne payez jamais avant d&apos;avoir vu l&apos;article.</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
       </main>
-
-      {/* Bottom Action Bar */}
-      {!isOwner && <ContactButtons listingId={listing.id} sellerId={listing.userId} />}
     </div>
   );
 }
-
-

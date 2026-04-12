@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 
-export async function getUserResponseTime(userId: string): Promise<string> {
+export async function getUserResponseTime(userId: string): Promise<string | null> {
   // Find conversations involving this user
   const participants = await prisma.conversationParticipant.findMany({
     where: { userId },
@@ -8,7 +8,7 @@ export async function getUserResponseTime(userId: string): Promise<string> {
   });
 
   const conversationIds = participants.map((p) => p.conversationId);
-  if (conversationIds.length === 0) return "N/A";
+  if (conversationIds.length === 0) return null;
 
   const conversations = await prisma.conversation.findMany({
     where: { id: { in: conversationIds } },
@@ -36,7 +36,7 @@ export async function getUserResponseTime(userId: string): Promise<string> {
     }
   }
 
-  if (count === 0) return "En attente";
+  if (count === 0) return null;
 
   const avgMs = totalDiff / count;
   const avgMins = Math.round(avgMs / 60000);
