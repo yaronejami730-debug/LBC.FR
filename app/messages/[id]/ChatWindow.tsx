@@ -180,7 +180,7 @@ export default function ChatWindow({
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm outline-none text-on-surface placeholder:text-slate-400"
+              className="flex-1 bg-transparent border-none focus:ring-0 text-base outline-none text-on-surface placeholder:text-slate-400"
               placeholder="Écrivez un message..."
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
