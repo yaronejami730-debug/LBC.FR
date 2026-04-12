@@ -83,15 +83,15 @@ export default async function ListingPage({
         {/* Large Asymmetric Image Gallery */}
         <section className="px-4 md:px-6 mt-4">
           <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[300px] md:h-[500px]">
-            <div className="col-span-3 row-span-2 rounded-xl overflow-hidden shadow-sm relative group">
-              <img className="w-full h-full object-cover" alt={listing.title} src={mainImg} />
+            <div className="col-span-3 row-span-2 rounded-xl overflow-hidden shadow-sm relative group bg-slate-100">
+              <img className="w-full h-full object-contain" alt={listing.title} src={mainImg} />
               <div className="absolute bottom-4 right-4 bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium">1 / {Math.max(images.length, 1)}</div>
             </div>
-            <div className="col-span-1 row-span-1 rounded-xl overflow-hidden shadow-sm">
-              <img className="w-full h-full object-cover" alt={listing.title} src={images[1] || mainImg} />
+            <div className="col-span-1 row-span-1 rounded-xl overflow-hidden shadow-sm bg-slate-100">
+              <img className="w-full h-full object-contain" alt={listing.title} src={images[1] || mainImg} />
             </div>
-            <div className="col-span-1 row-span-1 rounded-xl overflow-hidden shadow-sm relative">
-              <img className="w-full h-full object-cover" alt={listing.title} src={images[2] || mainImg} />
+            <div className="col-span-1 row-span-1 rounded-xl overflow-hidden shadow-sm relative bg-slate-100">
+              <img className="w-full h-full object-contain" alt={listing.title} src={images[2] || mainImg} />
               {images.length > 3 && (
                 <div className="absolute inset-0 bg-primary/40 flex items-center justify-center backdrop-blur-[2px]">
                   <span className="text-white font-bold text-lg">+{images.length - 3}</span>
