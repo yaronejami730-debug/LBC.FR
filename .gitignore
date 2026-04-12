@@ -1,0 +1,14 @@
+node_modules
+.next/
+# Keep environment variables out of version control
+.env
+.env.local
+.env*.local
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Local database
+dev.db
+
+/generated/prisma
