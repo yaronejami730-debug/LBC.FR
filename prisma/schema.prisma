@@ -20,6 +20,7 @@ model User {
   participants ConversationParticipant[]
   listings     Listing[]
   sentMessages Message[]                 @relation("SentMessages")
+  favorites    Favorite[]
 }
 
 model Listing {
@@ -45,6 +46,18 @@ model Listing {
   rejectionReason String?
   conversations   Conversation[]
   user            User           @relation(fields: [userId], references: [id])
+  favorites       Favorite[]
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
 }
 
 model Conversation {

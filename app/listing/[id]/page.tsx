@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "./ListingHeader";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "./SellerActions";
+import OwnerActions from "./OwnerActions";
 
 export default async function ListingPage({
   params,
@@ -21,9 +22,10 @@ export default async function ListingPage({
     auth(),
   ]);
 
-  if (!listing) notFound();
-  
   const currentUserId = session?.user?.id ?? null;
+
+  if (!listing) notFound();
+
   const isOwner = currentUserId === listing.userId;
   const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
   const isAdmin = role === "ADMIN";
@@ -37,6 +39,13 @@ export default async function ListingPage({
   if (listing.status !== "APPROVED" && !isOwner && !isAdmin) {
     notFound();
   }
+
+  // Check if user has favorited this listing
+  const isFavorite = currentUserId
+    ? !!(await prisma.favorite.findUnique({
+        where: { userId_listingId: { userId: currentUserId, listingId: id } },
+      }))
+    : false;
 
   // Fetch real stats
   const responseTime = await getUserResponseTime(listing.userId);
@@ -53,7 +62,6 @@ export default async function ListingPage({
 
   const images = JSON.parse(listing.images) as string[];
   const mainImg = images[0] || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwwxQgv4rI6XClzhTLjkwXug8TYby1cyK7AgQhc4UpMdyrjwq4jRPQo_ZvL_7xvjhVSon_iJvztv0bdEqqiFX0CHRW9IDYjccZpyP4v8zoDq0pcj4RtADoGgiXgRyW1_sPXiKqwZz8D1UwMIYilwBQMOTHJ4RMQl9Rp4vFbK6a0UCsy93TZ3-DYA8qYhHPO4LhM2csSFfFLlOh2P8D7w00bjyGrSMRlGSvhxZrGjVcqJUJ2-2y9XbKHb7ww02PREvAIJO3_wJ41hV5";
-  const listingUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/listing/${listing.id}`;
 
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-12">
