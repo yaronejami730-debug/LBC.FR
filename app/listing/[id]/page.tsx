@@ -278,11 +278,6 @@ export default async function ListingPage({
                 {/* Overlay gradient for premium feel */}
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/10 via-transparent to-transparent z-10"></div>
                 
-                {/* Location Pill */}
-                <div className="absolute bottom-4 left-4 z-20 bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20 flex items-center gap-2 transform group-hover:translate-y-[-2px] transition-transform duration-300">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                  <span className="text-sm font-extrabold text-[#15157d]">{listing.location}</span>
-                </div>
 
                 {/* Open in maps corner button */}
                 <a 
