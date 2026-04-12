@@ -1,7 +1,5 @@
 import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 
 // Load .env.local for Prisma CLI (Next.js uses .env.local, not .env)
 config({ path: ".env.local" });
@@ -15,11 +13,5 @@ export default defineConfig({
   },
   datasource: {
     url: DATABASE_URL,
-  },
-  migrate: {
-    async adapter() {
-      const pool = new Pool({ connectionString: DATABASE_URL });
-      return new PrismaPg(pool);
-    },
   },
 });
