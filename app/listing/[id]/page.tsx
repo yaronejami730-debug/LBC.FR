@@ -14,17 +14,17 @@ export default async function ListingPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [listing, session, ad] = await Promise.all([
+  const [listing, session] = await Promise.all([
     prisma.listing.findUnique({
       where: { id },
       include: { user: true },
     }),
     auth(),
-    prisma.advertisement.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: "desc" },
-    }),
   ]);
+
+  const ad = await prisma.advertisement
+    .findFirst({ where: { isActive: true }, orderBy: { createdAt: "desc" } })
+    .catch(() => null);
 
   const currentUserId = session?.user?.id ?? null;
 
