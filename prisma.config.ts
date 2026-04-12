@@ -4,7 +4,10 @@ import { defineConfig } from "prisma/config";
 // Load .env.local for Prisma CLI (Next.js uses .env.local, not .env)
 config({ path: ".env.local" });
 
-const DATABASE_URL = process.env.DATABASE_URL!;
+// Migrations need a direct (unpooled) connection — Neon's pooled URL doesn't
+// support the advisory locks required by prisma migrate deploy.
+const MIGRATION_URL =
+  process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL!;
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -12,6 +15,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: DATABASE_URL,
+    url: MIGRATION_URL,
   },
 });
