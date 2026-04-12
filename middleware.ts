@@ -8,23 +8,30 @@ const PROTECTED = ["/messages", "/profile", "/post"];
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const pathname = req.nextUrl.pathname;
-  const role = (req.auth?.user as unknown as Record<string, unknown> | undefined)?.role as string | undefined;
+  const { pathname } = req.nextUrl;
+  const role = (req.auth?.user as any)?.role;
 
-  // Admin routes: must be logged in AND have ADMIN role
+  // Admin section logic
   if (pathname.startsWith("/admin")) {
-    // Allow the admin login page through without auth
-    if (pathname === "/admin/login") return NextResponse.next();
+    const isAdminLogin = pathname === "/admin/login";
+    
+    // If it's the admin login page, let it through
+    if (isAdminLogin) return NextResponse.next();
 
+    // Not logged in -> go to admin login
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
     }
+
+    // Logged in but not admin -> also go to admin login (where an error message will show)
     if (role !== "ADMIN") {
       return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
     }
+
     return NextResponse.next();
   }
 
+  // Protected user routes
   const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
   if (isProtected && !isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
