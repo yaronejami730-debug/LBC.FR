@@ -49,6 +49,7 @@ export default async function UsersPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#f2f4f6] bg-[#f7f9fb]">
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-6 py-3">ID</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-6 py-3">Utilisateur</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Email</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Rôle</th>
@@ -61,6 +62,10 @@ export default async function UsersPage() {
             <tbody className="divide-y divide-[#f2f4f6]">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-[#f7f9fb] transition-colors">
+                  {/* ID */}
+                  <td className="px-6 py-3">
+                    <span className="text-xs font-mono text-[#9ca3af]">#{user.id.slice(0, 8)}</span>
+                  </td>
                   {/* Avatar + Name */}
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">

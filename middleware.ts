@@ -9,30 +9,16 @@ const PROTECTED = ["/messages", "/profile", "/post"];
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
-  const role = (req.auth?.user as any)?.role;
+  
+  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
+  const isAdmin = pathname.startsWith("/admin");
 
-  // Admin section logic
-  if (pathname.startsWith("/admin")) {
-    const isAdminLogin = pathname === "/admin/login";
-    
-    // If it's the admin login page, let it through
-    if (isAdminLogin) return NextResponse.next();
-
-    // Not logged in -> go to admin login
-    if (!isLoggedIn) {
-      return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
-    }
-
-    // Logged in but not admin -> also go to admin login (where an error message will show)
-    if (role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
-    }
-
-    return NextResponse.next();
+  if (isAdmin && pathname !== "/admin/login") {
+    if (!isLoggedIn) return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
+    const role = (req.auth?.user as any)?.role;
+    if (role !== "ADMIN") return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
   }
 
-  // Protected user routes
-  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
   if (isProtected && !isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
