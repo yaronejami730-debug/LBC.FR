@@ -7,53 +7,50 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String
-  name        String
-  avatar      String?
-  role        String   @default("USER")
-  verified    Boolean  @default(false)
-  adminNote   String?
-  memberSince Int      @default(2024)
-  createdAt   DateTime @default(now())
-
-  listings     Listing[]
-  sentMessages Message[]                @relation("SentMessages")
+  id           String                    @id @default(cuid())
+  email        String                    @unique
+  password     String
+  name         String
+  avatar       String?
+  verified     Boolean                   @default(false)
+  memberSince  Int                       @default(2024)
+  createdAt    DateTime                  @default(now())
+  role         String                    @default("USER")
+  adminNote    String?
   participants ConversationParticipant[]
+  listings     Listing[]
+  sentMessages Message[]                 @relation("SentMessages")
 }
 
 model Listing {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  price       Float
-  category    String
-  location    String
-  condition   String   @default("Good")
-  brand       String?
-  material    String?
-  images          String   @default("[]")
-  metadata        String   @default("{}") // JSON: category-specific fields (vehicle specs, etc.)
-  isPremium       Boolean  @default(false)
-  isVerified      Boolean  @default(false)
-  status          String   @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
-  rejectionReason String?
+  id              String         @id @default(cuid())
+  title           String
+  description     String
+  price           Float
+  category        String
+  location        String
+  condition       String         @default("Good")
+  brand           String?
+  material        String?
+  images          String         @default("[]")
+  isPremium       Boolean        @default(false)
+  isVerified      Boolean        @default(false)
   userId          String
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  conversations Conversation[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  metadata        String         @default("{}")
+  status          String         @default("PENDING")
+  rejectionReason String?
+  conversations   Conversation[]
+  user            User           @relation(fields: [userId], references: [id])
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
-  listingId String
-  listing   Listing  @relation(fields: [listingId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id           String                    @id @default(cuid())
+  listingId    String
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  listing      Listing                   @relation(fields: [listingId], references: [id])
   participants ConversationParticipant[]
   messages     Message[]
 }
@@ -62,8 +59,8 @@ model ConversationParticipant {
   id             String       @id @default(cuid())
   userId         String
   conversationId String
-  user           User         @relation(fields: [userId], references: [id])
   conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
 
   @@unique([userId, conversationId])
 }
@@ -74,9 +71,9 @@ model Message {
   senderId       String
   conversationId String
   read           Boolean      @default(false)
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
   createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 }
 
 model Advertisement {

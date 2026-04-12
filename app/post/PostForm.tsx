@@ -59,35 +59,54 @@ export default function PostForm() {
   async function handleImageUpload(files: FileList | null, slotIndex?: number) {
     if (!files || files.length === 0) return;
 
-    // Check if this would exceed 3 free photos
-    const pending = images.length + files.length;
-    if (images.length >= FREE_PHOTOS && !photoPaywall) {
+    // Check if this would exceed 3 free photos (unless we are replacing one)
+    if (slotIndex === undefined && images.length >= FREE_PHOTOS && !photoPaywall) {
       setPhotoPaywall(true);
       return;
     }
 
     setUploading(true);
+    setPublishError(null);
     try {
       const uploads: string[] = [];
       for (const file of Array.from(files)) {
         const form = new FormData();
         form.append("file", file);
         const res = await fetch("/api/upload", { method: "POST", body: form });
+        
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || "Erreur lors de l'envoi de l'image");
+        }
+        
         const data = await res.json();
+        if (!data.url) throw new Error("Réponse invalide du serveur d'upload");
         uploads.push(data.url);
       }
+
       if (slotIndex !== undefined) {
         setImages((prev) => {
           const next = [...prev];
+          // Fill gaps if any
+          for (let i = 0; i < slotIndex; i++) {
+            if (next[i] === undefined) next[i] = "";
+          }
           next[slotIndex] = uploads[0];
-          return next;
+          return next.filter(Boolean); // Keep it clean
         });
       } else {
-        setImages((prev) => [...prev, ...uploads].slice(0, 7)); // max 7 with paid
+        setImages((prev) => [...prev, ...uploads].slice(0, 7)); // max 7
       }
+    } catch (err) {
+      console.error("[handleImageUpload]", err);
+      setPublishError(err instanceof Error ? err.message : "Une erreur est survenue lors de l'envoi.");
     } finally {
       setUploading(false);
     }
+  }
+
+  function removeImage(index: number) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function handlePublish() {
@@ -96,10 +115,22 @@ export default function PostForm() {
     setPublishError(null);
     const metadata = category === "Véhicules" ? JSON.stringify(vehicle) : "{}";
     try {
+      // Clean images before sending (remove empty strings if any)
+      const cleanImages = images.filter(Boolean);
+      
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, price: parseFloat(price), category, description, location, condition, images, metadata }),
+        body: JSON.stringify({ 
+          title, 
+          price: parseFloat(price), 
+          category, 
+          description, 
+          location, 
+          condition, 
+          images: cleanImages, 
+          metadata 
+        }),
       });
       if (res.status === 401) {
         router.push("/login?callbackUrl=/post");
@@ -168,54 +199,96 @@ export default function PostForm() {
             {/* Grid de photos */}
             <div className="grid grid-cols-4 gap-3 h-52 md:h-64">
               {/* Slot principal */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (images.length === 0 || !images[0]) mainFileRef.current?.click();
-                }}
+              <div
                 className="col-span-2 row-span-2 relative group overflow-hidden rounded-xl bg-surface-container-highest flex flex-col items-center justify-center border-2 border-dashed border-outline-variant hover:border-primary transition-all"
               >
                 {images[0] ? (
                   <>
                     <img src={images[0]} alt="Photo principale" className="w-full h-full object-cover absolute inset-0" />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity">
+                      <button 
+                        type="button"
+                        onClick={() => mainFileRef.current?.click()}
+                        className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors"
+                      >
+                        <span className="material-symbols-outlined">edit</span>
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => removeImage(0)}
+                        className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500/60 transition-colors"
+                      >
+                        <span className="material-symbols-outlined">delete</span>
+                      </button>
                     </div>
                   </>
                 ) : (
-                  <>
-                    <span className="material-symbols-outlined text-primary text-4xl mb-2">camera</span>
-                    <p className="font-bold text-primary text-sm">{uploading ? "Envoi…" : "Photo principale"}</p>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => mainFileRef.current?.click()}
+                    className="w-full h-full flex flex-col items-center justify-center"
+                    disabled={uploading}
+                  >
+                    {uploading ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-primary text-4xl mb-2">camera</span>
+                        <p className="font-bold text-primary text-sm">Photo principale</p>
+                      </>
+                    )}
+                  </button>
                 )}
-              </button>
+              </div>
 
               {/* Slots secondaires */}
               {[1, 2, 3, 4].map((i) => {
                 const isPaid = i >= FREE_PHOTOS;
                 const isLocked = isPaid && images.length < FREE_PHOTOS;
+                const currentImg = images[i];
+
                 return (
-                  <button
+                  <div
                     key={i}
-                    type="button"
-                    onClick={() => {
-                      if (isLocked) { setPhotoPaywall(true); return; }
-                      extraFileRef.current?.click();
-                    }}
                     className={`relative group overflow-hidden rounded-xl flex items-center justify-center border transition-all
                       ${isLocked ? "bg-surface-container border-outline-variant/20 opacity-60" : "bg-surface-container-highest border-outline-variant/30 hover:border-primary"}`}
                   >
-                    {images[i] ? (
-                      <img src={images[i]} alt={`Photo ${i + 1}`} className="w-full h-full object-cover absolute inset-0" />
-                    ) : isLocked ? (
-                      <span className="material-symbols-outlined text-outline/40 text-xl">lock</span>
+                    {currentImg ? (
+                      <>
+                        <img src={currentImg} alt={`Photo ${i + 1}`} className="w-full h-full object-cover absolute inset-0" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <button 
+                            type="button"
+                            onClick={() => removeImage(i)}
+                            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500/60 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      </>
                     ) : (
-                      <span className="material-symbols-outlined text-outline text-xl">add</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isLocked) { setPhotoPaywall(true); return; }
+                          extraFileRef.current?.click();
+                        }}
+                        disabled={uploading && !isLocked}
+                        className="w-full h-full flex items-center justify-center"
+                      >
+                        {uploading && !isLocked ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                        ) : isLocked ? (
+                          <span className="material-symbols-outlined text-outline/40 text-xl">lock</span>
+                        ) : (
+                          <span className="material-symbols-outlined text-outline text-xl">add</span>
+                        )}
+                      </button>
                     )}
-                    {isPaid && !images[i] && !isLocked && (
+                    {isPaid && !currentImg && !isLocked && (
                       <span className="absolute bottom-1 right-1 text-[8px] font-bold text-primary bg-white/80 px-1 rounded">+</span>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
