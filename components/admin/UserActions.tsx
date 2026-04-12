@@ -12,25 +12,38 @@ export default function UserActions({ userId, verified }: Props) {
   const [showNote, setShowNote] = useState(false);
   const [note, setNote] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
 
   function handleVerify() {
+    setError("");
     startTransition(async () => {
-      await verifyUser(userId, note || undefined);
-      setShowNote(false);
-      setNote("");
+      try {
+        await verifyUser(userId, note || undefined);
+        setShowNote(false);
+        setNote("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur");
+      }
     });
   }
 
   function handleReject() {
+    setError("");
     startTransition(async () => {
-      await rejectUser(userId, note);
-      setShowNote(false);
-      setNote("");
+      try {
+        await rejectUser(userId, note);
+        setShowNote(false);
+        setNote("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur");
+      }
     });
   }
 
   if (verified) {
     return (
+      <div className="flex flex-col gap-1">
+        {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
       <div className="flex items-center gap-2">
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
           <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
@@ -61,11 +74,13 @@ export default function UserActions({ userId, verified }: Props) {
           </div>
         )}
       </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-1.5">
+      {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
       <div className="flex items-center gap-2">
         <button
           onClick={handleVerify}

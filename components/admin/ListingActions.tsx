@@ -27,36 +27,54 @@ export default function ListingActions({ listingId, status }: Props) {
   const [showReject, setShowReject] = useState(false);
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
 
   if (status !== "PENDING") {
     return (
-      <div className="flex items-center gap-2">
-        {STATUS_BADGE[status as keyof typeof STATUS_BADGE] ?? null}
-        {/* Allow re-opening moderation for non-pending */}
-        <button
-          onClick={() => {
-            startTransition(async () => {
-              if (status === "REJECTED") {
-                await approveListing(listingId);
-              } else {
-                await rejectListing(listingId, "");
-              }
-            });
-          }}
-          disabled={isPending}
-          className="text-[10px] text-[#777683] hover:text-[#15157d] underline underline-offset-2 disabled:opacity-50"
-        >
-          {isPending ? "…" : status === "APPROVED" ? "Retirer" : "Restaurer"}
-        </button>
+      <div className="flex flex-col gap-1">
+        {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
+        <div className="flex items-center gap-2">
+          {STATUS_BADGE[status as keyof typeof STATUS_BADGE] ?? null}
+          <button
+            onClick={() => {
+              setError("");
+              startTransition(async () => {
+                try {
+                  if (status === "REJECTED") {
+                    await approveListing(listingId);
+                  } else {
+                    await rejectListing(listingId, "");
+                  }
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Erreur");
+                }
+              });
+            }}
+            disabled={isPending}
+            className="text-[10px] text-[#777683] hover:text-[#15157d] underline underline-offset-2 disabled:opacity-50"
+          >
+            {isPending ? "…" : status === "APPROVED" ? "Retirer" : "Restaurer"}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => startTransition(() => approveListing(listingId))}
+          onClick={() => {
+            setError("");
+            startTransition(async () => {
+              try {
+                await approveListing(listingId);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Erreur");
+              }
+            });
+          }}
           disabled={isPending}
           className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50"
         >
@@ -82,11 +100,18 @@ export default function ListingActions({ listingId, status }: Props) {
             className="text-xs border border-[#c7c5d4] rounded-lg px-2 py-1.5 flex-1 outline-none focus:border-[#ba1a1a]"
           />
           <button
-            onClick={() => startTransition(async () => {
-              await rejectListing(listingId, reason);
-              setShowReject(false);
-              setReason("");
-            })}
+            onClick={() => {
+              setError("");
+              startTransition(async () => {
+                try {
+                  await rejectListing(listingId, reason);
+                  setShowReject(false);
+                  setReason("");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Erreur");
+                }
+              });
+            }}
             disabled={isPending}
             className="text-xs bg-[#ba1a1a] text-white px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-50 flex-shrink-0"
           >

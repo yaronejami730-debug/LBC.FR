@@ -122,6 +122,16 @@ export default async function ProfilePage() {
                         Premium
                       </span>
                     )}
+                    {listing.status === "PENDING" && (
+                      <span className="absolute top-2 right-2 bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        En attente
+                      </span>
+                    )}
+                    {listing.status === "REJECTED" && (
+                      <span className="absolute top-2 right-2 bg-red-100 text-red-700 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        Refusée
+                      </span>
+                    )}
                   </div>
                   <div className="p-2.5 flex flex-col gap-0.5">
                     <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatDistanceToNow } from "@/lib/utils";
@@ -16,6 +17,7 @@ export default async function SearchPage({
   const perPage = 12;
 
   const where = {
+    status: "APPROVED",
     ...(q && {
       OR: [
         { title: { contains: q } },
@@ -26,7 +28,7 @@ export default async function SearchPage({
     ...(category && { category }),
   };
 
-  const [listings, total] = await Promise.all([
+  const [listings, total, ads] = await Promise.all([
     prisma.listing.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -35,6 +37,11 @@ export default async function SearchPage({
       include: { user: { select: { verified: true } } },
     }),
     prisma.listing.count({ where }),
+    prisma.advertisement.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+    }),
   ]);
 
   const totalPages = Math.ceil(total / perPage);
@@ -92,35 +99,58 @@ export default async function SearchPage({
               <p className="text-sm mt-1">Essayez une autre recherche ou catégorie</p>
             </div>
           ) : (
-            listings.map((listing) => {
+            listings.map((listing, i) => {
               const images = JSON.parse(listing.images) as string[];
               const img = images[0] || "";
+              // Insert an ad at positions 4, 9, 14, …
+              const adIndex = Math.floor(i / 5);
+              const ad = i % 5 === 4 ? ads[adIndex] ?? null : null;
               return (
-                <Link
-                  key={listing.id}
-                  href={`/listing/${listing.id}`}
-                  className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
-                >
-                  <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                    <img alt={listing.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={img} />
-                    {listing.isPremium && (
-                      <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                        Premium
-                      </span>
-                    )}
-                    {listing.user.verified && !listing.isPremium && (
-                      <span className="absolute top-2 left-2 bg-tertiary-container text-tertiary-fixed-dim text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                        Vérifié
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-2.5 flex flex-col gap-0.5">
-                    <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-                    <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-                    <p className="text-outline text-xs truncate">{listing.location}</p>
-                    <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
-                  </div>
-                </Link>
+                <Fragment key={listing.id}>
+                  {ad && (
+                    <a
+                      href={ad.destinationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col bg-white rounded-xl overflow-hidden border border-[#c7c5d4] hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="relative aspect-square overflow-hidden bg-surface-container-low">
+                        <img alt={ad.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={ad.imageUrl} />
+                        <span className="absolute top-2 left-2 bg-[#15157d] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                          Publicité
+                        </span>
+                      </div>
+                      <div className="p-2.5 flex flex-col gap-0.5">
+                        <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{ad.title}</p>
+                        <p className="text-outline text-xs line-clamp-2">{ad.description}</p>
+                      </div>
+                    </a>
+                  )}
+                  <Link
+                    href={`/listing/${listing.id}`}
+                    className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="relative aspect-square overflow-hidden bg-surface-container-low">
+                      <img alt={listing.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={img} />
+                      {listing.isPremium && (
+                        <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                          Premium
+                        </span>
+                      )}
+                      {listing.user.verified && !listing.isPremium && (
+                        <span className="absolute top-2 left-2 bg-tertiary-container text-tertiary-fixed-dim text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                          Vérifié
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-2.5 flex flex-col gap-0.5">
+                      <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
+                      <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
+                      <p className="text-outline text-xs truncate">{listing.location}</p>
+                      <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
+                    </div>
+                  </Link>
+                </Fragment>
               );
             })
           )}

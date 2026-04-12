@@ -6,10 +6,19 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await auth();
-  const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
-  if (!session?.user || role !== "ADMIN") {
-    throw new Error("Accès refusé");
+  if (!session?.user?.id) throw new Error("Accès refusé");
+
+  const roleFromToken = (session.user as unknown as Record<string, unknown>)?.role as string | undefined;
+
+  // Fallback: re-check directly in DB if role is missing or not ADMIN in the token
+  if (roleFromToken !== "ADMIN") {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    if (dbUser?.role !== "ADMIN") throw new Error("Accès refusé");
   }
+
   return session;
 }
 
@@ -71,6 +80,28 @@ export async function createAdvertisement(formData: FormData) {
     data: { title, description, imageUrl, destinationUrl },
   });
   revalidatePath("/admin/ads");
+  revalidatePath("/");
+  revalidatePath("/search");
+}
+
+export async function updateAdvertisement(id: string, formData: FormData) {
+  await requireAdmin();
+  const title = formData.get("title") as string;
+  const description = formData.get("description") as string;
+  const imageUrl = formData.get("imageUrl") as string;
+  const destinationUrl = formData.get("destinationUrl") as string;
+
+  if (!title || !description || !imageUrl || !destinationUrl) {
+    throw new Error("Tous les champs sont requis");
+  }
+
+  await prisma.advertisement.update({
+    where: { id },
+    data: { title, description, imageUrl, destinationUrl },
+  });
+  revalidatePath("/admin/ads");
+  revalidatePath("/");
+  revalidatePath("/search");
 }
 
 export async function toggleAdStatus(id: string, isActive: boolean) {
@@ -80,10 +111,14 @@ export async function toggleAdStatus(id: string, isActive: boolean) {
     data: { isActive },
   });
   revalidatePath("/admin/ads");
+  revalidatePath("/");
+  revalidatePath("/search");
 }
 
 export async function deleteAdvertisement(id: string) {
   await requireAdmin();
   await prisma.advertisement.delete({ where: { id } });
   revalidatePath("/admin/ads");
+  revalidatePath("/");
+  revalidatePath("/search");
 }

@@ -20,9 +20,15 @@ export default async function ListingPage({
   ]);
 
   if (!listing) notFound();
-
+  
   const currentUserId = session?.user?.id ?? null;
   const isOwner = currentUserId === listing.userId;
+  const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
+  const isAdmin = role === "ADMIN";
+
+  if (listing.status !== "APPROVED" && !isOwner && !isAdmin) {
+    notFound();
+  }
 
   // Parse vehicle metadata
   let vehicleMeta: Record<string, string> = {};

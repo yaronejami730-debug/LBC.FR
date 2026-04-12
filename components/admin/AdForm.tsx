@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { createAdvertisement, deleteAdvertisement, toggleAdStatus } from "@/app/admin/actions";
+import { createAdvertisement, deleteAdvertisement, updateAdvertisement } from "@/app/admin/actions";
 
 type Ad = {
   id: string;
@@ -17,16 +17,57 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [preview, setPreview] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function uploadFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setError("Seules les images sont acceptées");
+      return;
+    }
+    setIsUploading(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur lors de l'upload");
+      setImageUrl(data.url);
+      setPreview(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur upload");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!imageUrl) {
+      setError("Veuillez ajouter une image");
+      return;
+    }
     const fd = new FormData(e.currentTarget);
+    fd.set("imageUrl", imageUrl);
     setError("");
     startTransition(async () => {
       try {
         await createAdvertisement(fd);
         formRef.current?.reset();
+        setImageUrl("");
+        setPreview("");
         setOpen(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur");
@@ -81,13 +122,49 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">URL de l&apos;image *</label>
+            <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">Image *</label>
+            <input type="hidden" name="imageUrl" value={imageUrl} />
+            {preview ? (
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-[#f2f4f6]">
+                <img src={preview} alt="Aperçu" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => { setImageUrl(""); setPreview(""); }}
+                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-[#f2f4f6] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm text-[#191c1e]">close</span>
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                  isDragging ? "border-[#15157d] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#15157d] hover:bg-[#f7f7ff]"
+                }`}
+              >
+                {isUploading ? (
+                  <p className="text-sm text-[#777683]">Chargement en cours…</p>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-4xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
+                    <p className="text-sm text-[#777683] mt-2">
+                      Glisser-déposer une image ici ou{" "}
+                      <span className="text-[#15157d] font-semibold">parcourir</span>
+                    </p>
+                    <p className="text-xs text-[#aaa9b8] mt-1">PNG, JPG, WEBP acceptés</p>
+                  </>
+                )}
+              </div>
+            )}
             <input
-              name="imageUrl"
-              type="url"
-              required
-              placeholder="https://example.com/image.jpg"
-              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }}
             />
           </div>
           <div className="space-y-1.5">
@@ -153,6 +230,52 @@ function AdCard({
   isPending: boolean;
   startTransition: ReturnType<typeof useTransition>[1];
 }) {
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState(ad.imageUrl);
+  const [editPreview, setEditPreview] = useState(ad.imageUrl);
+  const [editIsDragging, setEditIsDragging] = useState(false);
+  const [editIsUploading, setEditIsUploading] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  async function uploadEditFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setEditError("Seules les images sont acceptées");
+      return;
+    }
+    setEditIsUploading(true);
+    setEditError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur upload");
+      setEditImageUrl(data.url);
+      setEditPreview(data.url);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Erreur upload");
+    } finally {
+      setEditIsUploading(false);
+    }
+  }
+
+  function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editImageUrl) { setEditError("Image requise"); return; }
+    const fd = new FormData(e.currentTarget);
+    fd.set("imageUrl", editImageUrl);
+    setEditError("");
+    startTransition(async () => {
+      try {
+        await updateAdvertisement(ad.id, fd);
+        setEditing(false);
+      } catch (err) {
+        setEditError(err instanceof Error ? err.message : "Erreur");
+      }
+    });
+  }
+
   return (
     <div className={`bg-white rounded-2xl border overflow-hidden transition-all ${ad.isActive ? "border-[#eceef0]" : "border-[#eceef0] opacity-60"}`}>
       {/* Image + badge */}
@@ -186,20 +309,22 @@ function AdCard({
       {/* Actions */}
       <div className="px-4 pb-4 flex items-center gap-2">
         <button
-          onClick={() => startTransition(() => toggleAdStatus(ad.id, !ad.isActive))}
+          onClick={() => { setEditing((v) => !v); setEditError(""); }}
           disabled={isPending}
-          className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-            ad.isActive
-              ? "bg-[#f2f4f6] text-[#464652] hover:bg-[#eceef0]"
-              : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-          }`}
+          className="flex-1 text-xs font-semibold py-1.5 rounded-lg bg-[#e1e0ff] text-[#15157d] hover:bg-[#c7c5ff] transition-colors disabled:opacity-50"
         >
-          {ad.isActive ? "Désactiver" : "Activer"}
+          <span className="inline-flex items-center gap-1 justify-center">
+            <span className="material-symbols-outlined text-[14px]">edit</span>
+            {editing ? "Annuler" : "Modifier la publicité"}
+          </span>
         </button>
         <button
           onClick={() => {
             if (confirm("Supprimer cette publicité ?")) {
-              startTransition(() => deleteAdvertisement(ad.id));
+              startTransition(async () => {
+                try { await deleteAdvertisement(ad.id); }
+                catch { /* ignore */ }
+              });
             }
           }}
           disabled={isPending}
@@ -208,6 +333,62 @@ function AdCard({
           <span className="material-symbols-outlined text-[14px]">delete</span>
         </button>
       </div>
+
+      {/* Inline edit form */}
+      {editing && (
+        <form onSubmit={handleEditSubmit} className="border-t border-[#eceef0] p-4 space-y-3 bg-[#f7f7ff]">
+          {editError && <p className="text-xs text-[#ba1a1a] bg-[#ffdad6] px-3 py-1.5 rounded-lg">{editError}</p>}
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Titre</label>
+            <input name="title" defaultValue={ad.title} required
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#15157d]" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">URL destination</label>
+            <input name="destinationUrl" type="url" defaultValue={ad.destinationUrl} required
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#15157d]" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Description</label>
+            <textarea name="description" defaultValue={ad.description} required rows={2}
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#15157d] resize-none" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Image</label>
+            <input type="hidden" name="imageUrl" value={editImageUrl} />
+            {editPreview ? (
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-[#f2f4f6]">
+                <img src={editPreview} alt="Aperçu" className="w-full h-full object-cover" />
+                <button type="button" onClick={() => { setEditImageUrl(""); setEditPreview(""); }}
+                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-[#f2f4f6]">
+                  <span className="material-symbols-outlined text-sm text-[#191c1e]">close</span>
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setEditIsDragging(true); }}
+                onDragLeave={() => setEditIsDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setEditIsDragging(false); const f = e.dataTransfer.files[0]; if (f) uploadEditFile(f); }}
+                onClick={() => editFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${editIsDragging ? "border-[#15157d] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#15157d]"}`}
+              >
+                {editIsUploading ? <p className="text-sm text-[#777683]">Chargement…</p> : (
+                  <>
+                    <span className="material-symbols-outlined text-3xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
+                    <p className="text-xs text-[#777683] mt-1">Glisser-déposer ou <span className="text-[#15157d] font-semibold">parcourir</span></p>
+                  </>
+                )}
+              </div>
+            )}
+            <input ref={editFileInputRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadEditFile(f); }} />
+          </div>
+          <button type="submit" disabled={isPending}
+            className="w-full text-sm bg-[#15157d] text-white font-semibold py-2 rounded-xl hover:bg-[#2e3192] transition-colors disabled:opacity-60">
+            {isPending ? "Enregistrement…" : "Enregistrer les modifications"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }
