@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "./ListingHeader";
+import AdRotator from "./AdRotator";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "./SellerActions";
 import OwnerActions from "./OwnerActions";
@@ -22,9 +23,9 @@ export default async function ListingPage({
     auth(),
   ]);
 
-  const ad = await prisma.advertisement
-    .findFirst({ where: { isActive: true }, orderBy: { createdAt: "desc" } })
-    .catch(() => null);
+  const ads = await prisma.advertisement
+    .findMany({ where: { isActive: true }, orderBy: { createdAt: "desc" } })
+    .catch(() => []);
 
   const currentUserId = session?.user?.id ?? null;
 
@@ -314,26 +315,8 @@ export default async function ListingPage({
                 </div>
               </div>
 
-              {/* Publicité */}
-              {ad && (
-                <a
-                  href={ad.destinationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
-                >
-                  <div className="relative aspect-video overflow-hidden">
-                    <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
-                    <span className="absolute top-2 left-2 bg-[#15157d] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                      Publicité
-                    </span>
-                  </div>
-                  <div className="p-4 bg-white">
-                    <p className="font-bold text-sm text-on-surface line-clamp-1">{ad.title}</p>
-                    <p className="text-xs text-outline mt-0.5 line-clamp-2">{ad.description}</p>
-                  </div>
-                </a>
-              )}
+              {/* Publicité rotative */}
+              {ads.length > 0 && <AdRotator ads={ads} />}
             </div>
           </div>
         </section>
