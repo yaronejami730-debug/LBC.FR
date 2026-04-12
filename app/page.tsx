@@ -90,7 +90,7 @@ export default async function Home() {
           {listings.map((listing, i) => {
             const images = JSON.parse(listing.images) as string[];
             const img = images[0] || "";
-            const ad = i === 2 ? ads[0] : i === 6 ? ads[1] : null;
+            const ad = i === 1 ? ads[0] : i === 5 ? ads[1] : null;
             return (
               <Fragment key={listing.id}>
                 {ad && (
