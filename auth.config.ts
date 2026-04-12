@@ -9,7 +9,8 @@ export const authConfig = {
   providers: [],
   callbacks: {
     authorized({ auth }) {
-      return !!auth?.user;
+      // Let the middleware handler logic in middleware.ts handle protection.
+      return true;
     },
     session({ session, token }) {
       if (token.id) session.user.id = token.id as string;

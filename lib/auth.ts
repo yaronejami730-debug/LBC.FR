@@ -30,6 +30,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -40,6 +41,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = dbUser?.role ?? "USER";
       }
       return token;
+    },
+    authorized({ auth, request: { nextUrl } }) {
+      // The middleware function handles the actual protection logic.
+      // We return true here to avoid NextAuth automatically redirecting public pages.
+      return true;
     },
     session({ session, token }) {
       if (token.id) session.user.id = token.id as string;
