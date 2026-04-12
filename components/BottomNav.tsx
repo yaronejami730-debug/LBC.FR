@@ -10,7 +10,7 @@ const PUBLIC_ITEMS = [
 
 const AUTH_ITEMS = [
   { href: "/post", label: "Déposer", icon: "add_circle", key: "deposer" },
-  { href: "/favorites", label: "Favoris", icon: "favorite", key: "favoris" },
+  { href: "/favoris", label: "Favoris", icon: "favorite", key: "favoris" },
   { href: "/messages", label: "Messages", icon: "chat", key: "messages" },
   { href: "/profile", label: "Profil", icon: "person", key: "profil" },
 ];

@@ -8,7 +8,7 @@ import BottomNav from "@/components/BottomNav";
 
 export default async function FavoritesPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login?callbackUrl=/favorites");
+  if (!session?.user?.id) redirect("/login?callbackUrl=/favoris");
 
   const favorites = await prisma.favorite.findMany({
     where: { userId: session.user.id },
