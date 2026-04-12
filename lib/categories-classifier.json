@@ -1,0 +1,1947 @@
+{
+  "version": "2.0",
+  "metadata": {
+    "language": "fr",
+    "total_categories": 12,
+    "last_updated": "2026-04-12",
+    "description": "Librairie de détection de catégories pour annonces classées francophones"
+  },
+  "categories": [
+    {
+      "name": "VEHICULES",
+      "priority": 1,
+      "subcategories": [
+        {
+          "name": "Voitures",
+          "priority": 1,
+          "keywords": [
+            "voiture", "automobile", "auto", "berline", "citadine", "suv", "4x4", "monospace",
+            "break", "cabriolet", "coupé", "coupe", "pick-up", "pickup", "crossover",
+            "essence", "diesel", "hybride", "electrique", "électrique", "gpl",
+            "boite automatique", "boîte automatique", "boite manuelle", "boîte manuelle",
+            "km", "kilometres", "kilométrage", "kilometrage", "carte grise", "controle technique",
+            "contrôle technique", "ct ok", "ct vierge", "ct à jour", "premiere main", "première main",
+            "garage", "revision", "révision", "vidange", "plaquettes", "pneus neufs",
+            "climatisation", "clim auto", "gps intégré", "radar de recul", "camera de recul",
+            "caméra de recul", "toit ouvrant", "cuir", "sièges chauffants", "sieges chauffants",
+            "abs", "esp", "airbag", "airbags", "direction assistée", "vitres electriques",
+            "vitres électriques", "regulateur", "régulateur", "limiteur",
+            "chevaux", "cv", "din", "ch", "cylindrée", "cylindree", "turbo", "tdi", "hdi", "dci",
+            "tsi", "tfsi", "tce", "blue hdi", "bluehdi", "puretech", "ecoboost", "skyactiv",
+            "puissance fiscale", "chevaux fiscaux"
+          ],
+          "brands": [
+            "renault", "peugeot", "citroen", "citroën", "dacia", "fiat", "volkswagen", "vw",
+            "audi", "bmw", "mercedes", "mercedes-benz", "opel", "ford", "toyota", "nissan",
+            "hyundai", "kia", "seat", "skoda", "škoda", "volvo", "mazda", "honda", "suzuki",
+            "mitsubishi", "jeep", "land rover", "range rover", "jaguar", "porsche", "tesla",
+            "mini", "alfa romeo", "alfa", "lexus", "infiniti", "ds", "ds automobiles",
+            "smart", "chevrolet", "dodge", "chrysler", "subaru", "ssangyong", "mg",
+            "cupra", "alpine", "lancia", "abarth", "maserati", "ferrari", "lamborghini",
+            "bentley", "rolls royce", "aston martin", "bugatti", "mclaren", "lotus"
+          ],
+          "models": [
+            "clio", "megane", "mégane", "captur", "kadjar", "scenic", "scénic", "twingo",
+            "kangoo", "talisman", "austral", "arkana", "espace", "zoe", "zoé", "rafale",
+            "208", "308", "408", "508", "2008", "3008", "5008", "108", "partner", "rifter", "e-208",
+            "c3", "c4", "c5", "berlingo", "c3 aircross", "c5 aircross", "ds3", "ds4", "ds7",
+            "sandero", "duster", "spring", "jogger", "lodgy", "logan",
+            "500", "panda", "tipo", "punto",
+            "golf", "polo", "tiguan", "touran", "passat", "t-roc", "t-cross", "id3", "id4", "id.3", "id.4", "arteon",
+            "a1", "a3", "a4", "a5", "a6", "a7", "a8", "q2", "q3", "q5", "q7", "q8", "tt", "rs3", "rs4", "rs6", "s3", "s4",
+            "serie 1", "serie 2", "serie 3", "serie 4", "serie 5", "série 1", "série 3", "série 5",
+            "x1", "x2", "x3", "x4", "x5", "x6", "x7", "m3", "m4", "m5", "ix", "i4",
+            "classe a", "classe b", "classe c", "classe e", "classe s", "cla", "gla", "glb", "glc", "gle", "gls", "amg",
+            "corsa", "astra", "mokka", "crossland", "grandland",
+            "fiesta", "focus", "puma", "kuga", "mustang", "ranger",
+            "yaris", "corolla", "chr", "c-hr", "rav4", "rav-4", "aygo", "camry", "land cruiser", "hilux", "supra",
+            "qashqai", "juke", "micra", "leaf", "x-trail",
+            "tucson", "kona", "i10", "i20", "i30", "ioniq", "ioniq5", "ioniq 5", "santa fe", "bayon",
+            "sportage", "ceed", "rio", "picanto", "niro", "stonic", "sorento", "ev6",
+            "ibiza", "leon", "léon", "arona", "ateca", "tarraco",
+            "octavia", "fabia", "karoq", "kodiaq", "kamiq", "superb", "enyaq",
+            "model 3", "model y", "model s", "model x",
+            "wrangler", "compass", "renegade", "cherokee", "grand cherokee", "avenger"
+          ],
+          "synonyms": [
+            "bagnole", "caisse", "tire", "bolide", "tacot", "char", "vehicule", "véhicule",
+            "occasion", "occas", "occ", "vo", "vn", "véhicule occasion"
+          ],
+          "common_mistakes": [
+            "voiture", "vioture", "voitur", "peugot", "peujeot", "renaut", "citroen",
+            "wolkswagen", "wolswagen", "volkwagen", "audii", "bmww", "mersedes", "mercedez",
+            "toyata", "toiyota", "nisan", "nissam", "hyunday", "hundai", "hundaï"
+          ]
+        },
+        {
+          "name": "Motos",
+          "priority": 2,
+          "keywords": [
+            "moto", "motocyclette", "scooter", "cyclo", "cyclomoteur", "mobylette",
+            "motocross", "enduro", "supermotard", "roadster", "sportive", "custom",
+            "trail", "touring", "routière", "routiere", "scrambler", "café racer", "cafe racer",
+            "naked", "cruiser", "chopper", "bobber", "adventure",
+            "casque", "casque moto", "blouson moto", "gants moto", "bottes moto",
+            "pot echappement", "pot d'échappement", "pot akrapovic",
+            "125cc", "250cc", "300cc", "500cc", "600cc", "650cc", "750cc", "900cc", "1000cc",
+            "125 cm3", "50 cm3", "permis a", "permis a2", "permis a1", "permis am",
+            "side-car", "sidecar", "trike", "trois roues", "quad"
+          ],
+          "brands": [
+            "yamaha", "honda", "kawasaki", "suzuki", "ducati", "triumph", "harley davidson",
+            "harley", "bmw motorrad", "ktm", "aprilia", "mv agusta", "moto guzzi",
+            "benelli", "royal enfield", "indian", "piaggio", "vespa", "kymco", "sym",
+            "peugeot motocycles", "husqvarna", "beta", "gas gas", "gasgas", "sherco",
+            "cfmoto", "zontes", "brixton", "fantic"
+          ],
+          "models": [
+            "mt-07", "mt07", "mt-09", "mt09", "r1", "r6", "xmax", "x-max", "tmax", "t-max",
+            "tracer", "ténéré", "tenere",
+            "cbr", "cb650r", "cb500", "africa twin", "hornet", "forza", "pcx", "sh",
+            "z650", "z900", "ninja", "ninja 400", "versys", "er-6n",
+            "gsxr", "gsx-r", "sv650", "v-strom", "vstrom", "burgman",
+            "panigale", "monster", "multistrada", "scrambler ducati", "diavel",
+            "street triple", "speed triple", "tiger", "bonneville", "trident",
+            "duke", "adventure", "rc",
+            "sportster", "fat boy", "road king", "street glide",
+            "r1250gs", "r1250 gs", "f900r", "s1000rr", "gs"
+          ],
+          "synonyms": [
+            "deux roues", "2 roues", "bécane", "becane", "meule", "brêle", "brele"
+          ],
+          "common_mistakes": [
+            "yaamaha", "yamha", "hoda", "kawaski", "kawazaki", "susuki", "ducatti",
+            "harlay", "harley davison", "triumf", "apirillia"
+          ]
+        },
+        {
+          "name": "Utilitaires",
+          "priority": 3,
+          "keywords": [
+            "utilitaire", "camionnette", "fourgon", "fourgonnette", "van",
+            "camion", "poids lourd", "semi-remorque", "semi remorque", "tracteur routier",
+            "benne", "plateau", "frigorifique", "frigo", "hayon", "hayon élévateur",
+            "chassis cabine", "châssis cabine", "caisse grand volume", "plancher cabine",
+            "ptac", "charge utile", "volume utile", "m3",
+            "aménagé", "amenage", "isotherme"
+          ],
+          "brands": [
+            "renault trucks", "iveco", "man", "daf", "scania", "volvo trucks",
+            "mercedes trucks", "isuzu"
+          ],
+          "models": [
+            "master", "trafic", "kangoo van", "expert", "jumpy", "jumper", "boxer",
+            "berlingo van", "transit", "transit custom", "transit connect",
+            "sprinter", "vito", "citan", "crafter", "transporter", "caddy",
+            "ducato", "doblo", "doblò", "talento", "fiorino",
+            "vivaro", "movano", "combo",
+            "proace", "proace city", "hiace",
+            "nv200", "nv300", "nv400", "interstar", "primastar",
+            "daily", "tge"
+          ],
+          "synonyms": [
+            "véhicule utilitaire", "vu", "vul", "vehicule utilitaire leger",
+            "camion benne", "porteur", "tracteur"
+          ],
+          "common_mistakes": [
+            "utilitere", "utilitair", "camionet", "fourgonette"
+          ]
+        },
+        {
+          "name": "Caravaning",
+          "priority": 4,
+          "keywords": [
+            "camping-car", "camping car", "campingcar", "caravane", "van aménagé",
+            "van amenage", "fourgon aménagé", "fourgon amenage", "motorhome",
+            "profilé", "profile", "capucine", "intégral", "integral", "cellule",
+            "remorque", "porte-vélo", "porte velo", "porte-moto",
+            "attelage", "boule attelage", "auvent", "store", "panneau solaire camping",
+            "réservoir eau", "wc chimique", "toilette chimique", "douche camping",
+            "lit pavillon", "lit central", "dinette", "soute"
+          ],
+          "brands": [
+            "burstner", "bürstner", "hymer", "pilote", "rapido", "chausson", "challenger",
+            "adria", "dethleffs", "knaus", "carthago", "laika", "roller team",
+            "benimar", "carado", "sunlight", "weinsberg", "hobby", "fendt",
+            "eriba", "la mancelle", "sterckeman", "trigano"
+          ],
+          "models": [],
+          "synonyms": [
+            "cc", "campcar", "caravan", "autocaravane", "motor home"
+          ],
+          "common_mistakes": [
+            "camping car", "campingcare", "caravanne", "campincar"
+          ]
+        },
+        {
+          "name": "Nautisme",
+          "priority": 5,
+          "keywords": [
+            "bateau", "voilier", "catamaran", "trimaran", "yacht", "pneumatique",
+            "semi-rigide", "semi rigide", "zodiac", "jet ski", "jetski", "jet-ski",
+            "moteur hors-bord", "moteur hors bord", "inboard", "hors bord",
+            "annexe", "place de port", "mouillage", "remorque bateau",
+            "kayak", "canoë", "canoe", "paddle", "stand up paddle", "sup",
+            "péniche", "peniche", "vedette", "chalutier",
+            "deriveur", "dériveur", "quillard", "multicoque", "monocoque",
+            "moteur marin", "helice", "hélice", "bimini", "cockpit"
+          ],
+          "brands": [
+            "beneteau", "bénéteau", "jeanneau", "dufour", "lagoon", "fountaine pajot",
+            "bavaria", "hanse", "hallberg-rassy", "yamaha marine", "mercury",
+            "suzuki marine", "honda marine", "evinrude", "johnson", "tohatsu",
+            "zodiac", "bombard", "quicksilver", "bayliner", "boston whaler",
+            "sea ray", "princess", "sunseeker", "azimut", "ferretti"
+          ],
+          "models": [],
+          "synonyms": [
+            "embarcation", "navire", "barque", "canot"
+          ],
+          "common_mistakes": [
+            "batau", "bato", "voilié", "catamran"
+          ]
+        },
+        {
+          "name": "Equipement Auto",
+          "priority": 6,
+          "keywords": [
+            "pneu", "pneus", "jante", "jantes", "jantes alu", "jantes alliage",
+            "enjoliveur", "enjoliveurs", "batterie", "batterie voiture",
+            "amortisseur", "amortisseurs", "plaquettes de frein", "disque de frein",
+            "filtre à huile", "filtre a huile", "filtre à air", "filtre air",
+            "bougie", "bougies", "courroie", "courroie distribution",
+            "embrayage", "kit embrayage", "demarreur", "démarreur", "alternateur",
+            "radiateur", "pompe à eau", "pompe a eau", "turbo", "turbocompresseur",
+            "pot catalytique", "catalyseur", "fap", "filtre à particules",
+            "pare-choc", "pare choc", "phare", "phares", "feu arrière", "feu arriere",
+            "rétroviseur", "retroviseur", "essuie-glace", "essuie glace",
+            "autoradio", "gps voiture", "dashcam", "dash cam", "camera embarquée",
+            "tapis de sol", "housse siège", "housse siege", "coffre de toit",
+            "barre de toit", "barres de toit", "porte-vélos", "porte velos",
+            "chaînes neige", "chaines neige", "pneus hiver", "pneus été", "4 saisons",
+            "huile moteur", "5w30", "5w40", "10w40", "liquide refroidissement",
+            "antigel", "lave glace", "lave-glace"
+          ],
+          "brands": [
+            "michelin", "continental", "bridgestone", "goodyear", "pirelli", "hankook",
+            "dunlop", "firestone", "kumho", "nexen", "nokian", "falken", "toyo",
+            "bosch", "valeo", "sachs", "brembo", "ferodo", "ngk", "denso",
+            "mann filter", "mahle", "gates", "dayco", "skf", "snr",
+            "osram", "philips auto", "pioneer", "kenwood", "alpine audio",
+            "thule", "norauto", "feu vert"
+          ],
+          "models": [],
+          "synonyms": [
+            "pièce auto", "piece auto", "pièces détachées", "pieces detachees",
+            "accessoire auto", "accessoire voiture", "équipement auto", "equipement auto"
+          ],
+          "common_mistakes": [
+            "pneux", "jante alu", "amorrtisseur", "plaquete"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IMMOBILIER",
+      "priority": 2,
+      "subcategories": [
+        {
+          "name": "Ventes immobilières",
+          "priority": 1,
+          "keywords": [
+            "maison à vendre", "appartement à vendre", "vente maison", "vente appartement",
+            "achat immobilier", "acheter maison", "acheter appartement",
+            "maison", "appartement", "studio", "t1", "t2", "t3", "t4", "t5", "f1", "f2", "f3", "f4", "f5",
+            "duplex", "triplex", "loft", "penthouse", "attique",
+            "villa", "pavillon", "propriété", "propriete", "demeure", "manoir", "château", "chateau",
+            "pièces", "pieces", "chambres", "salle de bain", "salle d'eau", "wc séparé",
+            "surface", "m²", "m2", "mètres carrés", "metres carres",
+            "terrain", "jardin", "terrasse", "balcon", "loggia", "véranda", "veranda",
+            "garage", "parking", "place de parking", "cave", "cellier", "grenier",
+            "copropriété", "copropriete", "charges", "syndic", "lot",
+            "diagnostics", "dpe", "classe énergie", "classe energie",
+            "notaire", "frais de notaire", "compromis", "acte de vente",
+            "neuf", "ancien", "rénové", "renove", "à rénover", "a renover",
+            "étage", "etage", "ascenseur", "digicode", "interphone", "gardien",
+            "exposition sud", "plein sud", "lumineux", "traversant", "calme",
+            "vue mer", "vue montagne", "vue dégagée", "vue degagee",
+            "résidence", "residence", "immeuble", "programme neuf", "vefa",
+            "viager", "viager libre", "viager occupé", "viager occupe",
+            "investissement locatif", "rendement", "rentabilité",
+            "plain-pied", "plain pied", "de plain pied",
+            "parquet", "carrelage", "double vitrage", "triple vitrage",
+            "chauffage central", "chauffage individuel", "chauffage au sol",
+            "fibre optique", "fibre", "résidence sécurisée", "residence securisee",
+            "gardien", "concierge", "loge gardien",
+            "cuisine équipée", "cuisine equipee", "cuisine ouverte", "cuisine américaine",
+            "séjour", "sejour", "salon", "salle à manger",
+            "suite parentale", "dressing", "buanderie",
+            "cellier", "sous-sol", "demi-sous-sol",
+            "combles", "combles aménageables", "combles amenageables",
+            "toiture neuve", "façade ravalement", "ravalement",
+            "taxe foncière", "taxe fonciere",
+            "honoraires", "frais agence", "mandat exclusif", "mandat simple",
+            "estimation gratuite", "expertise immobilière",
+            "primo-accédant", "primo accedant", "ptz", "prêt à taux zéro",
+            "loi pinel immobilier", "défiscalisation", "defiscalisation",
+            "scpi", "investissement pierre"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "bien immobilier", "logement", "habitation", "résidence principale",
+            "investissement", "patrimoine", "achat", "acquisition"
+          ],
+          "common_mistakes": [
+            "apartement", "apartment", "appart", "appart'", "maisson", "terain",
+            "terace", "terase", "balcont"
+          ]
+        },
+        {
+          "name": "Locations",
+          "priority": 2,
+          "keywords": [
+            "location", "louer", "à louer", "a louer", "bail", "locataire", "propriétaire",
+            "loyer", "charges comprises", "cc", "hc", "hors charges",
+            "meublé", "meuble", "non meublé", "non meuble", "vide",
+            "caution", "dépôt de garantie", "depot de garantie",
+            "état des lieux", "etat des lieux",
+            "garant", "garantie", "visale", "apl", "aide au logement",
+            "studio meublé", "t1 meublé", "t2 meublé", "colocation",
+            "chambre à louer", "chambre a louer", "sous-location", "sous location",
+            "bail mobilité", "bail étudiant", "bail professionnel",
+            "préavis", "preavis", "reconduction",
+            "loi pinel", "loi denormandie", "encadrement des loyers"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "louer", "mise en location", "offre location", "cherche location"
+          ],
+          "common_mistakes": [
+            "locasion", "loyer", "loyé", "meublee"
+          ]
+        },
+        {
+          "name": "Colocations",
+          "priority": 3,
+          "keywords": [
+            "colocation", "coloc", "colocataire", "chambre en colocation",
+            "cherche colocataire", "chambre dispo", "chambre disponible",
+            "coloc étudiante", "coloc etudiant", "coloc jeune actif",
+            "bail colocation", "charges partagées", "charges partagees",
+            "espace commun", "cuisine partagée", "salle de bain partagée"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "coloc", "vie en communauté", "appartement partagé"
+          ],
+          "common_mistakes": [
+            "coloquation", "colocasion", "coloque"
+          ]
+        },
+        {
+          "name": "Bureaux et Commerces",
+          "priority": 4,
+          "keywords": [
+            "bureau", "bureaux", "local commercial", "locaux commerciaux",
+            "commerce", "boutique", "magasin", "fonds de commerce",
+            "bail commercial", "bail 3 6 9", "droit au bail", "pas de porte",
+            "entrepôt", "entrepot", "hangar", "atelier",
+            "open space", "coworking", "espace de travail",
+            "salle de réunion", "domiciliation", "pépinière entreprise",
+            "zone industrielle", "zone artisanale", "zone commerciale",
+            "murs commerciaux"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "local pro", "local professionnel", "espace commercial"
+          ],
+          "common_mistakes": [
+            "buros", "commerse", "atelié"
+          ]
+        },
+        {
+          "name": "Terrains",
+          "priority": 5,
+          "keywords": [
+            "terrain constructible", "terrain à bâtir", "terrain a batir",
+            "terrain viabilisé", "terrain viabilise", "parcelle",
+            "lotissement", "terrain agricole", "terrain de loisir",
+            "terrain non constructible", "bois", "forêt", "foret",
+            "constructibilité", "plu", "plan local urbanisme",
+            "certificat urbanisme", "cu", "permis construire",
+            "bornage", "arpentage", "cadastre"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "foncier", "parcelle", "lot", "terrain nu"
+          ],
+          "common_mistakes": [
+            "terain", "terain construtible", "parcele"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EMPLOI",
+      "priority": 3,
+      "subcategories": [
+        {
+          "name": "Offres d'emploi",
+          "priority": 1,
+          "keywords": [
+            "emploi", "offre emploi", "recrutement", "recrute", "embauche",
+            "cdi", "cdd", "interim", "intérim", "saisonnier", "temps plein", "temps partiel",
+            "mi-temps", "mi temps", "35h", "39h", "horaires",
+            "poste", "candidature", "cv", "lettre de motivation",
+            "salaire", "rémunération", "remuneration", "brut", "net",
+            "primes", "avantages", "mutuelle", "tickets restaurant", "13ème mois",
+            "télétravail", "teletravail", "remote", "hybride",
+            "expérience", "experience", "débutant", "debutant", "confirmé", "confirme",
+            "senior", "junior", "stagiaire", "stage", "alternance", "apprentissage",
+            "contrat pro", "contrat professionnel",
+            "manager", "responsable", "directeur", "chef de projet", "ingénieur", "ingenieur",
+            "technicien", "commercial", "vendeur", "vendeuse", "comptable",
+            "secrétaire", "secretaire", "assistant", "assistante",
+            "chauffeur", "livreur", "manutentionnaire", "cariste", "préparateur",
+            "cuisinier", "serveur", "serveuse", "barman",
+            "infirmier", "infirmière", "aide-soignant", "aide soignant",
+            "développeur", "developpeur", "designer", "graphiste",
+            "ouvrier", "manoeuvre", "électricien", "electricien", "plombier", "maçon", "macon",
+            "peintre", "menuisier", "soudeur", "mécanicien", "mecanicien",
+            "agent de sécurité", "agent securite", "vigile", "gardien",
+            "aide à domicile", "aide a domicile", "auxiliaire de vie",
+            "agent immobilier", "négociateur", "negociateur",
+            "pharmacien", "dentiste", "kinésithérapeute", "kine",
+            "avocat", "notaire", "huissier",
+            "community manager", "social media manager",
+            "data analyst", "data scientist", "data engineer",
+            "product manager", "product owner", "scrum master",
+            "devops", "sysadmin", "administrateur système",
+            "ux designer", "ui designer", "webdesigner",
+            "rédacteur", "redacteur", "journaliste", "traducteur",
+            "architecte", "urbaniste", "géomètre",
+            "expert comptable", "contrôleur de gestion",
+            "logisticien", "supply chain", "acheteur",
+            "chargé de clientèle", "charge de clientele",
+            "chargé de communication", "charge de communication",
+            "attaché commercial", "attache commercial",
+            "business developer", "account manager",
+            "rh", "ressources humaines", "drh", "chargé de recrutement",
+            "formation cpf", "reconversion professionnelle"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "job", "boulot", "travail", "taf", "poste à pourvoir", "on recrute",
+            "nous recherchons", "nous recrutons", "cherche", "urgent"
+          ],
+          "common_mistakes": [
+            "emploie", "emplois", "recrutment", "candidatur", "salere", "sallaire"
+          ]
+        },
+        {
+          "name": "Formation",
+          "priority": 2,
+          "keywords": [
+            "formation", "formation professionnelle", "certification",
+            "cpf", "compte personnel formation", "opco",
+            "diplôme", "diplome", "bac", "bts", "dut", "licence", "master",
+            "cap", "bep", "bac pro",
+            "reconversion", "reconversion professionnelle", "bilan de compétences",
+            "vae", "validation acquis", "habilitation",
+            "caces", "permis cariste", "sst", "habilitation électrique",
+            "formation sécurité", "formation hygiene", "haccp"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "cursus", "parcours", "apprentissage", "enseignement"
+          ],
+          "common_mistakes": [
+            "formassion", "formacion", "sertification"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MODE",
+      "priority": 4,
+      "subcategories": [
+        {
+          "name": "Vêtements femme",
+          "priority": 1,
+          "keywords": [
+            "robe", "jupe", "pantalon femme", "jean femme", "top", "blouse",
+            "chemisier", "pull femme", "gilet femme", "cardigan",
+            "manteau femme", "veste femme", "blazer femme", "doudoune femme",
+            "parka femme", "trench", "imperméable femme",
+            "legging", "leggings", "short femme", "bermuda femme",
+            "combinaison", "salopette", "body", "bustier", "corset",
+            "tailleur", "ensemble femme",
+            "lingerie", "soutien-gorge", "soutien gorge", "culotte", "string",
+            "nuisette", "pyjama femme", "robe de chambre",
+            "maillot de bain femme", "bikini", "une pièce", "monokini",
+            "robe de soirée", "robe de mariée", "robe mariee", "robe cocktail",
+            "taille xs", "taille s", "taille m", "taille l", "taille xl",
+            "36", "38", "40", "42", "44", "46",
+            "robe longue", "robe midi", "robe courte", "robe d ete",
+            "robe boheme", "robe de plage", "robe chemise",
+            "jupe longue", "jupe plissee", "jupe crayon", "jupe midi",
+            "jean slim", "jean droit", "jean bootcut", "jean mom",
+            "jean taille haute", "jean boyfriend",
+            "pantalon large", "pantalon palazzo", "pantalon cargo femme",
+            "crop top", "bralette", "bandeau",
+            "pull oversize", "pull col roule", "pull maille",
+            "cape", "poncho", "kimono",
+            "combishort", "combinaison pantalon", "jumpsuit",
+            "gilet sans manche", "doudoune sans manche",
+            "manteau laine", "manteau fausse fourrure"
+          ],
+          "brands": [
+            "zara", "h&m", "hm", "mango", "sézane", "sezane", "ba&sh", "bash",
+            "claudie pierlot", "maje", "sandro", "isabel marant", "the kooples",
+            "comptoir des cotonniers", "petit bateau", "caroll", "promod",
+            "naf naf", "morgan", "etam", "undiz", "oysho",
+            "cos", "& other stories", "arket", "monki",
+            "asos", "prettylittlething", "shein", "primark", "kiabi",
+            "uniqlo", "gap", "massimo dutti",
+            "chanel", "dior", "louis vuitton", "lv", "gucci", "prada",
+            "hermès", "hermes", "saint laurent", "ysl", "valentino",
+            "celine", "céline", "givenchy", "balenciaga", "bottega veneta",
+            "fendi", "burberry", "versace"
+          ],
+          "models": [],
+          "synonyms": [
+            "fringues", "vêtements", "vetements", "habits", "garde-robe",
+            "prêt-à-porter", "pret a porter", "mode femme", "look femme"
+          ],
+          "common_mistakes": [
+            "vetement", "chemirsier", "manteaux", "doudounne"
+          ]
+        },
+        {
+          "name": "Vêtements homme",
+          "priority": 2,
+          "keywords": [
+            "chemise homme", "polo homme", "t-shirt homme", "tee-shirt homme",
+            "pantalon homme", "jean homme", "chino", "cargo",
+            "pull homme", "sweat homme", "hoodie", "sweat à capuche",
+            "veste homme", "blazer homme", "costume homme", "costume",
+            "manteau homme", "doudoune homme", "parka homme", "blouson",
+            "bermuda homme", "short homme",
+            "caleçon", "calecon", "boxer", "slip homme",
+            "maillot de bain homme",
+            "cravate", "nœud papillon", "noeud papillon",
+            "survêtement", "survetement", "jogging", "training",
+            "pantalon chino", "pantalon habille", "pantalon costume",
+            "jean slim homme", "jean regular", "jean skinny",
+            "chemise cintrée", "chemise slim fit", "chemise regular",
+            "polo manches longues", "polo manches courtes",
+            "pull col v", "pull col rond", "pull zip",
+            "manteau long homme", "caban", "duffle coat",
+            "veste en jean", "veste cuir", "bomber",
+            "gilet costume", "gilet matelasse",
+            "peignoir", "short de bain",
+            "chaussettes", "chaussettes hautes", "ceinture cuir"
+          ],
+          "brands": [
+            "ralph lauren", "lacoste", "tommy hilfiger", "hugo boss", "boss",
+            "diesel", "levi's", "levis", "replay", "g-star", "g star",
+            "jack and jones", "jack & jones", "celio", "jules",
+            "the north face", "tnf", "columbia", "patagonia",
+            "carhartt", "dickies", "timberland",
+            "stone island", "cp company", "moncler", "canada goose",
+            "armani", "emporio armani", "dolce gabbana", "d&g"
+          ],
+          "models": [],
+          "synonyms": [
+            "fringues homme", "vêtements homme", "mode homme", "look homme"
+          ],
+          "common_mistakes": [
+            "cosutme", "chemis", "poleau"
+          ]
+        },
+        {
+          "name": "Chaussures",
+          "priority": 3,
+          "keywords": [
+            "chaussures", "baskets", "sneakers", "tennis", "running",
+            "bottes", "bottines", "escarpins", "mocassins", "derbies", "richelieu",
+            "sandales", "tongs", "mules", "sabots", "espadrilles",
+            "chaussures de randonnée", "chaussures randonnee",
+            "chaussures de sécurité", "chaussures securite",
+            "talons", "talons hauts", "plateformes", "compensées", "compensees",
+            "pointure", "taille chaussure", "semelle", "lacets"
+          ],
+          "brands": [
+            "nike", "adidas", "puma", "reebok", "new balance", "asics",
+            "converse", "vans", "fila", "skechers", "hoka", "on running",
+            "salomon", "merrell", "timberland", "caterpillar", "cat",
+            "dr martens", "doc martens", "clarks", "geox", "ecco",
+            "louboutin", "jimmy choo", "manolo blahnik",
+            "air jordan", "jordan", "yeezy", "dunk", "air max", "air force",
+            "stan smith", "superstar", "gazelle", "samba",
+            "chuck taylor", "old skool"
+          ],
+          "models": [
+            "air max 90", "air max 97", "air max 1", "air force 1", "af1",
+            "air jordan 1", "aj1", "jordan 4", "jordan 1",
+            "dunk low", "dunk high",
+            "yeezy 350", "yeezy 500", "yeezy 700",
+            "new balance 550", "new balance 2002r", "nb 550",
+            "ultraboost", "ultra boost", "nmd",
+            "gel kayano", "gel lyte",
+            "hoka clifton", "hoka bondi", "hoka speedgoat",
+            "on cloud", "on cloudmonster", "on cloudrunner",
+            "salomon xt-6", "salomon speedcross",
+            "brooks ghost", "brooks glycerin",
+            "timberland 6 inch", "timberland premium",
+            "dr martens 1460", "dr martens jadon",
+            "birkenstock arizona", "birkenstock boston",
+            "crocs classic", "crocs literide",
+            "puma suede", "puma rs-x", "reebok classic"
+          ],
+          "synonyms": [
+            "shoes", "pompes", "godasses", "grolles", "crocs"
+          ],
+          "common_mistakes": [
+            "chaussure", "basket", "sneaker", "baskests", "niké", "addidas",
+            "addidas", "pumma", "rebok", "convers"
+          ]
+        },
+        {
+          "name": "Accessoires et Bagagerie",
+          "priority": 4,
+          "keywords": [
+            "sac à main", "sac a main", "sac bandoulière", "sac bandouliere",
+            "pochette", "clutch", "cabas", "tote bag", "sac de voyage",
+            "valise", "bagage", "sac à dos", "sac a dos",
+            "portefeuille", "porte-monnaie", "porte monnaie",
+            "ceinture", "écharpe", "echarpe", "foulard", "chapeau",
+            "bonnet", "casquette", "béret", "beret",
+            "lunettes de soleil", "lunettes soleil",
+            "gants", "parapluie",
+            "bijoux fantaisie", "broche"
+          ],
+          "brands": [
+            "louis vuitton", "lv", "gucci", "chanel", "dior", "prada",
+            "hermès", "hermes", "longchamp", "lancaster", "michael kors", "mk",
+            "coach", "furla", "kate spade", "tory burch",
+            "samsonite", "delsey", "eastpak", "herschel",
+            "ray-ban", "rayban", "oakley", "persol", "carrera"
+          ],
+          "models": [
+            "neverfull", "speedy", "keepall", "alma",
+            "lady dior", "book tote", "saddle bag",
+            "le pliage", "bamboo", "dionysus", "marmont",
+            "birkin", "kelly", "constance",
+            "wayfarer", "aviator", "clubmaster"
+          ],
+          "synonyms": [
+            "maroquinerie", "accessoire mode", "bagage"
+          ],
+          "common_mistakes": [
+            "sac a mains", "saca main", "valise", "porte feuille"
+          ]
+        },
+        {
+          "name": "Montres et Bijoux",
+          "priority": 5,
+          "keywords": [
+            "montre", "montre homme", "montre femme", "montre automatique",
+            "montre connectée", "montre connectee", "smartwatch",
+            "bracelet", "collier", "bague", "boucles d'oreilles", "boucles oreilles",
+            "pendentif", "chaîne", "chaine", "gourmette", "chevalière", "chevaliere",
+            "alliance", "bague de fiançailles", "bague fiancailles",
+            "or", "or jaune", "or blanc", "or rose", "argent", "platine",
+            "diamant", "saphir", "rubis", "émeraude", "emeraude",
+            "18 carats", "18k", "9 carats", "750", "925",
+            "perle", "perles", "cristal", "strass"
+          ],
+          "brands": [
+            "rolex", "omega", "tag heuer", "breitling", "cartier", "patek philippe",
+            "audemars piguet", "iwc", "jaeger-lecoultre", "panerai",
+            "tissot", "longines", "hamilton", "seiko", "casio", "g-shock",
+            "swatch", "fossil", "daniel wellington", "ice watch",
+            "apple watch", "samsung galaxy watch", "garmin", "fitbit",
+            "pandora", "swarovski", "tiffany", "bulgari", "bvlgari",
+            "van cleef", "chopard", "boucheron", "fred", "messika", "dinh van"
+          ],
+          "models": [
+            "submariner", "daytona", "datejust", "gmt master",
+            "speedmaster", "seamaster", "aqua terra",
+            "carrera", "monaco", "formula 1",
+            "navitimer", "superocean", "chronomat",
+            "santos", "tank", "ballon bleu",
+            "royal oak", "nautilus", "calatrava",
+            "apple watch ultra", "apple watch se"
+          ],
+          "synonyms": [
+            "horlogerie", "joaillerie", "bijouterie", "orfèvrerie", "orfevrerie"
+          ],
+          "common_mistakes": [
+            "montr", "bracellet", "colier", "boucle doreille",
+            "rollex", "omegga", "cassiio"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ELECTRONIQUE",
+      "priority": 5,
+      "subcategories": [
+        {
+          "name": "Téléphones et Tablettes",
+          "priority": 1,
+          "keywords": [
+            "téléphone", "telephone", "smartphone", "portable", "mobile",
+            "iphone", "samsung galaxy", "pixel", "oneplus", "xiaomi", "redmi",
+            "tablette", "ipad", "galaxy tab", "tablette android",
+            "écran", "oled", "amoled", "lcd", "retina",
+            "stockage", "64go", "128go", "256go", "512go", "1to",
+            "ram", "4go ram", "6go ram", "8go ram", "12go ram",
+            "batterie", "mah", "charge rapide", "sans fil",
+            "5g", "4g", "dual sim", "esim", "e-sim",
+            "coque", "protection", "verre trempé", "verre trempe",
+            "chargeur", "câble", "cable", "usb-c", "lightning",
+            "ecouteurs", "écouteurs", "airpods", "earbuds"
+          ],
+          "brands": [
+            "apple", "samsung", "huawei", "xiaomi", "oneplus", "one plus",
+            "google", "oppo", "realme", "vivo", "nothing", "motorola",
+            "honor", "asus", "sony", "nokia", "fairphone",
+            "poco", "redmi", "tcl", "zte"
+          ],
+          "models": [
+            "iphone 16", "iphone 16 pro", "iphone 16 pro max",
+            "iphone 15", "iphone 15 pro", "iphone 15 pro max",
+            "iphone 14", "iphone 14 pro", "iphone 14 pro max",
+            "iphone 13", "iphone 13 pro", "iphone 13 mini",
+            "iphone 12", "iphone 11", "iphone se",
+            "galaxy s24", "galaxy s24 ultra", "galaxy s24+",
+            "galaxy s23", "galaxy s23 ultra",
+            "galaxy s22", "galaxy s21",
+            "galaxy z flip", "galaxy z fold", "z flip 5", "z fold 5",
+            "galaxy a54", "galaxy a34", "galaxy a14", "galaxy a15",
+            "pixel 9", "pixel 9 pro", "pixel 8", "pixel 8 pro", "pixel 7a",
+            "oneplus 12", "oneplus nord",
+            "redmi note 13", "redmi note 12", "poco f5", "poco x5",
+            "ipad pro", "ipad air", "ipad mini", "ipad 10",
+            "galaxy tab s9", "galaxy tab a9",
+            "huawei matepad", "lenovo tab",
+            "nothing phone", "nothing phone 2",
+            "fairphone 5", "motorola edge", "motorola razr",
+            "honor magic", "honor 90", "honor 200",
+            "oppo find", "oppo reno", "realme gt", "realme 12",
+            "vivo x", "asus rog phone", "asus zenfone",
+            "samsung galaxy a55", "samsung galaxy a35", "samsung galaxy a25",
+            "iphone 16 plus", "iphone 15 plus",
+            "pixel 9a", "pixel fold",
+            "poco f6", "poco x6", "redmi note 14",
+            "protection ecran", "film hydrogel", "coque silicone",
+            "coque antichoc", "batterie externe", "powerbank", "power bank",
+            "support telephone voiture", "support voiture",
+            "carte memoire", "carte micro sd", "micro sd", "sd card",
+            "adaptateur", "hub usb", "hub usb-c", "dongle",
+            "station de charge", "chargeur sans fil", "chargeur induction",
+            "chargeur rapide", "chargeur 65w", "chargeur 45w",
+            "stylet", "apple pencil", "s pen"
+          ],
+          "synonyms": [
+            "tel", "phone", "gsm", "cell", "ordi de poche", "ardoise"
+          ],
+          "common_mistakes": [
+            "iphon", "iphonne", "ipnone", "samsug", "samung", "samssung",
+            "huwaei", "huaweï", "xaomi", "xiomi", "xiaomii",
+            "tablete", "tablète", "ipadd"
+          ]
+        },
+        {
+          "name": "Informatique",
+          "priority": 2,
+          "keywords": [
+            "ordinateur", "pc", "laptop", "ordinateur portable", "pc portable",
+            "pc fixe", "tour", "pc gamer", "pc gaming",
+            "macbook", "imac", "mac mini", "mac pro", "mac studio",
+            "processeur", "cpu", "intel", "amd", "ryzen", "core i5", "core i7", "core i9",
+            "carte graphique", "gpu", "nvidia", "geforce", "rtx", "gtx", "radeon",
+            "ram", "mémoire", "memoire", "ddr4", "ddr5",
+            "ssd", "nvme", "hdd", "disque dur", "stockage",
+            "carte mère", "carte mere", "motherboard",
+            "alimentation", "psu", "watercooling", "ventilateur",
+            "boîtier", "boitier", "case",
+            "écran pc", "ecran pc", "moniteur", "27 pouces", "32 pouces", "4k", "qhd", "144hz", "165hz", "240hz",
+            "clavier", "clavier mécanique", "clavier mecanique", "souris", "souris gamer",
+            "webcam", "micro", "casque gamer", "tapis de souris",
+            "imprimante", "scanner", "multifonction",
+            "routeur", "switch", "nas", "serveur",
+            "windows", "macos", "linux", "ubuntu",
+            "chromebook"
+          ],
+          "brands": [
+            "apple", "dell", "hp", "lenovo", "asus", "acer", "msi",
+            "microsoft surface", "razer", "alienware",
+            "intel", "amd", "nvidia", "corsair", "logitech",
+            "steelseries", "razer peripherals", "hyperx",
+            "samsung ssd", "western digital", "wd", "seagate", "crucial",
+            "nzxt", "be quiet", "cooler master", "fractal design",
+            "brother", "canon", "epson", "hp printer",
+            "asus rog", "msi gaming", "gigabyte", "asrock",
+            "lg monitor", "benq", "dell monitor", "samsung monitor"
+          ],
+          "models": [
+            "macbook air", "macbook pro", "macbook air m2", "macbook air m3",
+            "macbook pro 14", "macbook pro 16",
+            "thinkpad", "ideapad", "yoga",
+            "xps 13", "xps 15", "xps 17", "inspiron", "latitude",
+            "spectre", "envy", "pavilion", "omen",
+            "zenbook", "vivobook", "rog strix", "tuf gaming",
+            "swift", "nitro", "predator",
+            "surface pro", "surface laptop", "surface go",
+            "rtx 4090", "rtx 4080", "rtx 4070", "rtx 4060",
+            "rtx 3080", "rtx 3070", "rtx 3060",
+            "rx 7900", "rx 7800", "rx 7700",
+            "ryzen 5", "ryzen 7", "ryzen 9",
+            "core i5-13600", "core i7-13700", "core i9-13900",
+            "core ultra 5", "core ultra 7", "core ultra 9",
+            "ryzen 5 7600", "ryzen 7 7800x3d", "ryzen 9 7950x",
+            "radeon rx", "arc a770", "arc a750",
+            "samsung 990 pro", "wd black", "crucial p5",
+            "corsair vengeance", "g.skill trident", "kingston fury",
+            "noctua", "arctic", "deepcool",
+            "asus prime", "msi mag", "gigabyte aorus",
+            "razer blade", "razer viper", "razer deathadder",
+            "logitech g pro", "logitech mx master", "logitech g502",
+            "steelseries arctis", "steelseries rival",
+            "cherry mx", "keychron", "ducky",
+            "elgato stream deck", "elgato wave", "elgato cam link",
+            "thunderbolt", "usb 4", "pcie 5",
+            "synology", "qnap", "unraid",
+            "ubiquiti", "mikrotik", "tp-link", "netgear", "asus router",
+            "wifi 6", "wifi 7", "mesh wifi",
+            "onduleur", "ups", "multiprise parafoudre"
+          ],
+          "synonyms": [
+            "ordi", "bécane", "machine", "station de travail", "workstation"
+          ],
+          "common_mistakes": [
+            "ordinatteur", "ordianteur", "mackbook", "macbouk",
+            "nvdia", "nviddia", "logitek", "logiteck"
+          ]
+        },
+        {
+          "name": "Consoles et Jeux vidéo",
+          "priority": 3,
+          "keywords": [
+            "console", "jeux vidéo", "jeux video", "jeu vidéo", "jeu video",
+            "manette", "controller", "pad", "joystick",
+            "playstation", "ps5", "ps4", "ps3", "ps2",
+            "xbox", "xbox series x", "xbox series s", "xbox one",
+            "nintendo", "switch", "switch oled", "switch lite",
+            "steam deck",
+            "jeu ps5", "jeu ps4", "jeu xbox", "jeu switch",
+            "online", "multijoueur", "multi joueur",
+            "vr", "réalité virtuelle", "realite virtuelle", "psvr", "quest", "meta quest",
+            "retrogaming", "rétrogaming", "retro gaming",
+            "game boy", "gameboy", "nes", "snes", "n64",
+            "sega", "mega drive", "dreamcast",
+            "collector", "édition limitée", "edition limitee",
+            "figurine", "amiibo", "funko pop"
+          ],
+          "brands": [
+            "sony", "microsoft", "nintendo", "valve", "meta",
+            "ubisoft", "ea", "electronic arts", "activision", "blizzard",
+            "rockstar", "naughty dog", "square enix", "capcom",
+            "konami", "bandai namco", "sega", "bethesda",
+            "dualshock", "dualsense"
+          ],
+          "models": [
+            "ps5 slim", "ps5 digital", "ps5 disc",
+            "xbox series x", "xbox series s",
+            "switch oled", "switch lite", "switch 2",
+            "steam deck oled",
+            "meta quest 3", "meta quest 2", "psvr2",
+            "fifa", "fc 24", "call of duty", "cod", "gta", "gta v", "gta 6",
+            "zelda", "mario", "pokemon", "pokémon",
+            "fortnite", "minecraft", "assassin's creed",
+            "god of war", "spider-man", "spiderman",
+            "the last of us", "horizon", "gran turismo",
+            "halo", "forza", "starfield",
+            "final fantasy", "ff7", "ff16",
+            "elden ring", "dark souls", "resident evil",
+            "cyberpunk 2077", "hogwarts legacy", "baldur s gate",
+            "diablo", "overwatch", "valorant", "league of legends",
+            "monster hunter", "tekken", "street fighter",
+            "nba 2k", "madden", "f1 2024", "ea sports fc",
+            "mario kart", "splatoon", "animal crossing",
+            "the witcher", "red dead redemption", "rdr2",
+            "uncharted", "ghost of tsushima", "returnal",
+            "hollow knight", "stardew valley", "celeste",
+            "casque vr", "manette pro", "volant gaming",
+            "siege baquet", "cockpit simulation",
+            "capture video", "carte capture", "micro gamer",
+            "led rgb", "bande led gamer", "souris gaming",
+            "clavier gamer", "bureau gamer", "chaise gamer",
+            "fauteuil gaming", "support manette",
+            "protection switch", "grip joycon", "dock switch",
+            "disque dur externe ps5", "extension ssd ps5",
+            "abonnement ps plus", "xbox game pass", "nintendo online"
+          ],
+          "synonyms": [
+            "gaming", "gamer", "geek", "nerd", "joueur",
+            "dématérialisé", "dematerialise", "physique"
+          ],
+          "common_mistakes": [
+            "playstaion", "plastation", "xboxx", "nintendoo", "switchh",
+            "manete", "mannette", "jeux videos"
+          ]
+        },
+        {
+          "name": "Image et Son",
+          "priority": 4,
+          "keywords": [
+            "télévision", "television", "tv", "téléviseur", "televiseur",
+            "oled", "qled", "led", "4k", "8k", "hdr",
+            "home cinema", "home cinéma", "barre de son", "soundbar",
+            "enceinte", "enceinte bluetooth", "enceinte connectée",
+            "ampli", "amplificateur", "récepteur", "recepteur",
+            "haut-parleur", "haut parleur", "subwoofer", "caisson de basse",
+            "platine vinile", "platine vinyle", "tourne-disque", "tourne disque",
+            "casque audio", "casque bluetooth", "casque sans fil",
+            "écouteurs", "ecouteurs", "intra-auriculaires",
+            "appareil photo", "appareil photo numérique", "reflex", "hybride",
+            "objectif", "objectif photo", "zoom", "focale fixe",
+            "compact", "bridge", "instantané", "polaroid",
+            "caméra", "camera", "caméscope", "camescope", "gopro", "action cam",
+            "drone", "drone camera", "drone photo",
+            "trépied", "trepied", "stabilisateur", "gimbal",
+            "micro", "microphone", "micro usb", "micro xlr",
+            "table de mixage", "mixer", "interface audio",
+            "vidéoprojecteur", "videoprojecteur", "projecteur"
+          ],
+          "brands": [
+            "samsung", "lg", "sony", "panasonic", "philips", "hisense", "tcl",
+            "bose", "sonos", "jbl", "harman kardon", "marshall", "bang olufsen", "b&o",
+            "denon", "yamaha", "marantz", "onkyo",
+            "sennheiser", "beyerdynamic", "audio-technica", "akg",
+            "beats", "jabra", "nothing ear",
+            "canon", "nikon", "sony alpha", "fujifilm", "olympus", "panasonic lumix",
+            "leica", "pentax", "hasselblad",
+            "gopro", "dji", "insta360",
+            "rode", "shure", "blue", "elgato",
+            "epson", "benq", "optoma", "xgimi"
+          ],
+          "models": [
+            "airpods", "airpods pro", "airpods max",
+            "galaxy buds", "galaxy buds 2", "galaxy buds pro",
+            "wh-1000xm5", "wh-1000xm4", "wf-1000xm5",
+            "bose qc", "bose qc ultra", "bose 700",
+            "jbl flip", "jbl charge", "jbl xtreme", "jbl boombox",
+            "sonos one", "sonos beam", "sonos arc",
+            "eos r", "eos r5", "eos r6", "eos r7", "eos 90d",
+            "z6", "z7", "z8", "z9", "d850",
+            "a7", "a7 iii", "a7 iv", "a7c", "a6700", "a6400",
+            "x-t5", "x-s20", "x100vi", "x100v",
+            "mavic", "mini 4 pro", "air 3", "mavic 3",
+            "hero 12", "hero 11",
+            "rode wireless go", "rode podmic", "rode nt1",
+            "shure sm7b", "shure sm58", "shure mv7",
+            "blue yeti", "elgato wave 3",
+            "zoom h1", "zoom h6", "tascam",
+            "ring light", "panneau led", "softbox",
+            "carte capture", "capture card",
+            "streamer", "streaming", "obs", "twitch",
+            "vinyle", "vinyl", "disque vinyle", "33 tours", "45 tours",
+            "cd", "cassette audio", "lecteur cd", "lecteur blu-ray",
+            "blu-ray", "blu ray", "4k uhd",
+            "dalle ips", "dalle va", "dalle oled",
+            "freesync", "g-sync", "gsync",
+            "dolby atmos", "dolby vision", "dts",
+            "hdmi 2.1", "hdmi arc", "earc",
+            "dac", "dac usb", "amplificateur casque",
+            "enceinte colonne", "enceinte bibliothèque",
+            "focal", "klipsch", "kef", "bowers wilkins", "b&w",
+            "triangle", "cabasse", "devialet"
+          ],
+          "synonyms": [
+            "hifi", "hi-fi", "audio", "vidéo", "video",
+            "sono", "sonorisation", "photo", "photographie"
+          ],
+          "common_mistakes": [
+            "televison", "télé", "tele", "enciente", "enceinte bluetouth",
+            "canoon", "nikon", "soni", "panasonik"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MAISON",
+      "priority": 6,
+      "subcategories": [
+        {
+          "name": "Ameublement",
+          "priority": 1,
+          "keywords": [
+            "meuble", "meubles", "mobilier", "ameublement",
+            "canapé", "canape", "sofa", "fauteuil", "méridienne", "meridienne",
+            "chaise", "tabouret", "banc", "pouf",
+            "table", "table basse", "table à manger", "table a manger", "table de salle",
+            "bureau", "bureau enfant", "secrétaire",
+            "lit", "lit double", "lit simple", "lit 140", "lit 160", "lit 180",
+            "matelas", "sommier", "tête de lit", "tete de lit", "lit bébé", "lit bebe",
+            "armoire", "dressing", "penderie", "commode", "chiffonnier",
+            "bibliothèque", "bibliotheque", "étagère", "etagere", "vitrine",
+            "buffet", "bahut", "vaisselier", "console",
+            "lit mezzanine", "lit superposé", "lit superpose",
+            "tiroir", "rangement", "coffre de rangement"
+          ],
+          "brands": [
+            "ikea", "but", "conforama", "maisons du monde", "alinéa", "alinea",
+            "habitat", "roche bobois", "ligne roset", "bo concept", "boconcept",
+            "la redoute", "am.pm", "camif", "made.com",
+            "emma", "tediber", "eve", "simba", "bultex", "dunlopillo", "epeda",
+            "fly", "casa", "pier import"
+          ],
+          "models": [
+            "kallax", "billy", "malm", "hemnes", "besta", "bestå",
+            "pax", "lack", "ektorp", "kivik", "söderhamn",
+            "expedit", "alex", "linnmon", "micke"
+          ],
+          "synonyms": [
+            "meuble tv", "meuble tele", "table tv",
+            "déco", "deco", "intérieur", "interieur"
+          ],
+          "common_mistakes": [
+            "cannapé", "canape", "matela", "matelat", "biblioteque", "etagere"
+          ]
+        },
+        {
+          "name": "Electroménager",
+          "priority": 2,
+          "keywords": [
+            "electroménager", "electromenager", "électroménager",
+            "lave-linge", "lave linge", "machine à laver", "machine a laver",
+            "sèche-linge", "seche linge", "sèche linge",
+            "lave-vaisselle", "lave vaisselle",
+            "réfrigérateur", "refrigerateur", "frigo", "congélateur", "congelateur",
+            "four", "four encastrable", "four pyrolyse", "micro-ondes", "micro ondes",
+            "plaque de cuisson", "plaque induction", "plaque vitrocéramique", "plaque gaz",
+            "hotte", "hotte aspirante",
+            "aspirateur", "aspirateur robot", "aspirateur balai", "aspirateur traîneau",
+            "robot aspirateur", "roomba",
+            "climatiseur", "climatisation", "ventilateur", "chauffage",
+            "radiateur", "radiateur électrique", "convecteur",
+            "fer à repasser", "fer a repasser", "centrale vapeur", "défroisseur",
+            "cafetière", "cafetiere", "machine à café", "machine a cafe",
+            "expresso", "nespresso", "dolce gusto", "senseo",
+            "grille-pain", "grille pain", "toaster", "bouilloire",
+            "robot culinaire", "robot pâtissier", "robot patissier",
+            "mixeur", "blender", "centrifugeuse", "extracteur de jus",
+            "friteuse", "friteuse sans huile", "airfryer", "air fryer",
+            "cuiseur vapeur", "autocuiseur", "cocotte-minute",
+            "plancha", "barbecue", "bbq",
+            "multicuiseur", "machine sous vide", "deshydrateur",
+            "machine a pain", "machine a pates", "yaourtiere",
+            "sorbetiere", "cave a vin", "cave de service",
+            "purificateur air", "humidificateur", "deshumidificateur",
+            "poele a bois", "poele a granules", "insert cheminee",
+            "pompe a chaleur", "pac", "clim reversible",
+            "chauffe-eau", "chauffe eau", "cumulus", "ballon eau chaude",
+            "adoucisseur eau", "osmoseur", "filtre eau",
+            "chauffage soufflant", "convecteur electrique",
+            "seche-serviettes", "seche serviettes", "radiateur seche serviette",
+            "robot tondeuse", "nettoyeur vapeur"
+          ],
+          "brands": [
+            "bosch", "siemens", "miele", "whirlpool", "samsung", "lg",
+            "electrolux", "beko", "indesit", "hotpoint", "candy",
+            "haier", "hisense", "brandt", "sauter", "de dietrich",
+            "dyson", "rowenta", "seb", "moulinex", "tefal", "krups",
+            "kenwood", "kitchenaid", "magimix", "thermomix", "vorwerk",
+            "philips", "delonghi", "nespresso", "jura",
+            "irobot", "roborock", "dreame", "ecovacs",
+            "daikin", "mitsubishi electric", "atlantic", "thermor"
+          ],
+          "models": [
+            "thermomix tm6", "companion", "cooking chef",
+            "v15", "v12", "v11", "v10", "v8",
+            "airwrap", "supersonic",
+            "roomba", "s9", "j7", "i7",
+            "roborock s8", "dreame l20",
+            "actifry", "ninja foodi",
+            "samsung bespoke", "lg instaview", "bosch serie 8",
+            "siemens iq500", "siemens iq700", "miele g7000",
+            "cookeo", "companion xl", "thermomix tm5",
+            "dolce gusto genio", "tassimo", "philips ep",
+            "sage barista", "kitchenaid artisan", "magimix 5200",
+            "instant pot", "dyson purifier", "dyson hot cool"
+          ],
+          "synonyms": [
+            "appareil ménager", "appareil menager", "petit électroménager",
+            "gros électroménager", "gros electro", "petit electro"
+          ],
+          "common_mistakes": [
+            "lave-linge", "machine alaver", "aspiratuer", "refrigeratteur",
+            "electro menager", "electromenagé"
+          ]
+        },
+        {
+          "name": "Décoration",
+          "priority": 3,
+          "keywords": [
+            "décoration", "decoration", "déco", "deco",
+            "tableau", "cadre", "poster", "affiche", "toile",
+            "miroir", "miroir mural", "miroir plein pied",
+            "coussin", "coussins", "plaid", "couverture",
+            "rideau", "rideaux", "voilage", "store",
+            "tapis", "moquette", "descente de lit",
+            "vase", "bougie", "photophore", "bougeoir",
+            "horloge", "pendule", "réveil",
+            "luminaire", "lampe", "lampadaire", "suspension", "lustre",
+            "applique", "spot", "guirlande lumineuse",
+            "papier peint", "sticker mural", "frise",
+            "fleur artificielle", "plante artificielle",
+            "linge de maison", "drap", "housse de couette", "taie d'oreiller",
+            "nappe", "set de table", "serviette"
+          ],
+          "brands": [
+            "maisons du monde", "zara home", "h&m home", "ikea",
+            "la redoute intérieurs", "am.pm", "habitat",
+            "action", "gifi", "centrakor", "flying tiger",
+            "leroy merlin déco", "casa"
+          ],
+          "models": [],
+          "synonyms": [
+            "ornement", "agrément", "embellissement", "aménagement intérieur"
+          ],
+          "common_mistakes": [
+            "décorasion", "déco ration", "tapi", "rido"
+          ]
+        },
+        {
+          "name": "Bricolage",
+          "priority": 4,
+          "keywords": [
+            "bricolage", "outillage", "outil", "outils",
+            "perceuse", "visseuse", "perforateur", "meuleuse",
+            "scie", "scie circulaire", "scie sauteuse", "scie sur table",
+            "ponceuse", "rabot", "défonceuse",
+            "tournevis", "clé à molette", "cle a molette", "pince",
+            "marteau", "masse", "burin", "ciseau à bois",
+            "niveau", "mètre", "metre", "laser",
+            "compresseur", "pistolet peinture", "décapeur",
+            "échelle", "echelle", "escabeau", "échafaudage", "echafaudage",
+            "peinture", "peinture murale", "enduit", "plâtre", "platre",
+            "carrelage", "faience", "parquet", "stratifié", "stratifie",
+            "plomberie", "tuyau", "raccord", "robinet", "mitigeur",
+            "électricité", "electricite", "interrupteur", "prise", "disjoncteur",
+            "vis", "clou", "cheville", "boulon", "écrou",
+            "colle", "silicone", "mastic", "joint",
+            "bois", "planche", "tasseaux", "lambris",
+            "isolation", "laine de verre", "laine de roche", "polystyrène",
+            "ciment", "béton", "beton", "mortier", "sable", "gravier"
+          ],
+          "brands": [
+            "bosch", "makita", "dewalt", "milwaukee", "hilti",
+            "black et decker", "black & decker", "stanley", "facom",
+            "ryobi", "metabo", "festool", "stihl",
+            "leroy merlin", "castorama", "brico depot", "bricoman",
+            "mr bricolage", "bricomarché", "bricomarche",
+            "weber", "mapei", "sika", "bostik"
+          ],
+          "models": [],
+          "synonyms": [
+            "travaux", "rénovation", "renovation", "aménagement", "amenagement",
+            "construction", "diy", "fait maison"
+          ],
+          "common_mistakes": [
+            "bricollage", "perceuce", "visceusse", "outillaje"
+          ]
+        },
+        {
+          "name": "Jardinage",
+          "priority": 5,
+          "keywords": [
+            "jardin", "jardinage", "extérieur", "exterieur",
+            "tondeuse", "tondeuse à gazon", "tondeuse robot",
+            "tronçonneuse", "tronconneuse", "débroussailleuse", "debroussailleuse",
+            "taille-haie", "taille haie", "souffleur", "aspirateur feuilles",
+            "motoculteur", "motobineuse", "rotavator",
+            "arrosage", "arrosoir", "tuyau arrosage", "programmateur arrosage",
+            "piscine", "piscine hors sol", "piscine tubulaire", "piscine gonflable",
+            "pompe piscine", "robot piscine", "traitement piscine",
+            "salon de jardin", "table de jardin", "chaise de jardin",
+            "parasol", "tonnelle", "pergola", "voile ombrage",
+            "barbecue", "plancha", "brasero",
+            "abri de jardin", "cabane", "serre", "composteur",
+            "pot de fleur", "jardinière", "jardiniere", "bac",
+            "terreau", "engrais", "compost", "paillage", "mulch",
+            "gazon", "pelouse", "semence", "graine", "bulbe",
+            "plante", "arbuste", "arbre", "haie", "rosier",
+            "clôture", "cloture", "grillage", "portail", "portillon",
+            "nain de jardin", "fontaine", "rocaille"
+          ],
+          "brands": [
+            "husqvarna", "stihl", "bosch jardin", "gardena",
+            "ryobi", "black decker jardin", "viking",
+            "wolf", "honda jardin",
+            "intex", "bestway", "zodiac piscine", "desjoyaux",
+            "weber grill", "campingaz"
+          ],
+          "models": [
+            "automower", "robomow", "gardena sileno"
+          ],
+          "synonyms": [
+            "espaces verts", "potager", "verger", "pelouse",
+            "aménagement paysager", "paysagisme"
+          ],
+          "common_mistakes": [
+            "jardinnage", "tondeuce", "piscyne", "pisscine"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LOISIRS",
+      "priority": 7,
+      "subcategories": [
+        {
+          "name": "Sport",
+          "priority": 1,
+          "keywords": [
+            "sport", "fitness", "musculation", "crossfit",
+            "vélo", "velo", "vtt", "vtt électrique", "vtt electrique", "vtc",
+            "vélo route", "velo route", "velo de route", "gravel",
+            "vélo électrique", "velo electrique", "vae", "vélo de ville",
+            "vélo pliant", "velo pliant", "vélo cargo", "velo cargo",
+            "trottinette", "trottinette électrique", "trottinette electrique",
+            "ski", "snowboard", "ski de fond", "raquettes",
+            "football", "foot", "ballon", "crampon", "crampons",
+            "basketball", "basket", "handball", "volley", "volleyball",
+            "tennis", "raquette tennis", "badminton",
+            "golf", "club de golf", "sac de golf",
+            "natation", "piscine", "lunettes natation", "maillot",
+            "running", "course à pied", "course a pied", "trail",
+            "randonnée", "randonnee", "marche", "trekking",
+            "escalade", "alpinisme", "via ferrata",
+            "surf", "planche", "bodyboard", "windsurf", "kitesurf",
+            "plongée", "plongee", "snorkeling", "masque", "palmes",
+            "boxe", "mma", "judo", "karaté", "karate", "taekwondo",
+            "yoga", "pilates", "tapis de yoga",
+            "banc de musculation", "haltère", "haltere", "kettlebell",
+            "tapis de course", "vélo elliptique", "rameur",
+            "camping", "tente", "sac de couchage", "hamac",
+            "pêche", "peche", "canne à pêche", "canne a peche", "moulinet",
+            "chasse", "fusil", "carabine", "lunette de tir",
+            "equitation", "selle", "bombe equitation"
+          ],
+          "brands": [
+            "decathlon", "nike", "adidas", "puma", "under armour",
+            "specialized", "trek", "cannondale", "giant", "scott",
+            "lapierre", "btwin", "rockrider", "van rysel", "orbea", "bmc",
+            "cube", "merida", "focus velo", "canyon", "moustache",
+            "xiaomi trottinette", "ninebot", "segway",
+            "rossignol", "salomon", "atomic", "head", "dynastar",
+            "wilson", "babolat", "head tennis", "yonex",
+            "callaway", "titleist", "taylormade", "ping",
+            "garmin sport", "polar", "suunto", "coros",
+            "domyos", "kipsta", "quechua", "kalenji", "nabaiji",
+            "lululemon", "gymshark"
+          ],
+          "models": [
+            "mi electric scooter", "ninebot max",
+            "turbo levo", "stumpjumper", "epic evo", "tarmac",
+            "madone", "domane", "emonda", "fuel ex",
+            "fenix 7", "forerunner 955", "apple watch ultra",
+            "gopro hero"
+          ],
+          "synonyms": [
+            "activité sportive", "activite sportive", "exercice",
+            "entraînement", "entrainement", "compétition"
+          ],
+          "common_mistakes": [
+            "velo electrik", "trotinettte", "trotinette", "randonnee",
+            "musuclation", "muscullation"
+          ]
+        },
+        {
+          "name": "Instruments de musique",
+          "priority": 2,
+          "keywords": [
+            "guitare", "guitare acoustique", "guitare classique", "guitare électrique",
+            "guitare electrique", "basse", "ukulélé", "ukulele", "banjo",
+            "piano", "piano numérique", "piano numerique", "synthétiseur", "synthetiseur",
+            "clavier", "orgue", "accordéon", "accordion",
+            "batterie", "batterie électronique", "batterie electronique",
+            "caisse claire", "cymbale", "charleston", "grosse caisse",
+            "djembé", "djembe", "bongo", "congas", "percussion",
+            "violon", "alto", "violoncelle", "contrebasse",
+            "flûte", "flute", "clarinette", "saxophone", "trompette",
+            "trombone", "tuba", "hautbois", "basson",
+            "harmonica", "accordina", "mélodica", "melodica",
+            "ampli guitare", "pédale effet", "pedale effet", "pedalboard",
+            "cordes", "médiator", "mediator", "capodastre",
+            "partition", "pupitre", "métronome", "metronome",
+            "sono", "sonorisation", "table de mixage", "enceinte sono"
+          ],
+          "brands": [
+            "fender", "gibson", "yamaha", "ibanez", "epiphone", "squier",
+            "martin", "taylor", "prs", "esp", "jackson", "schecter",
+            "roland", "korg", "casio", "nord", "arturia",
+            "pearl", "tama", "dw", "zildjian", "sabian", "meinl",
+            "selmer", "buffet crampon", "bach", "conn", "jupiter",
+            "marshall", "vox", "orange", "mesa boogie", "boss",
+            "fender amp", "tc electronic", "line 6",
+            "shure mic", "rode mic", "behringer", "mackie", "allen & heath"
+          ],
+          "models": [
+            "stratocaster", "strat", "telecaster", "tele", "les paul",
+            "sg", "jazz bass", "precision bass",
+            "clavinova", "p-45", "fp-30",
+            "td-17", "td-27",
+            "jcm800", "jcm900", "twin reverb", "blues junior",
+            "katana", "mustang", "spider"
+          ],
+          "synonyms": [
+            "instru", "instrument", "musique", "musicien", "sono"
+          ],
+          "common_mistakes": [
+            "guitarre", "guittare", "pianno", "batterie eletronique",
+            "synthetiseur", "saxophon", "trompete"
+          ]
+        },
+        {
+          "name": "Livres",
+          "priority": 3,
+          "keywords": [
+            "livre", "livres", "bouquin", "roman", "bd", "bande dessinée", "bande dessinee",
+            "manga", "mangas", "comics", "album", "encyclopédie", "encyclopedie",
+            "shonen", "shojo", "seinen", "naruto", "one piece", "dragon ball",
+            "bleach", "death note", "attack on titan", "demon slayer", "jujutsu kaisen",
+            "my hero academia", "hunter x hunter", "fullmetal alchemist",
+            "tome", "tomes", "lot de mangas", "lot de livres", "collection manga",
+            "dictionnaire", "atlas", "guide", "manuel",
+            "poche", "format poche", "grand format", "broché", "broche", "relié", "relie",
+            "neuf", "occasion", "lot de livres", "collection",
+            "thriller", "polar", "science-fiction", "sf", "fantasy", "fantaisie",
+            "romance", "historique", "biographie", "autobiographie",
+            "développement personnel", "developpement personnel",
+            "cuisine livre", "voyage livre", "art livre",
+            "jeunesse", "enfant", "adolescent", "young adult",
+            "scolaire", "parascolaire", "annales", "fiches",
+            "liseuse", "kindle", "kobo", "ebook", "e-book"
+          ],
+          "brands": [
+            "gallimard", "folio", "hachette", "pocket", "j'ai lu", "jai lu",
+            "flammarion", "albin michel", "seuil", "grasset", "actes sud",
+            "le livre de poche", "points", "10/18",
+            "casterman", "dupuis", "dargaud", "glénat", "glenat", "delcourt",
+            "soleil", "kana", "pika", "ki-oon",
+            "amazon kindle", "kobo"
+          ],
+          "models": [
+            "kindle", "kindle paperwhite", "kindle oasis", "kobo libra", "kobo clara"
+          ],
+          "synonyms": [
+            "ouvrage", "lecture", "littérature", "litterature", "publication"
+          ],
+          "common_mistakes": [
+            "livre", "livres", "boukin", "bande dessiné", "mangas"
+          ]
+        },
+        {
+          "name": "Jeux et Jouets",
+          "priority": 4,
+          "keywords": [
+            "jouet", "jouets", "jeu de société", "jeu de societe",
+            "jeu de carte", "puzzle", "casse-tête", "casse tete",
+            "lego", "playmobil", "figurine", "poupée", "poupee",
+            "peluche", "doudou", "nounours",
+            "voiture télécommandée", "voiture telecommandee", "rc", "drone jouet",
+            "circuit", "train électrique", "train electrique", "maquette",
+            "jeu éducatif", "jeu educatif", "jeu de construction",
+            "jeu d'extérieur", "trampoline", "toboggan", "balançoire", "balancoire",
+            "portique", "aire de jeux",
+            "baby foot", "billard", "ping pong", "table de ping pong",
+            "flechettes", "fléchettes", "pétanque", "petanque",
+            "jeu de rôle", "jeu de role", "jdr",
+            "warhammer", "figurine peinte", "modélisme", "modelisme"
+          ],
+          "brands": [
+            "lego", "playmobil", "hasbro", "mattel", "fisher price",
+            "vtech", "ravensburger", "asmodee", "gigamic",
+            "barbie", "hot wheels", "nerf", "monopoly",
+            "disney jouet", "pat patrouille", "paw patrol",
+            "schleich", "bruder", "brio", "kapla",
+            "games workshop", "citadel"
+          ],
+          "models": [
+            "lego technic", "lego city", "lego star wars", "lego creator",
+            "lego friends", "lego duplo", "lego architecture",
+            "playmobil city", "playmobil country",
+            "barbie dreamhouse", "hot wheels track"
+          ],
+          "synonyms": [
+            "jeux enfant", "jeux bébé", "jeux bebe", "ludique", "ludothèque"
+          ],
+          "common_mistakes": [
+            "jouets", "légo", "playmobile", "playmobille", "puzzl"
+          ]
+        },
+        {
+          "name": "Voyages et Billetterie",
+          "priority": 5,
+          "keywords": [
+            "billet", "billet avion", "billet train", "vol", "séjour", "sejour",
+            "vacances", "voyage", "croisière", "croisiere",
+            "location vacances", "gîte", "gite", "chambre d'hôtes", "chambre d hotes",
+            "airbnb", "hébergement", "hebergement",
+            "billet concert", "billet spectacle", "billet match",
+            "place de concert", "place spectacle", "festival",
+            "entrée", "entree", "ticket", "pass",
+            "parc d'attractions", "parc attraction", "disneyland",
+            "musée", "musee", "exposition", "expo",
+            "théâtre", "theatre", "opéra", "opera",
+            "cinema", "cinéma", "avant-première", "avant premiere"
+          ],
+          "brands": [
+            "sncf", "ouigo", "tgv", "eurostar", "thalys",
+            "air france", "easyjet", "ryanair", "vueling", "transavia",
+            "booking", "airbnb", "expedia", "trivago",
+            "ticketmaster", "fnac spectacles", "digitick",
+            "disneyland paris", "futuroscope", "puy du fou", "asterix"
+          ],
+          "models": [],
+          "synonyms": [
+            "escapade", "week-end", "weekend", "citytrip", "road trip",
+            "place", "entrée", "spectacle"
+          ],
+          "common_mistakes": [
+            "biller", "billets", "voyaje", "vacanse"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ANIMAUX",
+      "priority": 8,
+      "subcategories": [
+        {
+          "name": "Chiens",
+          "priority": 1,
+          "keywords": [
+            "chien", "chiot", "chienne", "canin",
+            "berger allemand", "berger australien", "labrador", "golden retriever",
+            "bouledogue", "bouledogue français", "bouledogue francais",
+            "bulldog", "bull terrier", "pitbull", "staff", "staffordshire",
+            "husky", "malamute", "akita", "shiba", "shiba inu",
+            "beagle", "cocker", "épagneul", "epagneul", "braque",
+            "caniche", "bichon", "yorkshire", "york", "chihuahua",
+            "teckel", "jack russell", "westie", "cavalier king charles",
+            "rottweiler", "doberman", "dogue allemand", "boxer chien",
+            "border collie", "berger belge", "malinois",
+            "lof", "pedigree", "puce", "pucé", "puce",
+            "vacciné", "vaccine", "tatoué", "tatoue", "identifié", "identifie",
+            "stérilisé", "sterilise", "castré", "castre",
+            "adoption", "adopter", "élevage", "elevage", "éleveur", "eleveur",
+            "pension canine", "toilettage", "dressage", "éducation canine",
+            "agility", "canicross", "cani-vtt",
+            "assurance chien", "mutuelle chien",
+            "croquettes premium", "alimentation crue", "barf",
+            "chenil", "niche chien", "panier chien",
+            "clicker", "longe", "sifflet",
+            "shampoing chien", "brosse chien",
+            "terre neuve", "saint bernard", "samoyede",
+            "lhassa apso", "shih tzu", "bichon maltais",
+            "carlin", "dogue de bordeaux", "cane corso",
+            "pointer", "setter", "springer"
+          ],
+          "brands": [
+            "royal canin", "purina", "proplan", "hill's", "hills", "acana",
+            "orijen", "taste of the wild", "carnilove",
+            "kong", "trixie", "ferplast", "julius-k9", "julius k9",
+            "ruffwear", "flexi", "curver"
+          ],
+          "models": [],
+          "synonyms": [
+            "toutou", "clébard", "clebard", "cabot", "compagnon", "fidèle"
+          ],
+          "common_mistakes": [
+            "chienn", "chiots", "labraddor", "bouledogu", "huksy"
+          ]
+        },
+        {
+          "name": "Chats",
+          "priority": 2,
+          "keywords": [
+            "chat", "chaton", "chatte", "félin", "felin",
+            "persan", "siamois", "maine coon", "british shorthair", "british",
+            "bengal", "ragdoll", "sacré de birmanie", "sacre de birmanie",
+            "chartreux", "abyssin", "sphynx", "scottish fold",
+            "norvégien", "norvegien", "europeen", "européen", "gouttière", "gouttiere",
+            "loof", "pedigree chat",
+            "vacciné chat", "stérilisé chat", "castré chat",
+            "litière", "litiere", "arbre à chat", "arbre a chat",
+            "griffoir", "chatière", "chatiere",
+            "croquettes chat", "pâtée", "patee"
+          ],
+          "brands": [
+            "royal canin chat", "purina chat", "whiskas", "sheba", "felix",
+            "gourmet", "perfect fit", "ultima"
+          ],
+          "models": [],
+          "synonyms": [
+            "matou", "minou", "minet", "greffier"
+          ],
+          "common_mistakes": [
+            "chaton", "maine coone", "british short hair", "bengale"
+          ]
+        },
+        {
+          "name": "Autres animaux",
+          "priority": 3,
+          "keywords": [
+            "oiseau", "perroquet", "perruche", "canari", "calopsitte", "cacatoès",
+            "poisson", "aquarium", "poisson rouge", "discus", "guppy", "néon",
+            "tortue", "reptile", "lézard", "gecko", "iguane", "serpent", "python", "boa",
+            "terrarium", "vivarium",
+            "lapin", "cochon d'inde", "cobaye", "hamster", "gerbille", "chinchilla",
+            "furet", "souris", "rat",
+            "cage", "volière", "voliere", "enclos",
+            "nac", "nouvel animal de compagnie",
+            "cheval", "poney", "jument", "étalon", "etalon", "hongre",
+            "selle", "bride", "filet", "box", "pré", "ecurie",
+            "poule", "coq", "canard", "oie", "chèvre", "chevre", "mouton"
+          ],
+          "brands": [
+            "tetra", "jbl aquarium", "eheim", "sera",
+            "zolux", "hamiform", "tyrol",
+            "versele laga", "vitakraft"
+          ],
+          "models": [],
+          "synonyms": [
+            "animal", "animaux", "animal de compagnie", "nac",
+            "élevage", "elevage", "adoption"
+          ],
+          "common_mistakes": [
+            "peroquet", "peruche", "hamstar", "aquariom"
+          ]
+        },
+        {
+          "name": "Accessoires animaux",
+          "priority": 4,
+          "keywords": [
+            "niche", "panier", "coussin chien", "cage transport",
+            "laisse", "collier chien", "harnais", "muselière", "museliere",
+            "gamelle", "distributeur croquettes", "fontaine à eau",
+            "jouet chien", "jouet chat", "os à mâcher",
+            "croquettes", "alimentation animale", "friandise",
+            "antiparasitaire", "antipuce", "vermifuge", "tique",
+            "médaille", "medaille", "gps animaux",
+            "manteau chien", "chaussure chien",
+            "poussette chien", "sac transport"
+          ],
+          "brands": [
+            "trixie", "ferplast", "kong", "flexi", "julius-k9",
+            "curver pet", "iris ohyama",
+            "frontline", "advantix", "seresto", "nexgard"
+          ],
+          "models": [],
+          "synonyms": [
+            "accessoire chien", "accessoire chat", "matériel animalerie"
+          ],
+          "common_mistakes": [
+            "laisce", "colier", "harnai", "croqettes"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SERVICES",
+      "priority": 9,
+      "subcategories": [
+        {
+          "name": "Cours particuliers",
+          "priority": 1,
+          "keywords": [
+            "cours particuliers", "cours particulier", "professeur particulier",
+            "soutien scolaire", "aide aux devoirs", "tutorat",
+            "cours de maths", "cours de français", "cours de francais",
+            "cours d'anglais", "cours anglais", "cours de physique",
+            "cours de musique", "cours de guitare", "cours de piano",
+            "cours de langue", "cours de dessin", "cours de cuisine",
+            "préparation examen", "preparation examen", "bac", "brevet",
+            "concours", "prépa", "prepa", "grandes écoles",
+            "à domicile", "a domicile", "en ligne", "visio",
+            "tarif horaire", "par heure", "de l'heure"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "prof", "professeur", "enseignant", "tuteur", "coach scolaire",
+            "accompagnement", "remise à niveau"
+          ],
+          "common_mistakes": [
+            "cour particulier", "cours particulié", "soutient scolaire"
+          ]
+        },
+        {
+          "name": "Artisans et Services à domicile",
+          "priority": 2,
+          "keywords": [
+            "plombier", "électricien", "electricien", "peintre", "maçon", "macon",
+            "menuisier", "serrurier", "vitrier", "couvreur", "charpentier",
+            "carreleur", "façadier", "facadier", "enduiseur",
+            "chauffagiste", "climaticien", "frigoriste",
+            "déménagement", "demenagement", "déménageur", "demenageur",
+            "nettoyage", "ménage", "menage", "femme de ménage", "femme de menage",
+            "repassage", "garde enfant", "baby sitting", "babysitting",
+            "garde animaux", "pet sitter", "dog sitter",
+            "jardinier", "paysagiste", "élagage", "elagage",
+            "dépannage", "depannage", "urgence", "intervention",
+            "devis", "devis gratuit", "estimation",
+            "traiteur", "photographe", "vidéaste", "dj", "animateur",
+            "coach sportif", "coach personnel", "personal trainer",
+            "esthéticienne", "estheticienne", "manucure", "coiffeur", "coiffeuse",
+            "massage", "bien-être", "bien etre", "sophrologie", "reflexologie",
+            "ostéopathe", "osteopathe", "naturopathe",
+            "informaticien", "dépannage informatique", "depannage informatique",
+            "assistance informatique", "réparation smartphone", "reparation smartphone",
+            "réparation écran", "reparation ecran",
+            "tapissier", "décorateur intérieur", "decorateur interieur",
+            "aide administrative", "secrétariat", "secretariat",
+            "traduction", "interprétariat", "interpretariat",
+            "garde meuble", "stockage", "box stockage",
+            "travaux peinture", "travaux plomberie", "travaux electricite"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "artisan", "prestataire", "professionnel", "pro",
+            "service à la personne", "aide à domicile"
+          ],
+          "common_mistakes": [
+            "plombieer", "electricen", "demenagment", "menaje"
+          ]
+        },
+        {
+          "name": "Covoiturage et Transport",
+          "priority": 3,
+          "keywords": [
+            "covoiturage", "covoit", "trajet", "place disponible",
+            "conducteur", "passager", "aller simple", "aller retour",
+            "départ", "depart", "arrivée", "arrivee",
+            "paris lyon", "paris marseille", "paris bordeaux",
+            "paris toulouse", "paris nantes", "paris lille",
+            "frais partagés", "frais partages", "participation",
+            "transport colis", "livraison", "coursier",
+            "déménagement", "demenagement"
+          ],
+          "brands": [
+            "blablacar", "karos", "klaxit"
+          ],
+          "models": [],
+          "synonyms": [
+            "partage de trajet", "auto-stop organisé", "ride sharing"
+          ],
+          "common_mistakes": [
+            "covoiturage", "covoitturage", "covoituraj"
+          ]
+        },
+        {
+          "name": "Événements",
+          "priority": 4,
+          "keywords": [
+            "mariage", "anniversaire", "baptême", "bapteme",
+            "communion", "bar mitzvah", "fête", "fete", "soirée", "soiree",
+            "organisateur", "organisation événement", "organisation evenement",
+            "décoration fête", "decoration fete", "ballon", "guirlande",
+            "salle de réception", "salle reception", "location salle",
+            "traiteur", "buffet", "cocktail",
+            "photographe mariage", "vidéaste mariage",
+            "dj mariage", "animateur soirée", "magicien",
+            "fleuriste", "décorateur", "wedding planner"
+          ],
+          "brands": [],
+          "models": [],
+          "synonyms": [
+            "célébration", "celebration", "réception", "reception",
+            "cérémonie", "ceremonie"
+          ],
+          "common_mistakes": [
+            "marriage", "anniverssaire", "bapteme"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MATERIEL_PROFESSIONNEL",
+      "priority": 10,
+      "subcategories": [
+        {
+          "name": "BTP et Construction",
+          "priority": 1,
+          "keywords": [
+            "btp", "chantier", "engin de chantier", "pelleteuse", "mini pelle",
+            "chargeuse", "bulldozer", "grue", "nacelle", "élévateur", "elevateur",
+            "bétonnière", "betonniere", "compacteur", "rouleau compresseur",
+            "groupe électrogène", "groupe electrogene",
+            "échafaudage", "echafaudage", "étaiement", "etaiement",
+            "coffrage", "banché", "banche",
+            "géomètre", "topographie", "théodolite",
+            "marteau piqueur", "perforateur btp",
+            "dumper", "tombereau", "télescopique", "telescopique",
+            "manitou", "chariot élévateur", "chariot elevateur", "fenwick",
+            "niveau laser", "laser rotatif", "détecteur de métaux",
+            "poste à souder", "poste a souder", "soudure", "mig", "tig", "arc",
+            "treuil", "palan", "cric hydraulique",
+            "bétonnière électrique", "betonniere electrique",
+            "chariot manutention", "transpalette", "gerbeur",
+            "nettoyeur haute pression", "karcher", "kärcher",
+            "aspirateur industriel", "aspirateur chantier",
+            "remorque plateau", "porte-engins", "porte engins"
+          ],
+          "brands": [
+            "caterpillar", "cat", "komatsu", "volvo ce", "liebherr",
+            "jcb", "case", "hitachi", "doosan", "bobcat",
+            "manitou", "merlo", "haulotte", "peri", "doka"
+          ],
+          "models": [],
+          "synonyms": [
+            "travaux publics", "génie civil", "genie civil",
+            "construction", "terrassement"
+          ],
+          "common_mistakes": [
+            "pellteuse", "nacele", "echaffaudage"
+          ]
+        },
+        {
+          "name": "Restauration professionnelle",
+          "priority": 2,
+          "keywords": [
+            "restaurant", "cuisine professionnelle", "chr",
+            "four professionnel", "four à pizza", "four a pizza",
+            "friteuse pro", "plancha pro",
+            "vitrine réfrigérée", "vitrine refrigeree", "chambre froide",
+            "armoire réfrigérée", "armoire refrigeree",
+            "machine à glaçons", "machine a glacons",
+            "lave-vaisselle pro", "lave vaisselle professionnel",
+            "inox", "plan de travail inox", "table inox",
+            "batteur professionnel", "pétrin", "petrin", "trancheuse",
+            "caisse enregistreuse", "terminal paiement", "tpe"
+          ],
+          "brands": [
+            "rational", "electrolux pro", "bonnet", "thirode",
+            "robot coupe", "santos", "dynamic",
+            "winterhalter", "hobart", "bartscher",
+            "dito sama", "sammic"
+          ],
+          "models": [],
+          "synonyms": [
+            "matériel restauration", "materiel chr",
+            "équipement cuisine pro", "equipement cuisine pro"
+          ],
+          "common_mistakes": [
+            "restaurasion", "professionel", "inoxe"
+          ]
+        },
+        {
+          "name": "Agriculture",
+          "priority": 3,
+          "keywords": [
+            "tracteur", "tracteur agricole", "moissonneuse", "moissonneuse-batteuse",
+            "faucheuse", "faneuse", "andaineur", "presse", "round baler",
+            "charrue", "cultivateur", "herse", "semoir", "épandeur", "epandeur",
+            "pulvérisateur", "pulverisateur", "remorque agricole",
+            "irrigation", "arrosage agricole",
+            "élevage", "elevage", "stabulation", "traite", "tank à lait",
+            "alimentation bétail", "alimentation betail",
+            "serre agricole", "tunnel", "bâche agricole", "bache agricole",
+            "clôture électrique", "cloture electrique",
+            "quad agricole", "ssv",
+            "desileuse", "mélangeuse", "melangeuse", "aplatisseur",
+            "pailleuse", "enrubanneuse", "ramasseuse",
+            "girobroyeur", "gyrobroyeur", "epareuse",
+            "chargeur frontal", "godet", "fourche palette",
+            "citerne", "tonne a lisier", "epandeur fumier",
+            "station meteorologique", "guidage gps", "autoguidage",
+            "drone agricole", "agriculture precision"
+          ],
+          "brands": [
+            "john deere", "new holland", "massey ferguson", "case ih",
+            "claas", "fendt", "deutz-fahr", "deutz fahr", "kubota",
+            "valtra", "lamborghini trattori", "same",
+            "kuhn", "kverneland", "lemken", "amazone",
+            "joskin", "fliegl", "rolland"
+          ],
+          "models": [],
+          "synonyms": [
+            "matériel agricole", "materiel agricole", "agri",
+            "exploitation agricole", "ferme"
+          ],
+          "common_mistakes": [
+            "trackteur", "tractuer", "moissoneuse", "agricultur"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "BEBE_ENFANT",
+      "priority": 11,
+      "subcategories": [
+        {
+          "name": "Puériculture",
+          "priority": 1,
+          "keywords": [
+            "poussette", "landau", "nacelle bébé", "nacelle bebe",
+            "siège auto", "siege auto", "cosy", "coque", "isofix",
+            "porte-bébé", "porte bebe", "écharpe de portage", "echarpe de portage",
+            "lit bébé", "lit bebe", "berceau", "cododo", "lit parapluie",
+            "parc bébé", "parc bebe", "transat", "balancelle",
+            "baignoire bébé", "baignoire bebe", "table à langer", "table a langer",
+            "biberon", "tétine", "tetine", "sucette", "stérilisateur", "sterilisateur",
+            "tire-lait", "tire lait", "coussin allaitement",
+            "chauffe-biberon", "chauffe biberon", "robot bébé", "robot bebe",
+            "babycook", "blender bébé",
+            "couche", "couches", "lingette", "lingettes", "change",
+            "doudou", "mobile", "veilleuse",
+            "babyphone", "écoute-bébé", "ecoute bebe",
+            "chaise haute", "rehausseur",
+            "trotteur", "youpala", "porteur",
+            "mouche-bebe", "mouche bebe", "serum physiologique",
+            "thermometre bebe", "thermometre frontal",
+            "humidificateur chambre bebe", "veilleuse projecteur",
+            "lit cododo", "lit evolutif", "matelas bebe",
+            "matelas a langer", "sac a langer",
+            "anneau de dentition", "hochet", "tapis d eveil",
+            "transat bebe", "balancelle electrique",
+            "siege de bain", "porte bebe dorsal", "porte bebe ventral",
+            "echarpe portage", "sling", "mei tai",
+            "rehausseur voiture", "siege auto pivotant",
+            "nacelle poussette", "couvre-jambes", "ombrelle poussette",
+            "filet anti-insectes", "moustiquaire poussette"
+          ],
+          "brands": [
+            "chicco", "bébé confort", "bebe confort", "cybex", "joie",
+            "bugaboo", "yoyo", "babyzen", "stokke", "britax",
+            "nuna", "maxi-cosi", "maxi cosi", "recaro",
+            "babymoov", "beaba", "béaba", "philips avent", "mam",
+            "medela", "lansinoh", "mustela", "pampers",
+            "huggies", "lotus baby", "love and green"
+          ],
+          "models": [
+            "yoyo2", "yoyo²", "cameleon", "fox", "butterfly",
+            "babycook", "babycook neo",
+            "tripp trapp", "steps"
+          ],
+          "synonyms": [
+            "bébé", "bebe", "nourrisson", "nouveau-né", "nouveau ne",
+            "naissance", "maternité", "maternite"
+          ],
+          "common_mistakes": [
+            "pousette", "poussete", "poussett", "siege autto",
+            "bébé confor", "bibron", "couche bebe"
+          ]
+        },
+        {
+          "name": "Vêtements enfant",
+          "priority": 2,
+          "keywords": [
+            "vêtements bébé", "vetements bebe", "body", "pyjama bébé",
+            "gigoteuse", "turbulette", "grenouillère", "grenouillere",
+            "barboteuse", "brassière", "brassiere",
+            "vêtements enfant", "vetements enfant",
+            "pantalon enfant", "jean enfant", "pull enfant",
+            "manteau enfant", "doudoune enfant",
+            "chaussures bébé", "chaussures bebe", "chaussons bébé",
+            "chaussures enfant", "basket enfant",
+            "cartable", "sac à dos enfant", "sac a dos enfant",
+            "déguisement", "deguisement", "costume enfant",
+            "taille naissance", "0 mois", "3 mois", "6 mois", "12 mois",
+            "18 mois", "24 mois", "2 ans", "3 ans", "4 ans", "5 ans",
+            "6 ans", "8 ans", "10 ans", "12 ans", "14 ans"
+          ],
+          "brands": [
+            "petit bateau", "jacadi", "dpam", "du pareil au même",
+            "okaidi", "obaïbi", "kiabi enfant", "vertbaudet",
+            "zara kids", "h&m kids", "orchestra",
+            "tape à l'oeil", "tape a l oeil", "catimini",
+            "cyrillus", "bonpoint", "tartine et chocolat"
+          ],
+          "models": [],
+          "synonyms": [
+            "fringues enfant", "habits bébé", "habits enfant",
+            "garde-robe enfant"
+          ],
+          "common_mistakes": [
+            "vetement bébé", "chaussure enfan", "deguisment"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "VACANCES",
+      "priority": 12,
+      "subcategories": [
+        {
+          "name": "Locations saisonnières",
+          "priority": 1,
+          "keywords": [
+            "location saisonnière", "location saisonniere",
+            "location vacances", "gîte", "gite", "meublé de tourisme",
+            "chambre d'hôtes", "chambre d hotes",
+            "villa vacances", "maison vacances", "appartement vacances",
+            "studio vacances", "chalet", "mobil-home", "mobil home",
+            "camping", "emplacement camping",
+            "bord de mer", "montagne", "campagne",
+            "piscine privée", "piscine privee", "jacuzzi",
+            "semaine", "quinzaine", "nuitée", "nuitee",
+            "juillet", "août", "aout", "été", "ete",
+            "noël", "noel", "ski", "hiver",
+            "animaux acceptés", "animaux acceptes",
+            "wifi inclus", "ménage inclus", "menage inclus",
+            "draps fournis", "linge de maison fourni",
+            "cote d azur", "côte d azur", "bretagne", "normandie",
+            "provence", "languedoc", "pays basque", "corse",
+            "alpes", "pyrenees", "dordogne", "ardeche",
+            "charente maritime", "vendee", "landes",
+            "lac", "riviere", "front de mer", "vue mer",
+            "domaine", "résidence de tourisme", "residence tourisme",
+            "club vacances", "all inclusive", "tout compris",
+            "dernière minute", "derniere minute", "promo vacances",
+            "toussaint", "paques", "pentecote",
+            "vacances scolaires", "vacances été", "vacances hiver",
+            "court sejour", "long sejour",
+            "spa", "sauna", "hammam",
+            "terrain de tennis", "terrain de boules",
+            "aire de jeux enfants", "toboggan aquatique",
+            "accès direct plage", "acces direct plage", "pieds dans l eau",
+            "location semaine", "location mois", "location week-end"
+          ],
+          "brands": [
+            "airbnb", "abritel", "homeaway", "vrbo", "booking",
+            "gîtes de france", "gites de france", "clévacances", "clevacances",
+            "pierre et vacances", "center parcs", "belambra",
+            "odalys", "nemea", "lagrange", "maeva", "vacanciel",
+            "yelloh village", "homair", "sandaya", "tohapi"
+          ],
+          "models": [],
+          "synonyms": [
+            "hébergement vacances", "logement vacances",
+            "résidence vacances", "appart vacances",
+            "location saisoniere", "villégiature"
+          ],
+          "common_mistakes": [
+            "locasion vacances", "vacanse", "gitte", "challe",
+            "campingue", "mobil hom", "mobilhome"
+          ]
+        }
+      ]
+    }
+  ]
+}
