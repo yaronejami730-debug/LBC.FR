@@ -18,6 +18,7 @@ export default async function SearchPage({
 
   const where = {
     status: "APPROVED",
+    deletedAt: null,
     ...(q && {
       OR: [
         { title: { contains: q } },

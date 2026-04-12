@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
 
   const where = {
     status: "APPROVED",
+    deletedAt: null,
     ...(q && {
       OR: [
         { title: { contains: q } },

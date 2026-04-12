@@ -38,6 +38,7 @@ model Listing {
   userId          String
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
   metadata        String         @default("{}")
   status          String         @default("PENDING")
   rejectionReason String?

@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { put } from "@vercel/blob";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-
-// NOTE: This local filesystem approach works for development only.
-// For production on Vercel, replace with Vercel Blob:
-//   import { put } from "@vercel/blob";
-//   const blob = await put(filename, file, { access: "public" });
-//   return NextResponse.json({ url: blob.url });
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,8 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Aucun fichier reçu" }, { status: 400 });
     }
 
-    // Basic size check (Next.js default is usually ~4MB or more, but we can check here)
-    if (file.size > 10 * 1024 * 1024) { // 10MB
+    if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "L'image est trop lourde (max 10Mo)" }, { status: 400 });
     }
 
@@ -32,21 +26,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Seuls les fichiers images sont autorisés" }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    // En production (Vercel) → Vercel Blob
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      const blob = await put(`uploads/${filename}`, file, { access: "public" });
+      console.log(`[UPLOAD] Blob: ${blob.url}`);
+      return NextResponse.json({ url: blob.url });
+    }
+
+    // En développement local → filesystem
     const uploadDir = path.join(process.cwd(), "public", "uploads");
-
+    const bytes = await file.arrayBuffer();
     await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), buffer);
-
-    console.log(`[UPLOAD] Succès: /uploads/${filename} (${file.size} bytes)`);
+    await writeFile(path.join(uploadDir, filename), Buffer.from(bytes));
+    console.log(`[UPLOAD] Local: /uploads/${filename}`);
     return NextResponse.json({ url: `/uploads/${filename}` });
   } catch (err) {
     console.error("[UPLOAD ERROR]", err);
-    const message = err instanceof Error ? err.message : "Erreur lors de l'enregistrement du fichier";
+    const message = err instanceof Error ? err.message : "Erreur lors de l'enregistrement";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

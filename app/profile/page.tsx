@@ -16,6 +16,7 @@ export default async function ProfilePage() {
     where: { id: session.user.id },
     include: {
       listings: {
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
       },
     },

@@ -26,6 +26,10 @@ export default async function ListingPage({
   const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
   const isAdmin = role === "ADMIN";
 
+  if (listing.deletedAt && !isAdmin) {
+    notFound();
+  }
+
   if (listing.status !== "APPROVED" && !isOwner && !isAdmin) {
     notFound();
   }

@@ -18,12 +18,12 @@ export default async function ListingsPage({
 
   const [listings, counts] = await Promise.all([
     prisma.listing.findMany({
-      where: { status },
+      where: { status, deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: { user: { select: { name: true, email: true, verified: true } } },
     }),
     Promise.all(
-      STATUS_OPTIONS.map((s) => prisma.listing.count({ where: { status: s.value } }))
+      STATUS_OPTIONS.map((s) => prisma.listing.count({ where: { status: s.value, deletedAt: null } }))
     ),
   ]);
 
