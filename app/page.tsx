@@ -77,6 +77,28 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* Ad Banner — always visible if there's an active ad */}
+      {ads[0] && (
+        <section className="px-6 max-w-7xl mx-auto mb-2">
+          <a
+            href={ads[0].destinationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 bg-white border border-[#c7c5d4] rounded-2xl p-3 hover:shadow-md transition-shadow"
+          >
+            <div className="relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-surface-container-low">
+              <img src={ads[0].imageUrl} alt={ads[0].title} className="w-full h-full object-cover" />
+              <span className="absolute top-1 left-1 bg-[#15157d] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">Pub</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-on-surface line-clamp-1">{ads[0].title}</p>
+              <p className="text-xs text-outline mt-0.5 line-clamp-2">{ads[0].description}</p>
+            </div>
+            <span className="material-symbols-outlined text-outline text-lg flex-shrink-0">open_in_new</span>
+          </a>
+        </section>
+      )}
+
       {/* Recent Listings Section */}
       <section className="py-10 max-w-7xl mx-auto bg-surface-container-low rounded-t-[3rem]">
         <div className="flex items-center justify-between mb-5 px-6">
