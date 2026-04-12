@@ -330,7 +330,7 @@ export default function PostForm() {
             <div className="space-y-1">
               <label className="block text-xs font-bold text-primary tracking-widest uppercase">Titre</label>
               <input value={title} onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-transparent border-none p-0 text-2xl font-['Manrope'] font-semibold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none"
+                className="w-full bg-transparent border-none p-0 text-2xl font-['Manrope'] font-semibold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none text-base"
                 placeholder="Que vendez-vous ?" type="text" />
               <div className="h-[2px] bg-surface-container" />
             </div>
@@ -340,7 +340,7 @@ export default function PostForm() {
               <label className="block text-xs font-bold text-primary tracking-widest uppercase">Prix</label>
               <div className="flex items-baseline gap-2">
                 <input value={price} onChange={(e) => setPrice(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 text-4xl font-['Manrope'] font-extrabold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none"
+                  className="w-full bg-transparent border-none p-0 text-4xl font-['Manrope'] font-extrabold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none text-base"
                   placeholder="0" type="number" min="0" step="1" />
                 <span className="text-3xl font-['Manrope'] font-bold text-on-surface-variant">€</span>
               </div>
@@ -394,26 +394,26 @@ export default function PostForm() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Marque</label>
                     <input value={vehicle.marque} onChange={(e) => setV("marque", e.target.value)}
-                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
+                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
                       placeholder="Ex : Renault, BMW…" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Modèle</label>
                     <input value={vehicle.modele} onChange={(e) => setV("modele", e.target.value)}
-                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
+                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
                       placeholder="Ex : Clio, Série 3…" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Année</label>
                     <input value={vehicle.annee} onChange={(e) => setV("annee", e.target.value)}
-                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
+                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
                       placeholder="Ex : 2021" type="number" min="1900" max="2026" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Kilométrage</label>
                     <div className="relative">
                       <input value={vehicle.kilometrage} onChange={(e) => setV("kilometrage", e.target.value)}
-                        className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary border-none pr-10"
+                        className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary border-none pr-10"
                         placeholder="Ex : 45000" type="number" min="0" />
                       <span className="absolute right-3 top-2.5 text-xs text-outline font-medium">km</span>
                     </div>
@@ -443,7 +443,7 @@ export default function PostForm() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Couleur</label>
                     <input value={vehicle.couleur} onChange={(e) => setV("couleur", e.target.value)}
-                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
+                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary border-none"
                       placeholder="Ex : Gris, Blanc…" />
                   </div>
                   <div className="space-y-1">
@@ -461,7 +461,7 @@ export default function PostForm() {
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Puissance fiscale</label>
                     <div className="relative">
                       <input value={vehicle.puissanceFiscale} onChange={(e) => setV("puissanceFiscale", e.target.value)}
-                        className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary border-none pr-8"
+                        className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary border-none pr-8"
                         placeholder="Ex : 7" type="number" min="1" />
                       <span className="absolute right-3 top-2.5 text-xs text-outline font-medium">CV</span>
                     </div>
@@ -469,7 +469,7 @@ export default function PostForm() {
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-outline uppercase tracking-wider">Immatriculation</label>
                     <input value={vehicle.immatriculation} onChange={(e) => setV("immatriculation", e.target.value.toUpperCase())}
-                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-sm font-mono text-on-surface outline-none focus:ring-2 focus:ring-primary border-none tracking-widest"
+                      className="w-full bg-surface-container-low rounded-lg px-3 py-2.5 text-base font-mono text-on-surface outline-none focus:ring-2 focus:ring-primary border-none tracking-widest"
                       placeholder="AB-123-CD" maxLength={10} />
                   </div>
                 </div>
@@ -480,7 +480,7 @@ export default function PostForm() {
             <div className="space-y-1">
               <label className="block text-xs font-bold text-primary tracking-widest uppercase">Localisation</label>
               <input value={location} onChange={(e) => setLocation(e.target.value)}
-                className="w-full bg-transparent border-none p-0 text-xl font-['Manrope'] font-semibold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none"
+                className="w-full bg-transparent border-none p-0 text-xl font-['Manrope'] font-semibold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none text-base"
                 placeholder="Ville, Département" type="text" />
               <div className="h-[2px] bg-surface-container" />
             </div>
@@ -502,7 +502,7 @@ export default function PostForm() {
             <div className="space-y-1">
               <label className="block text-xs font-bold text-primary tracking-widest uppercase">Description</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-transparent border-none p-0 text-sm text-on-surface placeholder:text-outline-variant focus:ring-0 leading-relaxed resize-none outline-none"
+                className="w-full bg-transparent border-none p-0 text-base text-on-surface placeholder:text-outline-variant focus:ring-0 leading-relaxed resize-none outline-none"
                 placeholder="Décrivez votre article : état, âge, raison de la vente…"
                 rows={6} />
               <div className="h-[1px] bg-surface-container" />
