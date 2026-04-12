@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -11,73 +12,85 @@ const navItems = [
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
 ];
 
-export default function Sidebar({ adminName }: { adminName: string }) {
+export default function AdminSidebar({ adminName, isMobile, onClose }: { adminName: string; isMobile?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 bg-white border-r border-[#eceef0] flex flex-col z-40">
+    <aside className={`${isMobile ? "w-full h-full" : "fixed inset-y-0 left-0 w-64"} bg-white border-r border-[#eceef0] flex flex-col z-50`}>
       {/* Brand */}
-      <div className="px-6 py-5 border-b border-[#eceef0]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#15157d] flex items-center justify-center">
-            <span className="material-symbols-outlined text-white text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
+      <div className="px-6 py-6 border-b border-[#eceef0] flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#15157d] to-[#252595] flex items-center justify-center shadow-lg shadow-[#15157d]/20">
+            <span className="material-symbols-outlined text-white text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               shield_person
             </span>
           </div>
           <div>
-            <p className="font-extrabold text-[#15157d] text-sm leading-none font-headline">Admin</p>
-            <p className="text-[10px] text-[#777683] mt-0.5">PrèsDeToi</p>
+            <p className="font-black text-[#15157d] text-base leading-none tracking-tight font-headline">Admin</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">PrèsDeToi</p>
           </div>
         </div>
+        {isMobile && (
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+            <span className="material-symbols-outlined text-slate-400">close</span>
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#777683] px-3 mb-3">Menu</p>
+      <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto no-scrollbar">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-4 mb-4">Gestion</p>
         {navItems.map(({ href, icon, label, exact }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              onClick={onClose}
+              className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-[15px] font-bold transition-all group ${
                 isActive
-                  ? "bg-[#15157d] text-white shadow-sm shadow-[#15157d]/20"
-                  : "text-[#464652] hover:bg-[#f2f4f6] hover:text-[#15157d]"
+                  ? "bg-[#15157d] text-white shadow-xl shadow-[#15157d]/15 scale-[1.02]"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-[#15157d] active:scale-95"
               }`}
             >
               <span
-                className="material-symbols-outlined text-[18px]"
+                className={`material-symbols-outlined text-xl transition-transform group-hover:scale-110 ${isActive ? "" : "text-slate-400 group-hover:text-[#15157d]"}`}
                 style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
               >
                 {icon}
               </span>
               {label}
+              {isActive && (
+                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-40" />
+              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-4 border-t border-[#eceef0] space-y-1">
+      {/* User / Footer */}
+      <div className="p-4 bg-slate-50/50 border-t border-[#eceef0] space-y-2">
         <Link
           href="/"
-          className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-[#464652] hover:bg-[#f2f4f6] transition-colors"
+          className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:text-[#15157d] hover:shadow-sm transition-all active:scale-95"
         >
-          <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+          <span className="material-symbols-outlined text-lg">open_in_new</span>
           Voir le site
         </Link>
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl">
-          <div className="w-6 h-6 rounded-full bg-[#15157d]/10 flex items-center justify-center flex-shrink-0">
-            <span className="material-symbols-outlined text-[14px] text-[#15157d]">person</span>
+        <div className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-white border border-[#eceef0] shadow-sm">
+          <div className="w-10 h-10 rounded-full bg-[#15157d]/5 flex items-center justify-center flex-shrink-0 border border-[#15157d]/10">
+            <span className="material-symbols-outlined text-xl text-[#15157d]">person_filled</span>
           </div>
-          <span className="text-xs text-[#464652] font-medium truncate flex-1">{adminName}</span>
+          <div className="flex-1 min-w-0 mr-2">
+            <p className="text-sm font-black text-[#15157d] truncate leading-tight">{adminName}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Super Admin</p>
+          </div>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-[#777683] hover:text-[#ba1a1a] transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-100 transition-all border border-transparent"
             title="Déconnexion"
           >
-            <span className="material-symbols-outlined text-[16px]">logout</span>
+            <span className="material-symbols-outlined text-lg">logout</span>
           </button>
         </div>
       </div>
