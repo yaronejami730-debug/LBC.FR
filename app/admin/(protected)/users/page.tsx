@@ -73,7 +73,7 @@ export default async function UsersPage() {
                         {user.avatar ? (
                           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-[#15157d] text-sm font-bold">
+                          <span className="text-[#2f6fb8] text-sm font-bold">
                             {user.name.charAt(0).toUpperCase()}
                           </span>
                         )}
@@ -90,7 +90,7 @@ export default async function UsersPage() {
                   {/* Role */}
                   <td className="px-4 py-3">
                     {user.role === "ADMIN" ? (
-                      <span className="text-xs font-bold bg-[#15157d] text-white px-2.5 py-0.5 rounded-full">Admin</span>
+                      <span className="text-xs font-bold bg-[#2f6fb8] text-white px-2.5 py-0.5 rounded-full">Admin</span>
                     ) : (
                       <span className="text-xs text-[#777683]">Utilisateur</span>
                     )}

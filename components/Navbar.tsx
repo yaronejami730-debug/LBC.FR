@@ -36,59 +36,45 @@ export default async function Navbar({
             <div className="lg:hidden flex-shrink-0">
               <CategoryDrawer />
             </div>
-            <Link
-              href="/"
-              className="text-3xl font-extrabold text-[#15157d] tracking-tight font-['Manrope']"
-            >
-              PrèsDeToi
-            </Link>
-          </div>
-
-          {/* Post Button */}
-          <div className="hidden lg:flex items-center flex-shrink-0">
-            <Link
-              href="/post"
-              className="flex items-center gap-1.5 px-4 h-[44px] bg-[#15157d] text-white rounded-[10px] font-bold text-[15px] hover:bg-[#15157d]/90 transition-colors shadow-sm"
-            >
-              <span className="material-symbols-outlined text-[20px]">add_box</span>
-              Déposer une annonce
+            <Link href="/" className="flex items-center">
+              <img src="/logo.png" alt="Le Bon Deal" className="w-44 h-auto" />
             </Link>
           </div>
 
           {/* Search Bar */}
-          <div className="hidden md:flex flex-1 items-center max-w-[640px] bg-slate-100/80 hover:bg-slate-100 transition-colors rounded-full h-[44px] pl-4 pr-1.5 focus-within:ring-2 focus-within:ring-[#15157d]/20 focus-within:bg-white border border-transparent focus-within:border-[#15157d]/30">
+          <div className="hidden md:flex flex-1 items-center max-w-[640px] bg-slate-100/80 hover:bg-slate-100 transition-colors rounded-full h-[44px] pl-4 pr-1.5 focus-within:ring-2 focus-within:ring-[#2f6fb8]/20 focus-within:bg-white border border-transparent focus-within:border-[#2f6fb8]/30">
             <input 
               type="text" 
-              placeholder="Rechercher sur PrèsDeToi" 
+              placeholder="Rechercher sur Le Bon Deal"
               className="flex-1 bg-transparent border-none outline-none text-[15px] text-slate-800 placeholder-slate-500 w-full"
             />
-            <button className="flex items-center justify-center w-[34px] h-[34px] bg-[#15157d] text-white rounded-full hover:bg-[#15157d]/90 transition-colors flex-shrink-0">
+            <button className="flex items-center justify-center w-[34px] h-[34px] bg-[#2f6fb8] text-white rounded-full hover:bg-[#2f6fb8]/90 transition-colors flex-shrink-0">
               <span className="material-symbols-outlined text-[18px]">search</span>
             </button>
           </div>
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
-            <Link href="/recherches" className="hidden lg:flex flex-col items-center gap-1 text-slate-700 hover:text-[#15157d] transition-colors group">
+            <Link href="/recherches" className="hidden lg:flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
               <span className="material-symbols-outlined text-[24px]">notifications</span>
               <span className="text-[12px] font-medium leading-none">Mes recherches</span>
             </Link>
-            <Link href="/favoris" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#15157d] transition-colors group">
+            <Link href="/favoris" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
               <span className="material-symbols-outlined text-[24px]">favorite</span>
               <span className="text-[12px] font-medium leading-none hidden lg:block">Favoris</span>
             </Link>
-            <Link href="/messages" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#15157d] transition-colors group">
+            <Link href="/messages" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
               <span className="material-symbols-outlined text-[24px]">chat_bubble</span>
               <span className="text-[12px] font-medium leading-none hidden lg:block">Messages</span>
             </Link>
             
             {user ? (
-               <Link href="/profile" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#15157d] transition-colors group">
+               <Link href="/profile" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
                  <span className="material-symbols-outlined text-[24px]">person</span>
                  <span className="text-[12px] font-medium leading-none hidden lg:block">{user.name?.split(" ")[0]}</span>
                </Link>
             ) : (
-               <Link href="/login" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#15157d] transition-colors group">
+               <Link href="/login" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
                  <span className="material-symbols-outlined text-[24px]">person</span>
                  <span className="text-[12px] font-medium leading-none hidden lg:block">Se connecter</span>
                </Link>
@@ -102,7 +88,7 @@ export default async function Navbar({
             <div key={cat.label} className="flex items-center flex-shrink-0">
               <Link
                 href={cat.href}
-                className={`hover:text-[#15157d] hover:underline transition-colors ${cat.label === "Bons plans !" ? "font-[800] text-slate-800" : "font-[500]"}`}
+                className={`hover:text-[#2f6fb8] hover:underline transition-colors ${cat.label === "Bons plans !" ? "font-[800] text-slate-800" : "font-[500]"}`}
               >
                 {cat.label}
               </Link>

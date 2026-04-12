@@ -113,7 +113,7 @@ export default function ChatWindow({
       {/* Header */}
       <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 z-50 px-4 py-3 flex items-center gap-3 shadow-sm">
         <Link href="/messages" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all">
-          <span className="material-symbols-outlined text-[#15157d]">arrow_back</span>
+          <span className="material-symbols-outlined text-[#2f6fb8]">arrow_back</span>
         </Link>
         <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
           {otherUser?.avatar ? (
@@ -124,7 +124,7 @@ export default function ChatWindow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 leading-tight">
-            <h2 className="font-extrabold text-[#15157d] truncate text-base">{otherUser?.name || "Unknown"}</h2>
+            <h2 className="font-extrabold text-[#2f6fb8] truncate text-base">{otherUser?.name || "Unknown"}</h2>
             {otherUser?.verified && (
               <span className="material-symbols-outlined text-[#00a67e] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
             )}
@@ -138,8 +138,8 @@ export default function ChatWindow({
             <img src={listing.image} alt={listing.title} className="w-9 h-9 rounded-xl object-cover" />
           )}
           <div className="pr-1">
-            <p className="text-[9px] font-bold text-[#15157d] line-clamp-1 max-w-[60px]">{listing.title}</p>
-            <p className="text-[#15157d] font-black text-xs">{listing.price.toLocaleString("fr-FR")} €</p>
+            <p className="text-[9px] font-bold text-[#2f6fb8] line-clamp-1 max-w-[60px]">{listing.title}</p>
+            <p className="text-[#2f6fb8] font-black text-xs">{listing.price.toLocaleString("fr-FR")} €</p>
           </div>
         </Link>
       </header>
@@ -165,7 +165,7 @@ export default function ChatWindow({
                   <div
                     className={`px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
                       isMe
-                        ? "bg-[#252595] text-white rounded-[20px] rounded-br-[4px]"
+                        ? "bg-[#1a5a9e] text-white rounded-[20px] rounded-br-[4px]"
                         : "bg-white text-on-surface rounded-[20px] rounded-bl-[4px]"
                     }`}
                   >
@@ -185,7 +185,7 @@ export default function ChatWindow({
           onSubmit={sendMessage}
           className="max-w-3xl w-full mx-auto flex items-center gap-3"
         >
-          <div className="flex-1 flex items-center bg-[#f1f3f5] rounded-full px-5 py-3 transition-all focus-within:bg-white focus-within:ring-2 focus-within:ring-[#15157d]/10">
+          <div className="flex-1 flex items-center bg-[#f1f3f5] rounded-full px-5 py-3 transition-all focus-within:bg-white focus-within:ring-2 focus-within:ring-[#2f6fb8]/10">
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}

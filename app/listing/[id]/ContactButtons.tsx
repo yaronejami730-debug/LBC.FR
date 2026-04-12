@@ -49,7 +49,7 @@ export default function ContactButtons({
         <button
           onClick={startConversation}
           disabled={loading}
-          className="flex-1 h-12 rounded-2xl bg-[#15157d] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-70 shadow-lg shadow-blue-900/10"
+          className="flex-1 h-12 rounded-2xl bg-[#2f6fb8] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-70 shadow-lg shadow-blue-900/10"
         >
           <span className="material-symbols-outlined text-[20px]">chat_bubble</span>
           <span className="text-sm">{loading ? "..." : "Message"}</span>
@@ -57,7 +57,7 @@ export default function ContactButtons({
 
         {/* Call Button (Placeholder for now) */}
         <button
-          className="w-12 h-12 rounded-2xl bg-slate-100 text-[#15157d] font-bold flex items-center justify-center active:scale-95 transition-all"
+          className="w-12 h-12 rounded-2xl bg-slate-100 text-[#2f6fb8] font-bold flex items-center justify-center active:scale-95 transition-all"
           onClick={() => alert("Fonctionnalité d'appel bientôt disponible !")}
         >
           <span className="material-symbols-outlined text-[20px]">call</span>
@@ -66,7 +66,7 @@ export default function ContactButtons({
         {/* View Profile Button */}
         <button
           onClick={() => router.push(`/u/${sellerId}`)}
-          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 text-[#15157d] font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+          className="flex-1 h-12 rounded-2xl bg-white border border-slate-200 text-[#2f6fb8] font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
         >
           <span className="material-symbols-outlined text-[20px]">person</span>
           <span className="text-sm">Profil</span>

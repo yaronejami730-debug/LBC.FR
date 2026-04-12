@@ -21,7 +21,7 @@ export default function ListingHeader({
     const url = window.location.href;
     if (navigator.share) {
       try {
-        await navigator.share({ title, text: `Regardez cette annonce sur PrèsDeToi : ${title}`, url });
+        await navigator.share({ title, text: `Regardez cette annonce sur Le Bon Deal : ${title}`, url });
       } catch {
         // user cancelled
       }
@@ -60,9 +60,7 @@ export default function ListingHeader({
           >
             <span className="material-symbols-outlined">arrow_back</span>
           </Link>
-          <span className="font-['Manrope'] font-extrabold text-xl tracking-tighter text-[#15157d]">
-            PrèsDeToi
-          </span>
+          <img src="/logo.png" alt="Le Bon Deal" className="h-12 w-auto" />
         </div>
         <div className="flex items-center gap-2">
           <button

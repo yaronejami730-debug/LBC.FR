@@ -48,7 +48,7 @@ export default function SellerActions({
       {/* View Profile Button - Large & Clear */}
       <Link 
         href={`/u/${sellerId}`}
-        className="w-full py-4 rounded-2xl bg-slate-100 text-[#15157d] font-bold text-sm hover:bg-slate-200 transition-all text-center block"
+        className="w-full py-4 rounded-2xl bg-slate-100 text-[#2f6fb8] font-bold text-sm hover:bg-slate-200 transition-all text-center block"
       >
         Voir le profil
       </Link>
@@ -58,7 +58,7 @@ export default function SellerActions({
         <button
           onClick={startConversation}
           disabled={loading}
-          className="flex-1 py-4 px-4 rounded-2xl bg-[#15157d] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-70 shadow-lg shadow-blue-900/10"
+          className="flex-1 py-4 px-4 rounded-2xl bg-[#2f6fb8] text-white font-bold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-70 shadow-lg shadow-blue-900/10"
         >
           <span className="material-symbols-outlined text-[18px]">chat</span>
           <span className="text-sm">{loading ? "..." : "Message"}</span>
@@ -66,7 +66,7 @@ export default function SellerActions({
 
         <button
           onClick={() => alert("Fonctionnalité d'appel bientôt disponible !")}
-          className="flex-1 py-4 px-4 rounded-2xl bg-white border border-slate-200 text-[#15157d] font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+          className="flex-1 py-4 px-4 rounded-2xl bg-white border border-slate-200 text-[#2f6fb8] font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
         >
           <span className="material-symbols-outlined text-[18px]">call</span>
           <span className="text-sm">Téléphone</span>

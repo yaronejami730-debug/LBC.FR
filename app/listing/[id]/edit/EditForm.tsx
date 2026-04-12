@@ -117,7 +117,7 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
             <Link href={`/listing/${listingId}`} className="text-primary p-2 hover:bg-slate-50 rounded-full active:scale-95 transition-transform">
               <span className="material-symbols-outlined">close</span>
             </Link>
-            <h1 className="text-2xl font-extrabold text-primary tracking-tighter font-['Manrope']">PrèsDeToi</h1>
+            <img src="/logo.png" alt="Le Bon Deal" className="h-12 w-auto" />
           </div>
           <span className="font-['Manrope'] font-bold text-base tracking-tight text-primary">Modifier l'annonce</span>
         </div>

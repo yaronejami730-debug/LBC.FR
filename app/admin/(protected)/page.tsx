@@ -30,7 +30,7 @@ export default async function AdminDashboard() {
       label: "Utilisateurs inscrits",
       value: stats.totalUsers,
       icon: "group",
-      color: "bg-[#e1e0ff] text-[#15157d]",
+      color: "bg-[#e1e0ff] text-[#2f6fb8]",
       href: "/admin/users",
     },
     {
@@ -99,7 +99,7 @@ export default async function AdminDashboard() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#eceef0]">
             <h2 className="font-bold text-[#191c1e]">Annonces en attente</h2>
-            <Link href="/admin/listings?status=PENDING" className="text-xs text-[#15157d] font-semibold hover:underline">
+            <Link href="/admin/listings?status=PENDING" className="text-xs text-[#2f6fb8] font-semibold hover:underline">
               Voir tout →
             </Link>
           </div>
@@ -140,7 +140,7 @@ export default async function AdminDashboard() {
                     </div>
                     <Link
                       href="/admin/listings?status=PENDING"
-                      className="text-xs font-semibold text-[#15157d] bg-[#e1e0ff] px-3 py-1 rounded-full hover:bg-[#15157d] hover:text-white transition-colors flex-shrink-0"
+                      className="text-xs font-semibold text-[#2f6fb8] bg-[#e1e0ff] px-3 py-1 rounded-full hover:bg-[#2f6fb8] hover:text-white transition-colors flex-shrink-0"
                     >
                       Modérer
                     </Link>
@@ -186,10 +186,10 @@ export default async function AdminDashboard() {
               className="flex items-center justify-between bg-[#f2f4f6] hover:bg-[#e1e0ff] transition-colors rounded-xl px-4 py-3 group"
             >
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-[#15157d]" style={{ fontVariationSettings: "'FILL' 1" }}>campaign</span>
-                <span className="text-sm font-semibold text-[#15157d]">{stats.totalAds} pub{stats.totalAds !== 1 ? "s" : ""} active{stats.totalAds !== 1 ? "s" : ""}</span>
+                <span className="material-symbols-outlined text-[18px] text-[#2f6fb8]" style={{ fontVariationSettings: "'FILL' 1" }}>campaign</span>
+                <span className="text-sm font-semibold text-[#2f6fb8]">{stats.totalAds} pub{stats.totalAds !== 1 ? "s" : ""} active{stats.totalAds !== 1 ? "s" : ""}</span>
               </div>
-              <span className="material-symbols-outlined text-[16px] text-[#15157d] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+              <span className="material-symbols-outlined text-[16px] text-[#2f6fb8] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
             </Link>
           </div>
         </div>

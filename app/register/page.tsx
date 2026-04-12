@@ -35,7 +35,7 @@ export default function RegisterPage() {
     <div className="bg-surface text-on-surface min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-extrabold text-primary tracking-tighter font-['Manrope'] mb-2">PrèsDeToi</h1>
+          <img src="/logo.png" alt="Le Bon Deal" className="h-16 w-auto mx-auto mb-2" />
           <p className="text-on-surface-variant">Créez votre compte</p>
         </div>
         <div className="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_16px_32px_rgba(21,21,125,0.06)]">

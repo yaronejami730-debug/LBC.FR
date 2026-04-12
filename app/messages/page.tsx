@@ -38,7 +38,7 @@ export default async function MessagesPage() {
         <div className="mb-8 px-2 flex items-end justify-between">
           <div>
             <span className="text-primary font-bold uppercase tracking-[0.15em] text-[10px] mb-1 block">Votre centre de</span>
-            <h2 className="text-4xl font-black text-[#15157d] tracking-tighter">Messages</h2>
+            <h2 className="text-4xl font-black text-[#2f6fb8] tracking-tighter">Messages</h2>
           </div>
           <div className="hidden md:block">
             <p className="text-slate-400 text-sm font-medium">Gestion des conversations directes</p>
@@ -52,9 +52,9 @@ export default async function MessagesPage() {
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="material-symbols-outlined text-4xl text-slate-300">chat_bubble</span>
               </div>
-              <p className="text-xl font-bold text-[#15157d]">On se sent un peu seul ?</p>
+              <p className="text-xl font-bold text-[#2f6fb8]">On se sent un peu seul ?</p>
               <p className="text-slate-500 text-sm mt-2 mb-8">Commencez par contacter un vendeur depuis une annonce.</p>
-              <Link href="/search" className="px-8 py-3.5 bg-[#15157d] text-white rounded-full font-bold text-sm shadow-xl shadow-[#15157d]/20 active:scale-95 transition-transform">Explorer les annonces</Link>
+              <Link href="/search" className="px-8 py-3.5 bg-[#2f6fb8] text-white rounded-full font-bold text-sm shadow-xl shadow-[#2f6fb8]/20 active:scale-95 transition-transform">Explorer les annonces</Link>
             </div>
           ) : (
             conversations.map((conv) => {
@@ -89,7 +89,7 @@ export default async function MessagesPage() {
                   <div className="flex-1 min-w-0 py-1">
                     <div className="flex justify-between items-center mb-0.5">
                       <div className="flex items-center gap-1.5">
-                        <h3 className={`font-bold truncate text-[15px] ${unread ? "text-[#15157d]" : "text-slate-700"}`}>
+                        <h3 className={`font-bold truncate text-[15px] ${unread ? "text-[#2f6fb8]" : "text-slate-700"}`}>
                           {otherParticipant?.user.name || "Unknown"}
                         </h3>
                         {otherParticipant?.user.verified && (

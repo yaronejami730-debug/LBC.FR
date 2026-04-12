@@ -319,12 +319,12 @@ export default async function ListingPage({
                   {responseTime && (
                     <div className="bg-slate-50 p-3 rounded-xl text-center">
                       <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter text-slate-500">Réponse moyenne</span>
-                      <span className="text-[#15157d] font-bold text-sm">{responseTime}</span>
+                      <span className="text-[#2f6fb8] font-bold text-sm">{responseTime}</span>
                     </div>
                   )}
                   <div className="bg-slate-50 p-3 rounded-xl text-center">
                     <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter text-slate-500">Membre depuis</span>
-                    <span className="text-[#15157d] font-bold text-sm">{listing.user.memberSince}</span>
+                    <span className="text-[#2f6fb8] font-bold text-sm">{listing.user.memberSince}</span>
                   </div>
                 </div>
 

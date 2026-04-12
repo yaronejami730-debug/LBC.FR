@@ -51,7 +51,7 @@ export default function ListingActions({ listingId, status }: Props) {
               });
             }}
             disabled={isPending}
-            className="text-[10px] text-[#777683] hover:text-[#15157d] underline underline-offset-2 disabled:opacity-50"
+            className="text-[10px] text-[#777683] hover:text-[#2f6fb8] underline underline-offset-2 disabled:opacity-50"
           >
             {isPending ? "…" : status === "APPROVED" ? "Retirer" : "Restaurer"}
           </button>

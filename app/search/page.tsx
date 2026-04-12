@@ -125,7 +125,7 @@ export default async function SearchPage({
                     >
                       <div className="relative aspect-square overflow-hidden bg-surface-container-low">
                         <img alt={ad.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={ad.imageUrl} />
-                        <span className="absolute top-2 left-2 bg-[#15157d] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                           Publicité
                         </span>
                       </div>

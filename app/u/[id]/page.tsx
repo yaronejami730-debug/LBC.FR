@@ -44,7 +44,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                 <span className="text-2xl font-bold text-outline">{initials}</span>
               )}
             </div>
-            <h2 className="text-2xl font-extrabold text-[#15157d] font-['Manrope']">{user.name}</h2>
+            <h2 className="text-2xl font-extrabold text-[#2f6fb8] font-['Manrope']">{user.name}</h2>
             {user.verified && (
               <div className="flex items-center gap-1.5 text-[#00a67e] font-bold text-xs mt-2 bg-[#e6fcf5] px-3 py-1 rounded-full uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
@@ -56,18 +56,18 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
               {responseTime && (
                 <div className="bg-slate-50 p-4 rounded-2xl text-center">
                   <span className="block text-outline text-[10px] uppercase font-bold tracking-widest mb-1">Temps de réponse</span>
-                  <span className="text-[#15157d] font-bold text-lg">{responseTime}</span>
+                  <span className="text-[#2f6fb8] font-bold text-lg">{responseTime}</span>
                 </div>
               )}
               <div className="bg-slate-50 p-4 rounded-2xl text-center">
                 <span className="block text-outline text-[10px] uppercase font-bold tracking-widest mb-1">Membre depuis</span>
-                <span className="text-[#15157d] font-bold text-lg">{user.memberSince}</span>
+                <span className="text-[#2f6fb8] font-bold text-lg">{user.memberSince}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <h3 className="text-xl font-extrabold text-[#15157d] font-['Manrope'] mb-6 flex items-center gap-2">
+        <h3 className="text-xl font-extrabold text-[#2f6fb8] font-['Manrope'] mb-6 flex items-center gap-2">
           Annonces en ligne
           <span className="text-sm font-medium text-outline">({user.listings.length})</span>
         </h3>
@@ -102,7 +102,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                     )}
                   </div>
                   <div className="p-4">
-                    <p className="text-[#15157d] font-bold text-sm leading-tight line-clamp-2 h-10">{listing.title}</p>
+                    <p className="text-[#2f6fb8] font-bold text-sm leading-tight line-clamp-2 h-10">{listing.title}</p>
                     <p className="text-primary font-black text-lg mt-2">{listing.price.toLocaleString("fr-FR")} €</p>
                     <div className="flex items-center gap-1.5 mt-2 text-outline text-[11px] font-medium">
                       <span className="material-symbols-outlined text-xs">location_on</span>

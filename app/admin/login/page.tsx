@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#15157d] mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#2f6fb8] mb-4">
             <span
               className="material-symbols-outlined text-white text-3xl"
               style={{ fontVariationSettings: "'FILL' 1" }}
@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
           <h1 className="text-2xl font-extrabold text-white tracking-tight font-['Manrope']">
             Administration
           </h1>
-          <p className="text-[#6b7280] text-sm mt-1">PrèsDeToi — accès restreint</p>
+          <p className="text-[#6b7280] text-sm mt-1">Le Bon Deal — accès restreint</p>
         </div>
 
         {/* Card */}
@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
                 type="email"
                 required
                 autoComplete="email"
-                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder:text-[#4b5563] focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d] outline-none transition-colors"
+                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder:text-[#4b5563] focus:border-[#2f6fb8] focus:ring-1 focus:ring-[#2f6fb8] outline-none transition-colors"
                 placeholder="admin@presdetoi.fr"
               />
             </div>
@@ -89,7 +89,7 @@ export default function AdminLoginPage() {
                 type="password"
                 required
                 autoComplete="current-password"
-                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder:text-[#4b5563] focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d] outline-none transition-colors"
+                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-4 py-3 text-white placeholder:text-[#4b5563] focus:border-[#2f6fb8] focus:ring-1 focus:ring-[#2f6fb8] outline-none transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -109,7 +109,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#15157d] hover:bg-[#1e1eaa] text-white font-bold py-3.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
+              className="w-full bg-[#2f6fb8] hover:bg-[#1a5a9e] text-white font-bold py-3.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
             >
               {loading ? (
                 <>

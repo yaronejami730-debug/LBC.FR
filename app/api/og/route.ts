@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; PrèsDeToi/1.0; +https://presdetoi.fr)",
+        "User-Agent": "Mozilla/5.0 (compatible; LeBonDeal/1.0; +https://lebondeal.fr)",
         Accept: "text/html",
       },
       signal: AbortSignal.timeout(8000),

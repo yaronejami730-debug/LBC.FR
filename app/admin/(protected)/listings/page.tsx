@@ -45,7 +45,7 @@ export default async function ListingsPage({
             href={`/admin/listings?status=${opt.value}`}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               status === opt.value
-                ? "bg-[#15157d] text-white shadow-sm"
+                ? "bg-[#2f6fb8] text-white shadow-sm"
                 : "text-[#464652] hover:bg-[#f2f4f6]"
             }`}
           >
@@ -110,7 +110,7 @@ export default async function ListingsPage({
                           <Link
                             href={`/listing/${listing.id}`}
                             target="_blank"
-                            className="text-[10px] text-[#15157d] hover:underline flex items-center gap-0.5 mt-0.5"
+                            className="text-[10px] text-[#2f6fb8] hover:underline flex items-center gap-0.5 mt-0.5"
                           >
                             <span className="material-symbols-outlined text-[11px]">open_in_new</span>
                             Voir
@@ -141,7 +141,7 @@ export default async function ListingsPage({
 
                     {/* Price */}
                     <td className="px-4 py-3">
-                      <span className="text-sm font-bold text-[#15157d]">
+                      <span className="text-sm font-bold text-[#2f6fb8]">
                         {listing.price.toLocaleString("fr-FR")} €
                       </span>
                     </td>

@@ -62,7 +62,7 @@ export default function UserActions({ userId, verified }: Props) {
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Note (optionnel)"
-              className="text-xs border border-[#c7c5d4] rounded-lg px-2 py-1 w-36 outline-none focus:border-[#15157d]"
+              className="text-xs border border-[#c7c5d4] rounded-lg px-2 py-1 w-36 outline-none focus:border-[#2f6fb8]"
             />
             <button
               onClick={handleReject}

@@ -13,17 +13,17 @@ export default function AdminMobileHeader({ adminName }: { adminName: string }) 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsOpen(true)}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all text-[#15157d]"
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all text-[#2f6fb8]"
           >
             <span className="material-symbols-outlined text-2xl">menu</span>
           </button>
-          <Link href="/admin" className="font-black text-[#15157d] text-lg tracking-tight font-headline">
+          <Link href="/admin" className="font-black text-[#2f6fb8] text-lg tracking-tight font-headline">
             Admin
           </Link>
         </div>
         
-        <div className="w-8 h-8 rounded-full bg-[#15157d]/10 flex items-center justify-center border border-[#15157d]/10">
-          <span className="material-symbols-outlined text-base text-[#15157d]">person</span>
+        <div className="w-8 h-8 rounded-full bg-[#2f6fb8]/10 flex items-center justify-center border border-[#2f6fb8]/10">
+          <span className="material-symbols-outlined text-base text-[#2f6fb8]">person</span>
         </div>
       </header>
 

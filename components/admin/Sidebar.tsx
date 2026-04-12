@@ -20,14 +20,14 @@ export default function AdminSidebar({ adminName, isMobile, onClose }: { adminNa
       {/* Brand */}
       <div className="px-6 py-6 border-b border-[#eceef0] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#15157d] to-[#252595] flex items-center justify-center shadow-lg shadow-[#15157d]/20">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2f6fb8] to-[#1a5a9e] flex items-center justify-center shadow-lg shadow-[#2f6fb8]/20">
             <span className="material-symbols-outlined text-white text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               shield_person
             </span>
           </div>
           <div>
-            <p className="font-black text-[#15157d] text-base leading-none tracking-tight font-headline">Admin</p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">PrèsDeToi</p>
+            <p className="font-black text-[#2f6fb8] text-base leading-none tracking-tight font-headline">Admin</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Le Bon Deal</p>
           </div>
         </div>
         {isMobile && (
@@ -49,12 +49,12 @@ export default function AdminSidebar({ adminName, isMobile, onClose }: { adminNa
               onClick={onClose}
               className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-[15px] font-bold transition-all group ${
                 isActive
-                  ? "bg-[#15157d] text-white shadow-xl shadow-[#15157d]/15 scale-[1.02]"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-[#15157d] active:scale-95"
+                  ? "bg-[#2f6fb8] text-white shadow-xl shadow-[#2f6fb8]/15 scale-[1.02]"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-[#2f6fb8] active:scale-95"
               }`}
             >
               <span
-                className={`material-symbols-outlined text-xl transition-transform group-hover:scale-110 ${isActive ? "" : "text-slate-400 group-hover:text-[#15157d]"}`}
+                className={`material-symbols-outlined text-xl transition-transform group-hover:scale-110 ${isActive ? "" : "text-slate-400 group-hover:text-[#2f6fb8]"}`}
                 style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
               >
                 {icon}
@@ -72,17 +72,17 @@ export default function AdminSidebar({ adminName, isMobile, onClose }: { adminNa
       <div className="p-4 bg-slate-50/50 border-t border-[#eceef0] space-y-2">
         <Link
           href="/"
-          className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:text-[#15157d] hover:shadow-sm transition-all active:scale-95"
+          className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold text-slate-600 hover:bg-white hover:text-[#2f6fb8] hover:shadow-sm transition-all active:scale-95"
         >
           <span className="material-symbols-outlined text-lg">open_in_new</span>
           Voir le site
         </Link>
         <div className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-white border border-[#eceef0] shadow-sm">
-          <div className="w-10 h-10 rounded-full bg-[#15157d]/5 flex items-center justify-center flex-shrink-0 border border-[#15157d]/10">
-            <span className="material-symbols-outlined text-xl text-[#15157d]">person_filled</span>
+          <div className="w-10 h-10 rounded-full bg-[#2f6fb8]/5 flex items-center justify-center flex-shrink-0 border border-[#2f6fb8]/10">
+            <span className="material-symbols-outlined text-xl text-[#2f6fb8]">person_filled</span>
           </div>
           <div className="flex-1 min-w-0 mr-2">
-            <p className="text-sm font-black text-[#15157d] truncate leading-tight">{adminName}</p>
+            <p className="text-sm font-black text-[#2f6fb8] truncate leading-tight">{adminName}</p>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Super Admin</p>
           </div>
           <button

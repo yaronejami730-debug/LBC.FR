@@ -18,10 +18,10 @@ export default async function AdsPage() {
 
       {/* How it works */}
       <div className="bg-[#e1e0ff] rounded-2xl px-5 py-4 flex items-start gap-3">
-        <span className="material-symbols-outlined text-[#15157d] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
-        <div className="text-sm text-[#15157d]">
+        <span className="material-symbols-outlined text-[#2f6fb8] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+        <div className="text-sm text-[#2f6fb8]">
           <p className="font-semibold mb-0.5">Intégration native</p>
-          <p className="text-[#2e3192] text-xs leading-relaxed">
+          <p className="text-[#1a5a9e] text-xs leading-relaxed">
             Chaque publicité s&apos;affiche comme une annonce classique avec un badge <strong>&quot;Publicité&quot;</strong>.
             Au clic, l&apos;utilisateur est redirigé vers l&apos;URL de destination. Aucune bannière intrusive.
           </p>

@@ -30,7 +30,7 @@ export default function BottomNav({ active }: { active?: string }) {
             key={key}
             href={href}
             className={`flex flex-col items-center justify-center px-3 py-1 transition-all ${
-              isActive ? "text-[#15157d] font-bold bg-[#d5e3fc]/30 rounded-xl" : "text-slate-400 hover:text-[#15157d]"
+              isActive ? "text-[#2f6fb8] font-bold bg-[#d5e3fc]/30 rounded-xl" : "text-slate-400 hover:text-[#2f6fb8]"
             }`}
           >
             <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>
@@ -61,7 +61,7 @@ export default function BottomNav({ active }: { active?: string }) {
               key={key}
               href={href}
               className={`flex flex-col items-center justify-center px-3 py-1 transition-all ${
-                isActive ? "text-[#15157d] font-bold bg-[#d5e3fc]/30 rounded-xl" : "text-slate-400 hover:text-[#15157d]"
+                isActive ? "text-[#2f6fb8] font-bold bg-[#d5e3fc]/30 rounded-xl" : "text-slate-400 hover:text-[#2f6fb8]"
               }`}
             >
               <span

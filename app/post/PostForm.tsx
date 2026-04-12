@@ -175,7 +175,7 @@ export default function PostForm() {
             <Link href="/" className="text-primary active:scale-95 transition-transform p-2 hover:bg-slate-50 rounded-full">
               <span className="material-symbols-outlined">close</span>
             </Link>
-            <h1 className="text-2xl font-extrabold text-primary tracking-tighter font-['Manrope']">PrèsDeToi</h1>
+            <img src="/logo.png" alt="Le Bon Deal" className="h-12 w-auto" />
           </div>
           <span className="font-['Manrope'] font-bold text-base tracking-tight text-primary">Nouvelle annonce</span>
         </div>

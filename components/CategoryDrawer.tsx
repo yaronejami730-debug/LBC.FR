@@ -11,7 +11,7 @@ export default function CategoryDrawer() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="mr-3 p-2 rounded-full hover:bg-slate-100 transition-colors text-[#15157d] active:scale-95"
+        className="mr-3 p-2 rounded-full hover:bg-slate-100 transition-colors text-[#2f6fb8] active:scale-95"
         aria-label="Menu des catégories"
       >
         <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 600" }}>menu</span>
@@ -35,7 +35,7 @@ export default function CategoryDrawer() {
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-[#15157d] tracking-tight">Catégories</h2>
+              <h2 className="text-xl font-black text-[#2f6fb8] tracking-tight">Catégories</h2>
               <p className="text-xs text-slate-400 font-medium">Parcourez nos univers</p>
             </div>
             <button
@@ -60,7 +60,7 @@ export default function CategoryDrawer() {
                     <span className="material-symbols-outlined text-2xl">{cat.icon}</span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-bold text-[#15157d] text-[15px]">{cat.label}</p>
+                    <p className="font-bold text-[#2f6fb8] text-[15px]">{cat.label}</p>
                     <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">
                       {cat.subcategories.slice(0, 3).join(", ")}...
                     </p>
@@ -76,7 +76,7 @@ export default function CategoryDrawer() {
             <Link 
               href="/post" 
               onClick={() => setIsOpen(false)}
-              className="w-full py-4 bg-[#15157d] text-white rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-[#15157d]/20 active:scale-95 transition-all"
+              className="w-full py-4 bg-[#2f6fb8] text-white rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-[#2f6fb8]/20 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-sm">add_circle</span>
               Déposer une annonce

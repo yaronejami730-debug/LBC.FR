@@ -110,7 +110,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
         <p className="text-sm text-[#777683]">{ads.length} publicité{ads.length !== 1 ? "s" : ""} au total</p>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center gap-2 bg-[#15157d] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#2e3192] transition-colors active:scale-95"
+          className="inline-flex items-center gap-2 bg-[#2f6fb8] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#1a5a9e] transition-colors active:scale-95"
         >
           <span className="material-symbols-outlined text-[18px]">{open ? "close" : "add"}</span>
           {open ? "Annuler" : "Nouvelle publicité"}
@@ -139,16 +139,16 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
                   value={destUrl}
                   onChange={(e) => setDestUrl(e.target.value)}
                   placeholder="https://partenaire.com"
-                  className="flex-1 text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20"
+                  className="flex-1 text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#2f6fb8] focus:ring-1 focus:ring-[#2f6fb8]/20"
                 />
                 <button
                   type="button"
                   onClick={fetchOgData}
                   disabled={ogLoading || !destUrl}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-[#e1e0ff] text-[#15157d] text-xs font-bold rounded-xl hover:bg-[#c7c5ff] transition-colors disabled:opacity-50 whitespace-nowrap"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-[#e1e0ff] text-[#2f6fb8] text-xs font-bold rounded-xl hover:bg-[#c7c5ff] transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   {ogLoading ? (
-                    <span className="w-4 h-4 border-2 border-[#15157d]/30 border-t-[#15157d] rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-[#2f6fb8]/30 border-t-[#2f6fb8] rounded-full animate-spin" />
                   ) : (
                     <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
                   )}
@@ -165,7 +165,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex: Découvrez notre partenaire"
-                className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20"
+                className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#2f6fb8] focus:ring-1 focus:ring-[#2f6fb8]/20"
               />
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-                  isDragging ? "border-[#15157d] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#15157d] hover:bg-[#f7f7ff]"
+                  isDragging ? "border-[#2f6fb8] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#2f6fb8] hover:bg-[#f7f7ff]"
                 }`}
               >
                 {isUploading ? (
@@ -200,7 +200,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
                     <span className="material-symbols-outlined text-4xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
                     <p className="text-sm text-[#777683] mt-2">
                       Glisser-déposer une image ici ou{" "}
-                      <span className="text-[#15157d] font-semibold">parcourir</span>
+                      <span className="text-[#2f6fb8] font-semibold">parcourir</span>
                     </p>
                     <p className="text-xs text-[#aaa9b8] mt-1">PNG, JPG, WEBP acceptés</p>
                   </>
@@ -224,7 +224,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Courte accroche visible sur la carte"
-              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20 resize-none"
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#2f6fb8] focus:ring-1 focus:ring-[#2f6fb8]/20 resize-none"
             />
           </div>
           <div className="flex justify-end gap-3">
@@ -238,7 +238,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
             <button
               type="submit"
               disabled={isPending}
-              className="text-sm bg-[#15157d] text-white font-semibold px-6 py-2 rounded-xl hover:bg-[#2e3192] transition-colors disabled:opacity-60 active:scale-95"
+              className="text-sm bg-[#2f6fb8] text-white font-semibold px-6 py-2 rounded-xl hover:bg-[#1a5a9e] transition-colors disabled:opacity-60 active:scale-95"
             >
               {isPending ? "Création…" : "Créer la publicité"}
             </button>
@@ -331,7 +331,7 @@ function AdCard({
       {/* Image + badge */}
       <div className="relative aspect-video overflow-hidden bg-[#f2f4f6]">
         <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
-        <span className="absolute top-2 left-2 bg-[#15157d] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+        <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
           Publicité
         </span>
         {!ad.isActive && (
@@ -349,7 +349,7 @@ function AdCard({
           href={ad.destinationUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[10px] text-[#15157d] font-semibold flex items-center gap-1 hover:underline"
+          className="text-[10px] text-[#2f6fb8] font-semibold flex items-center gap-1 hover:underline"
         >
           <span className="material-symbols-outlined text-[12px]">link</span>
           {ad.destinationUrl.replace(/^https?:\/\//, "").slice(0, 35)}…
@@ -371,7 +371,7 @@ function AdCard({
         <button
           onClick={() => { setEditing((v) => !v); setEditError(""); }}
           disabled={isPending}
-          className="flex-1 text-xs font-semibold py-1.5 rounded-lg bg-[#e1e0ff] text-[#15157d] hover:bg-[#c7c5ff] transition-colors disabled:opacity-50"
+          className="flex-1 text-xs font-semibold py-1.5 rounded-lg bg-[#e1e0ff] text-[#2f6fb8] hover:bg-[#c7c5ff] transition-colors disabled:opacity-50"
         >
           <span className="inline-flex items-center gap-1 justify-center">
             <span className="material-symbols-outlined text-[14px]">edit</span>
@@ -401,17 +401,17 @@ function AdCard({
           <div className="space-y-1">
             <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Titre</label>
             <input name="title" defaultValue={ad.title} required
-              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#15157d]" />
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8]" />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">URL destination</label>
             <input name="destinationUrl" type="url" defaultValue={ad.destinationUrl} required
-              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#15157d]" />
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8]" />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Description</label>
             <textarea name="description" defaultValue={ad.description} required rows={2}
-              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#15157d] resize-none" />
+              className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8] resize-none" />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Image</label>
@@ -430,12 +430,12 @@ function AdCard({
                 onDragLeave={() => setEditIsDragging(false)}
                 onDrop={(e) => { e.preventDefault(); setEditIsDragging(false); const f = e.dataTransfer.files[0]; if (f) uploadEditFile(f); }}
                 onClick={() => editFileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${editIsDragging ? "border-[#15157d] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#15157d]"}`}
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${editIsDragging ? "border-[#2f6fb8] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#2f6fb8]"}`}
               >
                 {editIsUploading ? <p className="text-sm text-[#777683]">Chargement…</p> : (
                   <>
                     <span className="material-symbols-outlined text-3xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
-                    <p className="text-xs text-[#777683] mt-1">Glisser-déposer ou <span className="text-[#15157d] font-semibold">parcourir</span></p>
+                    <p className="text-xs text-[#777683] mt-1">Glisser-déposer ou <span className="text-[#2f6fb8] font-semibold">parcourir</span></p>
                   </>
                 )}
               </div>
@@ -444,7 +444,7 @@ function AdCard({
               onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadEditFile(f); }} />
           </div>
           <button type="submit" disabled={isPending}
-            className="w-full text-sm bg-[#15157d] text-white font-semibold py-2 rounded-xl hover:bg-[#2e3192] transition-colors disabled:opacity-60">
+            className="w-full text-sm bg-[#2f6fb8] text-white font-semibold py-2 rounded-xl hover:bg-[#1a5a9e] transition-colors disabled:opacity-60">
             {isPending ? "Enregistrement…" : "Enregistrer les modifications"}
           </button>
         </form>

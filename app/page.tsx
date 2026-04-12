@@ -25,7 +25,7 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero / Search Section */}
-      <header className="pt-28 pb-12 px-6 max-w-7xl mx-auto">
+      <header className="pt-32 pb-12 px-6 max-w-7xl mx-auto">
         <div className="relative bg-primary-container bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 md:p-16 overflow-hidden">
           <div className="relative z-10 max-w-2xl">
             <h2 className="text-white text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
@@ -88,7 +88,7 @@ export default async function Home() {
           >
             <div className="relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-surface-container-low">
               <img src={ads[0].imageUrl} alt={ads[0].title} className="w-full h-full object-cover" />
-              <span className="absolute top-1 left-1 bg-[#15157d] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">Pub</span>
+              <span className="absolute top-1 left-1 bg-[#2f6fb8] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">Pub</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm text-on-surface line-clamp-1">{ads[0].title}</p>
@@ -125,7 +125,7 @@ export default async function Home() {
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
                       <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={ad.title} src={ad.imageUrl} />
-                      <span className="absolute top-2 left-2 bg-[#15157d] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                      <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                         Publicité
                       </span>
                     </div>

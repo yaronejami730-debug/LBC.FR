@@ -18,8 +18,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "PrèsDeToi — Achetez et vendez près de chez vous",
-  description: "PrèsDeToi, la plateforme pour acheter et vendre en toute confiance près de chez vous",
+  title: "Le Bon Deal — Achetez et vendez près de chez vous",
+  description: "Le Bon Deal, la plateforme pour acheter et vendre en toute confiance près de chez vous",
 };
 
 export const viewport = {
