@@ -25,7 +25,8 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero / Search Section */}
-      <header className="pt-32 pb-12 px-6 max-w-7xl mx-auto">
+      <header className="pt-32 pb-6 px-6 max-w-7xl mx-auto">
+
         <div className="relative bg-primary-container bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 md:p-16 overflow-hidden">
           <div className="relative z-10 max-w-2xl">
             <h2 className="text-white text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
@@ -48,7 +49,7 @@ export default async function Home() {
       </header>
 
       {/* Categories: Bento Style */}
-      <section className="px-6 py-8 max-w-7xl mx-auto">
+      <section className="px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-end justify-between mb-8">
           <div>
             <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">Explorer par</span>
@@ -172,7 +173,7 @@ export default async function Home() {
       <BottomNav active="accueil" />
 
       {/* FAB for Desktop Post */}
-      <Link href="/post" className="hidden md:flex fixed bottom-8 right-8 bg-tertiary-fixed text-on-tertiary-fixed px-6 py-4 rounded-full font-bold shadow-xl items-center gap-2 active:scale-95 transition-transform z-50">
+      <Link href="/post" className="hidden md:flex fixed bottom-8 right-8 bg-primary text-white px-6 py-4 rounded-full font-bold shadow-xl items-center gap-2 active:scale-95 transition-transform z-50">
         <span className="material-symbols-outlined">add</span>
         Déposer une annonce
       </Link>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { CATEGORIES } from "@/lib/categories";
+import { detectCategory } from "@/lib/autoCategory";
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
@@ -45,6 +46,8 @@ export default function PostForm() {
   const [publishing, setPublishing] = useState(false);
   const [photoPaywall, setPhotoPaywall] = useState(false); // show upsell when > 3 photos
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [autoDetected, setAutoDetected] = useState(false); // true when category was auto-set
+  const [userPickedCategory, setUserPickedCategory] = useState(false); // true when user manually picked
   const [vehicle, setVehicle] = useState<VehicleFields>({
     marque: "", modele: "", annee: "", kilometrage: "",
     carburant: "Essence", transmission: "Manuelle",
@@ -329,10 +332,31 @@ export default function PostForm() {
             {/* Titre */}
             <div className="space-y-1">
               <label className="block text-xs font-bold text-primary tracking-widest uppercase">Titre</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)}
+              <input
+                value={title}
+                onChange={(e) => {
+                  const newTitle = e.target.value;
+                  setTitle(newTitle);
+                  if (!userPickedCategory) {
+                    const match = detectCategory(newTitle);
+                    if (match) {
+                      setCategoryId(match.categoryId);
+                      setSubcategory(match.subcategory);
+                      setAutoDetected(true);
+                    } else {
+                      setAutoDetected(false);
+                    }
+                  }
+                }}
                 className="w-full bg-transparent border-none p-0 text-2xl font-['Manrope'] font-semibold text-on-surface placeholder:text-outline-variant focus:ring-0 outline-none text-base"
                 placeholder="Que vendez-vous ?" type="text" />
               <div className="h-[2px] bg-surface-container" />
+              {autoDetected && (
+                <p className="text-[11px] text-primary flex items-center gap-1 pt-1">
+                  <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
+                  Catégorie détectée automatiquement
+                </p>
+              )}
             </div>
 
             {/* Prix */}
@@ -358,6 +382,8 @@ export default function PostForm() {
                     onClick={() => {
                       setCategoryId(cat.id);
                       setSubcategory(cat.subcategories[0]);
+                      setUserPickedCategory(true);
+                      setAutoDetected(false);
                     }}
                     className={`px-3 py-3 rounded-2xl flex flex-col items-center gap-2 transition-all border ${categoryId === cat.id ? "bg-primary/5 border-primary text-primary" : "bg-white border-slate-100 text-slate-500 hover:border-slate-300"}`}
                   >
