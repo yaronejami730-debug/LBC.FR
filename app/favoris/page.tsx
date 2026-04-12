@@ -26,7 +26,7 @@ export default async function FavoritesPage() {
     <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
       <Navbar active="favoris" />
 
-      <main className="pt-24 pb-10 px-4 max-w-3xl mx-auto">
+      <main className="pt-32 pb-10 px-4 max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-extrabold text-on-surface font-['Manrope']">Mes favoris</h1>
