@@ -12,6 +12,20 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log("Seeding database...");
 
+  // Create admin user
+  await prisma.user.upsert({
+    where: { email: "admin@presdetoi.fr" },
+    update: {},
+    create: {
+      email: "admin@presdetoi.fr",
+      password: await bcrypt.hash("admin1234!", 12),
+      name: "Admin",
+      role: "ADMIN",
+      verified: true,
+      memberSince: 2024,
+    },
+  });
+
   // Create users
   const alice = await prisma.user.upsert({
     where: { email: "alice@example.com" },
@@ -151,14 +165,15 @@ async function main() {
   ];
 
   for (const data of listings) {
-    await prisma.listing.create({ data });
+    await prisma.listing.create({ data: { ...data, status: "APPROVED" } });
   }
 
   console.log(`✓ Created ${listings.length} listings`);
-  console.log("✓ Created 3 users:");
-  console.log("  alice@example.com / password123");
-  console.log("  bob@example.com   / password123");
-  console.log("  carol@example.com / password123");
+  console.log("✓ Created 4 users:");
+  console.log("  admin@presdetoi.fr / admin1234!  (ADMIN)");
+  console.log("  alice@example.com  / password123");
+  console.log("  bob@example.com    / password123");
+  console.log("  carol@example.com  / password123");
   console.log("\nDatabase seeded successfully!");
 }
 

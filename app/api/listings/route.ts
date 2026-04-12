@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const perPage = 12;
 
   const where = {
+    status: "APPROVED",
     ...(q && {
       OR: [
         { title: { contains: q } },

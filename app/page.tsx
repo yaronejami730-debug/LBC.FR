@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 
 export default async function Home() {
   const listings = await prisma.listing.findMany({
+    where: { status: "APPROVED" },
     orderBy: { createdAt: "desc" },
     take: 8,
     include: { user: { select: { name: true, verified: true } } },

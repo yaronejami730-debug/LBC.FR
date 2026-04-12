@@ -12,3 +12,4 @@ tsconfig.tsbuildinfo
 dev.db
 
 /generated/prisma
+.vercel
