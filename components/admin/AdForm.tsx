@@ -21,8 +21,30 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
   const [preview, setPreview] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [destUrl, setDestUrl] = useState("");
+  const [ogLoading, setOgLoading] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function fetchOgData() {
+    if (!destUrl) return;
+    setOgLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/og?url=${encodeURIComponent(destUrl)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Impossible de récupérer les données");
+      if (data.title) setTitle(data.title);
+      if (data.description) setDescription(data.description);
+      if (data.imageUrl) { setImageUrl(data.imageUrl); setPreview(data.imageUrl); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de la récupération");
+    } finally {
+      setOgLoading(false);
+    }
+  }
 
   async function uploadFile(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -61,6 +83,9 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
     }
     const fd = new FormData(e.currentTarget);
     fd.set("imageUrl", imageUrl);
+    fd.set("title", title);
+    fd.set("description", description);
+    fd.set("destinationUrl", destUrl);
     setError("");
     startTransition(async () => {
       try {
@@ -68,6 +93,9 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
         formRef.current?.reset();
         setImageUrl("");
         setPreview("");
+        setDestUrl("");
+        setTitle("");
+        setDescription("");
         setOpen(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur");
@@ -100,23 +128,43 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
           {error && (
             <p className="text-xs text-[#ba1a1a] bg-[#ffdad6] px-3 py-2 rounded-lg">{error}</p>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">URL destination *</label>
+              <div className="flex gap-2">
+                <input
+                  name="destinationUrl"
+                  type="url"
+                  required
+                  value={destUrl}
+                  onChange={(e) => setDestUrl(e.target.value)}
+                  placeholder="https://partenaire.com"
+                  className="flex-1 text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20"
+                />
+                <button
+                  type="button"
+                  onClick={fetchOgData}
+                  disabled={ogLoading || !destUrl}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-[#e1e0ff] text-[#15157d] text-xs font-bold rounded-xl hover:bg-[#c7c5ff] transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  {ogLoading ? (
+                    <span className="w-4 h-4 border-2 border-[#15157d]/30 border-t-[#15157d] rounded-full animate-spin" />
+                  ) : (
+                    <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                  )}
+                  {ogLoading ? "Récupération…" : "Auto-remplir"}
+                </button>
+              </div>
+              <p className="text-[10px] text-[#9ca3af]">Colle l'URL puis clique sur Auto-remplir pour importer titre, description et image</p>
+            </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">Titre *</label>
               <input
                 name="title"
                 required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex: Découvrez notre partenaire"
-                className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">URL destination *</label>
-              <input
-                name="destinationUrl"
-                type="url"
-                required
-                placeholder="https://partenaire.com"
                 className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20"
               />
             </div>
@@ -173,6 +221,8 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
               name="description"
               required
               rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Courte accroche visible sur la carte"
               className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#15157d] focus:ring-1 focus:ring-[#15157d]/20 resize-none"
             />

@@ -66,7 +66,12 @@ export default async function ListingPage({
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-12">
       {/* Navbar (Share, Favorites) */}
-      <ListingHeader title={listing.title} url={listingUrl} />
+      <ListingHeader
+        title={listing.title}
+        listingId={listing.id}
+        userId={currentUserId}
+        initialFavorite={isFavorite}
+      />
 
       {/* Content Canvas */}
       <main className="pt-20 max-w-7xl mx-auto pb-12">
@@ -292,12 +297,7 @@ export default async function ListingPage({
                   <SellerActions listingId={listing.id} sellerId={listing.userId} />
                 )}
                 {isOwner && (
-                  <Link 
-                    href="/profile"
-                    className="w-full py-4 rounded-2xl bg-slate-100 text-[#15157d] font-bold text-sm hover:bg-slate-200 transition-all text-center block"
-                  >
-                    Mon profil
-                  </Link>
+                  <OwnerActions listingId={listing.id} />
                 )}
               </div>
 

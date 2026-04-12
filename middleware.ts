@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-const PROTECTED = ["/messages", "/profile", "/post"];
+const PROTECTED = ["/messages", "/profile", "/post", "/favorites"];
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
