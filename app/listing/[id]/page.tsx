@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
 import ContactButtons from "./ContactButtons";
+import ListingHeader from "./ListingHeader";
+import { getUserResponseTime } from "@/lib/user-stats";
 
 export default async function ListingPage({
   params,
@@ -26,13 +28,18 @@ export default async function ListingPage({
   const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
   const isAdmin = role === "ADMIN";
 
-  if (listing.deletedAt && !isAdmin) {
+  // Check if listing has been soft-deleted
+  const listingData = listing as any;
+  if (listingData.deletedAt && !isAdmin) {
     notFound();
   }
 
   if (listing.status !== "APPROVED" && !isOwner && !isAdmin) {
     notFound();
   }
+
+  // Fetch real stats
+  const responseTime = await getUserResponseTime(listing.userId);
 
   // Parse vehicle metadata
   let vehicleMeta: Record<string, string> = {};
@@ -46,23 +53,12 @@ export default async function ListingPage({
 
   const images = JSON.parse(listing.images) as string[];
   const mainImg = images[0] || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwwxQgv4rI6XClzhTLjkwXug8TYby1cyK7AgQhc4UpMdyrjwq4jRPQo_ZvL_7xvjhVSon_iJvztv0bdEqqiFX0CHRW9IDYjccZpyP4v8zoDq0pcj4RtADoGgiXgRyW1_sPXiKqwZz8D1UwMIYilwBQMOTHJ4RMQl9Rp4vFbK6a0UCsy93TZ3-DYA8qYhHPO4LhM2csSFfFLlOh2P8D7w00bjyGrSMRlGSvhxZrGjVcqJUJ2-2y9XbKHb7ww02PREvAIJO3_wJ41hV5";
+  const listingUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/listing/${listing.id}`;
 
   return (
     <div className="bg-surface text-on-surface mb-24">
-      {/* TopAppBar */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_16px_32px_rgba(21,21,125,0.06)]">
-        <div className="flex items-center justify-between px-6 py-4 w-full max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <Link href="/search" className="material-symbols-outlined text-[#15157d] dark:text-[#60fcc6] active:scale-95 transition-transform">arrow_back</Link>
-            <span className="font-['Manrope'] font-bold text-lg tracking-tight text-[#15157d] dark:text-[#60fcc6]">PrèsDeToi</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <button className="material-symbols-outlined text-[#15157d] dark:text-[#60fcc6] active:scale-95 transition-transform">share</button>
-            <button className="material-symbols-outlined text-[#15157d] dark:text-[#60fcc6] active:scale-95 transition-transform">favorite</button>
-          </div>
-        </div>
-        <div className="bg-slate-100/50 dark:bg-slate-800/50 h-[1px]"></div>
-      </nav>
+      {/* Navbar (Share, Favorites) */}
+      <ListingHeader title={listing.title} url={listingUrl} />
 
       {/* Content Canvas */}
       <main className="pt-20 max-w-7xl mx-auto">
@@ -207,13 +203,41 @@ export default async function ListingPage({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold tracking-tight">Localisation</h2>
-                <span className="text-primary font-semibold text-sm">{listing.location}</span>
-              </div>
-              <div className="h-48 rounded-2xl bg-slate-200 overflow-hidden relative flex items-center justify-center">
-                <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <span className="material-symbols-outlined text-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full">
+                  <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                  <span className="text-primary font-bold text-xs">{listing.location}</span>
                 </div>
-                <p className="absolute bottom-4 left-4 bg-white/90 px-3 py-1 rounded-full text-sm font-semibold text-on-surface">{listing.location}</p>
+              </div>
+              
+              <div className="h-64 rounded-3xl bg-surface-container-high overflow-hidden relative border border-outline-variant/10 shadow-inner group">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0, filter: "grayscale(0.2) contrast(1.1) brightness(0.95)" }}
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(listing.location)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                  className="absolute inset-0 z-0 group-hover:filter-none transition-all duration-700"
+                ></iframe>
+                
+                {/* Overlay gradient for premium feel */}
+                <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/20 via-transparent to-transparent z-10"></div>
+                
+                {/* Location Pill */}
+                <div className="absolute bottom-4 left-4 z-20 bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/20 flex items-center gap-2 transform group-hover:translate-y-[-2px] transition-transform duration-300">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                  <span className="text-sm font-extrabold text-[#15157d]">{listing.location}</span>
+                </div>
+
+                {/* Open in maps corner button */}
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.location)}`}
+                  target="_blank"
+                  className="absolute top-4 right-4 z-20 w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-xl">map</span>
+                </a>
               </div>
             </div>
           </div>
@@ -234,31 +258,29 @@ export default async function ListingPage({
                   <div>
                     <h3 className="font-bold text-lg text-on-surface">{listing.user.name}</h3>
                     {listing.user.verified && (
-                      <div className="flex items-center gap-1 text-on-tertiary-container font-semibold text-xs">
+                      <div className="flex items-center gap-1 text-[#00a67e] font-semibold text-xs mt-0.5">
                         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                         Vendeur vérifié
                       </div>
                     )}
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="material-symbols-outlined text-orange-400 text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      <span className="text-on-surface text-xs font-bold">4.9</span>
-                      <span className="text-outline text-xs">(128 reviews)</span>
-                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-surface-container-low p-3 rounded-xl text-center">
-                    <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter">Temps de réponse</span>
-                    <span className="text-on-surface font-bold text-sm">15 mins</span>
+                  <div className="bg-slate-50 p-3 rounded-xl text-center">
+                    <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter">Réponse moyenne</span>
+                    <span className="text-[#15157d] font-bold text-sm">{responseTime}</span>
                   </div>
-                  <div className="bg-surface-container-low p-3 rounded-xl text-center">
+                  <div className="bg-slate-50 p-3 rounded-xl text-center">
                     <span className="block text-outline text-[10px] uppercase font-bold tracking-tighter">Membre depuis</span>
-                    <span className="text-on-surface font-bold text-sm">{listing.user.memberSince}</span>
+                    <span className="text-[#15157d] font-bold text-sm">{listing.user.memberSince}</span>
                   </div>
                 </div>
-                <button className="w-full py-3 rounded-xl bg-surface-container-high text-primary font-bold text-sm hover:bg-primary/5 transition-colors">
+                <Link 
+                  href={`/u/${listing.userId}`}
+                  className="w-full py-3 rounded-xl bg-slate-100 text-[#15157d] font-bold text-sm hover:bg-primary/5 transition-colors text-center block"
+                >
                   Voir le profil
-                </button>
+                </Link>
               </div>
 
               {/* Conseil de sécurité */}
@@ -266,7 +288,7 @@ export default async function ListingPage({
                 <span className="material-symbols-outlined text-tertiary-fixed-dim">security</span>
                 <div>
                   <span className="block font-bold text-tertiary text-sm">Conseil de sécurité</span>
-                  <p className="text-on-surface-variant text-xs mt-1 leading-snug">Rencontrez-vous dans des lieux publics et ne payez jamais avant d'avoir vu l'article.</p>
+                  <p className="text-on-surface-variant text-xs mt-1 leading-snug">Rencontrez-vous dans des lieux publics et ne payez jamais avant d&apos;avoir vu l&apos;article.</p>
                 </div>
               </div>
             </div>
@@ -279,3 +301,5 @@ export default async function ListingPage({
     </div>
   );
 }
+
+

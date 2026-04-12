@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "db:migrate:deploy": "prisma migrate deploy",
     "start": "next start",
     "db:migrate": "prisma migrate dev --name init",
@@ -12,8 +12,6 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.2",
-    "@prisma/adapter-libsql": "^7.7.0",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "@tailwindcss/postcss": "^4.2.2",
