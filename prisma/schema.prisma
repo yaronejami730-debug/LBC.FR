@@ -100,5 +100,7 @@ model Advertisement {
   imageUrl       String
   destinationUrl String
   isActive       Boolean  @default(true)
+  clicks         Int      @default(0)
+  impressions    Int      @default(0)
   createdAt      DateTime @default(now())
 }

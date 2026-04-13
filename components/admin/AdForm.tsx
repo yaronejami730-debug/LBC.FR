@@ -10,6 +10,8 @@ type Ad = {
   imageUrl: string;
   destinationUrl: string;
   isActive: boolean;
+  clicks: number;
+  impressions: number;
   createdAt: Date;
 };
 
@@ -271,6 +273,62 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
   );
 }
 
+function StatsModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
+  const ctr = ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(1) : "0.0";
+  const daysActive = Math.max(1, Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / 86_400_000));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#eceef0]">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#2f6fb8] text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>bar_chart</span>
+            <h3 className="font-bold text-[#191c1e]">Statistiques</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-[#f2f4f6] flex items-center justify-center transition-colors">
+            <span className="material-symbols-outlined text-[#777683] text-lg">close</span>
+          </button>
+        </div>
+
+        {/* Ad title */}
+        <div className="px-5 pt-4 pb-2">
+          <p className="text-xs text-[#777683] font-semibold uppercase tracking-wide">Publicité</p>
+          <p className="font-bold text-[#191c1e] text-sm mt-0.5 line-clamp-1">{ad.title}</p>
+        </div>
+
+        {/* Stats grid */}
+        <div className="px-5 pb-5 grid grid-cols-2 gap-3 mt-2">
+          {[
+            { icon: "ads_click", label: "Clics", value: ad.clicks.toLocaleString("fr-FR"), color: "bg-[#e1e0ff] text-[#2f6fb8]" },
+            { icon: "visibility", label: "Impressions", value: ad.impressions.toLocaleString("fr-FR"), color: "bg-amber-100 text-amber-700" },
+            { icon: "percent", label: "Taux de clic", value: `${ctr}%`, color: "bg-emerald-100 text-emerald-700" },
+            { icon: "calendar_today", label: "Jours en ligne", value: `${daysActive}j`, color: "bg-[#d5e3fc] text-[#515f74]" },
+          ].map(({ icon, label, value, color }) => (
+            <div key={label} className="bg-[#f7f9fb] rounded-xl p-4">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color} mb-2`}>
+                <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+              </div>
+              <p className="text-xl font-extrabold text-[#191c1e] font-headline">{value}</p>
+              <p className="text-[11px] text-[#777683] mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Status */}
+        <div className="px-5 pb-5">
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-xl ${ad.isActive ? "bg-emerald-50 text-emerald-700" : "bg-[#f2f4f6] text-[#777683]"}`}>
+            <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              {ad.isActive ? "check_circle" : "cancel"}
+            </span>
+            <span className="text-sm font-semibold">{ad.isActive ? "Publicité active" : "Publicité désactivée"}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdCard({
   ad,
   isPending,
@@ -281,6 +339,7 @@ function AdCard({
   startTransition: ReturnType<typeof useTransition>[1];
 }) {
   const [editing, setEditing] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [editError, setEditError] = useState("");
   const [editImageUrl, setEditImageUrl] = useState(ad.imageUrl);
   const [editPreview, setEditPreview] = useState(ad.imageUrl);
@@ -357,42 +416,57 @@ function AdCard({
       </div>
 
       {/* Actions */}
-      <div className="px-4 pb-4 flex items-center gap-2">
-        <button
-          onClick={() => startTransition(async () => { await toggleAdStatus(ad.id, !ad.isActive); })}
-          disabled={isPending}
-          className={`text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors disabled:opacity-50 ${ad.isActive ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-[#f2f4f6] text-[#777683] hover:bg-[#eceef0]"}`}
-          title={ad.isActive ? "Désactiver" : "Activer"}
-        >
-          <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            {ad.isActive ? "toggle_on" : "toggle_off"}
-          </span>
-        </button>
-        <button
-          onClick={() => { setEditing((v) => !v); setEditError(""); }}
-          disabled={isPending}
-          className="flex-1 text-xs font-semibold py-1.5 rounded-lg bg-[#e1e0ff] text-[#2f6fb8] hover:bg-[#c7c5ff] transition-colors disabled:opacity-50"
-        >
-          <span className="inline-flex items-center gap-1 justify-center">
+      <div className="px-4 pb-4 space-y-2">
+        {/* Stats + Edit row */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowStats(true)}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl bg-[#f7f9fb] text-[#464652] hover:bg-[#eceef0] transition-colors border border-[#eceef0]"
+          >
+            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>bar_chart</span>
+            Voir les stats
+          </button>
+          <button
+            onClick={() => { setEditing((v) => !v); setEditError(""); }}
+            disabled={isPending}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl bg-[#e1e0ff] text-[#2f6fb8] hover:bg-[#c7c5ff] transition-colors disabled:opacity-50"
+          >
             <span className="material-symbols-outlined text-[14px]">edit</span>
             {editing ? "Annuler" : "Modifier"}
-          </span>
-        </button>
-        <button
-          onClick={() => {
-            if (confirm("Supprimer cette publicité ?")) {
-              startTransition(async () => {
-                try { await deleteAdvertisement(ad.id); }
-                catch { /* ignore */ }
-              });
-            }
-          }}
-          disabled={isPending}
-          className="text-xs font-semibold py-1.5 px-3 rounded-lg bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffb4ab] transition-colors disabled:opacity-50"
-        >
-          <span className="material-symbols-outlined text-[14px]">delete</span>
-        </button>
+          </button>
+        </div>
+        {/* Toggle + Delete row */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => startTransition(async () => { await toggleAdStatus(ad.id, !ad.isActive); })}
+            disabled={isPending}
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-50 ${ad.isActive ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-[#f2f4f6] text-[#777683] hover:bg-[#eceef0]"}`}
+          >
+            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              {ad.isActive ? "toggle_on" : "toggle_off"}
+            </span>
+            {ad.isActive ? "Active" : "Inactive"}
+          </button>
+          <button
+            onClick={() => {
+              if (confirm("Supprimer cette publicité ?")) {
+                startTransition(async () => {
+                  try { await deleteAdvertisement(ad.id); }
+                  catch { /* ignore */ }
+                });
+              }
+            }}
+            disabled={isPending}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffb4ab] transition-colors disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[14px]">delete</span>
+            Supprimer
+          </button>
+        </div>
       </div>
+
+      {/* Stats modal */}
+      {showStats && <StatsModal ad={ad} onClose={() => setShowStats(false)} />}
 
       {/* Inline edit form */}
       {editing && (

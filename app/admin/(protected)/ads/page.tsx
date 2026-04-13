@@ -4,6 +4,17 @@ import AdForm from "@/components/admin/AdForm";
 export default async function AdsPage() {
   const ads = await prisma.advertisement.findMany({
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      imageUrl: true,
+      destinationUrl: true,
+      isActive: true,
+      clicks: true,
+      impressions: true,
+      createdAt: true,
+    },
   });
 
   return (

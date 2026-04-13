@@ -18,11 +18,9 @@ export default function AdCarousel({ ads }: { ads: Ad[] }) {
     if (ads.length <= 1) return;
 
     const interval = setInterval(() => {
-      // Fade out
       setVisible(false);
       setTimeout(() => {
         setCurrent((prev) => (prev + 1) % ads.length);
-        // Fade in
         setVisible(true);
       }, 400);
     }, 10000);
@@ -30,9 +28,27 @@ export default function AdCarousel({ ads }: { ads: Ad[] }) {
     return () => clearInterval(interval);
   }, [ads.length]);
 
+  // Track impression when ad becomes visible
+  useEffect(() => {
+    if (!ads[current]?.id) return;
+    fetch("/api/ads/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: ads[current].id, type: "impression" }),
+    }).catch(() => {});
+  }, [current, ads]);
+
   if (!ads.length) return null;
 
   const ad = ads[current];
+
+  function handleClick() {
+    fetch("/api/ads/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: ad.id, type: "click" }),
+    }).catch(() => {});
+  }
 
   return (
     <section className="px-6 max-w-7xl mx-auto mb-2">
@@ -40,6 +56,7 @@ export default function AdCarousel({ ads }: { ads: Ad[] }) {
         href={ad.destinationUrl}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={handleClick}
         style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease" }}
         className="flex items-center gap-4 bg-white border border-[#c7c5d4] rounded-2xl p-3 hover:shadow-md transition-shadow"
       >
