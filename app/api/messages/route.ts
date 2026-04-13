@@ -8,10 +8,11 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const { searchParams } = new URL(req.url);
   const conversationId = searchParams.get("conversationId");
-  const afterId = searchParams.get("after"); // last known message ID
+  const afterId = searchParams.get("after");
 
   if (!conversationId) {
     return NextResponse.json({ error: "Missing conversationId" }, { status: 400 });
@@ -19,27 +20,32 @@ export async function GET(req: NextRequest) {
 
   // Verify participant
   const participant = await prisma.conversationParticipant.findUnique({
-    where: { userId_conversationId: { userId: session.user.id, conversationId } },
+    where: { userId_conversationId: { userId, conversationId } },
   });
   if (!participant) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Fetch messages newer than the last known one
-  let createdAfter: Date | undefined;
-  if (afterId) {
-    const ref = await prisma.message.findUnique({ where: { id: afterId }, select: { createdAt: true } });
-    if (ref) createdAfter = ref.createdAt;
-  }
-
+  // Cursor-based pagination by ID — no createdAt race condition
   const messages = await prisma.message.findMany({
-    where: {
-      conversationId,
-      ...(createdAfter ? { createdAt: { gt: createdAfter } } : {}),
-    },
+    where: { conversationId },
     orderBy: { createdAt: "asc" },
+    ...(afterId ? { cursor: { id: afterId }, skip: 1 } : {}),
     include: { sender: { select: { id: true, name: true, avatar: true } } },
   });
+
+  // Mark newly fetched messages from others as read
+  if (messages.length > 0) {
+    const unreadIds = messages
+      .filter((m) => m.senderId !== userId && !m.read)
+      .map((m) => m.id);
+    if (unreadIds.length > 0) {
+      await prisma.message.updateMany({
+        where: { id: { in: unreadIds } },
+        data: { read: true },
+      });
+    }
+  }
 
   return NextResponse.json(
     messages.map((m) => ({
@@ -65,7 +71,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Empty message" }, { status: 400 });
   }
 
-  // Verify user is a participant
+  // Verify participant
   const participant = await prisma.conversationParticipant.findUnique({
     where: {
       userId_conversationId: {
@@ -74,7 +80,6 @@ export async function POST(req: NextRequest) {
       },
     },
   });
-
   if (!participant) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -90,7 +95,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Update conversation updatedAt
   await prisma.conversation.update({
     where: { id: conversationId },
     data: { updatedAt: new Date() },
@@ -105,7 +109,6 @@ export async function POST(req: NextRequest) {
     createdAt: message.createdAt.toISOString(),
   };
 
-  // Broadcast to SSE listeners
   broadcast(conversationId, payload);
 
   return NextResponse.json(payload, { status: 201 });

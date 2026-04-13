@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 
 interface Message {
@@ -42,53 +42,84 @@ export default function ChatWindow({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Always holds the ID of the last known message — updated inline in setMessages
+  const lastIdRef = useRef<string | undefined>(
+    initialMessages[initialMessages.length - 1]?.id
+  );
 
-  // Scroll to bottom
-  function scrollToBottom(behavior: ScrollBehavior = "auto") {
-    bottomRef.current?.scrollIntoView({ behavior });
-  }
-
-  useEffect(() => {
-    scrollToBottom("auto");
+  // Reliable scroll: set scrollTop directly so it works before first paint
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (behavior === "auto") {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior });
+    }
   }, []);
 
+  // Initial scroll after DOM is painted
+  useEffect(() => {
+    // requestAnimationFrame ensures heights are computed
+    const raf = requestAnimationFrame(() => scrollToBottom("auto"));
+    return () => cancelAnimationFrame(raf);
+  }, [scrollToBottom]);
+
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     scrollToBottom("smooth");
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
-  // Sur iOS, quand le clavier apparaît, scroll to bottom
+  // iOS: scroll to bottom when keyboard opens
   useEffect(() => {
-    const input = document.querySelector("input[data-chat]") as HTMLInputElement;
+    const input = inputRef.current;
     if (!input) return;
     const onFocus = () => setTimeout(() => scrollToBottom("smooth"), 350);
     input.addEventListener("focus", onFocus);
     return () => input.removeEventListener("focus", onFocus);
-  }, []);
+  }, [scrollToBottom]);
 
-  // Poll toutes les 2 secondes
-  const lastIdRef = useRef<string | undefined>(
-    initialMessages[initialMessages.length - 1]?.id
-  );
+  // Polling — paused when tab is hidden
   useEffect(() => {
-    lastIdRef.current = messages[messages.length - 1]?.id;
-  }, [messages]);
+    let paused = false;
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
+    const poll = async () => {
+      if (paused) return;
       const after = lastIdRef.current ? `&after=${lastIdRef.current}` : "";
-      const res = await fetch(`/api/messages?conversationId=${conversationId}${after}`);
-      if (!res.ok) return;
-      const newMsgs: Message[] = await res.json();
-      if (newMsgs.length === 0) return;
-      setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const unique = newMsgs.filter((m) => !existingIds.has(m.id));
-        return unique.length > 0 ? [...prev, ...unique] : prev;
-      });
-    }, 2000);
-    return () => clearInterval(interval);
+      try {
+        const res = await fetch(`/api/messages?conversationId=${conversationId}${after}`);
+        if (!res.ok) return;
+        const newMsgs: Message[] = await res.json();
+        if (newMsgs.length === 0) return;
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const unique = newMsgs.filter((m) => !existingIds.has(m.id));
+          if (unique.length === 0) return prev;
+          // Update ref inline so it's always in sync
+          lastIdRef.current = unique[unique.length - 1].id;
+          return [...prev, ...unique];
+        });
+      } catch {
+        // Network error — silently retry on next tick
+      }
+    };
+
+    const onVisibility = () => {
+      paused = document.hidden;
+      // Immediately catch up when tab becomes visible again
+      if (!paused) poll();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const interval = setInterval(poll, 2000);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [conversationId]);
 
   async function sendMessage(e: React.FormEvent) {
@@ -103,10 +134,18 @@ export default function ChatWindow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId, content }),
       });
-      const msg = await res.json();
-      setMessages((prev) =>
-        prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
-      );
+      if (!res.ok) {
+        setText(content); // restore on failure
+        return;
+      }
+      const msg: Message = await res.json();
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        lastIdRef.current = msg.id;
+        return [...prev, msg];
+      });
+    } catch {
+      setText(content); // restore on network error
     } finally {
       setSending(false);
     }
@@ -217,7 +256,6 @@ export default function ChatWindow({
               </div>
             );
           })}
-          {/* Ancre de scroll */}
           <div ref={bottomRef} />
         </div>
       </div>
@@ -233,7 +271,7 @@ export default function ChatWindow({
         >
           <div className="flex-1 flex items-center bg-[#f1f3f5] rounded-full px-5 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#2f6fb8]/10 transition-all">
             <input
-              data-chat
+              ref={inputRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="flex-1 bg-transparent border-none focus:ring-0 text-base outline-none text-on-surface placeholder:text-slate-400"
