@@ -161,7 +161,7 @@ export default function ChatWindow({
   return (
     <div
       className="bg-[#f8f9fc] text-on-surface flex flex-col"
-      style={{ height: "100dvh" }}
+      style={{ position: "fixed", inset: 0 }}
     >
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-b border-slate-100 z-40 px-4 py-3 flex items-center gap-3 shadow-sm">
