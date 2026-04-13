@@ -10,13 +10,16 @@ type Ad = {
   isActive: boolean;
   clicks: number;
   impressions: number;
+  scheduledAt: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
 };
 
 export default async function AdsPage() {
   const ads = await prisma.$queryRaw<Ad[]>`
     SELECT id, title, description, "imageUrl", "destinationUrl", "isActive",
-           COALESCE(clicks, 0) AS clicks, COALESCE(impressions, 0) AS impressions, "createdAt"
+           COALESCE(clicks, 0) AS clicks, COALESCE(impressions, 0) AS impressions,
+           "scheduledAt", "expiresAt", "createdAt"
     FROM "Advertisement"
     ORDER BY "createdAt" DESC
   `;
