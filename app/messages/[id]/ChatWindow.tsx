@@ -74,6 +74,12 @@ export default function ChatWindow({
     scrollToBottom("smooth");
   }, [messages, scrollToBottom]);
 
+  // Lock body scroll when chat is open
+  useEffect(() => {
+    document.body.classList.add("chat-open");
+    return () => document.body.classList.remove("chat-open");
+  }, []);
+
   // iOS: scroll to bottom when keyboard opens
   useEffect(() => {
     const input = inputRef.current;
@@ -161,7 +167,7 @@ export default function ChatWindow({
   return (
     <div
       className="bg-[#f8f9fc] text-on-surface flex flex-col"
-      style={{ position: "fixed", inset: 0 }}
+      style={{ position: "fixed", inset: 0, width: "100%", maxWidth: "100vw", overflow: "hidden" }}
     >
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-b border-slate-100 z-40 px-4 py-3 flex items-center gap-3 shadow-sm">

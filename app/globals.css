@@ -72,6 +72,12 @@ body {
   font-family: "Inter", sans-serif;
   background-color: #f7f9fb;
   min-height: max(884px, 100dvh);
+  overflow-x: hidden;
+}
+
+body.chat-open {
+  overflow: hidden;
+  height: 100dvh;
 }
 
 h1,

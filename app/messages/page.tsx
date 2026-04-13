@@ -63,6 +63,10 @@ export default async function MessagesPage() {
               );
               const lastMessage = conv.messages[0];
               const unread = conv.messages.some((m) => !m.read && m.senderId !== userId);
+              const listingImage = (() => {
+                try { return (JSON.parse(conv.listing.images) as string[])[0] ?? null; }
+                catch { return null; }
+              })();
               
               return (
                 <Link
