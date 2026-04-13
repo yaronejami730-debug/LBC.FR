@@ -19,21 +19,47 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Deal&Co — Achetez et vendez près de chez vous",
-  description: "Deal&Co, la plateforme pour acheter et vendre en toute confiance près de chez vous",
+  title: {
+    default: "Deal&Co — Petites annonces gratuites entre particuliers en France",
+    template: "%s | Deal&Co",
+  },
+  description:
+    "Achetez et vendez d'occasion près de chez vous sur Deal&Co. Voitures, immobilier, mode, électronique — petites annonces gratuites entre particuliers partout en France.",
   metadataBase: new URL("https://www.dealandcompany.fr"),
+  alternates: {
+    canonical: "https://www.dealandcompany.fr",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  verification: {
+    google: "8N5Ojonm2AEamRcn_DoTTdkvL1KlGbObhKrqDUorZ5E",
+  },
   openGraph: {
-    title: "Deal&Co — Achetez et vendez près de chez vous",
-    description: "Deal&Co, la plateforme pour acheter et vendre en toute confiance près de chez vous",
+    title: "Deal&Co — Petites annonces gratuites entre particuliers",
+    description:
+      "Achetez et vendez d'occasion près de chez vous. Voitures, immobilier, mode, électronique — petites annonces gratuites entre particuliers.",
     url: "https://www.dealandcompany.fr",
+    siteName: "Deal&Co",
     type: "website",
+    locale: "fr_FR",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
+        alt: "Deal&Co — Petites annonces gratuites",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Deal&Co — Petites annonces gratuites entre particuliers",
+    description:
+      "Achetez et vendez d'occasion près de chez vous. Voitures, immobilier, mode, électronique — petites annonces gratuites.",
+    images: ["/opengraph-image"],
   },
 };
 

@@ -1,11 +1,36 @@
 import { Fragment } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
+
+export const metadata: Metadata = {
+  title: "Deal&Co — Petites annonces gratuites entre particuliers en France",
+  description:
+    "Achetez et vendez d'occasion près de chez vous sur Deal&Co. Voitures, immobilier, mode, électronique — petites annonces gratuites entre particuliers partout en France.",
+  alternates: { canonical: "https://www.dealandcompany.fr" },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Deal&Co",
+  url: "https://www.dealandcompany.fr",
+  description:
+    "Petites annonces gratuites entre particuliers en France — voitures, immobilier, mode, électronique.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: "https://www.dealandcompany.fr/search?q={search_term_string}",
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
 
 export default async function Home() {
   const [listings, ads] = await Promise.all([
@@ -20,6 +45,10 @@ export default async function Home() {
 
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-0">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar active="accueil" />
 
       {/* Hero / Search Section */}
@@ -27,9 +56,9 @@ export default async function Home() {
 
         <div className="relative bg-primary-container bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 md:p-16 overflow-hidden">
           <div className="relative z-10 max-w-2xl">
-            <h2 className="text-white text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-              Trouvez tout ce que <br /> vous cherchez.
-            </h2>
+            <h1 className="text-white text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+              Petites annonces gratuites <br className="hidden md:block" /> près de chez vous.
+            </h1>
             {/* Search Bar */}
             <form action="/search" method="get">
               <div className="flex items-center bg-surface-container-lowest rounded-full p-2 shadow-[0_16px_32px_rgba(21,21,125,0.1)]">
@@ -146,6 +175,38 @@ export default async function Home() {
           <Link href="/search" className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
             Voir plus d'annonces
           </Link>
+        </div>
+      </section>
+
+      {/* Bloc SEO textuel */}
+      <section className="px-6 py-10 max-w-7xl mx-auto">
+        <div className="bg-white border border-[#eceef0] rounded-2xl p-6 md:p-8">
+          <h2 className="text-lg font-bold text-[#191c1e] mb-3">Achetez et vendez entre particuliers sur Deal&amp;Co</h2>
+          <p className="text-sm text-[#777683] leading-relaxed mb-4">
+            Deal&amp;Co est la plateforme de petites annonces gratuites entre particuliers en France. Publiez vos annonces de
+            voitures d&apos;occasion, de biens immobiliers, de vêtements, d&apos;électronique, de mobilier et bien plus encore.
+            Achetez et vendez facilement près de chez vous, sans commission.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+            {[
+              { label: "Voitures d'occasion", href: "/search?category=Véhicules" },
+              { label: "Immobilier", href: "/search?category=Immobilier" },
+              { label: "Mode & vêtements", href: "/search?category=Mode" },
+              { label: "Électronique", href: "/search?category=Multimédia" },
+              { label: "Mobilier & maison", href: "/search?category=Maison" },
+              { label: "Animaux", href: "/search?category=Animaux" },
+              { label: "Loisirs & sport", href: "/search?category=Loisirs" },
+              { label: "Services", href: "/search?category=Services" },
+            ].map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-xs font-semibold text-[#2f6fb8] hover:underline truncate"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
 import { formatDistanceToNow } from "@/lib/utils";
@@ -7,6 +8,43 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { CATEGORIES } from "@/lib/categories";
 import SearchBar from "./SearchBar";
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const q = params.q || "";
+  const category = params.category || "";
+  const location = params.location || "";
+
+  let title = "Toutes les annonces — Deal&Co";
+  let description =
+    "Parcourez toutes les petites annonces gratuites sur Deal&Co. Voitures, immobilier, mode, électronique et bien plus entre particuliers en France.";
+
+  if (category && q) {
+    title = `${q} en ${category} — Annonces gratuites | Deal&Co`;
+    description = `Trouvez "${q}" dans la catégorie ${category} sur Deal&Co. Petites annonces gratuites entre particuliers${location ? ` à ${location}` : " en France"}.`;
+  } else if (category) {
+    title = `Annonces ${category}${location ? ` à ${location}` : ""} — Deal&Co`;
+    description = `Parcourez toutes les annonces ${category} sur Deal&Co${location ? ` à ${location}` : " en France"}. Achetez et vendez entre particuliers gratuitement.`;
+  } else if (q) {
+    title = `"${q}" — Petites annonces | Deal&Co`;
+    description = `${
+      (await prisma.listing.count({ where: { status: "APPROVED", deletedAt: null, OR: [{ title: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] } as any }).catch(() => 0))
+    } annonces trouvées pour "${q}" sur Deal&Co. Achetez et vendez entre particuliers gratuitement.`;
+  }
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `https://www.dealandcompany.fr/search${category ? `?category=${encodeURIComponent(category)}` : q ? `?q=${encodeURIComponent(q)}` : ""}`,
+    },
+    robots: { index: !q, follow: true },
+  };
+}
 
 export default async function SearchPage({
   searchParams,

@@ -28,19 +28,24 @@ export async function generateMetadata({
   const mainImg = images[0];
   const priceStr = listing.price.toLocaleString("fr-FR") + " €";
 
+  const desc = `${listing.description.slice(0, 150)}${listing.description.length > 150 ? "…" : ""} · ${listing.location} · ${priceStr}`;
+
   return {
-    title: `${listing.title} — ${priceStr}`,
-    description: `${listing.description.slice(0, 150)}… · ${listing.location}`,
+    title: `${listing.title} — ${priceStr} | Deal&Co`,
+    description: desc,
+    alternates: {
+      canonical: `https://www.dealandcompany.fr/listing/${id}`,
+    },
     openGraph: {
       title: `${listing.title} — ${priceStr}`,
-      description: `${listing.description.slice(0, 150)}… · ${listing.location}`,
-      images: mainImg ? [{ url: mainImg, width: 1200, height: 630 }] : [],
+      description: desc,
+      images: mainImg ? [{ url: mainImg, width: 1200, height: 630, alt: listing.title }] : [],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: `${listing.title} — ${priceStr}`,
-      description: `${listing.description.slice(0, 150)}… · ${listing.location}`,
+      description: desc,
       images: mainImg ? [mainImg] : [],
     },
   };
@@ -103,8 +108,36 @@ export default async function ListingPage({
   const images = JSON.parse(listing.images) as string[];
   const mainImg = images[0] || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwwxQgv4rI6XClzhTLjkwXug8TYby1cyK7AgQhc4UpMdyrjwq4jRPQo_ZvL_7xvjhVSon_iJvztv0bdEqqiFX0CHRW9IDYjccZpyP4v8zoDq0pcj4RtADoGgiXgRyW1_sPXiKqwZz8D1UwMIYilwBQMOTHJ4RMQl9Rp4vFbK6a0UCsy93TZ3-DYA8qYhHPO4LhM2csSFfFLlOh2P8D7w00bjyGrSMRlGSvhxZrGjVcqJUJ2-2y9XbKHb7ww02PREvAIJO3_wJ41hV5";
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    description: listing.description,
+    image: images.length ? images : [mainImg],
+    url: `https://www.dealandcompany.fr/listing/${listing.id}`,
+    offers: {
+      "@type": "Offer",
+      price: listing.price,
+      priceCurrency: "EUR",
+      availability: "https://schema.org/InStock",
+      itemCondition:
+        listing.condition === "Neuf"
+          ? "https://schema.org/NewCondition"
+          : "https://schema.org/UsedCondition",
+      seller: {
+        "@type": "Person",
+        name: listing.user.name ?? "Particulier",
+      },
+    },
+    ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
+  };
+
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Navbar (Share, Favorites) */}
       <ListingHeader
         title={listing.title}
