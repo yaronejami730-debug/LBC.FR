@@ -11,12 +11,132 @@ const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Po
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
 const TRANSMISSIONS = ["Manuelle", "Automatique"];
 
-const FREE_PHOTOS = 3;
-// 0.99 € per pack of 2 extra photos
-function extraCost(count: number) {
-  const extra = Math.max(0, count - FREE_PHOTOS);
-  if (extra === 0) return 0;
-  return Math.ceil(extra / 2) * 0.99;
+const MAX_PHOTOS = 15;
+
+type PhotoGuide = { label: string; icon: string };
+
+const PHOTO_GUIDES: Record<string, PhotoGuide[]> = {
+  vehicules: [
+    { label: "Face avant",         icon: "directions_car" },
+    { label: "Face arrière",        icon: "directions_car" },
+    { label: "Côté gauche",         icon: "directions_car" },
+    { label: "Côté droit",          icon: "directions_car" },
+    { label: "Tableau de bord",     icon: "dashboard" },
+    { label: "Sièges avant",        icon: "airline_seat_recline_normal" },
+    { label: "Sièges arrière",      icon: "airline_seat_recline_normal" },
+    { label: "Volant",              icon: "settings_input_svideo" },
+    { label: "Levier de vitesse",   icon: "tune" },
+    { label: "Moteur",              icon: "build" },
+    { label: "Coffre",              icon: "inventory_2" },
+    { label: "Jantes / Roues",      icon: "tire_repair" },
+    { label: "Compteur km",         icon: "speed" },
+    { label: "Carnet entretien",    icon: "description" },
+  ],
+  multimedia: [
+    { label: "Face avant",          icon: "computer" },
+    { label: "Face arrière",        icon: "computer" },
+    { label: "Profil gauche",       icon: "computer" },
+    { label: "Profil droit",        icon: "computer" },
+    { label: "Écran allumé",        icon: "monitor" },
+    { label: "Clavier / Pavé",      icon: "keyboard" },
+    { label: "Ports & connecteurs", icon: "usb" },
+    { label: "Chargeur inclus",     icon: "power" },
+    { label: "Accessoires",         icon: "devices_other" },
+    { label: "Numéro de série",     icon: "qr_code" },
+    { label: "Emballage d'origine", icon: "inventory_2" },
+    { label: "Défauts / rayures",   icon: "warning" },
+    { label: "Vue d'ensemble",      icon: "photo_camera" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+  ],
+  mode: [
+    { label: "Vue de face",         icon: "checkroom" },
+    { label: "Vue de dos",          icon: "checkroom" },
+    { label: "Profil",              icon: "checkroom" },
+    { label: "Étiquette / marque",  icon: "label" },
+    { label: "Détail tissu",        icon: "texture" },
+    { label: "Semelle (chaussures)",icon: "footprint" },
+    { label: "Défauts / taches",    icon: "warning" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+  ],
+  maison: [
+    { label: "Vue d'ensemble",      icon: "chair" },
+    { label: "Détail / finition",   icon: "zoom_in" },
+    { label: "Marque / étiquette",  icon: "label" },
+    { label: "Dimensions visibles", icon: "straighten" },
+    { label: "Côté gauche",         icon: "chair" },
+    { label: "Côté droit",          icon: "chair" },
+    { label: "État général",        icon: "verified" },
+    { label: "Défauts éventuels",   icon: "warning" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+  ],
+  immobilier: [
+    { label: "Façade extérieure",   icon: "home" },
+    { label: "Salon / séjour",      icon: "chair" },
+    { label: "Cuisine",             icon: "kitchen" },
+    { label: "Chambre principale",  icon: "bed" },
+    { label: "Salle de bain",       icon: "bathtub" },
+    { label: "WC",                  icon: "wc" },
+    { label: "Chambre 2",           icon: "bed" },
+    { label: "Balcon / terrasse",   icon: "deck" },
+    { label: "Cave / garage",       icon: "garage" },
+    { label: "Entrée / couloir",    icon: "door_front" },
+    { label: "Vue depuis fenêtre",  icon: "landscape" },
+    { label: "Boîte aux lettres",   icon: "markunread_mailbox" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+  ],
+  animaux: [
+    { label: "Portrait de face",    icon: "pets" },
+    { label: "Profil",              icon: "pets" },
+    { label: "Corps entier",        icon: "pets" },
+    { label: "En action / jeu",     icon: "sports" },
+    { label: "Avec ses accessoires",icon: "toys" },
+    { label: "Carnet de santé",     icon: "description" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+  ],
+  loisirs: [
+    { label: "Vue d'ensemble",      icon: "sports_esports" },
+    { label: "Côté gauche",         icon: "photo_camera" },
+    { label: "Côté droit",          icon: "photo_camera" },
+    { label: "Accessoires inclus",  icon: "devices_other" },
+    { label: "Numéro de série",     icon: "qr_code" },
+    { label: "État général",        icon: "verified" },
+    { label: "Défauts éventuels",   icon: "warning" },
+    { label: "Emballage d'origine", icon: "inventory_2" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+    { label: "Photo libre",         icon: "add_a_photo" },
+  ],
+};
+
+const DEFAULT_GUIDES: PhotoGuide[] = Array.from({ length: 14 }, (_, i) => ({
+  label: i === 0 ? "Vue d'ensemble" : i === 1 ? "Détail" : i === 2 ? "État général" : "Photo libre",
+  icon: i < 3 ? "photo_camera" : "add_a_photo",
+}));
+
+function getGuides(catId: string): PhotoGuide[] {
+  return PHOTO_GUIDES[catId] ?? DEFAULT_GUIDES;
 }
 
 type VehicleFields = {
@@ -44,9 +164,9 @@ export default function PostForm() {
   const [phone, setPhone] = useState("");
   const [hidePhone, setHidePhone] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [photoStep, setPhotoStep] = useState(0); // current guided step (0 = main)
   const [uploading, setUploading] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [photoPaywall, setPhotoPaywall] = useState(false); // show upsell when > 3 photos
   const [publishError, setPublishError] = useState<string | null>(null);
   const [autoDetected, setAutoDetected] = useState(false); // true when category was auto-set
   const [userPickedCategory, setUserPickedCategory] = useState(false); // true when user manually picked
@@ -65,12 +185,7 @@ export default function PostForm() {
 
   async function handleImageUpload(files: FileList | null, slotIndex?: number) {
     if (!files || files.length === 0) return;
-
-    // Check if this would exceed 3 free photos (unless we are replacing one)
-    if (slotIndex === undefined && images.length >= FREE_PHOTOS && !photoPaywall) {
-      setPhotoPaywall(true);
-      return;
-    }
+    if (images.length >= MAX_PHOTOS && slotIndex === undefined) return;
 
     setUploading(true);
     setPublishError(null);
@@ -80,12 +195,10 @@ export default function PostForm() {
         const form = new FormData();
         form.append("file", file);
         const res = await fetch("/api/upload", { method: "POST", body: form });
-        
         if (!res.ok) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || "Erreur lors de l'envoi de l'image");
         }
-        
         const data = await res.json();
         if (!data.url) throw new Error("Réponse invalide du serveur d'upload");
         uploads.push(data.url);
@@ -94,15 +207,14 @@ export default function PostForm() {
       if (slotIndex !== undefined) {
         setImages((prev) => {
           const next = [...prev];
-          // Fill gaps if any
           for (let i = 0; i < slotIndex; i++) {
             if (next[i] === undefined) next[i] = "";
           }
           next[slotIndex] = uploads[0];
-          return next.filter(Boolean); // Keep it clean
+          return next.filter(Boolean);
         });
       } else {
-        setImages((prev) => [...prev, ...uploads].slice(0, 7)); // max 7
+        setImages((prev) => [...prev, ...uploads].slice(0, MAX_PHOTOS));
       }
     } catch (err) {
       console.error("[handleImageUpload]", err);
@@ -171,8 +283,6 @@ export default function PostForm() {
     }
   }
 
-  const cost = extraCost(images.length);
-
   return (
     <div className="bg-surface-container-low text-on-surface antialiased pb-32">
       {/* TopAppBar */}
@@ -197,139 +307,228 @@ export default function PostForm() {
             <p className="text-on-surface-variant">Créez une annonce de qualité pour toucher des milliers d'acheteurs.</p>
           </section>
 
-          {/* ── PHOTOS ────────────────────────────────────────────── */}
-          <section className="space-y-4">
-            <div className="flex items-end justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-on-surface">Photos</h3>
-                <p className="text-xs text-outline mt-0.5">3 gratuites · +2 photos = 0,99 € · +4 photos = 1,98 €</p>
-              </div>
-              <span className={`text-sm font-bold ${images.length >= FREE_PHOTOS ? "text-primary" : "text-outline"}`}>
-                {images.length} / {images.length > FREE_PHOTOS ? "7 max" : "3 gratuites"}
-              </span>
-            </div>
+          {/* ── PHOTOS (stepper guidé) ────────────────────────────── */}
+          {(() => {
+            const guides = getGuides(categoryId);
+            // step 0 = photo principale, steps 1..guides.length = guides
+            const totalSteps = 1 + guides.length; // 15 max
+            const isMainStep = photoStep === 0;
+            const currentGuide = isMainStep
+              ? { label: "Photo principale", icon: "add_a_photo" }
+              : guides[photoStep - 1];
+            const currentImg = images[photoStep];
+            const doneCount = images.filter(Boolean).length;
+            const isLastStep = photoStep === totalSteps - 1;
 
-            {/* Grid de photos */}
-            <div className="grid grid-cols-4 gap-3 h-52 md:h-64">
-              {/* Slot principal */}
-              <div
-                className="col-span-2 row-span-2 relative group overflow-hidden rounded-xl bg-surface-container-highest flex flex-col items-center justify-center border-2 border-dashed border-outline-variant hover:border-primary transition-all"
-              >
-                {images[0] ? (
-                  <>
-                    <img src={images[0]} alt="Photo principale" className="w-full h-full object-cover absolute inset-0" />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity">
-                      <button 
-                        type="button"
-                        onClick={() => mainFileRef.current?.click()}
-                        className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors"
-                      >
-                        <span className="material-symbols-outlined">edit</span>
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => removeImage(0)}
-                        className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500/60 transition-colors"
-                      >
-                        <span className="material-symbols-outlined">delete</span>
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => mainFileRef.current?.click()}
-                    className="w-full h-full flex flex-col items-center justify-center"
-                    disabled={uploading}
-                  >
-                    {uploading ? (
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-primary text-4xl mb-2">camera</span>
-                        <p className="font-bold text-primary text-sm">Photo principale</p>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
+            function triggerUpload() {
+              if (isMainStep) {
+                mainFileRef.current?.click();
+              } else {
+                extraFileRef.current?.setAttribute("data-slot", String(photoStep));
+                extraFileRef.current?.click();
+              }
+            }
 
-              {/* Slots secondaires */}
-              {[1, 2, 3, 4].map((i) => {
-                const isPaid = i >= FREE_PHOTOS;
-                const isLocked = isPaid && images.length < FREE_PHOTOS;
-                const currentImg = images[i];
+            function goNext() {
+              if (photoStep < totalSteps - 1) setPhotoStep((s) => s + 1);
+            }
+            function goPrev() {
+              if (photoStep > 0) setPhotoStep((s) => s - 1);
+            }
 
-                return (
-                  <div
-                    key={i}
-                    className={`relative group overflow-hidden rounded-xl flex items-center justify-center border transition-all
-                      ${isLocked ? "bg-surface-container border-outline-variant/20 opacity-60" : "bg-surface-container-highest border-outline-variant/30 hover:border-primary"}`}
-                  >
-                    {currentImg ? (
-                      <>
-                        <img src={currentImg} alt={`Photo ${i + 1}`} className="w-full h-full object-cover absolute inset-0" />
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                          <button 
-                            type="button"
-                            onClick={() => removeImage(i)}
-                            className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500/60 transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-sm">delete</span>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isLocked) { setPhotoPaywall(true); return; }
-                          extraFileRef.current?.click();
-                        }}
-                        disabled={uploading && !isLocked}
-                        className="w-full h-full flex items-center justify-center"
-                      >
-                        {uploading && !isLocked ? (
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
-                        ) : isLocked ? (
-                          <span className="material-symbols-outlined text-outline/40 text-xl">lock</span>
-                        ) : (
-                          <span className="material-symbols-outlined text-outline text-xl">add</span>
-                        )}
-                      </button>
-                    )}
-                    {isPaid && !currentImg && !isLocked && (
-                      <span className="absolute bottom-1 right-1 text-[8px] font-bold text-primary bg-white/80 px-1 rounded">+</span>
+            return (
+              <section className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-on-surface">Photos</h3>
+                    <p className="text-xs text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      Jusqu&apos;à {MAX_PHOTOS} photos · 100% gratuit
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold tabular-nums text-primary">
+                    {doneCount} / {MAX_PHOTOS}
+                  </span>
+                </div>
+
+                {/* Progress bar + step label */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-outline font-medium">
+                    <span>Étape {photoStep + 1} sur {totalSteps}</span>
+                    {doneCount > 0 && (
+                      <span className="text-emerald-600 font-semibold">{doneCount} photo{doneCount > 1 ? "s" : ""} ajoutée{doneCount > 1 ? "s" : ""}</span>
                     )}
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Upsell banner */}
-            {(photoPaywall || images.length >= FREE_PHOTOS) && (
-              <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-bold text-primary text-sm">Ajoutez plus de photos</p>
-                  <p className="text-outline text-xs mt-0.5">
-                    +2 photos : <span className="font-bold text-on-surface">0,99 €</span> · +4 photos : <span className="font-bold text-on-surface">1,98 €</span>
-                  </p>
+                  {/* Steps dots */}
+                  <div className="flex gap-1 overflow-x-auto pb-1">
+                    {Array.from({ length: totalSteps }).map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setPhotoStep(i)}
+                        className={`h-1.5 rounded-full shrink-0 transition-all duration-200 ${
+                          i === photoStep
+                            ? "w-6 bg-primary"
+                            : images[i]
+                            ? "w-3 bg-emerald-500"
+                            : "w-3 bg-outline-variant/40"
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setPhotoPaywall(false); extraFileRef.current?.click(); }}
-                  className="flex-shrink-0 px-4 py-2 bg-primary text-white rounded-full text-sm font-bold active:scale-95 transition-transform"
-                >
-                  Débloquer (0,99 €)
-                </button>
-              </div>
-            )}
 
-            <input ref={mainFileRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => handleImageUpload(e.target.files, 0)} />
-            <input ref={extraFileRef} type="file" accept="image/*" multiple className="hidden"
-              onChange={(e) => handleImageUpload(e.target.files)} />
-          </section>
+                {/* Active step — zone principale */}
+                <div
+                  className={`relative overflow-hidden rounded-2xl transition-all ${
+                    currentImg
+                      ? "h-56 md:h-72 cursor-default"
+                      : "h-56 md:h-72 cursor-pointer border-2 border-dashed hover:border-primary bg-surface-container-highest group"
+                  } ${!currentImg ? (isMainStep ? "border-primary/50" : "border-outline-variant") : ""}`}
+                  onClick={() => { if (!currentImg) triggerUpload(); }}
+                >
+                  {currentImg ? (
+                    <>
+                      {/* Blurred bg */}
+                      <img src={currentImg} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40 pointer-events-none" />
+                      {/* Full photo */}
+                      <img src={currentImg} alt={currentGuide.label} className="relative w-full h-full object-contain z-10" />
+                      {/* Actions overlay */}
+                      <div className="absolute inset-0 z-20 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 hover:opacity-100">
+                        <button type="button" onClick={triggerUpload}
+                          className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors">
+                          <span className="material-symbols-outlined">edit</span>
+                        </button>
+                        <button type="button" onClick={() => { removeImage(photoStep); }}
+                          className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500/60 transition-colors">
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      </div>
+                      {/* Label badge */}
+                      <span className="absolute top-3 left-3 z-20 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
+                        {currentGuide.label}
+                      </span>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                      {uploading ? (
+                        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-primary border-t-transparent" />
+                      ) : (
+                        <>
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isMainStep ? "bg-primary/10" : "bg-surface-container"}`}>
+                            <span className={`material-symbols-outlined text-4xl ${isMainStep ? "text-primary" : "text-outline"}`}>
+                              {currentGuide.icon}
+                            </span>
+                          </div>
+                          <div className="text-center px-6">
+                            <p className={`font-bold text-base ${isMainStep ? "text-primary" : "text-on-surface"}`}>
+                              {currentGuide.label}
+                            </p>
+                            {isMainStep && (
+                              <p className="text-outline text-xs mt-1">C&apos;est la photo qui apparaît en premier dans l&apos;annonce</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-primary/8 text-primary text-xs font-semibold px-4 py-2 rounded-full border border-primary/20">
+                            <span className="material-symbols-outlined text-base">add_a_photo</span>
+                            Appuyer pour ajouter cette photo
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center gap-3">
+                  {photoStep > 0 && (
+                    <button type="button" onClick={goPrev}
+                      className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors shrink-0">
+                      <span className="material-symbols-outlined">chevron_left</span>
+                    </button>
+                  )}
+
+                  {currentImg ? (
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      disabled={isLastStep}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-40"
+                    >
+                      {isLastStep ? "Photos complètes ✓" : (
+                        <>Suivant <span className="material-symbols-outlined text-base">arrow_forward</span></>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={!isMainStep ? goNext : undefined}
+                      disabled={isMainStep}
+                      className={`flex-1 py-3 rounded-full text-sm font-semibold transition-all ${
+                        isMainStep
+                          ? "bg-surface-container text-outline cursor-default opacity-50"
+                          : "bg-surface-container text-outline hover:text-on-surface active:scale-95"
+                      }`}
+                    >
+                      {isMainStep ? "Ajoutez d'abord la photo principale" : "Passer cette étape →"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Strip des photos déjà uploadées */}
+                {doneCount > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-outline font-semibold uppercase tracking-wider">Photos ajoutées</p>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {images.map((img, i) =>
+                        img ? (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setPhotoStep(i)}
+                            className={`relative w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                              i === photoStep ? "border-primary scale-105" : "border-transparent hover:border-outline-variant"
+                            }`}
+                          >
+                            <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm scale-110 opacity-60" />
+                            <img src={img} alt="" className="relative w-full h-full object-contain" />
+                            {/* Step number badge */}
+                            <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center justify-center">
+                              {i + 1}
+                            </span>
+                            {/* Delete */}
+                            <button type="button"
+                              onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!opacity-100 transition-opacity">
+                              <span className="material-symbols-outlined text-[10px]">close</span>
+                            </button>
+                          </button>
+                        ) : null
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <input ref={mainFileRef} type="file" accept="image/*" className="hidden"
+                  onChange={async (e) => {
+                    await handleImageUpload(e.target.files, 0);
+                    // auto-advance after upload
+                    setPhotoStep((s) => s === 0 ? 1 : s);
+                    e.target.value = "";
+                  }} />
+                <input ref={extraFileRef} type="file" accept="image/*" className="hidden"
+                  onChange={async (e) => {
+                    const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
+                    const targetSlot = isNaN(slot) ? photoStep : slot;
+                    await handleImageUpload(e.target.files, targetSlot);
+                    extraFileRef.current?.removeAttribute("data-slot");
+                    // auto-advance
+                    setPhotoStep((s) => Math.min(s + 1, totalSteps - 1));
+                    e.target.value = "";
+                  }} />
+              </section>
+            );
+          })()}
 
           {/* ── CHAMPS PRINCIPAUX ─────────────────────────────────── */}
           <section className="space-y-8 bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
@@ -592,11 +791,6 @@ export default function PostForm() {
             <p className="text-red-500 text-sm font-medium text-center">{publishError}</p>
           )}
           <div className="flex items-center gap-4">
-            {cost > 0 && (
-              <span className="text-sm text-outline font-medium whitespace-nowrap">
-                Total : <span className="text-primary font-bold">{cost.toFixed(2).replace(".", ",")} €</span>
-              </span>
-            )}
             <button
               onClick={handlePublish}
               disabled={publishing || !title || !price || !description || !location}
