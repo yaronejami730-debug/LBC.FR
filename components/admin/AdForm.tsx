@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, useEffect } from "react";
 import { createAdvertisement, deleteAdvertisement, toggleAdStatus, updateAdvertisement } from "@/app/admin/actions";
 import DateTimePicker from "@/components/admin/DateTimePicker";
 
@@ -290,6 +290,61 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
   );
 }
 
+function AdTimerBadge({ scheduledAt, expiresAt }: { scheduledAt: Date | null; expiresAt: Date | null }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const now = Date.now();
+  const scheduled = scheduledAt ? new Date(scheduledAt).getTime() : null;
+  const expires = expiresAt ? new Date(expiresAt).getTime() : null;
+
+  function fmt(ms: number) {
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    const d = Math.floor(h / 24);
+    return `${d}j`;
+  }
+
+  // Cas 1 : programmée dans le futur → compte à rebours avant activation
+  if (scheduled && scheduled > now) {
+    return (
+      <span className="absolute top-2 right-2 flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+        <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>schedule</span>
+        dans {fmt(scheduled - now)}
+      </span>
+    );
+  }
+
+  // Cas 2 : expiration programmée dans le futur → temps restant en ligne
+  if (expires && expires > now) {
+    return (
+      <span className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+        <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
+        encore {fmt(expires - now)}
+      </span>
+    );
+  }
+
+  // Cas 3 : expirée
+  if (expires && expires <= now) {
+    return (
+      <span className="absolute top-2 right-2 flex items-center gap-1 bg-[#ba1a1a] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+        <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>timer_off</span>
+        expirée
+      </span>
+    );
+  }
+
+  return null;
+}
+
 function StatsModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   const ctr = ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(1) : "0.0";
   const daysActive = Math.max(1, Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / 86_400_000));
@@ -440,6 +495,7 @@ function AdCard({
         <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
           Publicité
         </span>
+        <AdTimerBadge scheduledAt={ad.scheduledAt} expiresAt={ad.expiresAt} />
         {!ad.isActive && (
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
             <span className="bg-white/90 text-[#191c1e] text-xs font-bold px-3 py-1 rounded-full">Désactivée</span>
