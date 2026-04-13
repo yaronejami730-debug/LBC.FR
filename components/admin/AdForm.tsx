@@ -301,12 +301,47 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
   );
 }
 
-function AdTimerBadge({ scheduledAt, expiresAt }: { scheduledAt: Date | null; expiresAt: Date | null }) {
+function AdTimerBadge({
+  adId, scheduledAt, expiresAt, onActivate, onDeactivate,
+}: {
+  adId: string;
+  scheduledAt: Date | null;
+  expiresAt: Date | null;
+  onActivate: () => void;
+  onDeactivate: () => void;
+}) {
   const [, setTick] = useState(0);
+  const firedRef = useRef<Record<string, boolean>>({});
+
   useEffect(() => {
-    const t = setInterval(() => setTick(n => n + 1), 1000);
+    const t = setInterval(() => {
+      setTick(n => n + 1);
+      const now = Date.now();
+      const scheduled = scheduledAt ? new Date(scheduledAt).getTime() : null;
+      const expires = expiresAt ? new Date(expiresAt).getTime() : null;
+
+      // Déclenche activation quand scheduledAt est atteint
+      if (scheduled && now >= scheduled && !firedRef.current[`act_${adId}`]) {
+        firedRef.current[`act_${adId}`] = true;
+        fetch("/api/ads/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: adId, action: "activate" }),
+        }).then(() => onActivate()).catch(() => {});
+      }
+
+      // Déclenche désactivation quand expiresAt est atteint
+      if (expires && now >= expires && !firedRef.current[`exp_${adId}`]) {
+        firedRef.current[`exp_${adId}`] = true;
+        fetch("/api/ads/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: adId, action: "deactivate" }),
+        }).then(() => onDeactivate()).catch(() => {});
+      }
+    }, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [adId, scheduledAt, expiresAt, onActivate, onDeactivate]);
 
   const now = Date.now();
   const scheduled = scheduledAt ? new Date(scheduledAt).getTime() : null;
@@ -362,7 +397,7 @@ function AdTimerBadge({ scheduledAt, expiresAt }: { scheduledAt: Date | null; ex
   return null;
 }
 
-function StatsModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
+function StatsModal({ ad, isActive, onClose }: { ad: Ad; isActive: boolean; onClose: () => void }) {
   const ctr = ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(1) : "0.0";
   const daysActive = Math.max(1, Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / 86_400_000));
 
@@ -423,14 +458,14 @@ function StatsModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
         {/* Status */}
         <div className="mx-6 mt-4">
           <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold ${
-            ad.isActive
+            isActive
               ? "bg-[#f0fdf4] text-[#166534]"
               : "bg-[#f9fafb] text-[#6b7280]"
           }`}>
             <span
-              className={`w-2 h-2 rounded-full flex-shrink-0 ${ad.isActive ? "bg-emerald-500 animate-pulse" : "bg-[#d1d5db]"}`}
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? "bg-emerald-500 animate-pulse" : "bg-[#d1d5db]"}`}
             />
-            {ad.isActive ? "Publicité active" : "Publicité désactivée"}
+            {isActive ? "Publicité active" : "Publicité désactivée"}
           </div>
         </div>
 
@@ -459,6 +494,7 @@ function AdCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [isActive, setIsActive] = useState(ad.isActive);
   const [editError, setEditError] = useState("");
   const [editImageUrl, setEditImageUrl] = useState(ad.imageUrl);
   const [editPreview, setEditPreview] = useState(ad.imageUrl);
@@ -505,15 +541,21 @@ function AdCard({
   }
 
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden transition-all ${ad.isActive ? "border-[#eceef0]" : "border-[#eceef0] opacity-60"}`}>
+    <div className={`bg-white rounded-2xl border overflow-hidden transition-all ${isActive ? "border-[#eceef0]" : "border-[#eceef0] opacity-60"}`}>
       {/* Image + badge */}
       <div className="relative aspect-video overflow-hidden bg-[#f2f4f6]">
         <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
         <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
           Publicité
         </span>
-        <AdTimerBadge scheduledAt={ad.scheduledAt} expiresAt={ad.expiresAt} />
-        {!ad.isActive && (
+        <AdTimerBadge
+          adId={ad.id}
+          scheduledAt={ad.scheduledAt}
+          expiresAt={ad.expiresAt}
+          onActivate={() => setIsActive(true)}
+          onDeactivate={() => setIsActive(false)}
+        />
+        {!isActive && (
           <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
             <span className="bg-white/90 text-[#191c1e] text-xs font-bold px-3 py-1 rounded-full">Désactivée</span>
           </div>
@@ -558,14 +600,17 @@ function AdCard({
         {/* Toggle + Delete row */}
         <div className="flex gap-2">
           <button
-            onClick={() => startTransition(async () => { await toggleAdStatus(ad.id, !ad.isActive); })}
+            onClick={() => startTransition(async () => {
+              await toggleAdStatus(ad.id, !isActive);
+              setIsActive(v => !v);
+            })}
             disabled={isPending}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-50 ${ad.isActive ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-[#f2f4f6] text-[#777683] hover:bg-[#eceef0]"}`}
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-50 ${isActive ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-[#f2f4f6] text-[#777683] hover:bg-[#eceef0]"}`}
           >
             <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              {ad.isActive ? "toggle_on" : "toggle_off"}
+              {isActive ? "toggle_on" : "toggle_off"}
             </span>
-            {ad.isActive ? "Active" : "Inactive"}
+            {isActive ? "Active" : "Inactive"}
           </button>
           <button
             onClick={() => {
@@ -586,7 +631,7 @@ function AdCard({
       </div>
 
       {/* Stats modal */}
-      {showStats && <StatsModal ad={ad} onClose={() => setShowStats(false)} />}
+      {showStats && <StatsModal ad={ad} isActive={isActive} onClose={() => setShowStats(false)} />}
 
       {/* Inline edit form */}
       {editing && (

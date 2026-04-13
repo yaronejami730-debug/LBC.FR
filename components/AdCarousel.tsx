@@ -1,46 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import type { AdRow } from "@/lib/ads";
 
-type Ad = {
-  id: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  destinationUrl: string;
-};
-
-export default function AdCarousel({ ads }: { ads: Ad[] }) {
+export default function AdCarousel({ ads: allAds }: { ads: AdRow[] }) {
+  const [visibleAds, setVisibleAds] = useState<AdRow[]>([]);
   const [current, setCurrent] = useState(0);
   const [visible, setVisible] = useState(true);
+  const firedRef = useRef<Record<string, boolean>>({});
 
+  // Filter ads every second based on scheduledAt / expiresAt
   useEffect(() => {
-    if (ads.length <= 1) return;
+    function computeVisible() {
+      const now = Date.now();
+      return allAds.filter((ad) => {
+        const scheduled = ad.scheduledAt ? new Date(ad.scheduledAt).getTime() : null;
+        const expires = ad.expiresAt ? new Date(ad.expiresAt).getTime() : null;
+        const isScheduledNow = !scheduled || scheduled <= now;
+        const isNotExpired = !expires || expires > now;
+        return (ad.isActive || isScheduledNow) && isScheduledNow && isNotExpired;
+      });
+    }
 
+    setVisibleAds(computeVisible());
+
+    const t = setInterval(() => {
+      setVisibleAds(computeVisible());
+    }, 1000);
+    return () => clearInterval(t);
+  }, [allAds]);
+
+  // Reset current index if it goes out of range
+  useEffect(() => {
+    if (current >= visibleAds.length && visibleAds.length > 0) {
+      setCurrent(0);
+    }
+  }, [visibleAds.length, current]);
+
+  // Auto-rotate carousel
+  useEffect(() => {
+    if (visibleAds.length <= 1) return;
     const interval = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
-        setCurrent((prev) => (prev + 1) % ads.length);
+        setCurrent((prev) => (prev + 1) % visibleAds.length);
         setVisible(true);
       }, 400);
     }, 10000);
-
     return () => clearInterval(interval);
-  }, [ads.length]);
+  }, [visibleAds.length]);
 
   // Track impression when ad becomes visible
   useEffect(() => {
-    if (!ads[current]?.id) return;
+    const ad = visibleAds[current];
+    if (!ad?.id) return;
+    if (firedRef.current[`imp_${ad.id}_${current}`]) return;
+    firedRef.current[`imp_${ad.id}_${current}`] = true;
     fetch("/api/ads/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: ads[current].id, type: "impression" }),
+      body: JSON.stringify({ id: ad.id, type: "impression" }),
     }).catch(() => {});
-  }, [current, ads]);
+  }, [current, visibleAds]);
 
-  if (!ads.length) return null;
+  if (!visibleAds.length) return null;
 
-  const ad = ads[current];
+  const ad = visibleAds[current];
 
   function handleClick() {
     fetch("/api/ads/track", {
@@ -72,9 +97,9 @@ export default function AdCarousel({ ads }: { ads: Ad[] }) {
         </div>
         <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
           <span className="material-symbols-outlined text-outline text-lg">open_in_new</span>
-          {ads.length > 1 && (
+          {visibleAds.length > 1 && (
             <div className="flex gap-1">
-              {ads.map((_, i) => (
+              {visibleAds.map((_, i) => (
                 <span
                   key={i}
                   className={`block w-1 h-1 rounded-full transition-colors ${i === current ? "bg-primary" : "bg-outline-variant"}`}
