@@ -65,19 +65,30 @@ export async function rejectUser(id: string, adminNote: string) {
 
 // ── Advertisements ────────────────────────────────────────────────────────────
 
+function parseScheduleDate(value: FormDataEntryValue | null): Date | null {
+  if (!value || typeof value !== "string" || value.trim() === "") return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export async function createAdvertisement(formData: FormData) {
   await requireAdmin();
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const imageUrl = formData.get("imageUrl") as string;
   const destinationUrl = formData.get("destinationUrl") as string;
+  const scheduledAt = parseScheduleDate(formData.get("scheduledAt"));
+  const expiresAt = parseScheduleDate(formData.get("expiresAt"));
 
   if (!title || !description || !imageUrl || !destinationUrl) {
     throw new Error("Tous les champs sont requis");
   }
 
+  // Si une date d'activation est définie et est dans le futur, désactiver pour l'instant
+  const isActive = scheduledAt ? scheduledAt <= new Date() : true;
+
   await prisma.advertisement.create({
-    data: { title, description, imageUrl, destinationUrl },
+    data: { title, description, imageUrl, destinationUrl, scheduledAt, expiresAt, isActive },
   });
   revalidatePath("/admin/ads");
   revalidatePath("/");
@@ -90,6 +101,8 @@ export async function updateAdvertisement(id: string, formData: FormData) {
   const description = formData.get("description") as string;
   const imageUrl = formData.get("imageUrl") as string;
   const destinationUrl = formData.get("destinationUrl") as string;
+  const scheduledAt = parseScheduleDate(formData.get("scheduledAt"));
+  const expiresAt = parseScheduleDate(formData.get("expiresAt"));
 
   if (!title || !description || !imageUrl || !destinationUrl) {
     throw new Error("Tous les champs sont requis");
@@ -97,7 +110,7 @@ export async function updateAdvertisement(id: string, formData: FormData) {
 
   await prisma.advertisement.update({
     where: { id },
-    data: { title, description, imageUrl, destinationUrl },
+    data: { title, description, imageUrl, destinationUrl, scheduledAt, expiresAt },
   });
   revalidatePath("/admin/ads");
   revalidatePath("/");

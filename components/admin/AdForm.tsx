@@ -12,6 +12,8 @@ type Ad = {
   isActive: boolean;
   clicks: number;
   impressions: number;
+  scheduledAt: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
 };
 
@@ -229,6 +231,34 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
               className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2.5 outline-none focus:border-[#2f6fb8] focus:ring-1 focus:ring-[#2f6fb8]/20 resize-none"
             />
           </div>
+
+          {/* Programmation */}
+          <div className="border border-[#eceef0] rounded-xl p-4 space-y-3 bg-[#f7f9fb]">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="material-symbols-outlined text-[16px] text-[#2f6fb8]" style={{ fontVariationSettings: "'FILL' 1" }}>schedule</span>
+              <p className="text-xs font-bold text-[#464652] uppercase tracking-wide">Programmation (optionnel)</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-[#777683] uppercase tracking-wide">Activation</label>
+                <input
+                  name="scheduledAt"
+                  type="datetime-local"
+                  className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8] bg-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-[#777683] uppercase tracking-wide">Désactivation</label>
+                <input
+                  name="expiresAt"
+                  type="datetime-local"
+                  className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8] bg-white"
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-[#9ca3af]">Laisser vide pour une activation/désactivation manuelle</p>
+          </div>
+
           <div className="flex justify-end gap-3">
             <button
               type="button"
@@ -277,52 +307,82 @@ function StatsModal({ ad, onClose }: { ad: Ad; onClose: () => void }) {
   const ctr = ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(1) : "0.0";
   const daysActive = Math.max(1, Math.floor((Date.now() - new Date(ad.createdAt).getTime()) / 86_400_000));
 
+  const stats = [
+    { label: "Clics", value: ad.clicks.toLocaleString("fr-FR"), icon: "ads_click" },
+    { label: "Impressions", value: ad.impressions.toLocaleString("fr-FR"), icon: "visibility" },
+    { label: "Taux de clic", value: `${ctr} %`, icon: "percent" },
+    { label: "Jours en ligne", value: `${daysActive}`, icon: "calendar_today" },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Handle bar (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-9 h-1 rounded-full bg-[#d1d5db]" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#eceef0]">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#2f6fb8] text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>bar_chart</span>
-            <h3 className="font-bold text-[#191c1e]">Statistiques</h3>
+        <div className="flex items-start justify-between px-6 pt-5 pb-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#2f6fb8] mb-1">Publicité</p>
+            <h3 className="font-bold text-[#111827] text-base leading-snug line-clamp-2 pr-4">{ad.title}</h3>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-[#f2f4f6] flex items-center justify-center transition-colors">
-            <span className="material-symbols-outlined text-[#777683] text-lg">close</span>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 w-8 h-8 rounded-full bg-[#f3f4f6] hover:bg-[#e5e7eb] flex items-center justify-center transition-colors mt-0.5"
+          >
+            <span className="material-symbols-outlined text-[#6b7280] text-[18px]">close</span>
           </button>
         </div>
 
-        {/* Ad title */}
-        <div className="px-5 pt-4 pb-2">
-          <p className="text-xs text-[#777683] font-semibold uppercase tracking-wide">Publicité</p>
-          <p className="font-bold text-[#191c1e] text-sm mt-0.5 line-clamp-1">{ad.title}</p>
-        </div>
+        {/* Divider */}
+        <div className="h-px bg-[#f3f4f6] mx-6" />
 
-        {/* Stats grid */}
-        <div className="px-5 pb-5 grid grid-cols-2 gap-3 mt-2">
-          {[
-            { icon: "ads_click", label: "Clics", value: ad.clicks.toLocaleString("fr-FR"), color: "bg-[#e1e0ff] text-[#2f6fb8]" },
-            { icon: "visibility", label: "Impressions", value: ad.impressions.toLocaleString("fr-FR"), color: "bg-amber-100 text-amber-700" },
-            { icon: "percent", label: "Taux de clic", value: `${ctr}%`, color: "bg-emerald-100 text-emerald-700" },
-            { icon: "calendar_today", label: "Jours en ligne", value: `${daysActive}j`, color: "bg-[#d5e3fc] text-[#515f74]" },
-          ].map(({ icon, label, value, color }) => (
-            <div key={label} className="bg-[#f7f9fb] rounded-xl p-4">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color} mb-2`}>
-                <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-              </div>
-              <p className="text-xl font-extrabold text-[#191c1e] font-headline">{value}</p>
-              <p className="text-[11px] text-[#777683] mt-0.5">{label}</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 divide-x divide-y divide-[#f3f4f6] border border-[#f3f4f6] mx-6 mt-5 rounded-xl overflow-hidden">
+          {stats.map(({ label, value, icon }) => (
+            <div key={label} className="px-4 py-4">
+              <span
+                className="material-symbols-outlined text-[#2f6fb8] text-[18px] mb-2 block"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                {icon}
+              </span>
+              <p className="text-[22px] font-extrabold text-[#111827] leading-none tracking-tight">{value}</p>
+              <p className="text-xs text-[#9ca3af] mt-1 font-medium">{label}</p>
             </div>
           ))}
         </div>
 
         {/* Status */}
-        <div className="px-5 pb-5">
-          <div className={`flex items-center gap-2 px-4 py-3 rounded-xl ${ad.isActive ? "bg-emerald-50 text-emerald-700" : "bg-[#f2f4f6] text-[#777683]"}`}>
-            <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              {ad.isActive ? "check_circle" : "cancel"}
-            </span>
-            <span className="text-sm font-semibold">{ad.isActive ? "Publicité active" : "Publicité désactivée"}</span>
+        <div className="mx-6 mt-4">
+          <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold ${
+            ad.isActive
+              ? "bg-[#f0fdf4] text-[#166534]"
+              : "bg-[#f9fafb] text-[#6b7280]"
+          }`}>
+            <span
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${ad.isActive ? "bg-emerald-500 animate-pulse" : "bg-[#d1d5db]"}`}
+            />
+            {ad.isActive ? "Publicité active" : "Publicité désactivée"}
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-5">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl border border-[#e5e7eb] text-sm font-semibold text-[#374151] hover:bg-[#f9fafb] transition-colors"
+          >
+            Fermer
+          </button>
         </div>
       </div>
     </div>

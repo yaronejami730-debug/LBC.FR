@@ -94,13 +94,15 @@ model Message {
 }
 
 model Advertisement {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   title          String
   description    String
   imageUrl       String
   destinationUrl String
-  isActive       Boolean  @default(true)
-  clicks         Int      @default(0)
-  impressions    Int      @default(0)
-  createdAt      DateTime @default(now())
+  isActive       Boolean   @default(true)
+  clicks         Int       @default(0)
+  impressions    Int       @default(0)
+  scheduledAt    DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
 }
