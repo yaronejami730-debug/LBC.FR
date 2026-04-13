@@ -1,25 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { usePresence } from "@/hooks/usePresence";
 
-export default function LiveVisitorCount({ initial }: { initial: number }) {
-  const [count, setCount] = useState(initial);
-  const [pulse, setPulse] = useState(false);
-
-  useEffect(() => {
-    const es = new EventSource("/api/visitors/stream");
-
-    es.onmessage = (e) => {
-      const { count: c } = JSON.parse(e.data);
-      setCount(c);
-      setPulse(true);
-      setTimeout(() => setPulse(false), 600);
-    };
-
-    es.onerror = () => es.close();
-
-    return () => es.close();
-  }, []);
+export default function LiveVisitorCount() {
+  const count = usePresence("platform", "admin");
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-[#eceef0] transition-all hover:shadow-md">
@@ -40,11 +24,7 @@ export default function LiveVisitorCount({ initial }: { initial: number }) {
           En direct
         </span>
       </div>
-      <p
-        className={`text-3xl font-extrabold text-[#191c1e] mt-4 font-headline transition-transform duration-150 ${
-          pulse ? "scale-110" : "scale-100"
-        }`}
-      >
+      <p className="text-3xl font-extrabold text-[#191c1e] mt-4 font-headline transition-all duration-150">
         {count}
       </p>
       <p className="text-sm text-[#777683] mt-0.5">Visiteurs en ce moment</p>
