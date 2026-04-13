@@ -43,16 +43,17 @@ export default async function Navbar({
           </div>
 
           {/* Search Bar */}
-          <div className="hidden md:flex flex-1 items-center max-w-[640px] bg-slate-100/80 hover:bg-slate-100 transition-colors rounded-full h-[44px] pl-4 pr-1.5 focus-within:ring-2 focus-within:ring-[#2f6fb8]/20 focus-within:bg-white border border-transparent focus-within:border-[#2f6fb8]/30">
-            <input 
-              type="text" 
-              placeholder="Rechercher sur Le Bon Deal"
+          <form action="/search" method="get" className="hidden md:flex flex-1 items-center max-w-[640px] bg-slate-100/80 hover:bg-slate-100 transition-colors rounded-full h-[44px] pl-4 pr-1.5 focus-within:ring-2 focus-within:ring-[#2f6fb8]/20 focus-within:bg-white border border-transparent focus-within:border-[#2f6fb8]/30">
+            <input
+              type="text"
+              name="q"
+              placeholder="Rechercher sur Deal & Co"
               className="flex-1 bg-transparent border-none outline-none text-[15px] text-slate-800 placeholder-slate-500 w-full"
             />
-            <button className="flex items-center justify-center w-[34px] h-[34px] bg-[#2f6fb8] text-white rounded-full hover:bg-[#2f6fb8]/90 transition-colors flex-shrink-0">
+            <button type="submit" className="flex items-center justify-center w-[34px] h-[34px] bg-[#2f6fb8] text-white rounded-full hover:bg-[#2f6fb8]/90 transition-colors flex-shrink-0">
               <span className="material-symbols-outlined text-[18px]">search</span>
             </button>
-          </div>
+          </form>
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">

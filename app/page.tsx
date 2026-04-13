@@ -52,26 +52,24 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero / Search Section */}
-      <header className="pt-40 pb-6 px-6 max-w-7xl mx-auto">
-
-        <div className="relative bg-primary-container bg-gradient-to-br from-primary to-primary-container rounded-[2rem] p-8 md:p-16 overflow-hidden">
+      <header className="pt-32 pb-4 px-4 max-w-7xl mx-auto">
+        <div className="relative bg-gradient-to-br from-primary to-primary-container rounded-2xl p-6 md:p-10 overflow-hidden">
           <div className="relative z-10 max-w-2xl">
-            <h1 className="text-white text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+            <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mb-5 leading-tight">
               Petites annonces gratuites <br className="hidden md:block" /> près de chez vous.
             </h1>
             {/* Search Bar */}
             <form action="/search" method="get">
-              <div className="flex items-center bg-surface-container-lowest rounded-full p-2 shadow-[0_16px_32px_rgba(21,21,125,0.1)]">
-                <span className="material-symbols-outlined text-primary ml-4">search</span>
-                <input name="q" className="w-full border-none focus:ring-0 bg-transparent px-4 py-2 text-on-surface outline-none" placeholder="Rechercher voitures, logements, emplois..." type="text" />
-                <button type="submit" className="bg-primary text-white px-8 py-3 rounded-full font-bold active:scale-95 transition-transform">
+              <div className="flex items-center bg-white rounded-full p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+                <span className="material-symbols-outlined text-primary ml-3 text-xl">search</span>
+                <input name="q" className="w-full border-none focus:ring-0 bg-transparent px-3 py-2 text-on-surface outline-none text-sm" placeholder="Voiture, logement, iPhone…" type="text" />
+                <button type="submit" className="bg-primary text-white px-6 py-2.5 rounded-full font-bold text-sm active:scale-95 transition-transform">
                   Rechercher
                 </button>
               </div>
             </form>
           </div>
-          {/* Decorative Grain/Abstract */}
-          <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent"></div>
+          <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent" />
         </div>
       </header>
 

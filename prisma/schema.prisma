@@ -43,6 +43,10 @@ model Listing {
   updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?
   metadata        String         @default("{}")
+  vehicleKm       Int?
+  vehicleYear     Int?
+  immoSurface     Float?
+  immoRooms       Int?
   phone           String?
   hidePhone       Boolean        @default(false)
   status          String         @default("PENDING")

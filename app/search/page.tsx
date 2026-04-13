@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { CATEGORIES } from "@/lib/categories";
+import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
 
 export async function generateMetadata({
@@ -52,51 +53,19 @@ export default async function SearchPage({
   searchParams: Promise<Record<string, string>>;
 }) {
   const params = await searchParams;
-  const q = params.q || "";
+  const q        = params.q        || "";
   const category = params.category || "";
-  const page = parseInt(params.page || "1");
-  const minPrice = params.minPrice || "";
-  const maxPrice = params.maxPrice || "";
-  const location = params.location || "";
-  const condition = params.condition || "";
-  const brand = params.brand || "";
-  const sort = params.sort || "";
-  const perPage = 12;
-
-  const priceFilter =
-    minPrice && maxPrice
-      ? { gte: parseFloat(minPrice), lte: parseFloat(maxPrice) }
-      : minPrice
-      ? { gte: parseFloat(minPrice) }
-      : maxPrice
-      ? { lte: parseFloat(maxPrice) }
-      : undefined;
+  const page     = parseInt(params.page || "1");
+  const sort     = params.sort     || "";
+  const perPage  = 12;
 
   const orderBy =
-    sort === "Prix croissant"
-      ? { price: "asc" as const }
-      : sort === "Prix décroissant"
-      ? { price: "desc" as const }
-      : sort === "Plus anciennes"
-      ? { createdAt: "asc" as const }
-      : { createdAt: "desc" as const };
+    sort === "Prix croissant"  ? { price: "asc" as const } :
+    sort === "Prix décroissant" ? { price: "desc" as const } :
+    sort === "Plus anciennes"  ? { createdAt: "asc" as const } :
+                                  { createdAt: "desc" as const };
 
-  const where = {
-    status: "APPROVED",
-    deletedAt: null,
-    ...(q && {
-      OR: [
-        { title: { contains: q } },
-        { description: { contains: q } },
-        { location: { contains: q } },
-      ],
-    }),
-    ...(category && { category }),
-    ...(priceFilter && { price: priceFilter }),
-    ...(location && { location: { contains: location } }),
-    ...(condition && { condition }),
-    ...(brand && { brand: { contains: brand } }),
-  };
+  const where = buildSearchWhere(params);
 
   const [listings, total, ads] = await Promise.all([
     prisma.listing.findMany({
@@ -225,16 +194,8 @@ export default async function SearchPage({
           <div className="mt-20 flex justify-center">
             <div className="flex items-center bg-surface-container-low p-1.5 rounded-full">
               {(() => {
-                const baseParams = {
-                  ...(q && { q }),
-                  ...(category && { category }),
-                  ...(minPrice && { minPrice }),
-                  ...(maxPrice && { maxPrice }),
-                  ...(location && { location }),
-                  ...(condition && { condition }),
-                  ...(brand && { brand }),
-                  ...(sort && { sort }),
-                };
+                const { page: _p, _filters: _f, ...restParams } = params;
+                const baseParams = restParams;
                 return (
                   <>
                     {page > 1 && (

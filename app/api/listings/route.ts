@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildSearchWhere } from "@/lib/search-where";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q") || "";
-  const category = searchParams.get("category") || "";
   const page = parseInt(searchParams.get("page") || "1");
   const perPage = 12;
 
-  const where = {
-    status: "APPROVED",
-    deletedAt: null,
-    ...(q && {
-      OR: [
-        { title: { contains: q } },
-        { description: { contains: q } },
-        { location: { contains: q } },
-      ],
-    }),
-    ...(category && { category }),
-  };
+  const params: Record<string, string> = {};
+  searchParams.forEach((v, k) => { params[k] = v; });
+
+  const where = buildSearchWhere(params);
 
   const [listings, total] = await Promise.all([
     prisma.listing.findMany({
@@ -55,6 +46,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Prix invalide" }, { status: 400 });
     }
 
+    // Extract numeric range columns from metadata so they're queryable
+    const metaObj = (() => {
+      try { return JSON.parse(typeof metadata === "string" ? metadata : JSON.stringify(metadata || {})); }
+      catch { return {}; }
+    })();
+    const vehicleKm   = metaObj.kilometrage ? (parseInt(metaObj.kilometrage) || null) : null;
+    const vehicleYear = metaObj.annee       ? (parseInt(metaObj.annee)       || null) : null;
+    const immoSurface = metaObj.surface     ? (parseFloat(metaObj.surface)   || null) : null;
+    const immoRooms   = metaObj.rooms       ? (parseInt(metaObj.rooms)       || null) : null;
+
     const listing = await prisma.listing.create({
       data: {
         title,
@@ -65,7 +66,11 @@ export async function POST(req: NextRequest) {
         location,
         condition: condition || "Bon état",
         images: JSON.stringify(images || []),
-        metadata: metadata || "{}",
+        metadata: typeof metadata === "string" ? metadata : JSON.stringify(metadata || {}),
+        vehicleKm,
+        vehicleYear,
+        immoSurface,
+        immoRooms,
         phone: phone || null,
         hidePhone: hidePhone === true,
         userId: session.user.id,
