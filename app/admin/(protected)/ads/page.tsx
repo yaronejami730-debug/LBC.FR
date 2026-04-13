@@ -1,21 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import AdForm from "@/components/admin/AdForm";
 
+type Ad = {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  destinationUrl: string;
+  isActive: boolean;
+  clicks: number;
+  impressions: number;
+  createdAt: Date;
+};
+
 export default async function AdsPage() {
-  const ads = await prisma.advertisement.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      imageUrl: true,
-      destinationUrl: true,
-      isActive: true,
-      clicks: true,
-      impressions: true,
-      createdAt: true,
-    },
-  });
+  const ads = await prisma.$queryRaw<Ad[]>`
+    SELECT id, title, description, "imageUrl", "destinationUrl", "isActive",
+           COALESCE(clicks, 0) AS clicks, COALESCE(impressions, 0) AS impressions, "createdAt"
+    FROM "Advertisement"
+    ORDER BY "createdAt" DESC
+  `;
 
   return (
     <div className="space-y-6">
