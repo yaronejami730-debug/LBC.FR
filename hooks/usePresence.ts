@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { supabaseClient } from "@/lib/supabase-presence";
 
-const HEARTBEAT_INTERVAL = 1_000; // 1s — temps réel instantané
+const HEARTBEAT_INTERVAL = 5_000; // 5s — stable et suffisamment réactif
 
 function getSessionId(): string {
   let uid = sessionStorage.getItem("dealco_uid");
@@ -37,14 +37,20 @@ export function usePresence(channel: string, role: "user" | "admin" = "user"): n
       }
     };
 
-    const fetchCount = async () => {
-      try {
-        const res = await fetch(`/api/presence?channel=${encodeURIComponent(channel)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCount(data.count ?? 0);
-        }
-      } catch {}
+    // Debounce fetchCount pour éviter la race condition quand plusieurs
+    // heartbeats arrivent simultanément et déclenchent des GET en parallèle
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const fetchCountDebounced = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/presence?channel=${encodeURIComponent(channel)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setCount(data.count ?? 0);
+          }
+        } catch {}
+      }, 300); // attend 300ms que la rafale se calme
     };
 
     sendHeartbeat();
@@ -61,7 +67,7 @@ export function usePresence(channel: string, role: "user" | "admin" = "user"): n
           table: "presence_sessions",
           filter: `channel=eq.${channel}`,
         },
-        fetchCount
+        fetchCountDebounced
       )
       .subscribe();
 
@@ -81,6 +87,7 @@ export function usePresence(channel: string, role: "user" | "admin" = "user"): n
 
     return () => {
       clearInterval(interval);
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabaseClient.removeChannel(sub);
       fetch("/api/presence", {
         method: "DELETE",
