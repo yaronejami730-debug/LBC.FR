@@ -1,19 +1,20 @@
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import CategoryDrawer from "./CategoryDrawer";
+import UserDropdown from "./UserDropdown";
 
 const CATEGORIES = [
-  { label: "Immobilier", href: "/search?category=immobilier" },
-  { label: "Véhicules", href: "/search?category=vehicules" },
-  { label: "Vacances", href: "/search?category=vacances" },
-  { label: "Emploi", href: "/search?category=emploi" },
-  { label: "Mode", href: "/search?category=mode" },
-  { label: "Maison & Jardin", href: "/search?category=maison-jardin" },
-  { label: "Famille", href: "/search?category=famille" },
-  { label: "Électronique", href: "/search?category=electronique" },
-  { label: "Loisirs", href: "/search?category=loisirs" },
-  { label: "Autres", href: "/search?category=autres" },
-  { label: "Bons plans !", href: "/search?category=bons-plans" },
+  { label: "Immobilier",           href: "/search?category=Immobilier" },
+  { label: "Véhicules",            href: "/search?category=V%C3%A9hicules" },
+  { label: "Vacances",             href: "/search?category=Vacances" },
+  { label: "Emploi",               href: "/search?category=Emploi" },
+  { label: "Mode",                 href: "/search?category=Mode" },
+  { label: "Maison",               href: "/search?category=Maison" },
+  { label: "Bébé & Enfant",        href: "/search?category=B%C3%A9b%C3%A9%20%26%20Enfant" },
+  { label: "Multimédia",           href: "/search?category=Multim%C3%A9dia" },
+  { label: "Loisirs",              href: "/search?category=Loisirs" },
+  { label: "Animaux",              href: "/search?category=Animaux" },
+  { label: "Bons plans !",         href: "/search" },
 ];
 
 export default async function Navbar({
@@ -55,30 +56,7 @@ export default async function Navbar({
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
-            <Link href="/recherches" className="hidden lg:flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
-              <span className="material-symbols-outlined text-[24px]">notifications</span>
-              <span className="text-[12px] font-medium leading-none">Mes recherches</span>
-            </Link>
-            <Link href="/favoris" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
-              <span className="material-symbols-outlined text-[24px]">favorite</span>
-              <span className="text-[12px] font-medium leading-none hidden lg:block">Favoris</span>
-            </Link>
-            <Link href="/messages" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
-              <span className="material-symbols-outlined text-[24px]">chat_bubble</span>
-              <span className="text-[12px] font-medium leading-none hidden lg:block">Messages</span>
-            </Link>
-            
-            {user ? (
-               <Link href="/profile" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
-                 <span className="material-symbols-outlined text-[24px]">person</span>
-                 <span className="text-[12px] font-medium leading-none hidden lg:block">{user.name?.split(" ")[0]}</span>
-               </Link>
-            ) : (
-               <Link href="/login" className="flex flex-col items-center gap-1 text-slate-700 hover:text-[#2f6fb8] transition-colors group">
-                 <span className="material-symbols-outlined text-[24px]">person</span>
-                 <span className="text-[12px] font-medium leading-none hidden lg:block">Se connecter</span>
-               </Link>
-            )}
+            <UserDropdown user={user} />
           </div>
         </div>
 
