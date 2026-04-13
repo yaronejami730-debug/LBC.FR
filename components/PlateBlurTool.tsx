@@ -13,7 +13,7 @@ interface Rect { x: number; y: number; w: number; h: number }
 export default function PlateBlurTool({ src, onDone, onSkip }: Props) {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const imgRef     = useRef<HTMLImageElement | null>(null);
-  const [rect, setRect]       = useState<Rect>({ x: 0.25, y: 0.72, w: 0.5, h: 0.1 });
+  const [rect, setRect]       = useState<Rect>({ x: 0.31, y: 0.76, w: 0.38, h: 0.10 });
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
   const [dragStart, setDragStart] = useState({ mx: 0, my: 0, rx: 0, ry: 0 });
@@ -152,34 +152,34 @@ export default function PlateBlurTool({ src, onDone, onSkip }: Props) {
     const pw = rect.w * finalCanvas.width;
     const ph = rect.h * finalCanvas.height;
 
-    // Offscreen canvas for the blurred patch
-    const blur = document.createElement("canvas");
-    blur.width  = pw;
-    blur.height = ph;
-    const bCtx = blur.getContext("2d")!;
-    // Scale down → scale up = pixelate/blur effect (works without filter support)
-    bCtx.drawImage(img, px, py, pw, ph, 0, 0, pw / 8, ph / 8);
-    bCtx.filter = "blur(4px)";
-    bCtx.drawImage(blur, 0, 0, pw / 8, ph / 8, 0, 0, pw / 8, ph / 8);
-    bCtx.filter = "none";
+    // Step 1 — extreme pixelation (scale down ×20 → back up, no smoothing)
+    const tiny = document.createElement("canvas");
+    tiny.width  = Math.max(1, Math.round(pw / 20));
+    tiny.height = Math.max(1, Math.round(ph / 20));
+    const tCtx = tiny.getContext("2d")!;
+    tCtx.drawImage(img, px, py, pw, ph, 0, 0, tiny.width, tiny.height);
 
-    // Scale back up (pixelated = censored look)
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(blur, 0, 0, pw / 8, ph / 8, px, py, pw, ph);
+    ctx.drawImage(tiny, 0, 0, tiny.width, tiny.height, px, py, pw, ph);
     ctx.restore();
 
-    // Gaussian blur on top for soft look
-    const softBlur = document.createElement("canvas");
-    softBlur.width  = pw;
-    softBlur.height = ph;
-    const sbCtx = softBlur.getContext("2d")!;
-    sbCtx.filter = "blur(12px)";
-    sbCtx.drawImage(img, px, py, pw, ph, 0, 0, pw, ph);
+    // Step 2 — three heavy Gaussian passes (each reads what the previous wrote)
+    function gaussPass(radius: number) {
+      const patch = document.createElement("canvas");
+      patch.width  = pw;
+      patch.height = ph;
+      const pCtx = patch.getContext("2d")!;
+      pCtx.filter = `blur(${radius}px)`;
+      // read back the current state of finalCanvas in this region
+      pCtx.drawImage(finalCanvas, px, py, pw, ph, 0, 0, pw, ph);
+      pCtx.filter = "none";
+      ctx.drawImage(patch, 0, 0, pw, ph, px, py, pw, ph);
+    }
 
-    ctx.globalAlpha = 0.7;
-    ctx.drawImage(softBlur, 0, 0, pw, ph, px, py, pw, ph);
-    ctx.globalAlpha = 1;
+    gaussPass(18);
+    gaussPass(18);
+    gaussPass(18);
 
     // Export and re-upload
     finalCanvas.toBlob(async (blob) => {
