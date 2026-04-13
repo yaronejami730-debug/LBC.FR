@@ -330,7 +330,12 @@ export default async function ListingPage({
 
                 {/* Seller Actions (Voir profil, Message, Téléphone) */}
                 {!isOwner && (
-                  <SellerActions listingId={listing.id} sellerId={listing.userId} />
+                  <SellerActions
+                    listingId={listing.id}
+                    sellerId={listing.userId}
+                    phone={(listing as any).phone ?? null}
+                    hidePhone={(listing as any).hidePhone ?? false}
+                  />
                 )}
                 {isOwner && (
                   <OwnerActions listingId={listing.id} />

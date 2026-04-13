@@ -42,6 +42,8 @@ model Listing {
   updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?
   metadata        String         @default("{}")
+  phone           String?
+  hidePhone       Boolean        @default(false)
   status          String         @default("PENDING")
   rejectionReason String?
   conversations   Conversation[]

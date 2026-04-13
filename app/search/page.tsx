@@ -5,17 +5,42 @@ import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { CATEGORIES } from "@/lib/categories";
+import SearchBar from "./SearchBar";
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<Record<string, string>>;
 }) {
   const params = await searchParams;
   const q = params.q || "";
   const category = params.category || "";
   const page = parseInt(params.page || "1");
+  const minPrice = params.minPrice || "";
+  const maxPrice = params.maxPrice || "";
+  const location = params.location || "";
+  const condition = params.condition || "";
+  const brand = params.brand || "";
+  const sort = params.sort || "";
   const perPage = 12;
+
+  const priceFilter =
+    minPrice && maxPrice
+      ? { gte: parseFloat(minPrice), lte: parseFloat(maxPrice) }
+      : minPrice
+      ? { gte: parseFloat(minPrice) }
+      : maxPrice
+      ? { lte: parseFloat(maxPrice) }
+      : undefined;
+
+  const orderBy =
+    sort === "Prix croissant"
+      ? { price: "asc" as const }
+      : sort === "Prix décroissant"
+      ? { price: "desc" as const }
+      : sort === "Plus anciennes"
+      ? { createdAt: "asc" as const }
+      : { createdAt: "desc" as const };
 
   const where = {
     status: "APPROVED",
@@ -28,12 +53,16 @@ export default async function SearchPage({
       ],
     }),
     ...(category && { category }),
+    ...(priceFilter && { price: priceFilter }),
+    ...(location && { location: { contains: location } }),
+    ...(condition && { condition }),
+    ...(brand && { brand: { contains: brand } }),
   };
 
   const [listings, total, ads] = await Promise.all([
     prisma.listing.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (page - 1) * perPage,
       take: perPage,
       include: { user: { select: { verified: true } } },
@@ -63,11 +92,7 @@ export default async function SearchPage({
                 <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-secondary">Découvrez les articles</span>
                 <h2 className="text-3xl font-extrabold manrope text-primary tracking-tight">Annonces sélectionnées</h2>
               </div>
-              <form action="/search" method="get" className="flex items-center bg-surface-container-lowest px-4 py-2 rounded-xl shadow-[0_8px_24px_rgba(21,21,125,0.04)] w-full md:w-96 group">
-                {category && <input type="hidden" name="category" value={category} />}
-                <span className="material-symbols-outlined text-outline-variant group-focus-within:text-primary transition-colors">search</span>
-                <input defaultValue={q} name="q" className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2 outline-none" placeholder="Rechercher..." type="text" />
-              </form>
+              <SearchBar q={q} category={category} searchParams={params} />
             </div>
             {/* Chips/Filters */}
             <div className="flex flex-wrap gap-2">
@@ -164,25 +189,41 @@ export default async function SearchPage({
         {totalPages > 1 && (
           <div className="mt-20 flex justify-center">
             <div className="flex items-center bg-surface-container-low p-1.5 rounded-full">
-              {page > 1 && (
-                <Link href={`/search?${new URLSearchParams({ ...(q && { q }), ...(category && { category }), page: String(page - 1) })}`} className="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-white transition-all">
-                  <span className="material-symbols-outlined">chevron_left</span>
-                </Link>
-              )}
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
-                <Link
-                  key={p}
-                  href={`/search?${new URLSearchParams({ ...(q && { q }), ...(category && { category }), page: String(p) })}`}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full font-medium text-sm hover:bg-white transition-all ${p === page ? "bg-primary text-white font-bold shadow-md" : "text-on-surface-variant"}`}
-                >
-                  {p}
-                </Link>
-              ))}
-              {page < totalPages && (
-                <Link href={`/search?${new URLSearchParams({ ...(q && { q }), ...(category && { category }), page: String(page + 1) })}`} className="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-white transition-all">
-                  <span className="material-symbols-outlined">chevron_right</span>
-                </Link>
-              )}
+              {(() => {
+                const baseParams = {
+                  ...(q && { q }),
+                  ...(category && { category }),
+                  ...(minPrice && { minPrice }),
+                  ...(maxPrice && { maxPrice }),
+                  ...(location && { location }),
+                  ...(condition && { condition }),
+                  ...(brand && { brand }),
+                  ...(sort && { sort }),
+                };
+                return (
+                  <>
+                    {page > 1 && (
+                      <Link href={`/search?${new URLSearchParams({ ...baseParams, page: String(page - 1) })}`} className="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-white transition-all">
+                        <span className="material-symbols-outlined">chevron_left</span>
+                      </Link>
+                    )}
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((p) => (
+                      <Link
+                        key={p}
+                        href={`/search?${new URLSearchParams({ ...baseParams, page: String(p) })}`}
+                        className={`w-10 h-10 flex items-center justify-center rounded-full font-medium text-sm hover:bg-white transition-all ${p === page ? "bg-primary text-white font-bold shadow-md" : "text-on-surface-variant"}`}
+                      >
+                        {p}
+                      </Link>
+                    ))}
+                    {page < totalPages && (
+                      <Link href={`/search?${new URLSearchParams({ ...baseParams, page: String(page + 1) })}`} className="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-white transition-all">
+                        <span className="material-symbols-outlined">chevron_right</span>
+                      </Link>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

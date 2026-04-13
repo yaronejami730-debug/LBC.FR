@@ -41,6 +41,8 @@ export default function PostForm() {
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [condition, setCondition] = useState("Bon état");
+  const [phone, setPhone] = useState("");
+  const [hidePhone, setHidePhone] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -129,16 +131,18 @@ export default function PostForm() {
       const res = await fetch("/api/listings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          title, 
-          price: parseFloat(price), 
+        body: JSON.stringify({
+          title,
+          price: parseFloat(price),
           category: categoryLabel,
-          subcategory, 
-          description, 
-          location, 
-          condition, 
-          images: cleanImages, 
-          metadata 
+          subcategory,
+          description,
+          location,
+          condition,
+          images: cleanImages,
+          metadata,
+          phone: phone.trim() || null,
+          hidePhone,
         }),
       });
       if (res.status === 401) {
@@ -532,6 +536,44 @@ export default function PostForm() {
                 placeholder="Décrivez votre article : état, âge, raison de la vente…"
                 rows={6} />
               <div className="h-[1px] bg-surface-container" />
+            </div>
+
+            {/* Téléphone */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-primary tracking-widest uppercase">
+                Numéro de téléphone <span className="text-outline normal-case font-normal">(facultatif)</span>
+              </label>
+              <div className="flex items-center border-none gap-2">
+                <div className="flex items-center bg-surface-container rounded-xl px-3 py-2.5 gap-2 flex-1">
+                  <span className="material-symbols-outlined text-outline text-[18px]">call</span>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    type="tel"
+                    placeholder="Ex : 06 12 34 56 78"
+                    className="bg-transparent border-none focus:ring-0 text-sm outline-none flex-1 text-on-surface"
+                    maxLength={20}
+                  />
+                </div>
+              </div>
+              {phone.trim() && (
+                <label className="flex items-center gap-3 cursor-pointer select-none group">
+                  <div
+                    onClick={() => setHidePhone((v) => !v)}
+                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${hidePhone ? "bg-[#2f6fb8]" : "bg-slate-200"}`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hidePhone ? "translate-x-5" : "translate-x-0.5"}`} />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-on-surface">Masquer mon numéro de téléphone</span>
+                    <p className="text-xs text-outline mt-0.5">
+                      {hidePhone
+                        ? "Les acheteurs ne verront pas le numéro — messagerie uniquement"
+                        : "Le numéro sera visible sur l'annonce"}
+                    </p>
+                  </div>
+                </label>
+              )}
             </div>
           </section>
 
