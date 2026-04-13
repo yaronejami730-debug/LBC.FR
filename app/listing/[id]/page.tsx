@@ -10,6 +10,7 @@ import AdRotator from "./AdRotator";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "./SellerActions";
 import OwnerActions from "./OwnerActions";
+import PhotoGallery from "./PhotoGallery";
 
 export async function generateMetadata({
   params,
@@ -150,23 +151,7 @@ export default async function ListingPage({
       <main className="pt-32 max-w-7xl mx-auto pb-12">
         {/* Large Asymmetric Image Gallery */}
         <section className="px-4 md:px-6 mt-4">
-          <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[300px] md:h-[500px]">
-            <div className="col-span-3 row-span-2 rounded-xl overflow-hidden shadow-sm relative group bg-slate-100">
-              <img className="w-full h-full object-contain" alt={listing.title} src={mainImg} />
-              <div className="absolute bottom-4 right-4 bg-black/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium">1 / {Math.max(images.length, 1)}</div>
-            </div>
-            <div className="col-span-1 row-span-1 rounded-xl overflow-hidden shadow-sm bg-slate-100">
-              <img className="w-full h-full object-contain" alt={listing.title} src={images[1] || mainImg} />
-            </div>
-            <div className="col-span-1 row-span-1 rounded-xl overflow-hidden shadow-sm relative bg-slate-100">
-              <img className="w-full h-full object-contain" alt={listing.title} src={images[2] || mainImg} />
-              {images.length > 3 && (
-                <div className="absolute inset-0 bg-primary/40 flex items-center justify-center backdrop-blur-[2px]">
-                  <span className="text-white font-bold text-lg">+{images.length - 3}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <PhotoGallery images={images} title={listing.title} />
         </section>
 
         {/* Product Details Grid */}
@@ -339,7 +324,7 @@ export default async function ListingPage({
                   <div>
                     <h3 className="font-bold text-lg text-on-surface">{listing.user.name}</h3>
                     {listing.user.verified && (
-                      <div className="flex items-center gap-1 text-[#00a67e] font-semibold text-xs mt-0.5">
+                      <div className="flex items-center gap-1 text-[#2f6fb8] font-semibold text-xs mt-0.5">
                         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                         Vendeur vérifié
                       </div>
