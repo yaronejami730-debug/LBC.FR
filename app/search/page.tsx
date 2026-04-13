@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getActiveAds } from "@/lib/ads";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -68,11 +69,7 @@ export default async function SearchPage({
       include: { user: { select: { verified: true } } },
     }),
     prisma.listing.count({ where }),
-    prisma.advertisement.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-    }).catch(() => [] as { id: string; title: string; description: string; imageUrl: string; destinationUrl: string; isActive: boolean; createdAt: Date }[]),
+    getActiveAds(3).catch(() => []),
   ]);
 
   const totalPages = Math.ceil(total / perPage);

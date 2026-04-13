@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { getActiveAds } from "@/lib/ads";
 import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "./ListingHeader";
@@ -59,9 +60,7 @@ export default async function ListingPage({
     auth(),
   ]);
 
-  const ads = await prisma.advertisement
-    .findMany({ where: { isActive: true }, orderBy: { createdAt: "desc" } })
-    .catch(() => []);
+  const ads = await getActiveAds().catch(() => []);
 
   const currentUserId = session?.user?.id ?? null;
 

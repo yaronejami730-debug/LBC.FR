@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getActiveAds } from "@/lib/ads";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -14,11 +15,7 @@ export default async function Home() {
       take: 8,
       include: { user: { select: { name: true, verified: true } } },
     }),
-    prisma.advertisement.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }).catch(() => [] as { id: string; title: string; description: string; imageUrl: string; destinationUrl: string; isActive: boolean; createdAt: Date }[]),
+    getActiveAds(5).catch(() => []),
   ]);
 
   return (
