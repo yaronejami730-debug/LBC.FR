@@ -18,8 +18,22 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Le Bon Deal — Achetez et vendez près de chez vous",
-  description: "Le Bon Deal, la plateforme pour acheter et vendre en toute confiance près de chez vous",
+  title: "Deal&Co — Achetez et vendez près de chez vous",
+  description: "Deal&Co, la plateforme pour acheter et vendre en toute confiance près de chez vous",
+  metadataBase: new URL("https://www.dealandcompany.fr"),
+  openGraph: {
+    title: "Deal&Co — Achetez et vendez près de chez vous",
+    description: "Deal&Co, la plateforme pour acheter et vendre en toute confiance près de chez vous",
+    url: "https://www.dealandcompany.fr",
+    type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
 };
 
 export const viewport = {
