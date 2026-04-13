@@ -38,15 +38,23 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
     setOgLoading(true);
     setError("");
     try {
-      // Auto-préfixe https:// si manquant
       const normalized = /^https?:\/\//i.test(destUrl) ? destUrl : `https://${destUrl}`;
       setDestUrl(normalized);
       const res = await fetch(`/api/og?url=${encodeURIComponent(normalized)}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Impossible de récupérer les données");
-      if (data.title) setTitle(data.title);
-      if (data.description) setDescription(data.description);
-      if (data.imageUrl) { setImageUrl(data.imageUrl); setPreview(data.imageUrl); }
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+
+      let filled = 0;
+      if (data.title)       { setTitle(data.title);             filled++; }
+      if (data.description) { setDescription(data.description); filled++; }
+      if (data.imageUrl) {
+        setImageUrl(data.imageUrl);
+        setPreview(data.imageUrl);
+        filled++;
+      } else {
+        setError("Image non trouvée — ajoute-la manuellement.");
+      }
+      if (filled === 0) throw new Error("Aucune métadonnée trouvée sur cette page");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de la récupération");
     } finally {
