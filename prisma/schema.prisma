@@ -20,7 +20,8 @@ model User {
   participants ConversationParticipant[]
   listings     Listing[]
   sentMessages Message[]                 @relation("SentMessages")
-  favorites    Favorite[]
+  favorites     Favorite[]
+  savedSearches SavedSearch[]
 }
 
 model Listing {
@@ -91,6 +92,16 @@ model Message {
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  filters   String   @default("{}") // JSON: { category, q, minPrice, maxPrice, location, ... }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Advertisement {
