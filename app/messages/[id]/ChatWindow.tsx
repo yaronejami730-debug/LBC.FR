@@ -43,20 +43,31 @@ export default function ChatWindow({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
+  // Scroll to bottom
+  function scrollToBottom(behavior: ScrollBehavior = "auto") {
+    bottomRef.current?.scrollIntoView({ behavior });
+  }
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "auto" });
+    scrollToBottom("auto");
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom("smooth");
   }, [messages]);
 
-  // Handle focus to scroll to bottom (keyboard appearing)
-  const handleFocus = () => {
-    setTimeout(() => {
-      bottomRef.current?.scrollIntoView({ behavior: "auto" });
-    }, 300);
-  };
+  // Sur iOS, quand le clavier apparaît, scroll to bottom
+  useEffect(() => {
+    const input = document.querySelector("input[data-chat]") as HTMLInputElement;
+    if (!input) return;
+    const onFocus = () => setTimeout(() => scrollToBottom("smooth"), 350);
+    input.addEventListener("focus", onFocus);
+    return () => input.removeEventListener("focus", onFocus);
+  }, []);
 
-  // Poll for new messages every 2 seconds
+  // Poll toutes les 2 secondes
   const lastIdRef = useRef<string | undefined>(
     initialMessages[initialMessages.length - 1]?.id
   );
@@ -109,51 +120,79 @@ export default function ChatWindow({
   }
 
   return (
-    <div className="bg-[#f8f9fc] text-on-surface flex flex-col h-[100dvh]">
-      {/* Header */}
-      <header className="bg-white/95 backdrop-blur-xl border-b border-slate-100 z-50 px-4 py-3 flex items-center gap-3 shadow-sm">
-        <Link href="/messages" className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all">
+    <div
+      className="bg-[#f8f9fc] text-on-surface flex flex-col"
+      style={{ height: "100dvh" }}
+    >
+      {/* ── Header ─────────────────────────────────────────── */}
+      <header className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-b border-slate-100 z-40 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <Link
+          href="/messages"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 active:scale-95 transition-all"
+        >
           <span className="material-symbols-outlined text-[#2f6fb8]">arrow_back</span>
         </Link>
+
         <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
           {otherUser?.avatar ? (
-            <img src={otherUser.avatar} alt={otherUser?.name} className="w-full h-full object-cover" />
+            <img src={otherUser.avatar} alt={otherUser.name} className="w-full h-full object-cover" />
           ) : (
             <span className="material-symbols-outlined text-outline">person</span>
           )}
         </div>
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 leading-tight">
-            <h2 className="font-extrabold text-[#2f6fb8] truncate text-base">{otherUser?.name || "Unknown"}</h2>
+            <h2 className="font-extrabold text-[#2f6fb8] truncate text-base">
+              {otherUser?.name || "Unknown"}
+            </h2>
             {otherUser?.verified && (
-              <span className="material-symbols-outlined text-[#00a67e] text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+              <span
+                className="material-symbols-outlined text-[#00a67e] text-sm"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                verified
+              </span>
             )}
           </div>
-          <p className="text-[10px] text-slate-500 truncate font-medium">Répond généralement en 1h</p>
+          <p className="text-[10px] text-slate-500 truncate font-medium">
+            Répond généralement en 1h
+          </p>
         </div>
-        
-        {/* Listing mini-card */}
-        <Link href={`/listing/${listing.id}`} className="flex items-center gap-2 bg-[#f0f2f9] px-2 py-1.5 rounded-2xl border border-white shadow-sm flex-shrink-0">
+
+        <Link
+          href={`/listing/${listing.id}`}
+          className="flex items-center gap-2 bg-[#f0f2f9] px-2 py-1.5 rounded-2xl border border-white shadow-sm flex-shrink-0"
+        >
           {listing.image && (
             <img src={listing.image} alt={listing.title} className="w-9 h-9 rounded-xl object-cover" />
           )}
           <div className="pr-1">
-            <p className="text-[9px] font-bold text-[#2f6fb8] line-clamp-1 max-w-[60px]">{listing.title}</p>
-            <p className="text-[#2f6fb8] font-black text-xs">{listing.price.toLocaleString("fr-FR")} €</p>
+            <p className="text-[9px] font-bold text-[#2f6fb8] line-clamp-1 max-w-[60px]">
+              {listing.title}
+            </p>
+            <p className="text-[#2f6fb8] font-black text-xs">
+              {listing.price.toLocaleString("fr-FR")} €
+            </p>
           </div>
         </Link>
       </header>
 
-      {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 max-w-3xl w-full mx-auto no-scrollbar flex flex-col-reverse relative overscroll-contain">
-        <div className="flex flex-col-reverse min-h-full py-6">
-          <div ref={bottomRef} className="h-4 flex-shrink-0" />
-          {[...messages].reverse().map((msg) => {
+      {/* ── Messages ───────────────────────────────────────── */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto overscroll-contain px-4"
+      >
+        <div className="max-w-3xl mx-auto py-4 flex flex-col gap-4">
+          {messages.map((msg) => {
             const isMe = msg.senderId === currentUserId;
             return (
-              <div key={msg.id} className={`flex gap-3 mb-6 ${isMe ? "justify-end" : "justify-start"}`}>
+              <div
+                key={msg.id}
+                className={`flex gap-2 ${isMe ? "justify-end" : "justify-start"}`}
+              >
                 {!isMe && (
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 mt-auto">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center flex-shrink-0 self-end mb-5">
                     {msg.senderAvatar ? (
                       <img src={msg.senderAvatar} alt={msg.senderName} className="w-full h-full object-cover" />
                     ) : (
@@ -161,42 +200,49 @@ export default function ChatWindow({
                     )}
                   </div>
                 )}
-                <div className={`max-w-[80%] ${isMe ? "items-end" : "items-start"} flex flex-col gap-1.5`}>
+                <div className={`max-w-[78%] flex flex-col gap-1 ${isMe ? "items-end" : "items-start"}`}>
                   <div
-                    className={`px-4 py-3 text-sm leading-relaxed shadow-sm transition-all ${
+                    className={`px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                       isMe
-                        ? "bg-[#1a5a9e] text-white rounded-[20px] rounded-br-[4px]"
-                        : "bg-white text-on-surface rounded-[20px] rounded-bl-[4px]"
+                        ? "bg-[#1a5a9e] text-white rounded-[20px] rounded-br-[5px]"
+                        : "bg-white text-on-surface rounded-[20px] rounded-bl-[5px]"
                     }`}
                   >
                     {msg.content}
                   </div>
-                  <span className="text-[9px] text-slate-400 font-bold px-2 uppercase tracking-tight">{formatTime(msg.createdAt)}</span>
+                  <span className="text-[9px] text-slate-400 font-bold px-1 uppercase tracking-tight">
+                    {formatTime(msg.createdAt)}
+                  </span>
                 </div>
               </div>
             );
           })}
+          {/* Ancre de scroll */}
+          <div ref={bottomRef} />
         </div>
-      </main>
+      </div>
 
-      {/* Input */}
-      <div className="bg-white/95 backdrop-blur-xl border-t border-slate-100 px-4 py-3 md:pb-6 z-50 flex-shrink-0">
+      {/* ── Input ──────────────────────────────────────────── */}
+      <div
+        className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 px-4 pt-3 z-40"
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+      >
         <form
           onSubmit={sendMessage}
           className="max-w-3xl w-full mx-auto flex items-center gap-3"
         >
-          <div className="flex-1 flex items-center bg-[#f1f3f5] rounded-full px-5 py-3 transition-all focus-within:bg-white focus-within:ring-2 focus-within:ring-[#2f6fb8]/10">
+          <div className="flex-1 flex items-center bg-[#f1f3f5] rounded-full px-5 py-3 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#2f6fb8]/10 transition-all">
             <input
+              data-chat
               value={text}
               onChange={(e) => setText(e.target.value)}
-              onFocus={handleFocus}
               className="flex-1 bg-transparent border-none focus:ring-0 text-base outline-none text-on-surface placeholder:text-slate-400"
               placeholder="Écrivez un message..."
               autoComplete="off"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  sendMessage(e);
+                  sendMessage(e as unknown as React.FormEvent);
                 }
               }}
             />
@@ -204,10 +250,12 @@ export default function ChatWindow({
           <button
             type="submit"
             disabled={!text.trim() || sending}
-            className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90
-              ${!text.trim() ? "bg-slate-100 text-slate-300" : "bg-[#8b8dc8] text-white shadow-[#8b8dc8]/20"}`}
+            className={`w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-all active:scale-90 flex-shrink-0
+              ${!text.trim() ? "bg-slate-100 text-slate-300" : "bg-[#2f6fb8] text-white shadow-[#2f6fb8]/30"}`}
           >
-            <span className="material-symbols-outlined text-xl transform rotate-[-45deg] translate-x-0.5">send</span>
+            <span className="material-symbols-outlined text-xl" style={{ transform: "rotate(-45deg) translateX(2px)" }}>
+              send
+            </span>
           </button>
         </form>
       </div>
