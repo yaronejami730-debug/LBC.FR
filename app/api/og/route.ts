@@ -52,7 +52,12 @@ export async function GET(req: NextRequest) {
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!res.ok) return NextResponse.json({ error: `HTTP ${res.status}` }, { status: 502 });
+    if (!res.ok) {
+      const msg = res.status === 400 || res.status === 403 || res.status === 429
+        ? "Ce site bloque le scraping automatique. Remplis le titre, la description et l'image manuellement."
+        : `Erreur ${res.status} sur le site distant`;
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
 
     // Only read first 100KB — enough for <head>
     const reader = res.body?.getReader();
