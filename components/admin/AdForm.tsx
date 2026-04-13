@@ -38,7 +38,10 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
     setOgLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/og?url=${encodeURIComponent(destUrl)}`);
+      // Auto-préfixe https:// si manquant
+      const normalized = /^https?:\/\//i.test(destUrl) ? destUrl : `https://${destUrl}`;
+      setDestUrl(normalized);
+      const res = await fetch(`/api/og?url=${encodeURIComponent(normalized)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Impossible de récupérer les données");
       if (data.title) setTitle(data.title);
@@ -302,22 +305,28 @@ function AdTimerBadge({ scheduledAt, expiresAt }: { scheduledAt: Date | null; ex
   const expires = expiresAt ? new Date(expiresAt).getTime() : null;
 
   function fmt(ms: number) {
-    const s = Math.floor(ms / 1000);
-    if (s < 60) return `${s}s`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h`;
-    const d = Math.floor(h / 24);
-    return `${d}j`;
+    const totalSec = Math.floor(ms / 1000);
+    const s = totalSec % 60;
+    const totalMin = Math.floor(totalSec / 60);
+    const m = totalMin % 60;
+    const totalH = Math.floor(totalMin / 60);
+    const h = totalH % 24;
+    const d = Math.floor(totalH / 24);
+
+    const parts = [];
+    if (d > 0) parts.push(`${d}j`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    parts.push(`${s}s`);
+    return parts.join(" ");
   }
 
   // Cas 1 : programmée dans le futur → compte à rebours avant activation
   if (scheduled && scheduled > now) {
     return (
-      <span className="absolute top-2 right-2 flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+      <span className="absolute top-2 right-2 flex items-center gap-1 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
         <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>schedule</span>
-        dans {fmt(scheduled - now)}
+        {fmt(scheduled - now)}
       </span>
     );
   }
@@ -325,9 +334,9 @@ function AdTimerBadge({ scheduledAt, expiresAt }: { scheduledAt: Date | null; ex
   // Cas 2 : expiration programmée dans le futur → temps restant en ligne
   if (expires && expires > now) {
     return (
-      <span className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+      <span className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
         <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
-        encore {fmt(expires - now)}
+        {fmt(expires - now)}
       </span>
     );
   }
