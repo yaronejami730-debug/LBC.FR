@@ -16,7 +16,7 @@ export default async function MessagesPage() {
       participants: { some: { userId } },
     },
     include: {
-      listing: { select: { id: true, title: true, images: true } },
+      listing: { select: { id: true, title: true, price: true, images: true } },
       participants: {
         include: { user: { select: { id: true, name: true, avatar: true, verified: true } } },
       },
@@ -106,9 +106,23 @@ export default async function MessagesPage() {
                     </div>
                     
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-[9px] font-extrabold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 uppercase tracking-tight">
-                        {conv.listing.title}
-                      </span>
+                      <div className="flex items-center gap-2 bg-[#f0f2f9] px-2 py-1.5 rounded-2xl border border-white shadow-sm">
+                        {listingImage && (
+                          <img
+                            src={listingImage}
+                            alt={conv.listing.title}
+                            className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="pr-1">
+                          <p className="text-[9px] font-bold text-[#2f6fb8] line-clamp-1 max-w-[80px]">
+                            {conv.listing.title}
+                          </p>
+                          <p className="text-[#2f6fb8] font-black text-xs">
+                            {conv.listing.price.toLocaleString("fr-FR")} €
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
                     <p className={`text-sm leading-tight line-clamp-1 ${unread ? "font-bold text-slate-800" : "text-slate-500"}`}>

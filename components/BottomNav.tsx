@@ -21,7 +21,7 @@ export default function BottomNav({ active }: { active?: string }) {
   const loading = status === "loading";
 
   return (
-    <footer className="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 backdrop-blur-xl shadow-[0_-8px_24px_rgba(21,21,125,0.04)] z-50 rounded-t-2xl border-t border-slate-200/20">
+    <footer className="md:hidden fixed bottom-0 left-0 w-full flex justify-evenly items-center pb-6 pt-3 bg-white/90 backdrop-blur-xl shadow-[0_-8px_24px_rgba(21,21,125,0.04)] z-50 rounded-t-2xl border-t border-slate-200/20">
       {/* Public items always visible */}
       {PUBLIC_ITEMS.map(({ href, label, icon, key }) => {
         const isActive = active === key;
