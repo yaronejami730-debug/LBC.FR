@@ -1,8 +1,15 @@
 "use client";
+import { usePathname } from "next/navigation";
 import { usePresence } from "@/hooks/usePresence";
 
-// Composant silencieux — enregistre la présence du visiteur en temps réel
-export default function VisitorTracker() {
+function Tracker() {
   usePresence("platform", "user");
   return null;
+}
+
+// Ne compte pas les admins comme visiteurs
+export default function VisitorTracker() {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/admin")) return null;
+  return <Tracker />;
 }
