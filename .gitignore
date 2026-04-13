@@ -11,5 +11,4 @@ tsconfig.tsbuildinfo
 # Local database
 dev.db
 
-/generated/prisma
 .vercel
