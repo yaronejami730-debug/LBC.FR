@@ -11,6 +11,7 @@ import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "./SellerActions";
 import OwnerActions from "./OwnerActions";
 import PhotoGallery from "./PhotoGallery";
+import HistoryTracker from "@/components/HistoryTracker";
 
 export async function generateMetadata({
   params,
@@ -150,6 +151,8 @@ export default async function ListingPage({
       {/* Content Canvas */}
       <main className="pt-32 max-w-7xl mx-auto pb-12">
         {/* Large Asymmetric Image Gallery */}
+        {/* Track this category for homepage recommendations */}
+        <HistoryTracker category={listing.category} />
         <section className="px-4 md:px-6 mt-4">
           <PhotoGallery images={images} title={listing.title} />
         </section>

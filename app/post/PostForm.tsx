@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CATEGORIES } from "@/lib/categories";
 import { detectCategory } from "@/lib/autoCategory";
+import PlateBlurTool from "@/components/PlateBlurTool";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -232,6 +233,9 @@ export default function PostForm() {
   const [photoStep,  setPhotoStep]  = useState(0);
   const [uploading,  setUploading]  = useState(false);
 
+  // Plate blur state
+  const [blurTarget, setBlurTarget] = useState<number | null>(null);
+
   // Publish state
   const [publishing,    setPublishing]    = useState(false);
   const [publishError,  setPublishError]  = useState<string | null>(null);
@@ -281,8 +285,17 @@ export default function PostForm() {
           next[slotIndex] = uploads[0];
           return next.filter(Boolean);
         });
+        // Auto-prompt plate blur for vehicle exterior shots
+        if (categoryId === "vehicules" && slotIndex <= 3) {
+          setBlurTarget(slotIndex);
+        }
       } else {
+        const startIdx = images.length;
         setImages((prev) => [...prev, ...uploads].slice(0, MAX_PHOTOS));
+        // In free mode for vehicles, prompt blur for the first newly uploaded photo
+        if (categoryId === "vehicules") {
+          setBlurTarget(startIdx);
+        }
       }
     } catch (err) {
       setPublishError(err instanceof Error ? err.message : "Erreur lors de l'envoi.");
@@ -347,6 +360,22 @@ export default function PostForm() {
 
   return (
     <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+
+      {/* ── Plate blur tool overlay ─────────────────────────────────────── */}
+      {blurTarget !== null && images[blurTarget] && (
+        <PlateBlurTool
+          src={images[blurTarget]}
+          onDone={(newUrl) => {
+            setImages((prev) => {
+              const next = [...prev];
+              next[blurTarget] = newUrl;
+              return next;
+            });
+            setBlurTarget(null);
+          }}
+          onSkip={() => setBlurTarget(null)}
+        />
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-white fixed top-0 w-full z-50 shadow-[0_1px_0_rgba(0,0,0,0.06)]">
@@ -456,6 +485,14 @@ export default function PostForm() {
                             <span className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
                               {isMain ? "Principale" : `Photo ${i + 1}`}
                             </span>
+                            {categoryId === "vehicules" && (
+                              <button type="button"
+                                onClick={(e) => { e.stopPropagation(); setBlurTarget(i); }}
+                                className="absolute bottom-3 right-3 flex items-center gap-1 bg-[#2f6fb8]/90 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full shadow-md backdrop-blur-sm hover:bg-[#2f6fb8] transition-colors">
+                                <span className="material-symbols-outlined text-xs">blur_on</span>
+                                Flouter plaque
+                              </button>
+                            )}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
                               <button type="button" onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                                 className="w-10 h-10 rounded-full bg-red-500/80 text-white flex items-center justify-center">
@@ -552,6 +589,14 @@ export default function PostForm() {
                             <img src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-40" />
                             <img src={img} alt={guide.label} className="relative w-full h-full object-contain" />
                             <span className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">{guide.label}</span>
+                            {categoryId === "vehicules" && photoStep <= 3 && (
+                              <button type="button"
+                                onClick={(e) => { e.stopPropagation(); setBlurTarget(photoStep); }}
+                                className="absolute bottom-3 right-3 flex items-center gap-1 bg-[#2f6fb8]/90 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-full shadow-md backdrop-blur-sm hover:bg-[#2f6fb8] transition-colors z-10">
+                                <span className="material-symbols-outlined text-xs">blur_on</span>
+                                Flouter plaque
+                              </button>
+                            )}
                             <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 hover:opacity-100">
                               <button type="button" onClick={triggerUpload}
                                 className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors">

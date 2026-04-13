@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import { CATEGORIES } from "@/lib/categories";
 import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
+import HistoryTracker from "@/components/HistoryTracker";
 
 export async function generateMetadata({
   searchParams,
@@ -86,6 +87,8 @@ export default async function SearchPage({
   return (
     <div className="bg-background text-on-surface">
       <Navbar active="recherche" />
+      {/* Track the active category for homepage recommendations */}
+      {category && <HistoryTracker category={category} />}
 
       <main className="pt-32 pb-32 px-6 max-w-7xl mx-auto">
         {/* Filter Bar */}

@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
+import HomeRecommendations from "@/components/HomeRecommendations";
 
 export const metadata: Metadata = {
   title: "Deal&Co — Petites annonces gratuites entre particuliers en France",
@@ -52,7 +53,7 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero / Search Section */}
-      <header className="pt-32 pb-4 px-4 max-w-7xl mx-auto">
+      <header className="pt-48 pb-4 px-4 max-w-7xl mx-auto">
         <div className="relative bg-gradient-to-br from-primary to-primary-container rounded-2xl p-6 md:p-10 overflow-hidden">
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mb-5 leading-tight">
@@ -105,6 +106,9 @@ export default async function Home() {
 
       {/* Ad Carousel */}
       {ads.length > 0 && <AdCarousel ads={ads} />}
+
+      {/* Recommendations based on search history (client-side, only shows if history exists) */}
+      <HomeRecommendations />
 
       {/* Recent Listings Section */}
       <section className="py-10 max-w-7xl mx-auto bg-surface-container-low rounded-t-[3rem]">
