@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { createAdvertisement, deleteAdvertisement, toggleAdStatus, updateAdvertisement } from "@/app/admin/actions";
+import DateTimePicker from "@/components/admin/DateTimePicker";
 
 type Ad = {
   id: string;
@@ -239,22 +240,8 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
               <p className="text-xs font-bold text-[#464652] uppercase tracking-wide">Programmation (optionnel)</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-[#777683] uppercase tracking-wide">Activation</label>
-                <input
-                  name="scheduledAt"
-                  type="datetime-local"
-                  className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8] bg-white"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-[#777683] uppercase tracking-wide">Désactivation</label>
-                <input
-                  name="expiresAt"
-                  type="datetime-local"
-                  className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8] bg-white"
-                />
-              </div>
+              <DateTimePicker name="scheduledAt" label="Activation" />
+              <DateTimePicker name="expiresAt" label="Désactivation" />
             </div>
             <p className="text-[10px] text-[#9ca3af]">Laisser vide pour une activation/désactivation manuelle</p>
           </div>
@@ -577,6 +564,26 @@ function AdCard({
             <input ref={editFileInputRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadEditFile(f); }} />
           </div>
+          {/* Programmation édition */}
+          <div className="border border-[#eceef0] rounded-xl p-3 space-y-2 bg-[#f7f9fb]">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="material-symbols-outlined text-[14px] text-[#2f6fb8]" style={{ fontVariationSettings: "'FILL' 1" }}>schedule</span>
+              <p className="text-[10px] font-bold text-[#464652] uppercase tracking-wide">Programmation</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <DateTimePicker
+                name="scheduledAt"
+                label="Activation"
+                defaultValue={ad.scheduledAt ? new Date(ad.scheduledAt).toISOString() : undefined}
+              />
+              <DateTimePicker
+                name="expiresAt"
+                label="Désactivation"
+                defaultValue={ad.expiresAt ? new Date(ad.expiresAt).toISOString() : undefined}
+              />
+            </div>
+          </div>
+
           <button type="submit" disabled={isPending}
             className="w-full text-sm bg-[#2f6fb8] text-white font-semibold py-2 rounded-xl hover:bg-[#1a5a9e] transition-colors disabled:opacity-60">
             {isPending ? "Enregistrement…" : "Enregistrer les modifications"}
