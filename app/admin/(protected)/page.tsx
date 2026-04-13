@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import LiveVisitorCount from "@/components/admin/LiveVisitorCount";
+import { getVisitorCount } from "@/lib/visitors";
 
 async function getStats() {
   const [totalUsers, pendingListings, approvedListings, rejectedListings, totalAds] =
@@ -23,7 +25,11 @@ async function getRecentPending() {
 }
 
 export default async function AdminDashboard() {
-  const [stats, pending] = await Promise.all([getStats(), getRecentPending()]);
+  const [stats, pending, liveVisitors] = await Promise.all([
+    getStats(),
+    getRecentPending(),
+    Promise.resolve(getVisitorCount()),
+  ]);
 
   const cards = [
     {
@@ -66,7 +72,8 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-5">
+        <LiveVisitorCount initial={liveVisitors} />
         {cards.map((card) => (
           <Link
             key={card.label}
