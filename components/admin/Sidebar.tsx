@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
@@ -18,17 +19,17 @@ export default function AdminSidebar({ adminName, isMobile, onClose }: { adminNa
   return (
     <aside className={`${isMobile ? "w-full h-full" : "fixed inset-y-0 left-0 w-64"} bg-white border-r border-[#eceef0] flex flex-col z-50`}>
       {/* Brand */}
-      <div className="px-6 py-6 border-b border-[#eceef0] flex items-center justify-between">
+      <div className="px-6 py-5 border-b border-[#eceef0] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2f6fb8] to-[#1a5a9e] flex items-center justify-center shadow-lg shadow-[#2f6fb8]/20">
-            <span className="material-symbols-outlined text-white text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              shield_person
-            </span>
-          </div>
-          <div>
-            <p className="font-black text-[#2f6fb8] text-base leading-none tracking-tight font-headline">Admin</p>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Le Bon Deal</p>
-          </div>
+          <Image
+            src="/logo-dealco.png"
+            alt="deal&co"
+            width={120}
+            height={38}
+            className="object-contain"
+            priority
+          />
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest border-l border-[#eceef0] pl-3">Admin</span>
         </div>
         {isMobile && (
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
