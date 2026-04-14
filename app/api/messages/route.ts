@@ -122,8 +122,9 @@ export async function POST(req: NextRequest) {
     },
   });
   if (conversation) {
+    const senderId = session.user?.id;
     const recipient = conversation.participants.find(
-      (p) => p.userId !== session.user.id
+      (p) => p.userId !== senderId
     );
     if (recipient) {
       const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
