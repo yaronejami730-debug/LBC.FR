@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Vérifier si cet email est pré-inscrit early adopter
+  const earlyAdopter = await prisma.earlyAdopter.findUnique({
+    where: { email: email.trim().toLowerCase() },
+  });
+
   const hashed = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
     data: {
@@ -34,8 +39,17 @@ export async function POST(req: NextRequest) {
       ...(isPro && siret && companyName
         ? { isPro: true, siret, companyName }
         : {}),
+      ...(earlyAdopter ? { earlyAdopterDiscount: true } : {}),
     },
   });
+
+  // Marquer l'early adopter comme réclamé
+  if (earlyAdopter && !earlyAdopter.claimedAt) {
+    prisma.earlyAdopter.update({
+      where: { id: earlyAdopter.id },
+      data: { claimedAt: new Date(), userId: user.id },
+    }).catch(() => {});
+  }
 
   // Email de bienvenue — fire and forget
   sendEmail({

@@ -224,7 +224,11 @@ export async function resendInvitation(userId: string) {
 
 // ── Discovery Email ────────────────────────────────────────────────────────────
 
-export async function sendDiscoveryEmail(email: string) {
+export async function sendDiscoveryEmail(
+  email: string,
+  target: "tous" | "pro" | "particulier",
+  domain: string
+) {
   await requireAdmin();
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -232,10 +236,12 @@ export async function sendDiscoveryEmail(email: string) {
     throw new Error("Adresse email invalide");
   }
 
+  const { subject, html } = platformDiscoveryEmail({ target, domain });
+
   await sendEmail({
     to: normalizedEmail,
-    subject: "Découvrez Deal & Co — La marketplace locale",
-    html: platformDiscoveryEmail({ recipientEmail: normalizedEmail }),
+    subject,
+    html,
   });
 }
 

@@ -14,6 +14,7 @@ const navItems = [
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
   { href: "/admin/banniere", icon: "wallpaper", label: "Bannière", exact: false },
   { href: "/admin/envoyer-email", icon: "forward_to_inbox", label: "Email découverte", exact: false },
+  { href: "/admin/early-adopters", icon: "star", label: "Early Adopters", exact: false },
 ];
 
 export default function AdminSidebar({ adminName, isMobile, onClose }: { adminName: string; isMobile?: boolean; onClose?: () => void }) {

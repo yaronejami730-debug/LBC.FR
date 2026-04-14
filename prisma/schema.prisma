@@ -28,6 +28,18 @@ model User {
   companyName         String?
   lastLoginAt         DateTime?
   reengagementSentAt  DateTime?
+  earlyAdopterDiscount Boolean @default(false)
+}
+
+model EarlyAdopter {
+  id               String   @id @default(cuid())
+  companyName      String
+  siret            String?
+  managerFirstName String
+  email            String   @unique
+  registeredAt     DateTime @default(now())
+  claimedAt        DateTime?
+  userId           String?
 }
 
 model Listing {
