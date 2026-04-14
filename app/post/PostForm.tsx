@@ -23,6 +23,11 @@ type VehicleFields = {
   immatriculation: string; puissanceFiscale: string; nombrePortes: string;
 };
 
+type ImmobilierFields = {
+  typeBien: string; nombrePieces: string; surface: string;
+  vueMer: boolean; visAVis: boolean;
+};
+
 type PhotoGuide = { label: string; icon: string };
 
 // ── Photo guides by category ───────────────────────────────────────────────────
@@ -224,6 +229,10 @@ export default function PostForm() {
     carburant: "Essence", transmission: "Manuelle",
     couleur: "", immatriculation: "", puissanceFiscale: "", nombrePortes: "5",
   });
+  const [immo, setImmo] = useState<ImmobilierFields>({
+    typeBien: "Appartement", nombrePieces: "", surface: "",
+    vueMer: false, visAVis: false,
+  });
 
   // Photo state
   const [images,     setImages]     = useState<string[]>([]);
@@ -246,6 +255,9 @@ export default function PostForm() {
 
   function setV(field: keyof VehicleFields, value: string) {
     setVehicle((v) => ({ ...v, [field]: value }));
+  }
+  function setI<K extends keyof ImmobilierFields>(field: K, value: ImmobilierFields[K]) {
+    setImmo((v) => ({ ...v, [field]: value }));
   }
 
   function pickMode(mode: "guided" | "free") {
@@ -314,7 +326,7 @@ export default function PostForm() {
           category: cat?.label || "Divers", subcategory,
           description, location, condition,
           images: images.filter(Boolean),
-          metadata: categoryId === "vehicules" ? JSON.stringify(vehicle) : "{}",
+          metadata: categoryId === "vehicules" ? JSON.stringify(vehicle) : categoryId === "immobilier" ? JSON.stringify(immo) : "{}",
           phone: phone.trim() || null, hidePhone,
         }),
       });
@@ -809,6 +821,74 @@ export default function PostForm() {
                 </div>
               )}
             </div>
+
+            {/* Champs immobilier */}
+            {categoryId === "immobilier" && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Caractéristiques du bien</p>
+
+                {/* Type de bien */}
+                <div>
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">Type de bien</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Appartement", "Maison", "Studio", "Villa", "Terrain", "Local commercial", "Autre"].map((t) => (
+                      <button key={t} type="button" onClick={() => setI("typeBien", t)} className={pillCls(immo.typeBien === t)}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Nombre de pièces */}
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Nombre de pièces</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {["1", "2", "3", "4", "5", "6+"].map((n) => (
+                        <button key={n} type="button" onClick={() => setI("nombrePieces", n)} className={pillCls(immo.nombrePieces === n) + " flex-1 text-center min-w-[36px]"}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Surface */}
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Surface</label>
+                    <div className="relative">
+                      <input value={immo.surface} onChange={(e) => setI("surface", e.target.value)} className={inputCls + " pr-10"} placeholder="65" type="number" min="1" />
+                      <span className="absolute right-3 top-3 text-xs text-outline">m²</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vue & vis-à-vis */}
+                <div>
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">Vue & environnement</label>
+                  <div className="flex flex-col gap-2">
+                    {/* Vue sur mer */}
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setI("vueMer", !immo.vueMer)}>
+                      <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${immo.vueMer ? "bg-primary" : "bg-slate-200"}`}>
+                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${immo.vueMer ? "translate-x-5" : "translate-x-0.5"}`} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-outline" style={immo.vueMer ? { fontVariationSettings: "'FILL' 1", color: "var(--color-primary)" } : {}}>water</span>
+                        <span className="text-sm font-semibold text-on-surface">Vue sur mer</span>
+                      </div>
+                    </div>
+                    {/* Vis-à-vis */}
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setI("visAVis", !immo.visAVis)}>
+                      <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${!immo.visAVis ? "bg-emerald-500" : "bg-slate-200"}`}>
+                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${!immo.visAVis ? "translate-x-5" : "translate-x-0.5"}`} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-outline" style={!immo.visAVis ? { fontVariationSettings: "'FILL' 1", color: "#22c55e" } : {}}>visibility_off</span>
+                        <span className="text-sm font-semibold text-on-surface">
+                          {immo.visAVis ? "Vis-à-vis présent" : "Pas de vis-à-vis"}
+                        </span>
+                        {!immo.visAVis && <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Atout</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Champs véhicules */}
             {categoryId === "vehicules" && (
