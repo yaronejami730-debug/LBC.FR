@@ -78,13 +78,13 @@ export default function BannerList({ banners }: { banners: Banner[] }) {
             <div key={b.id} className="px-5 py-4 hover:bg-[#f7f9fb] transition-colors">
               {/* Mini preview */}
               <div
-                className="h-14 rounded-xl overflow-hidden mb-3 flex items-center px-4"
+                className="relative h-14 rounded-xl overflow-hidden mb-3 flex items-center px-4"
                 style={b.bgImage
                   ? { backgroundImage: `url(${b.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" }
                   : { background: `linear-gradient(135deg, ${b.bgFrom}, ${b.bgTo})` }
                 }
               >
-                {b.bgImage && <div className="absolute inset-0 bg-black/30 rounded-xl" />}
+                {b.bgImage && <div className="absolute inset-0 bg-black/40" />}
                 <div className="relative z-10">
                   <p className="text-white text-[13px] font-bold leading-tight line-clamp-1 drop-shadow">{b.title}</p>
                   {b.subtitle && <p className="text-white/80 text-[11px] mt-0.5 line-clamp-1 drop-shadow">{b.subtitle}</p>}
