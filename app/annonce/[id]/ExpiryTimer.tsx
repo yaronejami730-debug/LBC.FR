@@ -33,51 +33,61 @@ export default function ExpiryTimer({
   }, [expiresAt]);
 
   const urgent = countdown.days < 7;
+  const color = countdown.expired ? "red" : urgent ? "amber" : "blue";
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border mt-4 ${
-      countdown.expired
-        ? "bg-red-50 border-red-100"
-        : urgent
-        ? "bg-amber-50 border-amber-100"
-        : "bg-[#f5f2ff] border-[#d5e3fc]"
+    <div className={`px-4 py-3 rounded-2xl border mt-4 ${
+      color === "red"   ? "bg-red-50 border-red-100" :
+      color === "amber" ? "bg-amber-50 border-amber-100" :
+                          "bg-[#f5f2ff] border-[#d5e3fc]"
     }`}>
-      <span className={`material-symbols-outlined text-[20px] flex-shrink-0 ${
-        countdown.expired ? "text-red-500" : urgent ? "text-amber-500" : "text-[#2f6fb8]"
-      }`}>schedule</span>
+      {/* Ligne 1 : icône + compteur */}
+      <div className="flex items-center gap-3">
+        <span className={`material-symbols-outlined text-[18px] flex-shrink-0 ${
+          color === "red" ? "text-red-500" : color === "amber" ? "text-amber-500" : "text-[#2f6fb8]"
+        }`}>schedule</span>
 
-      <div className="flex-1 min-w-0">
-        {countdown.expired ? (
-          <p className="text-sm font-bold text-red-600">Annonce expirée</p>
-        ) : (
-          <>
-            <p className={`text-xs font-semibold mb-1 ${urgent ? "text-amber-600" : "text-[#2f6fb8]"}`}>
-              Expiration dans
-            </p>
-            <div className="flex items-center gap-1.5 font-mono">
-              {[
-                { v: countdown.days, label: "j" },
-                { v: countdown.hours, label: "h" },
-                { v: countdown.minutes, label: "m" },
-                { v: countdown.seconds, label: "s" },
-              ].map(({ v, label }) => (
-                <span key={label} className={`text-xs font-black px-1.5 py-0.5 rounded-lg ${
-                  urgent ? "bg-amber-100 text-amber-700" : "bg-[#d5e3fc] text-[#2f6fb8]"
-                }`}>
-                  {String(v).padStart(2, "0")}{label}
-                </span>
-              ))}
-            </div>
-          </>
-        )}
+        <div className="flex-1 min-w-0">
+          {countdown.expired ? (
+            <p className="text-sm font-bold text-red-600">Annonce expirée</p>
+          ) : (
+            <>
+              <p className={`text-[11px] font-semibold mb-1 ${color === "amber" ? "text-amber-600" : "text-[#2f6fb8]"}`}>
+                Expiration dans
+              </p>
+              <div className="flex items-center gap-1 font-mono flex-wrap">
+                {[
+                  { v: countdown.days, label: "j" },
+                  { v: countdown.hours, label: "h" },
+                  { v: countdown.minutes, label: "m" },
+                  { v: countdown.seconds, label: "s" },
+                ].map(({ v, label }) => (
+                  <span key={label} className={`text-[11px] font-black px-1.5 py-0.5 rounded-lg ${
+                    color === "amber" ? "bg-amber-100 text-amber-700" : "bg-[#d5e3fc] text-[#2f6fb8]"
+                  }`}>
+                    {String(v).padStart(2, "0")}{label}
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      <Link
-        href={`/annonce/${listingId}/republier`}
-        className="flex-shrink-0 text-[12px] font-bold text-[#2f6fb8] hover:underline underline-offset-2"
-      >
-        Republier
-      </Link>
+      {/* Ligne 2 : bouton Republier — toujours visible */}
+      <div className="mt-2.5 pt-2.5 border-t border-black/5">
+        <Link
+          href={`/annonce/${listingId}/republier`}
+          className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${
+            color === "red" ? "text-red-600 hover:text-red-700" :
+            color === "amber" ? "text-amber-600 hover:text-amber-700" :
+            "text-[#2f6fb8] hover:text-[#1a5a9e]"
+          }`}
+        >
+          <span className="material-symbols-outlined text-[14px]">refresh</span>
+          Republier cette annonce
+        </Link>
+      </div>
     </div>
   );
 }
