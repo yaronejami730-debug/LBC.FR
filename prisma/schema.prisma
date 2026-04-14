@@ -26,6 +26,8 @@ model User {
   isPro               Boolean  @default(false)
   siret               String?  @unique
   companyName         String?
+  lastLoginAt         DateTime?
+  reengagementSentAt  DateTime?
 }
 
 model Listing {

@@ -25,6 +25,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           user.password
         );
         if (!valid) return null;
+        // Mettre à jour lastLoginAt — fire and forget
+        prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), reengagementSentAt: null } }).catch(() => {});
         return { id: user.id, email: user.email, name: user.name };
       },
     }),
