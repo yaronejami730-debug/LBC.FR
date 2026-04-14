@@ -35,7 +35,8 @@ const jsonLd = {
 };
 
 export default async function Home() {
-  const [listings, ads] = await Promise.all([
+  const now = new Date();
+  const [listings, ads, activeBanner] = await Promise.all([
     prisma.listing.findMany({
       where: { status: "APPROVED", deletedAt: null } as any,
       orderBy: { createdAt: "desc" },
@@ -43,6 +44,14 @@ export default async function Home() {
       include: { user: { select: { name: true, verified: true } } },
     }),
     getActiveAds(5).catch(() => []),
+    prisma.heroBanner.findFirst({
+      where: {
+        isActive: true,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
+      orderBy: { createdAt: "desc" },
+    }).catch(() => null),
   ]);
 
   return (
@@ -55,11 +64,19 @@ export default async function Home() {
 
       {/* Hero */}
       <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
-        <div className="relative bg-gradient-to-br from-primary to-primary-container rounded-2xl p-6 md:p-10 overflow-hidden">
+        <div
+          className="relative rounded-2xl p-6 md:p-10 overflow-hidden"
+          style={{ background: activeBanner
+            ? `linear-gradient(135deg, ${activeBanner.bgFrom}, ${activeBanner.bgTo})`
+            : "linear-gradient(to bottom right, #2f6fb8, #1a5a9e)" }}
+        >
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              Petites annonces gratuites <br className="hidden md:block" /> près de chez vous.
+              {activeBanner?.title ?? "Petites annonces gratuites près de chez vous."}
             </h1>
+            {activeBanner?.subtitle && (
+              <p className="text-white/80 text-base md:text-lg mt-3 leading-relaxed">{activeBanner.subtitle}</p>
+            )}
           </div>
           <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent" />
         </div>

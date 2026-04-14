@@ -11,6 +11,7 @@ const navItems = [
   { href: "/admin/users", icon: "group", label: "Utilisateurs", exact: false },
   { href: "/admin/listings", icon: "list_alt", label: "Annonces", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
+  { href: "/admin/banniere", icon: "photo_film_stack", label: "Bannière", exact: false },
 ];
 
 export default function AdminSidebar({ adminName, isMobile, onClose }: { adminName: string; isMobile?: boolean; onClose?: () => void }) {

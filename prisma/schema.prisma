@@ -127,6 +127,19 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model HeroBanner {
+  id          String    @id @default(cuid())
+  title       String
+  subtitle    String?
+  bgFrom      String    @default("#2f6fb8")
+  bgTo        String    @default("#1a5a9e")
+  textColor   String    @default("#ffffff")
+  isActive    Boolean   @default(false)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+}
+
 model SearchLog {
   id        String   @id @default(cuid())
   query     String
