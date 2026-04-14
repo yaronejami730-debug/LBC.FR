@@ -60,6 +60,7 @@ model Listing {
   adminNote       String?
   expiresAt       DateTime?
   expiryNotifiedAt DateTime?
+  viewCount       Int            @default(0)
   conversations   Conversation[]
   user            User           @relation(fields: [userId], references: [id])
   favorites       Favorite[]

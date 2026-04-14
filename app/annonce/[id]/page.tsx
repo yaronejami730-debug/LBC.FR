@@ -16,6 +16,8 @@ import ProBadge from "@/components/ProBadge";
 import ListingInfoTip from "./ListingInfoTip";
 import MarkViewed from "@/components/MarkViewed";
 import ExpiryTimer from "./ExpiryTimer";
+import ViewTracker from "@/components/ViewTracker";
+import LiveViewCount from "./LiveViewCount";
 
 export async function generateMetadata({
   params,
