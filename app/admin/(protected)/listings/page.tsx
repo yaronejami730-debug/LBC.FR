@@ -107,14 +107,21 @@ export default async function ListingsPage({
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-[#191c1e] line-clamp-1 max-w-[220px]">{listing.title}</p>
                           <p className="text-xs text-[#777683] mt-0.5 line-clamp-1 max-w-[220px]">{listing.location}</p>
-                          <Link
-                            href={`/annonce/${listing.id}`}
-                            target="_blank"
-                            className="text-[10px] text-[#2f6fb8] hover:underline flex items-center gap-0.5 mt-0.5"
-                          >
-                            <span className="material-symbols-outlined text-[11px]">open_in_new</span>
-                            Voir
-                          </Link>
+                            <div className="flex items-center gap-2 mt-0.5">
+                            <Link
+                              href={`/annonce/${listing.id}`}
+                              target="_blank"
+                              className="text-[10px] text-[#2f6fb8] hover:underline flex items-center gap-0.5"
+                            >
+                              <span className="material-symbols-outlined text-[11px]">open_in_new</span>
+                              Voir
+                            </Link>
+                            {listing.adminNote && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide whitespace-nowrap">
+                                {listing.adminNote}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
