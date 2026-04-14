@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ListingHeader({
   title,
@@ -16,6 +16,15 @@ export default function ListingHeader({
 }) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  function handleBack() {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  }
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -54,12 +63,13 @@ export default function ListingHeader({
     <nav className="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-xl shadow-sm border-b border-slate-100">
       <div className="flex items-center justify-between px-6 py-4 w-full max-w-7xl mx-auto">
         <div className="flex items-center gap-4">
-          <Link
-            href="/search"
+          <button
+            onClick={handleBack}
             className="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-95 transition-all"
+            aria-label="Retour"
           >
             <span className="material-symbols-outlined">arrow_back</span>
-          </Link>
+          </button>
           <img src="/logo.png" alt="Le Bon Deal" className="h-12 w-auto" />
         </div>
         <div className="flex items-center gap-2">
