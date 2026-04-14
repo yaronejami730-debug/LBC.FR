@@ -23,6 +23,9 @@ model User {
   favorites     Favorite[]
   savedSearches        SavedSearch[]
   passwordResetTokens  PasswordResetToken[]
+  isPro               Boolean  @default(false)
+  siret               String?  @unique
+  companyName         String?
 }
 
 model Listing {

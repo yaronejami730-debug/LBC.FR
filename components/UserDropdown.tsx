@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 type Props = {
   user?: { name?: string | null; email?: string | null } | null;
@@ -20,6 +21,7 @@ export default function UserDropdown({ user }: Props) {
   const [unread, setUnread] = useState(0);
   const btnRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
+  const router = useRouter();
 
   // Position le dropdown sous le bouton en fixed
   function updatePos() {
@@ -124,6 +126,18 @@ export default function UserDropdown({ user }: Props) {
                   <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
                   <span className="text-[14px] font-medium">Mon profil</span>
                 </Link>
+                <button
+                  onClick={async () => {
+                    setOpen(false);
+                    await signOut({ redirect: false });
+                    router.push("/");
+                    router.refresh();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">logout</span>
+                  <span className="text-[14px] font-medium">Se déconnecter</span>
+                </button>
               </div>
             </>
           ) : (

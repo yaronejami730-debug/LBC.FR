@@ -12,6 +12,7 @@ import SellerActions from "./SellerActions";
 import OwnerActions from "./OwnerActions";
 import PhotoGallery from "./PhotoGallery";
 import HistoryTracker from "@/components/HistoryTracker";
+import ProBadge from "@/components/ProBadge";
 
 export async function generateMetadata({
   params,
@@ -332,12 +333,20 @@ export default async function ListingPage({
                     )}
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg text-on-surface">{listing.user.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-lg text-on-surface">
+                        {listing.user.isPro ? listing.user.companyName || listing.user.name : listing.user.name}
+                      </h3>
+                      {listing.user.isPro && <ProBadge size="sm" />}
+                    </div>
                     {listing.user.verified && (
                       <div className="flex items-center gap-1 text-[#2f6fb8] font-semibold text-xs mt-0.5">
                         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                         Vendeur vérifié
                       </div>
+                    )}
+                    {listing.user.isPro && (
+                      <p className="text-outline text-xs mt-0.5">Vendeur professionnel</p>
                     )}
                   </div>
                 </div>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { formatDistanceToNow } from "@/lib/utils";
 import SignOutButton from "./SignOutButton";
 import AvatarUpload from "./AvatarUpload";
+import UpgradePro from "./UpgradePro";
+import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 
@@ -41,7 +43,10 @@ export default async function ProfilePage() {
           <AvatarUpload currentAvatar={user.avatar} initials={initials} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-extrabold text-on-surface font-['Manrope'] truncate">{user.name}</h2>
+              <h2 className="text-xl font-extrabold text-on-surface font-['Manrope'] truncate">
+                {user.isPro ? user.companyName : user.name}
+              </h2>
+              {user.isPro && <ProBadge size="sm" />}
               {user.verified && (
                 <span className="flex items-center gap-1 bg-tertiary-container text-on-tertiary-container text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
                   <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
@@ -49,6 +54,7 @@ export default async function ProfilePage() {
                 </span>
               )}
             </div>
+            {user.isPro && <p className="text-outline text-sm mt-0.5 truncate">{user.name}</p>}
             <p className="text-outline text-sm mt-0.5 truncate">{user.email}</p>
             <p className="text-outline/70 text-xs mt-1">Membre depuis {user.memberSince}</p>
           </div>
@@ -73,6 +79,9 @@ export default async function ProfilePage() {
             <p className="text-outline text-xs mt-0.5">Depuis</p>
           </div>
         </div>
+
+        {/* Upgrade Pro */}
+        {!user.isPro && <UpgradePro />}
 
         {/* My listings */}
         <div className="flex items-center justify-between mb-4">
