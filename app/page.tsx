@@ -65,10 +65,10 @@ export default async function Home() {
       {/* Hero */}
       <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
         <div
-          className="relative rounded-2xl p-6 md:p-10 overflow-hidden"
+          className="relative rounded-2xl p-6 md:p-10 overflow-hidden min-h-[120px]"
           style={activeBanner?.bgImage
             ? {
-                backgroundImage: `linear-gradient(135deg, ${activeBanner.bgFrom}cc, ${activeBanner.bgTo}dd), url(${activeBanner.bgImage})`,
+                backgroundImage: `url(${activeBanner.bgImage})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }
@@ -78,15 +78,21 @@ export default async function Home() {
                   : "linear-gradient(to bottom right, #2f6fb8, #1a5a9e)",
               }}
         >
+          {/* Voile sombre uniquement si photo — pour lisibilité du texte */}
+          {activeBanner?.bgImage && (
+            <div className="absolute inset-0 bg-black/35 rounded-2xl" />
+          )}
           <div className="relative z-10 max-w-2xl">
-            <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
+            <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
               {activeBanner?.title ?? "Petites annonces gratuites près de chez vous."}
             </h1>
             {activeBanner?.subtitle && (
-              <p className="text-white/80 text-base md:text-lg mt-3 leading-relaxed">{activeBanner.subtitle}</p>
+              <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow">{activeBanner.subtitle}</p>
             )}
           </div>
-          <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent" />
+          {!activeBanner?.bgImage && (
+            <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent" />
+          )}
         </div>
       </header>
 
