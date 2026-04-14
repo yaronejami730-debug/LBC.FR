@@ -13,6 +13,7 @@ import OwnerActions from "./OwnerActions";
 import PhotoGallery from "./PhotoGallery";
 import HistoryTracker from "@/components/HistoryTracker";
 import ProBadge from "@/components/ProBadge";
+import ListingInfoTip from "./ListingInfoTip";
 
 export async function generateMetadata({
   params,
@@ -160,19 +161,7 @@ export default async function ListingPage({
       <main className="pt-32 max-w-7xl mx-auto pb-12">
         <HistoryTracker category={listing.category} />
 
-        {/* Bandeau info visible uniquement par le propriétaire */}
-        {isOwner && (
-          <div className="mx-4 md:mx-6 mt-4 mb-2 bg-[#d5e3fc]/50 border border-[#d5e3fc] rounded-2xl px-5 py-4 flex items-start gap-3">
-            <span className="material-symbols-outlined text-[#2f6fb8] text-xl flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
-            <p className="text-sm text-[#1a2b4a] leading-relaxed">
-              Votre annonce est <strong>en ligne</strong> et visible par tous.{" "}
-              Elle peut faire l'objet d'une vérification par notre équipe dans les 24 à 48 h.
-              Si elle ne respecte pas nos conditions d'utilisation, elle pourra être retirée du site.
-            </p>
-          </div>
-        )}
-
-        <section className="px-4 md:px-6 mt-4">
+        <section className="px-4 md:px-6 mt-2">
           <PhotoGallery images={images} title={listing.title} />
         </section>
 
@@ -190,9 +179,12 @@ export default async function ListingPage({
                   <span className="material-symbols-outlined text-sm">schedule</span> {formatDistanceToNow(listing.createdAt)}
                 </span>
               </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight">
-                {listing.title}
-              </h1>
+              <div className="flex items-start gap-2">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight">
+                  {listing.title}
+                </h1>
+                {isOwner && <ListingInfoTip />}
+              </div>
               <div className="flex items-baseline gap-3 pt-2">
                 <span className="text-4xl font-black text-primary">{listing.price.toLocaleString("fr-FR")} €</span>
               </div>

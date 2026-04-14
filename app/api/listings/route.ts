@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { buildSearchWhere } from "@/lib/search-where";
 import { sendEmail } from "@/lib/email";
 import { newListingAdminEmail } from "@/lib/emails/new-listing-admin";
+import { listingPublishedEmail } from "@/lib/emails/listing-published";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -79,6 +80,27 @@ export async function POST(req: NextRequest) {
       } as any,
     });
 
+    // Email confirmation au vendeur — fire and forget
+    const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+    const parsedImages = (() => { try { return JSON.parse(JSON.stringify(images || [])) as string[]; } catch { return [] as string[]; } })();
+    const seller2 = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, companyName: true, isPro: true } });
+    if (seller2) {
+      const displayName = seller2.isPro && seller2.companyName ? seller2.companyName : seller2.name;
+      sendEmail({
+        to: seller2.email,
+        toName: displayName,
+        subject: `Votre annonce "${title}" est en ligne — Deal & Co`,
+        html: listingPublishedEmail({
+          name: displayName,
+          listingTitle: title,
+          listingUrl: `${baseUrl}/annonce/${listing.id}`,
+          price: parsedPrice,
+          location,
+          imageUrl: parsedImages[0] ?? undefined,
+        }),
+      }).catch(() => {});
+    }
+
     // Notification admin — fire and forget
     const adminEmail = process.env.ADMIN_EMAIL;
     const seller = await prisma.user.findUnique({
@@ -86,7 +108,6 @@ export async function POST(req: NextRequest) {
       select: { name: true },
     });
     if (adminEmail && seller) {
-      const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
       sendEmail({
         to: adminEmail,
         toName: "Administration Deal & Co",
