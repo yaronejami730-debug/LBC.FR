@@ -275,11 +275,14 @@ export default function PostForm() {
         uploads.push(data.url);
       }
       if (slotIndex !== undefined) {
+        // Remplir depuis slotIndex pour les sélections multiples
         setImages((prev) => {
           const next = [...prev];
           for (let i = 0; i < slotIndex; i++) if (next[i] === undefined) next[i] = "";
-          next[slotIndex] = uploads[0];
-          return next.filter(Boolean);
+          uploads.forEach((url, offset) => {
+            if (slotIndex + offset < MAX_PHOTOS) next[slotIndex + offset] = url;
+          });
+          return next.filter(Boolean).slice(0, MAX_PHOTOS);
         });
       } else {
         setImages((prev) => [...prev, ...uploads].slice(0, MAX_PHOTOS));
@@ -483,7 +486,7 @@ export default function PostForm() {
                                   {isMain ? "add_a_photo" : "add"}
                                 </span>
                                 {isMain && <p className="font-bold text-primary text-sm">Ajouter la photo principale</p>}
-                                {!isMain && <p className="text-sm text-slate-400 font-medium">Ajouter une photo</p>}
+                                {!isMain && <p className="text-sm text-slate-400 font-medium">Ajouter une ou plusieurs photos</p>}
                               </>
                             )}
                           </div>
@@ -495,7 +498,7 @@ export default function PostForm() {
 
                 <input ref={mainFileRef} type="file" accept="image/*" className="hidden"
                   onChange={(e) => { handleImageUpload(e.target.files, 0); e.target.value = ""; }} />
-                <input ref={extraFileRef} type="file" accept="image/*" className="hidden"
+                <input ref={extraFileRef} type="file" accept="image/*" multiple className="hidden"
                   onChange={(e) => {
                     const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
                     handleImageUpload(e.target.files, isNaN(slot) ? undefined : slot);
@@ -648,7 +651,7 @@ export default function PostForm() {
                     setPhotoStep((s) => s === 0 ? 1 : s);
                     e.target.value = "";
                   }} />
-                <input ref={extraFileRef} type="file" accept="image/*" className="hidden"
+                <input ref={extraFileRef} type="file" accept="image/*" multiple className="hidden"
                   onChange={async (e) => {
                     const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
                     const target = isNaN(slot) ? photoStep : slot;
