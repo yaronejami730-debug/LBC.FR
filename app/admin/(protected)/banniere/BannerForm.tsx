@@ -26,6 +26,7 @@ export default function BannerForm() {
   const [loading, setLoading]   = useState(false);
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess]   = useState(false);
+  const [error, setError]       = useState("");
 
   function applyPreset(p: typeof PRESETS[0]) {
     setTitle(p.title);
@@ -51,14 +52,26 @@ export default function BannerForm() {
     e.preventDefault();
     setLoading(true);
     setSuccess(false);
-    await fetch("/api/admin/hero-banner", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, subtitle, bgFrom: from, bgTo: to, bgImage: bgImage || null, startsAt: startsAt || null, endsAt: endsAt || null }),
-    });
-    setLoading(false);
-    setSuccess(true);
-    router.refresh();
+    setError("");
+    try {
+      const res = await fetch("/api/admin/hero-banner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, subtitle, bgFrom: from, bgTo: to, bgImage: bgImage || null, startsAt: startsAt || null, endsAt: endsAt || null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(`Erreur ${res.status} : ${data.error ?? "inconnue"}`);
+      } else {
+        setSuccess(true);
+        // Hard reload pour forcer le rechargement du Server Component
+        window.location.reload();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur réseau");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputCls = "w-full border border-[#eceef0] rounded-xl px-3 py-2.5 text-sm text-[#191c1e] outline-none focus:border-[#2f6fb8] transition-colors bg-white";
@@ -172,10 +185,10 @@ export default function BannerForm() {
           </div>
         </div>
 
-        {success && (
-          <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-2.5 rounded-xl text-sm font-medium">
-            <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            Bannière créée avec succès
+        {error && (
+          <div className="flex items-center gap-2 text-[#ba1a1a] bg-[#ffdad6] px-4 py-2.5 rounded-xl text-sm font-medium">
+            <span className="material-symbols-outlined text-[16px]">error</span>
+            {error}
           </div>
         )}
 

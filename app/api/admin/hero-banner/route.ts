@@ -4,8 +4,13 @@ import { prisma } from "@/lib/prisma";
 
 async function checkAdmin() {
   const session = await auth();
-  const role = (session?.user as Record<string, unknown> | undefined)?.role;
-  return role === "ADMIN";
+  if (!session?.user?.id) return false;
+  const { prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true },
+  });
+  return user?.role === "ADMIN";
 }
 
 export async function POST(req: NextRequest) {
