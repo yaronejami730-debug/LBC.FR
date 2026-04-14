@@ -15,6 +15,7 @@ import HistoryTracker from "@/components/HistoryTracker";
 import ProBadge from "@/components/ProBadge";
 import ListingInfoTip from "./ListingInfoTip";
 import MarkViewed from "@/components/MarkViewed";
+import ExpiryTimer from "./ExpiryTimer";
 
 export async function generateMetadata({
   params,
@@ -190,6 +191,9 @@ export default async function ListingPage({
                   <ListingInfoTip />
                 )}
               </div>
+              {isOwner && (
+                <ExpiryTimer listingId={listing.id} createdAt={listing.createdAt.toISOString()} />
+              )}
             </div>
 
             {/* Attributes Row */}

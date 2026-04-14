@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/ads",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/listings",
+      "schedule": "0 6 * * *"
     }
   ]
 }

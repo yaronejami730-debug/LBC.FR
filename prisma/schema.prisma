@@ -56,6 +56,8 @@ model Listing {
   status          String         @default("APPROVED")
   rejectionReason String?
   adminNote       String?
+  expiresAt       DateTime?
+  expiryNotifiedAt DateTime?
   conversations   Conversation[]
   user            User           @relation(fields: [userId], references: [id])
   favorites       Favorite[]
