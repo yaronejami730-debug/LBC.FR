@@ -53,7 +53,7 @@ model Listing {
   immoRooms       Int?
   phone           String?
   hidePhone       Boolean        @default(false)
-  status          String         @default("PENDING")
+  status          String         @default("APPROVED")
   rejectionReason String?
   conversations   Conversation[]
   user            User           @relation(fields: [userId], references: [id])

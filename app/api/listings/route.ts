@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildSearchWhere } from "@/lib/search-where";
+import { sendEmail } from "@/lib/email";
+import { newListingAdminEmail } from "@/lib/emails/new-listing-admin";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -76,6 +78,30 @@ export async function POST(req: NextRequest) {
         userId: session.user.id,
       } as any,
     });
+
+    // Notification admin — fire and forget
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const seller = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true },
+    });
+    if (adminEmail && seller) {
+      const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+      sendEmail({
+        to: adminEmail,
+        toName: "Administration Deal & Co",
+        subject: `Nouvelle annonce : ${title}`,
+        html: newListingAdminEmail({
+          sellerName: seller.name,
+          listingTitle: title,
+          price: parsedPrice,
+          category,
+          location,
+          listingUrl: `${baseUrl}/annonce/${listing.id}`,
+          adminUrl: `${baseUrl}/admin/listings`,
+        }),
+      }).catch(() => {});
+    }
 
     return NextResponse.json(listing, { status: 201 });
   } catch (err) {

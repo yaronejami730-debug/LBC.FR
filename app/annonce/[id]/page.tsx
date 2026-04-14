@@ -158,9 +158,20 @@ export default async function ListingPage({
 
       {/* Content Canvas */}
       <main className="pt-32 max-w-7xl mx-auto pb-12">
-        {/* Large Asymmetric Image Gallery */}
-        {/* Track this category for homepage recommendations */}
         <HistoryTracker category={listing.category} />
+
+        {/* Bandeau info visible uniquement par le propriétaire */}
+        {isOwner && (
+          <div className="mx-4 md:mx-6 mt-4 mb-2 bg-[#d5e3fc]/50 border border-[#d5e3fc] rounded-2xl px-5 py-4 flex items-start gap-3">
+            <span className="material-symbols-outlined text-[#2f6fb8] text-xl flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+            <p className="text-sm text-[#1a2b4a] leading-relaxed">
+              Votre annonce est <strong>en ligne</strong> et visible par tous.{" "}
+              Elle peut faire l'objet d'une vérification par notre équipe dans les 24 à 48 h.
+              Si elle ne respecte pas nos conditions d'utilisation, elle pourra être retirée du site.
+            </p>
+          </div>
+        )}
+
         <section className="px-4 md:px-6 mt-4">
           <PhotoGallery images={images} title={listing.title} />
         </section>

@@ -4,9 +4,9 @@ import ListingActions from "@/components/admin/ListingActions";
 import { formatDistanceToNow } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
-  { value: "PENDING", label: "En attente", icon: "pending_actions", color: "text-amber-600 bg-amber-50" },
-  { value: "APPROVED", label: "Approuvées", icon: "check_circle", color: "text-emerald-600 bg-emerald-50" },
-  { value: "REJECTED", label: "Refusées", icon: "cancel", color: "text-[#ba1a1a] bg-[#fff8f7]" },
+  { value: "APPROVED", label: "En ligne", icon: "check_circle", color: "text-emerald-600 bg-emerald-50" },
+  { value: "REJECTED", label: "Retirées", icon: "remove_circle", color: "text-[#ba1a1a] bg-[#fff8f7]" },
+  { value: "PENDING",  label: "En attente", icon: "pending_actions", color: "text-amber-600 bg-amber-50" },
 ];
 
 export default async function ListingsPage({
@@ -14,7 +14,7 @@ export default async function ListingsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
-  const { status = "PENDING" } = await searchParams;
+  const { status = "APPROVED" } = await searchParams;
 
   const [listings, counts] = await Promise.all([
     prisma.listing.findMany({
@@ -34,7 +34,7 @@ export default async function ListingsPage({
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-[#191c1e] font-headline">Annonces</h1>
-        <p className="text-sm text-[#777683] mt-1">Modération et validation des annonces</p>
+        <p className="text-sm text-[#777683] mt-1">Toutes les annonces sont publiées automatiquement. Retirez celles qui ne sont pas conformes.</p>
       </div>
 
       {/* Filter Tabs */}
@@ -183,7 +183,7 @@ export default async function ListingsPage({
             </span>
             <p className="text-[#777683] mt-2">
               Aucune annonce{" "}
-              {status === "PENDING" ? "en attente" : status === "APPROVED" ? "approuvée" : "refusée"}
+              {status === "APPROVED" ? "en ligne" : status === "REJECTED" ? "retirée" : "en attente"}
             </p>
           </div>
         )}
