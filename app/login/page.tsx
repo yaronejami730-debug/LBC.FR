@@ -73,12 +73,19 @@ function LoginForm() {
               {loading ? "Connexion..." : "Se connecter"}
             </button>
           </form>
-          <p className="text-center mt-6 text-sm text-on-surface-variant">
-            Pas encore de compte ?{" "}
-            <Link href="/register" className="text-primary font-bold hover:underline">
-              Créer un compte
-            </Link>
-          </p>
+          <div className="text-center mt-6 space-y-2">
+            <p className="text-sm text-on-surface-variant">
+              <Link href="/forgot-password" className="text-primary font-bold hover:underline">
+                Mot de passe oublié ?
+              </Link>
+            </p>
+            <p className="text-sm text-on-surface-variant">
+              Pas encore de compte ?{" "}
+              <Link href="/register" className="text-primary font-bold hover:underline">
+                Créer un compte
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

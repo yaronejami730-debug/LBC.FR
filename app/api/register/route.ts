@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { sendEmail } from "@/lib/email";
+import { welcomeEmail } from "@/lib/emails/welcome";
 
 export async function POST(req: NextRequest) {
   const { name, email, password } = await req.json();
@@ -18,6 +20,14 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.create({
     data: { name, email, password: hashed, memberSince: new Date().getFullYear() },
   });
+
+  // Email de bienvenue — fire and forget
+  sendEmail({
+    to: user.email,
+    toName: user.name,
+    subject: "Bienvenue sur Deal & Co 🎉",
+    html: welcomeEmail({ name: user.name }),
+  }).catch(() => {});
 
   return NextResponse.json({ id: user.id }, { status: 201 });
 }
