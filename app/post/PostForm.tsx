@@ -253,11 +253,12 @@ export default function PostForm() {
     setPhotoMode(getAutoMode());
   }, []);
 
-  function setV(field: keyof VehicleFields, value: string) {
-    setVehicle((v) => ({ ...v, [field]: value }));
-  }
   function setI<K extends keyof ImmobilierFields>(field: K, value: ImmobilierFields[K]) {
     setImmo((v) => ({ ...v, [field]: value }));
+  }
+
+  function setV(field: keyof VehicleFields, value: string) {
+    setVehicle((v) => ({ ...v, [field]: value }));
   }
 
   function pickMode(mode: "guided" | "free") {
@@ -326,7 +327,7 @@ export default function PostForm() {
           category: cat?.label || "Divers", subcategory,
           description, location, condition,
           images: images.filter(Boolean),
-          metadata: categoryId === "vehicules" ? JSON.stringify(vehicle) : categoryId === "immobilier" ? JSON.stringify(immo) : "{}",
+          metadata: categoryId === "vehicules" ? JSON.stringify(vehicle) : categoryId === "immobilier" ? JSON.stringify({ typeBien: immo.typeBien, rooms: immo.nombrePieces, surface: immo.surface, vueMer: immo.vueMer, visAVis: immo.visAVis }) : "{}",
           phone: phone.trim() || null, hidePhone,
         }),
       });

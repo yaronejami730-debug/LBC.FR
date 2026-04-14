@@ -120,6 +120,16 @@ export default async function ListingPage({
     }
   }
 
+  // Parse immobilier metadata
+  let immoMeta: Record<string, string | boolean> = {};
+  if (listing.category === "Immobilier" && listing.metadata && listing.metadata !== "{}") {
+    try {
+      immoMeta = JSON.parse(listing.metadata);
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+
   const images = JSON.parse(listing.images) as string[];
   const mainImg = images[0] || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwwxQgv4rI6XClzhTLjkwXug8TYby1cyK7AgQhc4UpMdyrjwq4jRPQo_ZvL_7xvjhVSon_iJvztv0bdEqqiFX0CHRW9IDYjccZpyP4v8zoDq0pcj4RtADoGgiXgRyW1_sPXiKqwZz8D1UwMIYilwBQMOTHJ4RMQl9Rp4vFbK6a0UCsy93TZ3-DYA8qYhHPO4LhM2csSFfFLlOh2P8D7w00bjyGrSMRlGSvhxZrGjVcqJUJ2-2y9XbKHb7ww02PREvAIJO3_wJ41hV5";
 
@@ -292,6 +302,43 @@ export default async function ListingPage({
                 <div className="flex flex-col gap-1">
                   <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Immatriculation</span>
                   <span className="text-on-surface font-semibold font-mono">{vehicleMeta.immatriculation}</span>
+                </div>
+              )}
+              {/* Immobilier fields */}
+              {immoMeta.typeBien && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Type de bien</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.typeBien)}</span>
+                </div>
+              )}
+              {immoMeta.rooms && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Pièces</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.rooms)} pièce{String(immoMeta.rooms) !== "1" ? "s" : ""}</span>
+                </div>
+              )}
+              {immoMeta.surface && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Surface</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.surface)} m²</span>
+                </div>
+              )}
+              {immoMeta.vueMer === true && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Vue</span>
+                  <span className="text-on-surface font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>water</span>
+                    Vue sur mer
+                  </span>
+                </div>
+              )}
+              {immoMeta.visAVis === false && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Environnement</span>
+                  <span className="text-on-surface font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    Pas de vis-à-vis
+                  </span>
                 </div>
               )}
             </div>
