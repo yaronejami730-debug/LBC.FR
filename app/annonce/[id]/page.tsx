@@ -311,16 +311,76 @@ export default async function ListingPage({
                   <span className="text-on-surface font-semibold">{String(immoMeta.typeBien)}</span>
                 </div>
               )}
+              {immoMeta.surface && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Surface</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.surface)} m²</span>
+                </div>
+              )}
               {immoMeta.rooms && (
                 <div className="flex flex-col gap-1">
                   <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Pièces</span>
                   <span className="text-on-surface font-semibold">{String(immoMeta.rooms)} pièce{String(immoMeta.rooms) !== "1" ? "s" : ""}</span>
                 </div>
               )}
-              {immoMeta.surface && (
+              {immoMeta.chambres && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Surface</span>
-                  <span className="text-on-surface font-semibold">{String(immoMeta.surface)} m²</span>
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Chambres</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.chambres)} ch.</span>
+                </div>
+              )}
+              {immoMeta.sallesEau && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Salles d&apos;eau</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.sallesEau)}</span>
+                </div>
+              )}
+              {immoMeta.typeCharuffe && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Type de chauffage</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.typeCharuffe)}</span>
+                </div>
+              )}
+              {immoMeta.modeCharuffe && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Mode de chauffage</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.modeCharuffe)}</span>
+                </div>
+              )}
+              {immoMeta.etage && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Étage</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.etage)}</span>
+                </div>
+              )}
+              {immoMeta.exposition && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Exposition</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.exposition)}</span>
+                </div>
+              )}
+              {immoMeta.placesParking && String(immoMeta.placesParking) !== "0" && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Parking</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.placesParking)} place{String(immoMeta.placesParking) !== "1" ? "s" : ""}</span>
+                </div>
+              )}
+              {immoMeta.anneeConstruction && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Année de construction</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.anneeConstruction)}</span>
+                </div>
+              )}
+              {immoMeta.etatBien && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">État du bien</span>
+                  <span className="text-on-surface font-semibold">{String(immoMeta.etatBien)}</span>
+                </div>
+              )}
+              {immoMeta.reference && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Référence</span>
+                  <span className="text-on-surface font-semibold font-mono">{String(immoMeta.reference)}</span>
                 </div>
               )}
               {immoMeta.vueMer === true && (
@@ -342,6 +402,67 @@ export default async function ListingPage({
                 </div>
               )}
             </div>
+
+            {/* DPE + GES + Équipements */}
+            {listing.category === "Immobilier" && (immoMeta.classeEnergie || immoMeta.ges || (Array.isArray(immoMeta.caracteristiques) && (immoMeta.caracteristiques as string[]).length > 0)) && (
+              <div className="space-y-4">
+                {(immoMeta.classeEnergie || immoMeta.ges) && (
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight mb-3">Diagnostics</h2>
+                    <div className="bg-slate-50 p-5 rounded-2xl space-y-3">
+                      {immoMeta.classeEnergie && (() => {
+                        const dpeColors: Record<string, string> = { A: "#009966", B: "#33cc33", C: "#99cc00", D: "#ffcc00", E: "#ff9900", F: "#ff6600", G: "#ff0000" };
+                        const letters = ["A","B","C","D","E","F","G"];
+                        const active = String(immoMeta.classeEnergie);
+                        return (
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-slate-600 w-28 shrink-0">Classe énergie</span>
+                            <div className="flex gap-1">
+                              {letters.map((l) => (
+                                <span key={l} className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+                                  style={{ background: l === active ? dpeColors[l] : "#e2e8f0", color: l === active ? "#fff" : "#94a3b8" }}>
+                                  {l}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {immoMeta.ges && (() => {
+                        const gesColors: Record<string, string> = { A: "#e8d5f5", B: "#d4aae8", C: "#c07fda", D: "#a855c9", E: "#8e2db7", F: "#7209a1", G: "#5c008a" };
+                        const letters = ["A","B","C","D","E","F","G"];
+                        const active = String(immoMeta.ges);
+                        return (
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-slate-600 w-28 shrink-0">GES</span>
+                            <div className="flex gap-1">
+                              {letters.map((l) => (
+                                <span key={l} className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+                                  style={{ background: l === active ? gesColors[l] : "#e2e8f0", color: l === active ? (["A","B"].includes(l) ? "#7209a1" : "#fff") : "#94a3b8" }}>
+                                  {l}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+                {Array.isArray(immoMeta.caracteristiques) && (immoMeta.caracteristiques as string[]).length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight mb-3">Équipements</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {(immoMeta.caracteristiques as string[]).map((c) => (
+                        <span key={c} className="bg-primary/8 text-primary text-sm font-semibold px-3 py-1.5 rounded-full border border-primary/15">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Description */}
             <div className="space-y-4">

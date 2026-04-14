@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { accountInvitationEmail } from "@/lib/emails/account-invitation";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
+import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -218,6 +219,23 @@ export async function resendInvitation(userId: string) {
     toName: user.name,
     subject: "Votre invitation Deal & Co — Créez votre mot de passe",
     html: accountInvitationEmail({ name: user.name, activationUrl }),
+  });
+}
+
+// ── Discovery Email ────────────────────────────────────────────────────────────
+
+export async function sendDiscoveryEmail(email: string) {
+  await requireAdmin();
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new Error("Adresse email invalide");
+  }
+
+  await sendEmail({
+    to: normalizedEmail,
+    subject: "Découvrez Deal & Co — La marketplace locale",
+    html: platformDiscoveryEmail({ recipientEmail: normalizedEmail }),
   });
 }
 

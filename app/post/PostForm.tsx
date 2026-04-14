@@ -24,7 +24,14 @@ type VehicleFields = {
 };
 
 type ImmobilierFields = {
-  typeBien: string; nombrePieces: string; surface: string;
+  typeBien: string; nombrePieces: string; nombreChambres: string;
+  nombreSallesEau: string; surface: string;
+  caracteristiques: string[];
+  typeCharuffe: string; modeCharuffe: string;
+  etage: string; exposition: string;
+  placesParking: string; anneeConstruction: string;
+  etatBien: string; reference: string;
+  classeEnergie: string; ges: string;
   vueMer: boolean; visAVis: boolean;
 };
 
@@ -230,7 +237,14 @@ export default function PostForm() {
     couleur: "", immatriculation: "", puissanceFiscale: "", nombrePortes: "5",
   });
   const [immo, setImmo] = useState<ImmobilierFields>({
-    typeBien: "Appartement", nombrePieces: "", surface: "",
+    typeBien: "Appartement", nombrePieces: "", nombreChambres: "",
+    nombreSallesEau: "", surface: "",
+    caracteristiques: [],
+    typeCharuffe: "", modeCharuffe: "",
+    etage: "", exposition: "",
+    placesParking: "", anneeConstruction: "",
+    etatBien: "", reference: "",
+    classeEnergie: "", ges: "",
     vueMer: false, visAVis: false,
   });
 
@@ -255,6 +269,14 @@ export default function PostForm() {
 
   function setI<K extends keyof ImmobilierFields>(field: K, value: ImmobilierFields[K]) {
     setImmo((v) => ({ ...v, [field]: value }));
+  }
+  function toggleCarac(item: string) {
+    setImmo((v) => ({
+      ...v,
+      caracteristiques: v.caracteristiques.includes(item)
+        ? v.caracteristiques.filter((c) => c !== item)
+        : [...v.caracteristiques, item],
+    }));
   }
 
   function setV(field: keyof VehicleFields, value: string) {
@@ -327,7 +349,30 @@ export default function PostForm() {
           category: cat?.label || "Divers", subcategory,
           description, location, condition,
           images: images.filter(Boolean),
-          metadata: categoryId === "vehicules" ? JSON.stringify(vehicle) : categoryId === "immobilier" ? JSON.stringify({ typeBien: immo.typeBien, rooms: immo.nombrePieces, surface: immo.surface, vueMer: immo.vueMer, visAVis: immo.visAVis }) : "{}",
+          metadata: categoryId === "vehicules"
+            ? JSON.stringify(vehicle)
+            : categoryId === "immobilier"
+            ? JSON.stringify({
+                typeBien: immo.typeBien,
+                rooms: immo.nombrePieces,
+                chambres: immo.nombreChambres,
+                sallesEau: immo.nombreSallesEau,
+                surface: immo.surface,
+                caracteristiques: immo.caracteristiques,
+                typeCharuffe: immo.typeCharuffe,
+                modeCharuffe: immo.modeCharuffe,
+                etage: immo.etage,
+                exposition: immo.exposition,
+                placesParking: immo.placesParking,
+                anneeConstruction: immo.anneeConstruction,
+                etatBien: immo.etatBien,
+                reference: immo.reference,
+                classeEnergie: immo.classeEnergie,
+                ges: immo.ges,
+                vueMer: immo.vueMer,
+                visAVis: immo.visAVis,
+              })
+            : "{}",
           phone: phone.trim() || null, hidePhone,
         }),
       });
@@ -825,7 +870,7 @@ export default function PostForm() {
 
             {/* Champs immobilier */}
             {categoryId === "immobilier" && (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Caractéristiques du bien</p>
 
                 {/* Type de bien */}
@@ -838,23 +883,154 @@ export default function PostForm() {
                   </div>
                 </div>
 
+                {/* Surface + pièces + chambres + sdb */}
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Nombre de pièces */}
                   <div>
-                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Nombre de pièces</label>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {["1", "2", "3", "4", "5", "6+"].map((n) => (
-                        <button key={n} type="button" onClick={() => setI("nombrePieces", n)} className={pillCls(immo.nombrePieces === n) + " flex-1 text-center min-w-[36px]"}>{n}</button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Surface */}
-                  <div>
-                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Surface</label>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Surface habitable</label>
                     <div className="relative">
                       <input value={immo.surface} onChange={(e) => setI("surface", e.target.value)} className={inputCls + " pr-10"} placeholder="65" type="number" min="1" />
                       <span className="absolute right-3 top-3 text-xs text-outline">m²</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Nombre de pièces</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["1", "2", "3", "4", "5", "6+"].map((n) => (
+                        <button key={n} type="button" onClick={() => setI("nombrePieces", n)} className={pillCls(immo.nombrePieces === n) + " flex-1 text-center min-w-[32px] text-xs"}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Chambres</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["0", "1", "2", "3", "4", "5+"].map((n) => (
+                        <button key={n} type="button" onClick={() => setI("nombreChambres", n)} className={pillCls(immo.nombreChambres === n) + " flex-1 text-center min-w-[32px] text-xs"}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Salles d&apos;eau</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["0", "1", "2", "3", "4+"].map((n) => (
+                        <button key={n} type="button" onClick={() => setI("nombreSallesEau", n)} className={pillCls(immo.nombreSallesEau === n) + " flex-1 text-center min-w-[32px] text-xs"}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Étage + Exposition */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Étage</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["RDC", "1", "2", "3", "4", "5+"].map((n) => (
+                        <button key={n} type="button" onClick={() => setI("etage", n)} className={pillCls(immo.etage === n) + " flex-1 text-center min-w-[32px] text-xs"}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Exposition</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["Nord", "Sud", "Est", "Ouest", "S-E", "S-O"].map((e) => (
+                        <button key={e} type="button" onClick={() => setI("exposition", e)} className={pillCls(immo.exposition === e) + " flex-1 text-center min-w-[32px] text-xs"}>{e}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chauffage */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Type de chauffage</label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {["Individuel", "Collectif"].map((t) => (
+                        <button key={t} type="button" onClick={() => setI("typeCharuffe", t)} className={pillCls(immo.typeCharuffe === t) + " flex-1 text-center text-xs"}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Mode de chauffage</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["Gaz", "Électrique", "Fuel", "PAC", "Poêle", "Autre"].map((m) => (
+                        <button key={m} type="button" onClick={() => setI("modeCharuffe", m)} className={pillCls(immo.modeCharuffe === m) + " flex-1 text-center min-w-[40px] text-xs"}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Parking + Année + Référence */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Places de parking</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {["0", "1", "2", "3+"].map((n) => (
+                        <button key={n} type="button" onClick={() => setI("placesParking", n)} className={pillCls(immo.placesParking === n) + " flex-1 text-center text-xs"}>{n}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Année de construction</label>
+                    <input value={immo.anneeConstruction} onChange={(e) => setI("anneeConstruction", e.target.value)} className={inputCls} placeholder="ex : 1985" type="number" min="1800" max={new Date().getFullYear()} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Référence interne (optionnel)</label>
+                  <input value={immo.reference} onChange={(e) => setI("reference", e.target.value)} className={inputCls} placeholder="ex : AZ/2888" />
+                </div>
+
+                {/* État du bien */}
+                <div>
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">État du bien</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Neuf", "Parfait état", "Bon état", "À rénover", "Travaux à prévoir"].map((e) => (
+                      <button key={e} type="button" onClick={() => setI("etatBien", e)} className={pillCls(immo.etatBien === e)}>{e}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Équipements */}
+                <div>
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">Équipements & caractéristiques</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["Garage", "Parking", "Cave", "Piscine", "Jardin", "Balcon", "Terrasse", "Ascenseur", "Digicode", "Interphone", "Gardien", "Meublé", "Double vitrage", "Fibre optique", "Cheminée", "Véranda", "Dressing"].map((c) => (
+                      <button key={c} type="button" onClick={() => toggleCarac(c)} className={pillCls(immo.caracteristiques.includes(c))}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* DPE + GES */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">Classe énergie (DPE)</label>
+                    <div className="flex gap-1">
+                      {(["A", "B", "C", "D", "E", "F", "G"] as const).map((l) => {
+                        const colors: Record<string, string> = { A: "#009966", B: "#33cc33", C: "#99cc00", D: "#ffcc00", E: "#ff9900", F: "#ff6600", G: "#ff0000" };
+                        const active = immo.classeEnergie === l;
+                        return (
+                          <button key={l} type="button" onClick={() => setI("classeEnergie", l)}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-black transition-all border-2"
+                            style={{ background: active ? colors[l] : "#f1f5f9", color: active ? "#fff" : "#94a3b8", borderColor: active ? colors[l] : "transparent" }}>
+                            {l}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">GES</label>
+                    <div className="flex gap-1">
+                      {(["A", "B", "C", "D", "E", "F", "G"] as const).map((l) => {
+                        const colors: Record<string, string> = { A: "#e8d5f5", B: "#d4aae8", C: "#c07fda", D: "#a855c9", E: "#8e2db7", F: "#7209a1", G: "#5c008a" };
+                        const active = immo.ges === l;
+                        return (
+                          <button key={l} type="button" onClick={() => setI("ges", l)}
+                            className="flex-1 py-1.5 rounded-lg text-xs font-black transition-all border-2"
+                            style={{ background: active ? colors[l] : "#f1f5f9", color: active ? (["A","B"].includes(l) ? "#7209a1" : "#fff") : "#94a3b8", borderColor: active ? colors[l] : "transparent" }}>
+                            {l}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -863,7 +1039,6 @@ export default function PostForm() {
                 <div>
                   <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-2">Vue & environnement</label>
                   <div className="flex flex-col gap-2">
-                    {/* Vue sur mer */}
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => setI("vueMer", !immo.vueMer)}>
                       <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${immo.vueMer ? "bg-primary" : "bg-slate-200"}`}>
                         <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${immo.vueMer ? "translate-x-5" : "translate-x-0.5"}`} />
@@ -873,7 +1048,6 @@ export default function PostForm() {
                         <span className="text-sm font-semibold text-on-surface">Vue sur mer</span>
                       </div>
                     </div>
-                    {/* Vis-à-vis */}
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => setI("visAVis", !immo.visAVis)}>
                       <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${!immo.visAVis ? "bg-emerald-500" : "bg-slate-200"}`}>
                         <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${!immo.visAVis ? "translate-x-5" : "translate-x-0.5"}`} />

@@ -13,6 +13,7 @@ const navItems = [
   { href: "/admin/create-client", icon: "person_add", label: "Créer un client", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
   { href: "/admin/banniere", icon: "wallpaper", label: "Bannière", exact: false },
+  { href: "/admin/envoyer-email", icon: "forward_to_inbox", label: "Email découverte", exact: false },
 ];
 
 export default function AdminSidebar({ adminName, isMobile, onClose }: { adminName: string; isMobile?: boolean; onClose?: () => void }) {
