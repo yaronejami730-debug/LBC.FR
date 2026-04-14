@@ -136,7 +136,10 @@ export default function BannerForm() {
               <span className="text-[12px] font-medium">{uploading ? "Upload…" : "Cliquez pour ajouter une photo"}</span>
             </button>
           )}
-          <p className="text-[10px] text-[#777683] mt-1.5">Le dégradé de couleurs se superpose à la photo pour assurer la lisibilité du texte.</p>
+          <p className="text-[10px] text-[#777683] mt-1.5">
+            Taille recommandée : <strong>1440 × 400 px</strong> (format paysage large) — JPG ou PNG, max 5 Mo.<br/>
+            Le dégradé de couleurs se superpose à la photo pour assurer la lisibilité du texte.
+          </p>
         </div>
 
         {/* Couleurs */}
