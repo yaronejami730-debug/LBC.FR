@@ -26,29 +26,36 @@ export async function generateMetadata({
 
   if (!listing) return {};
 
-  const images = JSON.parse(listing.images) as string[];
-  const mainImg = images[0];
+  const imgs = JSON.parse(listing.images) as string[];
+  const rawImg = imgs[0] ?? "";
   const priceStr = listing.price.toLocaleString("fr-FR") + " €";
+
+  // Ensure absolute URL — WhatsApp/iMessage require it
+  const BASE = "https://www.dealandcompany.fr";
+  const mainImg = rawImg.startsWith("http") ? rawImg : `${BASE}${rawImg}`;
+  const pageUrl = `${BASE}/listing/${id}`;
 
   const desc = `${listing.description.slice(0, 150)}${listing.description.length > 150 ? "…" : ""} · ${listing.location} · ${priceStr}`;
 
   return {
     title: `${listing.title} — ${priceStr} | Deal&Co`,
     description: desc,
-    alternates: {
-      canonical: `https://www.dealandcompany.fr/listing/${id}`,
-    },
+    alternates: { canonical: pageUrl },
     openGraph: {
       title: `${listing.title} — ${priceStr}`,
       description: desc,
-      images: mainImg ? [{ url: mainImg, width: 1200, height: 630, alt: listing.title }] : [],
+      url: pageUrl,
+      siteName: "Deal&Co",
       type: "website",
+      images: rawImg
+        ? [{ url: mainImg, width: 1200, height: 630, alt: listing.title }]
+        : [],
     },
     twitter: {
       card: "summary_large_image",
       title: `${listing.title} — ${priceStr}`,
       description: desc,
-      images: mainImg ? [mainImg] : [],
+      images: rawImg ? [mainImg] : [],
     },
   };
 }
