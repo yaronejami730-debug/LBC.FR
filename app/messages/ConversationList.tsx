@@ -89,7 +89,7 @@ export default function ConversationList({ currentUserId }: { currentUserId: str
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {conversations.map((conv) => {
         const otherParticipant = conv.participants.find((p) => p.userId !== currentUserId);
         const lastMessage = conv.lastMessage;
@@ -107,81 +107,83 @@ export default function ConversationList({ currentUserId }: { currentUserId: str
           <Link
             key={conv.id}
             href={`/messages/${conv.id}`}
-            className={`group relative rounded-3xl p-4 flex items-center gap-4 border transition-all duration-300
+            className={`group relative rounded-2xl p-4 flex items-center gap-4 border transition-all duration-200 active:scale-[0.99]
               ${unread
-                ? "bg-white border-blue-100 shadow-[0_12px_24px_rgba(21,21,125,0.06)]"
-                : "bg-[#f8f9fe]/50 border-transparent hover:bg-white hover:border-slate-100"}`}
+                ? "bg-white border-[#2f6fb8]/20 shadow-[0_4px_20px_rgba(47,111,184,0.10)] hover:shadow-[0_6px_24px_rgba(47,111,184,0.15)]"
+                : "bg-white border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300"}`}
           >
-            <div className="relative flex-shrink-0">
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-white shadow-sm flex items-center justify-center ring-2 ring-[#f0f2f9]">
+            {/* Indicateur non lu — barre gauche */}
+            {unread && (
+              <div className="absolute left-0 top-4 bottom-4 w-1 bg-[#2f6fb8] rounded-full" />
+            )}
+
+            {/* Avatar */}
+            <div className="relative flex-shrink-0 ml-1">
+              <div className={`w-14 h-14 rounded-full overflow-hidden flex items-center justify-center
+                ${unread ? "ring-2 ring-[#2f6fb8]/30" : "ring-2 ring-slate-100"}`}>
                 {otherParticipant?.user.avatar ? (
                   <img
-                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     alt={otherParticipant.user.name}
                     src={otherParticipant.user.avatar}
                   />
                 ) : (
-                  <span className="material-symbols-outlined text-2xl text-slate-300">person</span>
+                  <div className={`w-full h-full flex items-center justify-center text-lg font-bold
+                    ${unread ? "bg-[#d5e3fc] text-[#2f6fb8]" : "bg-slate-100 text-slate-400"}`}>
+                    {otherParticipant?.user.name?.[0]?.toUpperCase() ?? "?"}
+                  </div>
                 )}
               </div>
               {unread && (
-                <div className="absolute top-0 right-0 w-4 h-4 bg-[#8b8dc8] rounded-full border-[3px] border-white shadow-sm" />
+                <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#2f6fb8] rounded-full border-2 border-white" />
               )}
             </div>
 
-            <div className="flex-1 min-w-0 py-1">
-              <div className="flex justify-between items-center mb-0.5">
-                <div className="flex items-center gap-1.5">
-                  <h3 className={`font-bold truncate text-[15px] ${unread ? "text-[#2f6fb8]" : "text-slate-700"}`}>
-                    {otherParticipant?.user.name || "Unknown"}
+            {/* Contenu */}
+            <div className="flex-1 min-w-0">
+              {/* Ligne nom + heure */}
+              <div className="flex justify-between items-center mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <h3 className={`truncate text-[14px] ${unread ? "font-extrabold text-slate-900" : "font-semibold text-slate-700"}`}>
+                    {otherParticipant?.user.name || "Inconnu"}
                   </h3>
                   {otherParticipant?.user.verified && (
-                    <span
-                      className="material-symbols-outlined text-[#00a67e] text-xs"
-                      style={{ fontVariationSettings: "'FILL' 1" }}
-                    >
-                      verified
-                    </span>
+                    <span className="material-symbols-outlined text-[#00a67e] text-[13px] flex-shrink-0"
+                      style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                   )}
                 </div>
-                <span className={`text-[9px] font-bold uppercase tracking-wider ${unread ? "text-primary" : "text-slate-400"}`}>
+                <span className={`text-[10px] font-semibold flex-shrink-0 ml-2 ${unread ? "text-[#2f6fb8]" : "text-slate-400"}`}>
                   {lastMessage ? formatDistanceToNow(new Date(lastMessage.createdAt)) : ""}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="flex items-center gap-2 bg-[#f0f2f9] px-2 py-1.5 rounded-2xl border border-white shadow-sm">
-                  {listingImage && (
-                    <img
-                      src={listingImage}
-                      alt={conv.listing.title}
-                      className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
-                    />
-                  )}
-                  <div className="pr-1">
-                    <p className="text-[9px] font-bold text-[#2f6fb8] line-clamp-1 max-w-[80px]">
-                      {conv.listing.title}
-                    </p>
-                    <p className="text-[#2f6fb8] font-black text-xs">
-                      {conv.listing.price.toLocaleString("fr-FR")} €
-                    </p>
-                  </div>
+              {/* Dernier message */}
+              <p className={`text-[13px] leading-snug line-clamp-1 mb-2 ${unread ? "font-semibold text-slate-800" : "text-slate-500"}`}>
+                {lastMessage?.content || <span className="italic text-slate-400">Aucun message</span>}
+              </p>
+
+              {/* Badge annonce */}
+              <div className="flex items-center gap-1.5 w-fit bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl">
+                {listingImage && (
+                  <img src={listingImage} alt={conv.listing.title}
+                    className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-slate-500 truncate max-w-[90px]">
+                    {conv.listing.title}
+                  </p>
+                  <p className="text-[11px] font-bold text-[#2f6fb8] leading-tight">
+                    {conv.listing.price.toLocaleString("fr-FR")} €
+                  </p>
                 </div>
               </div>
-
-              <p className={`text-sm leading-tight line-clamp-1 ${unread ? "font-bold text-slate-800" : "text-slate-500"}`}>
-                {lastMessage?.content || "Aucun message..."}
-              </p>
             </div>
 
-            <div className="flex flex-col items-center gap-2">
-              {unread && (
-                <div className="w-2.5 h-2.5 bg-primary rounded-full animate-pulse shadow-glow shadow-primary/30" />
-              )}
-              <span className="material-symbols-outlined text-slate-200 text-xl group-hover:translate-x-1 transition-transform">
-                chevron_right
-              </span>
-            </div>
+            {/* Chevron */}
+            <span className={`material-symbols-outlined text-[20px] flex-shrink-0 group-hover:translate-x-0.5 transition-transform
+              ${unread ? "text-[#2f6fb8]" : "text-slate-300"}`}>
+              chevron_right
+            </span>
           </Link>
         );
       })}
