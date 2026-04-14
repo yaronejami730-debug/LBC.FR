@@ -165,6 +165,7 @@ export default async function ListingPage({
       <main className="pt-32 max-w-7xl mx-auto pb-12">
         <HistoryTracker category={listing.category} />
         <MarkViewed listingId={listing.id} />
+        {!isOwner && <ViewTracker listingId={listing.id} />}
 
         <section className="px-4 md:px-6 mt-2">
           <PhotoGallery images={images} title={listing.title} />
