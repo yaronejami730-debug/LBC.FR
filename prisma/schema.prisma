@@ -123,6 +123,12 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model SearchLog {
+  id        String   @id @default(cuid())
+  query     String
+  createdAt DateTime @default(now())
+}
+
 model Advertisement {
   id             String    @id @default(cuid())
   title          String
