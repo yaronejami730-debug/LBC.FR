@@ -80,7 +80,33 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {/* Upgrade Pro */}
+        {/* Upgrade Pro — visible si pas encore Pro */}
+        {!user.isPro && (() => {
+          const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          const recentListings = user.listings.filter(
+            (l) => new Date(l.createdAt) > oneWeekAgo
+          ).length;
+          // Propose Pro si 20+ annonces récentes, sinon section discrète
+          if (recentListings >= 20) {
+            return (
+              <div className="bg-[#d5e3fc]/40 border border-[#d5e3fc] rounded-2xl p-5 mb-6 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-primary">trending_up</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-extrabold text-on-surface font-['Manrope'] text-sm">
+                    Vous êtes très actif sur Deal&nbsp;&amp;&nbsp;Co !
+                  </p>
+                  <p className="text-outline text-xs mt-1 leading-relaxed">
+                    Vous avez publié <strong>{recentListings} annonces</strong> cette semaine.
+                    Passez en compte Pro pour afficher votre badge et gagner en crédibilité.
+                  </p>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
         {!user.isPro && <UpgradePro />}
 
         {/* My listings */}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function UpgradePro() {
   const [siret, setSiret] = useState("");
@@ -9,7 +8,7 @@ export default function UpgradePro() {
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const [success, setSuccess] = useState(false);
 
   async function handleSiretChange(value: string) {
     const clean = value.replace(/\s/g, "").slice(0, 14);
@@ -26,6 +25,7 @@ export default function UpgradePro() {
           setError(data.error ?? "SIRET invalide");
         } else {
           setCompanyName(data.companyName ?? "");
+          if (!data.companyName) setError("Nom d'entreprise introuvable pour ce SIRET");
         }
       } catch {
         setError("Impossible de vérifier le SIRET");
@@ -40,25 +40,46 @@ export default function UpgradePro() {
     if (!companyName) return;
     setSaving(true);
     setError("");
-    const res = await fetch("/api/profile/upgrade-pro", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ siret, companyName }),
-    });
-    setSaving(false);
-    if (!res.ok) {
+    try {
+      const res = await fetch("/api/profile/upgrade-pro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siret, companyName }),
+      });
       const data = await res.json();
-      setError(data.error ?? "Erreur");
-    } else {
-      router.refresh();
+      if (!res.ok) {
+        setError(data.error ?? "Une erreur est survenue");
+      } else {
+        setSuccess(true);
+        // Hard reload to re-render server component with updated user
+        setTimeout(() => window.location.reload(), 1200);
+      }
+    } catch {
+      setError("Erreur réseau, réessayez");
+    } finally {
+      setSaving(false);
     }
+  }
+
+  if (success) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] mb-8 flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+        </div>
+        <div>
+          <p className="font-bold text-on-surface">Compte Pro activé !</p>
+          <p className="text-outline text-sm">Rechargement en cours…</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] mb-8">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center">
-          <span className="material-symbols-outlined text-orange-500">store</span>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-full bg-[#d5e3fc] flex items-center justify-center">
+          <span className="material-symbols-outlined text-[#2f6fb8]">store</span>
         </div>
         <div>
           <h3 className="font-extrabold text-on-surface font-['Manrope']">Passer en compte Pro</h3>
@@ -95,10 +116,10 @@ export default function UpgradePro() {
         </div>
 
         {companyName && (
-          <div className="bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 flex items-center gap-3">
-            <span className="material-symbols-outlined text-orange-500 text-[20px]">store</span>
+          <div className="bg-[#d5e3fc]/40 border border-[#d5e3fc] rounded-xl px-4 py-3 flex items-center gap-3">
+            <span className="material-symbols-outlined text-[#2f6fb8] text-[20px]">store</span>
             <div>
-              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">Entreprise trouvée</p>
+              <p className="text-[10px] font-bold text-[#2f6fb8] uppercase tracking-wider">Entreprise trouvée</p>
               <p className="text-on-surface font-bold text-sm">{companyName}</p>
             </div>
           </div>
@@ -111,10 +132,10 @@ export default function UpgradePro() {
         <button
           type="submit"
           disabled={!companyName || saving}
-          className="w-full bg-orange-500 text-white font-bold py-3 rounded-full shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-primary to-primary-container text-white font-bold py-3 rounded-full shadow-[0_8px_24px_rgba(21,21,125,0.2)] active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">store</span>
-          {saving ? "Activation..." : "Activer le compte Pro"}
+          {saving ? "Activation…" : "Activer le compte Pro"}
         </button>
       </form>
     </div>

@@ -6,7 +6,7 @@ export default function ProBadge({ size = "sm" }: { size?: "xs" | "sm" | "md" })
   };
   return (
     <span
-      className={`inline-flex items-center font-black uppercase tracking-wider rounded-full bg-orange-500 text-white ${styles[size]}`}
+      className={`inline-flex items-center font-black uppercase tracking-wider rounded-full bg-[#2f6fb8] text-white ${styles[size]}`}
     >
       Pro
     </span>
