@@ -198,6 +198,14 @@ export default async function ListingPage({
                 <ExpiryTimer listingId={listing.id} createdAt={listing.createdAt.toISOString()} />
               )}
               {isOwner && (
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                  <LiveViewCount
+                    listingId={listing.id}
+                    initialCount={(listing as any).viewCount ?? 0}
+                  />
+                </div>
+              )}
+              {isOwner && (
                 <p className="text-[10px] text-slate-300 mt-1 select-all" title="Communiquez cette référence au service client en cas de problème">
                   Réf. {listing.id}
                 </p>
