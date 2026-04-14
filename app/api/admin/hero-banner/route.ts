@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 async function checkAdmin() {
   const session = await auth();
   if (!session?.user?.id) return false;
-  const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true },
