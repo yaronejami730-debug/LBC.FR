@@ -175,7 +175,7 @@ export default function SearchBar({ q, category, searchParams }: Props) {
           className="flex items-center bg-surface-container-lowest px-4 py-2 rounded-xl shadow-[0_8px_24px_rgba(21,21,125,0.04)] w-full md:w-96 group">
           {category && <input type="hidden" name="category" value={category} />}
           <span className="material-symbols-outlined text-outline-variant group-focus-within:text-primary transition-colors">search</span>
-          <input defaultValue={q} name="q" type="text" placeholder="Rechercher…"
+          <input key={q} defaultValue={q} name="q" type="text" placeholder="Rechercher…"
             className="bg-transparent border-none focus:ring-0 text-sm w-full ml-2 outline-none" />
         </form>
 

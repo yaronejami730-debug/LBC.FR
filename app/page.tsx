@@ -53,7 +53,7 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero */}
-      <header className="pt-24 md:pt-32 pb-4 px-4 max-w-7xl mx-auto">
+      <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
         <div className="relative bg-gradient-to-br from-primary to-primary-container rounded-2xl p-6 md:p-10 overflow-hidden">
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
