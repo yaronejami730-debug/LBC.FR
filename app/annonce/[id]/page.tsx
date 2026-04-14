@@ -194,6 +194,11 @@ export default async function ListingPage({
               {isOwner && (
                 <ExpiryTimer listingId={listing.id} createdAt={listing.createdAt.toISOString()} />
               )}
+              {isOwner && (
+                <p className="text-[10px] text-slate-300 mt-1 select-all" title="Communiquez cette référence au service client en cas de problème">
+                  Réf. {listing.id}
+                </p>
+              )}
             </div>
 
             {/* Attributes Row */}
