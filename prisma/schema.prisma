@@ -133,6 +133,7 @@ model HeroBanner {
   subtitle    String?
   bgFrom      String    @default("#2f6fb8")
   bgTo        String    @default("#1a5a9e")
+  bgImage     String?
   textColor   String    @default("#ffffff")
   isActive    Boolean   @default(false)
   startsAt    DateTime?

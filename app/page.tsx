@@ -66,9 +66,17 @@ export default async function Home() {
       <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
         <div
           className="relative rounded-2xl p-6 md:p-10 overflow-hidden"
-          style={{ background: activeBanner
-            ? `linear-gradient(135deg, ${activeBanner.bgFrom}, ${activeBanner.bgTo})`
-            : "linear-gradient(to bottom right, #2f6fb8, #1a5a9e)" }}
+          style={activeBanner?.bgImage
+            ? {
+                backgroundImage: `linear-gradient(135deg, ${activeBanner.bgFrom}cc, ${activeBanner.bgTo}dd), url(${activeBanner.bgImage})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : {
+                background: activeBanner
+                  ? `linear-gradient(135deg, ${activeBanner.bgFrom}, ${activeBanner.bgTo})`
+                  : "linear-gradient(to bottom right, #2f6fb8, #1a5a9e)",
+              }}
         >
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">

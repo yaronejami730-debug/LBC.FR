@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 const PRESETS = [
@@ -14,20 +14,37 @@ const PRESETS = [
 
 export default function BannerForm() {
   const router = useRouter();
-  const [title, setTitle] = useState("Petites annonces gratuites près de chez vous.");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const [title, setTitle]       = useState("Petites annonces gratuites près de chez vous.");
   const [subtitle, setSubtitle] = useState("");
-  const [from, setFrom] = useState("#2f6fb8");
-  const [to, setTo] = useState("#1a5a9e");
+  const [from, setFrom]         = useState("#2f6fb8");
+  const [to, setTo]             = useState("#1a5a9e");
+  const [bgImage, setBgImage]   = useState("");
   const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [endsAt, setEndsAt]     = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess]   = useState(false);
 
   function applyPreset(p: typeof PRESETS[0]) {
     setTitle(p.title);
     setSubtitle(p.subtitle);
     setFrom(p.from);
     setTo(p.to);
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: form });
+    const data = await res.json();
+    if (data.url) setBgImage(data.url);
+    setUploading(false);
+    e.target.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,7 +54,7 @@ export default function BannerForm() {
     await fetch("/api/admin/hero-banner", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, subtitle, bgFrom: from, bgTo: to, startsAt: startsAt || null, endsAt: endsAt || null }),
+      body: JSON.stringify({ title, subtitle, bgFrom: from, bgTo: to, bgImage: bgImage || null, startsAt: startsAt || null, endsAt: endsAt || null }),
     });
     setLoading(false);
     setSuccess(true);
@@ -46,6 +63,11 @@ export default function BannerForm() {
 
   const inputCls = "w-full border border-[#eceef0] rounded-xl px-3 py-2.5 text-sm text-[#191c1e] outline-none focus:border-[#2f6fb8] transition-colors bg-white";
   const labelCls = "block text-[11px] font-bold text-[#777683] uppercase tracking-widest mb-1.5";
+
+  // Style de preview : image si dispo, sinon dégradé
+  const previewStyle = bgImage
+    ? { backgroundImage: `linear-gradient(135deg, ${from}99, ${to}cc), url(${bgImage})`, backgroundSize: "cover", backgroundPosition: "center", backgroundBlendMode: "multiply" }
+    : { background: `linear-gradient(135deg, ${from}, ${to})` };
 
   return (
     <div className="bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
@@ -57,12 +79,11 @@ export default function BannerForm() {
       {/* Prévisualisation */}
       <div className="px-6 pt-5 pb-4">
         <p className={labelCls}>Prévisualisation</p>
-        <div className="relative rounded-xl overflow-hidden p-5 min-h-[80px] flex flex-col justify-center"
-          style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}>
-          <p className="text-white font-extrabold text-lg leading-tight tracking-tight">
+        <div className="relative rounded-xl overflow-hidden p-5 min-h-[90px] flex flex-col justify-center" style={previewStyle}>
+          <p className="text-white font-extrabold text-lg leading-tight tracking-tight drop-shadow">
             {title || "Titre de la bannière"}
           </p>
-          {subtitle && <p className="text-white/80 text-sm mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-white/80 text-sm mt-1 drop-shadow">{subtitle}</p>}
         </div>
       </div>
 
@@ -92,21 +113,45 @@ export default function BannerForm() {
           <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} className={inputCls} placeholder="Texte affiché sous le titre" />
         </div>
 
+        {/* Photo de fond */}
+        <div>
+          <label className={labelCls}>Photo de fond <span className="normal-case font-normal text-[#b0b0b0]">(optionnel)</span></label>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+          {bgImage ? (
+            <div className="relative rounded-xl overflow-hidden h-20 border border-[#eceef0]">
+              <img src={bgImage} alt="Fond" className="w-full h-full object-cover" />
+              <button type="button" onClick={() => setBgImage("")}
+                className="absolute top-2 right-2 w-7 h-7 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors">
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="w-full border-2 border-dashed border-[#eceef0] rounded-xl py-5 flex flex-col items-center gap-1.5 text-[#777683] hover:border-[#2f6fb8] hover:text-[#2f6fb8] transition-colors disabled:opacity-50">
+              {uploading
+                ? <div className="w-5 h-5 border-2 border-[#2f6fb8] border-t-transparent rounded-full animate-spin" />
+                : <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
+              }
+              <span className="text-[12px] font-medium">{uploading ? "Upload…" : "Cliquez pour ajouter une photo"}</span>
+            </button>
+          )}
+          <p className="text-[10px] text-[#777683] mt-1.5">Le dégradé de couleurs se superpose à la photo pour assurer la lisibilité du texte.</p>
+        </div>
+
         {/* Couleurs */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Couleur début</label>
-            <div className="flex items-center gap-2.5 border border-[#eceef0] rounded-xl px-3 py-2 bg-white hover:border-[#2f6fb8] transition-colors">
-              <input type="color" value={from} onChange={(e) => setFrom(e.target.value)}
-                className="w-7 h-7 rounded-lg cursor-pointer border-none bg-transparent p-0" />
+            <div className="flex items-center gap-2.5 border border-[#eceef0] rounded-xl px-3 py-2 bg-white hover:border-[#2f6fb8] transition-colors cursor-pointer" onClick={() => document.getElementById("colorFrom")?.click()}>
+              <input id="colorFrom" type="color" value={from} onChange={(e) => setFrom(e.target.value)} className="w-7 h-7 rounded-lg cursor-pointer border-none bg-transparent p-0" />
               <span className="text-[12px] font-mono text-[#777683]">{from}</span>
             </div>
           </div>
           <div>
             <label className={labelCls}>Couleur fin</label>
-            <div className="flex items-center gap-2.5 border border-[#eceef0] rounded-xl px-3 py-2 bg-white hover:border-[#2f6fb8] transition-colors">
-              <input type="color" value={to} onChange={(e) => setTo(e.target.value)}
-                className="w-7 h-7 rounded-lg cursor-pointer border-none bg-transparent p-0" />
+            <div className="flex items-center gap-2.5 border border-[#eceef0] rounded-xl px-3 py-2 bg-white hover:border-[#2f6fb8] transition-colors cursor-pointer" onClick={() => document.getElementById("colorTo")?.click()}>
+              <input id="colorTo" type="color" value={to} onChange={(e) => setTo(e.target.value)} className="w-7 h-7 rounded-lg cursor-pointer border-none bg-transparent p-0" />
               <span className="text-[12px] font-mono text-[#777683]">{to}</span>
             </div>
           </div>
@@ -131,7 +176,7 @@ export default function BannerForm() {
           </div>
         )}
 
-        <button type="submit" disabled={loading}
+        <button type="submit" disabled={loading || uploading}
           className="w-full bg-[#2f6fb8] hover:bg-[#1a5a9e] text-white font-bold py-2.5 rounded-full transition-colors disabled:opacity-60 text-sm">
           {loading ? "Création…" : "Créer la bannière"}
         </button>
