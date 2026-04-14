@@ -9,6 +9,7 @@ interface Banner {
   subtitle: string | null;
   bgFrom: string;
   bgTo: string;
+  bgImage: string | null;
   isActive: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
@@ -60,7 +61,10 @@ export default function BannerList({ banners }: { banners: Banner[] }) {
             <div key={b.id} className="px-5 py-4 hover:bg-[#f7f9fb] transition-colors">
               {/* Mini preview */}
               <div className="h-14 rounded-xl overflow-hidden mb-3 flex items-center px-4"
-                style={{ background: `linear-gradient(135deg, ${b.bgFrom}, ${b.bgTo})` }}>
+                style={b.bgImage
+                  ? { backgroundImage: `linear-gradient(135deg, ${b.bgFrom}cc, ${b.bgTo}dd), url(${b.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" }
+                  : { background: `linear-gradient(135deg, ${b.bgFrom}, ${b.bgTo})` }
+                }>
                 <div>
                   <p className="text-white text-[13px] font-bold leading-tight line-clamp-1">{b.title}</p>
                   {b.subtitle && <p className="text-white/70 text-[11px] mt-0.5 line-clamp-1">{b.subtitle}</p>}
