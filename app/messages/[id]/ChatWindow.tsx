@@ -206,7 +206,7 @@ export default function ChatWindow({
         </div>
 
         <Link
-          href={`/listing/${listing.id}`}
+          href={`/annonce/${listing.id}`}
           className="flex items-center gap-2 bg-[#f0f2f9] px-2 py-1.5 rounded-2xl border border-white shadow-sm flex-shrink-0"
         >
           {listing.image && (

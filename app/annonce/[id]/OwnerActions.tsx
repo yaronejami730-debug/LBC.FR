@@ -22,7 +22,7 @@ export default function OwnerActions({ listingId }: { listingId: string }) {
   return (
     <div className="space-y-3 w-full">
       <Link
-        href={`/listing/${listingId}/edit`}
+        href={`/annonce/${listingId}/edit`}
         className="w-full py-3.5 rounded-2xl bg-[#2f6fb8] text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#1a5a9e] transition-all"
       >
         <span className="material-symbols-outlined text-[18px]">edit</span>

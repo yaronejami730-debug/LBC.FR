@@ -34,7 +34,7 @@ export async function generateMetadata({
   // Ensure absolute URL — WhatsApp/iMessage require it
   const BASE = "https://www.dealandcompany.fr";
   const mainImg = rawImg.startsWith("http") ? rawImg : `${BASE}${rawImg}`;
-  const pageUrl = `${BASE}/listing/${id}`;
+  const pageUrl = `${BASE}/annonce/${id}`;
 
   const desc = `${listing.description.slice(0, 150)}${listing.description.length > 150 ? "…" : ""} · ${listing.location} · ${priceStr}`;
 
@@ -124,7 +124,7 @@ export default async function ListingPage({
     name: listing.title,
     description: listing.description,
     image: images.length ? images : [mainImg],
-    url: `https://www.dealandcompany.fr/listing/${listing.id}`,
+    url: `https://www.dealandcompany.fr/annonce/${listing.id}`,
     offers: {
       "@type": "Offer",
       price: listing.price,

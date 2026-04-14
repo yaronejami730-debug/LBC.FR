@@ -321,7 +321,7 @@ export default function PostForm() {
       try { data = JSON.parse(text); } catch { /* html error page */ }
       if (!res.ok) { setPublishError(data.error || `Erreur ${res.status}`); return; }
       if (!data.id) { setPublishError("Réponse inattendue. Réessayez."); return; }
-      router.push(`/listing/${data.id}`);
+      router.push(`/annonce/${data.id}`);
     } catch {
       setPublishError("Impossible de joindre le serveur.");
     } finally {

@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       take: 5000,
     });
     listings = rows.map((l) => ({
-      url: `${BASE}/listing/${l.id}`,
+      url: `${BASE}/annonce/${l.id}`,
       lastModified: l.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.7,

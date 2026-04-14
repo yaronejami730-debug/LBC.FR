@@ -10,7 +10,7 @@ export default async function EditListingPage({
 }) {
   const { id } = await params;
   const session = await auth();
-  if (!session?.user?.id) redirect(`/login?callbackUrl=/listing/${id}/edit`);
+  if (!session?.user?.id) redirect(`/login?callbackUrl=/annonce/${id}/edit`);
 
   const listing = await prisma.listing.findUnique({ where: { id } });
   if (!listing) notFound();

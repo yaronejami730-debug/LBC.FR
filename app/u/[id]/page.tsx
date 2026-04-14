@@ -85,7 +85,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
               return (
                 <Link
                   key={listing.id}
-                  href={`/listing/${listing.id}`}
+                  href={`/annonce/${listing.id}`}
                   className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100"
                 >
                   <div className="relative aspect-square overflow-hidden">

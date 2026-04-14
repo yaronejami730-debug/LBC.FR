@@ -100,7 +100,7 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
         setError(d.error ?? "Erreur lors de la sauvegarde");
         return;
       }
-      router.push(`/listing/${listingId}`);
+      router.push(`/annonce/${listingId}`);
     } catch {
       setError("Impossible de joindre le serveur.");
     } finally {
@@ -114,7 +114,7 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
       <header className="bg-white/80 backdrop-blur-xl fixed top-0 w-full z-50 shadow-[0_16px_32px_rgba(21,21,125,0.06)]">
         <div className="flex items-center justify-between px-6 py-4 w-full max-w-3xl mx-auto">
           <div className="flex items-center gap-4">
-            <Link href={`/listing/${listingId}`} className="text-primary p-2 hover:bg-slate-50 rounded-full active:scale-95 transition-transform">
+            <Link href={`/annonce/${listingId}`} className="text-primary p-2 hover:bg-slate-50 rounded-full active:scale-95 transition-transform">
               <span className="material-symbols-outlined">close</span>
             </Link>
             <img src="/logo.png" alt="Le Bon Deal" className="h-12 w-auto" />
@@ -293,7 +293,7 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
           {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
           <div className="flex gap-3">
             <Link
-              href={`/listing/${listingId}`}
+              href={`/annonce/${listingId}`}
               className="px-6 py-4 rounded-full border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-all"
             >
               Annuler

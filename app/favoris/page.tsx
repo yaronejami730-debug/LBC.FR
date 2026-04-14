@@ -55,7 +55,7 @@ export default async function FavoritesPage() {
               return (
                 <Link
                   key={listing.id}
-                  href={`/listing/${listing.id}`}
+                  href={`/annonce/${listing.id}`}
                   className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                 >
                   <div className="relative aspect-square overflow-hidden bg-surface-container-low">

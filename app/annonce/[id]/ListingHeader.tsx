@@ -33,7 +33,7 @@ export default function ListingHeader({
 
   const toggleFavorite = async () => {
     if (!userId) {
-      window.location.href = `/login?callbackUrl=/listing/${listingId}`;
+      window.location.href = `/login?callbackUrl=/annonce/${listingId}`;
       return;
     }
     setLoading(true);
