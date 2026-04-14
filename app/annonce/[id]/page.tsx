@@ -179,14 +179,14 @@ export default async function ListingPage({
                   <span className="material-symbols-outlined text-sm">schedule</span> {formatDistanceToNow(listing.createdAt)}
                 </span>
               </div>
-              <div className="flex items-start gap-2">
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight">
-                  {listing.title}
-                </h1>
-                {isOwner && <ListingInfoTip />}
-              </div>
-              <div className="flex items-baseline gap-3 pt-2">
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight">
+                {listing.title}
+              </h1>
+              <div className="flex items-center gap-3 pt-2">
                 <span className="text-4xl font-black text-primary">{listing.price.toLocaleString("fr-FR")} €</span>
+                {isOwner && Date.now() - new Date(listing.createdAt).getTime() < 48 * 60 * 60 * 1000 && (
+                  <ListingInfoTip />
+                )}
               </div>
             </div>
 
