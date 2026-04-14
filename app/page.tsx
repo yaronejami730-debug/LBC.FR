@@ -8,6 +8,7 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
+import DejaVuBadge from "@/components/DejaVuBadge";
 
 export const metadata: Metadata = {
   title: "Deal&Co — Petites annonces gratuites entre particuliers en France",
@@ -151,6 +152,7 @@ export default async function Home() {
                         Premium
                       </span>
                     )}
+                    <DejaVuBadge listingId={listing.id} />
                   </div>
                   <div className="p-2.5 flex flex-col gap-0.5">
                     <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>

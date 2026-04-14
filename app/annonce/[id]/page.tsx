@@ -14,6 +14,7 @@ import PhotoGallery from "./PhotoGallery";
 import HistoryTracker from "@/components/HistoryTracker";
 import ProBadge from "@/components/ProBadge";
 import ListingInfoTip from "./ListingInfoTip";
+import MarkViewed from "@/components/MarkViewed";
 
 export async function generateMetadata({
   params,
@@ -160,6 +161,7 @@ export default async function ListingPage({
       {/* Content Canvas */}
       <main className="pt-32 max-w-7xl mx-auto pb-12">
         <HistoryTracker category={listing.category} />
+        <MarkViewed listingId={listing.id} />
 
         <section className="px-4 md:px-6 mt-2">
           <PhotoGallery images={images} title={listing.title} />

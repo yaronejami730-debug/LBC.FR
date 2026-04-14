@@ -10,6 +10,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
 import HistoryTracker from "@/components/HistoryTracker";
+import DejaVuBadge from "@/components/DejaVuBadge";
 
 export async function generateMetadata({
   searchParams,
@@ -178,6 +179,7 @@ export default async function SearchPage({
                           Premium
                         </span>
                       )}
+                      <DejaVuBadge listingId={listing.id} />
                     </div>
                     <div className="p-2.5 flex flex-col gap-0.5">
                       <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
