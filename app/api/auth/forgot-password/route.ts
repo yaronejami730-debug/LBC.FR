@@ -3,8 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { resetPasswordEmail } from "@/lib/emails/reset-password";
 import crypto from "crypto";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`forgot-password:${ip}`, 5, 15 * 60 * 1000)) {
+    return NextResponse.json({ ok: true }); // Réponse silencieuse pour ne pas confirmer l'abus
+  }
+
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: "Email requis" }, { status: 400 });
 

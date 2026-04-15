@@ -8,8 +8,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid params" }, { status: 400 });
   }
 
-  await prisma.advertisement.update({
-    where: { id },
+  // updateMany ne lance pas d'erreur si l'ID n'existe pas (évite la fuite d'info)
+  await prisma.advertisement.updateMany({
+    where: { id, isActive: true },
     data: type === "click"
       ? { clicks: { increment: 1 } }
       : { impressions: { increment: 1 } },

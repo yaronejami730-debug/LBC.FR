@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import Navbar from "@/components/Navbar";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Documentation API — Deal&Co",
+  title: "API — Deal&Co",
   description:
-    "Documentation complète de l'API Deal&Co. Publiez des annonces automobiles et immobilières depuis votre logiciel via notre API REST.",
+    "Publiez des annonces automobiles et immobilières depuis votre logiciel via l'API REST Deal&Co.",
 };
-
-// ── Code examples ─────────────────────────────────────────────────────────────
 
 const CODE = {
   auth: `Authorization: Bearer dc_live_xxxxxxxxxxxxxxxxxxxxxxxx
@@ -26,94 +28,6 @@ Content-Type: application/json`,
   "createdAt": "2026-04-15T14:32:00.000Z"
 }`,
 
-  error401: `{
-  "error": "Clé API invalide ou manquante."
-}`,
-
-  error400: `{
-  "error": "Champs requis manquants : title, price, category, description, location"
-}`,
-
-  auto: `{
-  "title": "BMW Série 7 730d Automatique",
-  "price": 18900,
-  "category": "Véhicules",
-  "description": "Très bon état général, entretien suivi, carnet à jour. Disponible immédiatement.",
-  "location": "La Ciotat, 13600",
-  "condition": "Bon état",
-  "phone": "0600000000",
-  "images": [
-    "https://exemple.com/photo1.jpg",
-    "https://exemple.com/photo2.jpg"
-  ],
-  "vehicle": {
-    "marque": "BMW",
-    "modele": "Série 7",
-    "annee": 2010,
-    "kilometrage": 174230,
-    "carburant": "Diesel",
-    "transmission": "Automatique",
-    "couleur": "Gris",
-    "puissanceFiscale": 15,
-    "motorisation": "730d",
-    "nombrePortes": 4,
-    "nombrePlaces": 5,
-    "nombreVitesses": 6,
-    "typeVehicule": "Véhicule de tourisme",
-    "dateImmatriculation": "2010-12-27",
-    "emissionCO2": 178,
-    "consoUrbaine": 9.0,
-    "consoExtraU": 5.5,
-    "consoMixte": 6.8,
-    "critAir": "3",
-    "options": [
-      "ABS", "ESP", "Régulateur de vitesse adaptatif",
-      "Radar de stationnement avant", "Caméra de recul",
-      "Toit ouvrant coulissant/Relevable", "Siège conducteur chauffant"
-    ]
-  }
-}`,
-
-  immo: `{
-  "title": "Appartement T3 — Vue mer — Nice Centre",
-  "price": 250000,
-  "category": "Immobilier",
-  "description": "Superbe appartement lumineux avec vue mer panoramique, entièrement rénové.",
-  "location": "Nice 06000",
-  "condition": "Bon état",
-  "phone": "0600000000",
-  "images": [
-    "https://exemple.com/photo1.jpg",
-    "https://exemple.com/photo2.jpg"
-  ],
-  "immo": {
-    "typeBien": "Appartement",
-    "surface": 75,
-    "nombrePieces": 3,
-    "nombreChambres": 2,
-    "nombreSallesEau": 1,
-    "etage": "3",
-    "exposition": "Sud",
-    "classeEnergie": "C",
-    "ges": "B",
-    "typeCharuffe": "Individuel",
-    "modeCharuffe": "Électrique",
-    "placesParking": 1,
-    "anneeConstruction": 1990,
-    "etatBien": "Bon état",
-    "reference": "REF-2024-001",
-    "vueMer": true,
-    "visAVis": false,
-    "prixHonorairesInclus": 255000,
-    "prixHonorairesExclus": 250000,
-    "honorairesAcquereur": 5000,
-    "taxeFonciere": 1200,
-    "caracteristiques": [
-      "Balcon", "Cave", "Gardien", "Double vitrage", "Cuisine équipée"
-    ]
-  }
-}`,
-
   upload: `# Étape 1 — Uploader la photo
 curl -X POST https://www.dealandcompany.fr/api/v1/upload \\
   -H "Authorization: Bearer dc_live_xxx" \\
@@ -129,399 +43,269 @@ curl -X POST https://www.dealandcompany.fr/api/v1/upload \\
 }`,
 };
 
-// ── Nav items ─────────────────────────────────────────────────────────────────
-
-const NAV = [
-  { id: "intro",         label: "Introduction" },
-  { id: "auth",          label: "Authentification" },
-  { id: "quickstart",    label: "Démarrage rapide" },
-  { id: "auto",          label: "🚗  Automobile" },
-  { id: "immo",          label: "🏠  Immobilier" },
-  { id: "photos",        label: "Photos" },
-  { id: "errors",        label: "Codes d'erreur" },
-];
-
-// ── Field row ─────────────────────────────────────────────────────────────────
-
-function Field({ name, type, req, desc }: { name: string; type: string; req?: boolean; desc: string }) {
+function CodeBlock({ code, label }: { code: string; label?: string }) {
   return (
-    <div className="flex gap-4 py-3 border-b border-white/5 last:border-0">
-      <div className="w-52 shrink-0">
-        <code className="text-[#93c5fd] font-mono text-sm">{name}</code>
-        {req && <span className="ml-2 text-[9px] font-bold text-red-400 uppercase">requis</span>}
-      </div>
-      <div className="w-24 shrink-0">
-        <span className="text-[#6b7280] font-mono text-xs">{type}</span>
-      </div>
-      <p className="text-[#94a3b8] text-sm flex-1">{desc}</p>
-    </div>
-  );
-}
-
-function CodeBlock({ code, label, color = "text-[#a5b4fc]" }: { code: string; label?: string; color?: string }) {
-  return (
-    <div className="rounded-xl overflow-hidden border border-white/10">
+    <div className="rounded-xl overflow-hidden border border-slate-200 bg-[#f8f9fb]">
       {label && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border-b border-white/10">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-          </div>
-          <span className="text-[10px] text-[#6b7280] font-mono ml-1">{label}</span>
+        <div className="px-4 py-2 bg-slate-100 border-b border-slate-200">
+          <span className="text-[11px] font-mono text-slate-500">{label}</span>
         </div>
       )}
-      <pre className={`p-5 text-xs font-mono leading-relaxed overflow-x-auto bg-[#0d1117] ${color}`}>
+      <pre className="p-4 text-xs font-mono leading-relaxed overflow-x-auto text-[#2f6fb8]">
         {code}
       </pre>
     </div>
   );
 }
 
-function SectionTitle({ id, children }: { id: string; children: React.ReactNode }) {
+function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
-    <h2 id={id} className="text-2xl font-bold text-white scroll-mt-8 mb-6 flex items-center gap-3">
-      {children}
-    </h2>
+    <li className="flex gap-3 text-sm text-slate-600">
+      <span className="w-6 h-6 rounded-full bg-[#2f6fb8] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">
+        {n}
+      </span>
+      <span>{children}</span>
+    </li>
   );
 }
 
-function SubTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-base font-bold text-white mb-3">{children}</h3>;
-}
+export default async function ApiDocPage() {
+  const session = await auth();
+  const userId = session?.user?.id;
 
-function Note({ children }: { children: React.ReactNode }) {
+  let isPro = false;
+  if (userId) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isPro: true },
+    }).catch(() => null);
+    isPro = dbUser?.isPro ?? false;
+  }
+
+  // Bouton CTA selon l'état de connexion
+  const CtaButton = () => {
+    if (!userId) {
+      return (
+        <Link
+          href="/login?callbackUrl=/api-doc"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2f6fb8] text-white rounded-xl text-sm font-bold hover:bg-[#1a5a9e] transition-colors"
+        >
+          <span className="material-symbols-outlined text-[18px]">login</span>
+          Se connecter pour obtenir une clé
+        </Link>
+      );
+    }
+    if (!isPro) {
+      return (
+        <Link
+          href="/profile"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[18px]">upgrade</span>
+          Passer en compte Pro
+        </Link>
+      );
+    }
+    return (
+      <Link
+        href="/profile/api-key"
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2f6fb8] text-white rounded-xl text-sm font-bold hover:bg-[#1a5a9e] transition-colors"
+      >
+        <span className="material-symbols-outlined text-[18px]">key</span>
+        Gérer ma clé API
+      </Link>
+    );
+  };
+
   return (
-    <div className="flex gap-3 bg-[#1e3a5f]/40 border border-[#2f6fb8]/30 rounded-xl px-4 py-3 text-sm text-[#93c5fd]">
-      <span className="shrink-0 mt-0.5">ℹ️</span>
-      <p>{children}</p>
-    </div>
-  );
-}
+    <div className="min-h-screen bg-[#f5f7fa] text-slate-800">
+      <Navbar />
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+      <main className="pt-36 pb-20 px-4 max-w-4xl mx-auto space-y-12">
 
-export default function ApiDocPage() {
-  return (
-    <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] font-sans">
-
-      {/* Top bar */}
-      <header className="fixed top-0 w-full z-50 bg-[#0d1117]/95 backdrop-blur border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/">
-              <img src="/logo.png" alt="Deal&Co" className="h-7 w-auto brightness-0 invert opacity-90" />
-            </Link>
-            <span className="text-[#30363d] select-none">/</span>
-            <span className="text-sm font-semibold text-[#e6edf3]">Documentation API</span>
-            <span className="text-[10px] font-bold bg-[#2f6fb8]/20 text-[#60a5fa] border border-[#2f6fb8]/30 px-2 py-0.5 rounded-full">
-              v1
-            </span>
+        {/* Hero */}
+        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)]">
+          <div className="flex items-start justify-between gap-6 flex-wrap">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#2f6fb8] text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>api</span>
+                <h1 className="text-2xl font-extrabold text-slate-900 font-['Manrope']">API Deal&amp;Co</h1>
+                <span className="text-[10px] font-bold bg-[#e1e0ff] text-[#2f6fb8] px-2 py-0.5 rounded-full">v1</span>
+              </div>
+              <p className="text-slate-500 leading-relaxed max-w-xl">
+                Publiez des annonces <strong className="text-slate-700">automobiles</strong> et <strong className="text-slate-700">immobilières</strong> directement depuis votre logiciel de gestion, site de diffusion, ou outil d'automatisation (Make, Zapier, n8n…).
+              </p>
+            </div>
+            <CtaButton />
           </div>
-          <Link
-            href="/profile#api"
-            className="text-xs font-bold bg-[#238636] text-white px-4 py-1.5 rounded-lg hover:bg-[#2ea043] transition-colors"
-          >
-            Obtenir une clé API
-          </Link>
-        </div>
-      </header>
 
-      <div className="max-w-7xl mx-auto flex pt-14">
-
-        {/* Sidebar */}
-        <aside className="hidden lg:block w-60 shrink-0 sticky top-14 h-[calc(100vh-56px)] overflow-y-auto py-8 pr-4">
-          <nav className="space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#6b7280] px-3 mb-3">Référence</p>
-            {NAV.map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                className="block px-3 py-1.5 text-sm text-[#8b949e] hover:text-[#e6edf3] hover:bg-white/5 rounded-lg transition-colors"
-              >
-                {item.label}
-              </a>
-            ))}
-            <div className="border-t border-white/10 my-4" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#6b7280] px-3 mb-3">Endpoints</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
             {[
-              { method: "POST", path: "/api/v1/listings" },
-              { method: "POST", path: "/api/v1/upload" },
-            ].map((e) => (
-              <div key={e.path} className="flex items-center gap-2 px-3 py-1.5">
-                <span className="text-[9px] font-black text-blue-400 w-8 shrink-0">{e.method}</span>
-                <code className="text-xs text-[#6b7280] truncate">{e.path}</code>
+              { icon: "lock", title: "Sécurisé", desc: "HTTPS + clé API Bearer par compte" },
+              { icon: "bolt", title: "Instantané", desc: "Annonce en ligne dès la requête" },
+              { icon: "business", title: "Réservé aux pros", desc: "Comptes professionnels uniquement" },
+            ].map((f) => (
+              <div key={f.title} className="bg-[#f5f7fa] rounded-xl p-4 flex gap-3 items-start">
+                <span className="material-symbols-outlined text-[#2f6fb8] text-[22px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{f.title}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{f.desc}</p>
+                </div>
               </div>
             ))}
-          </nav>
-        </aside>
+          </div>
+        </div>
 
-        {/* Main content */}
-        <main className="flex-1 min-w-0 py-12 px-6 lg:px-12 max-w-4xl space-y-20">
+        {/* Authentification */}
+        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-5">
+          <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">lock</span>
+            </span>
+            Authentification
+          </h2>
+          <p className="text-sm text-slate-600">
+            Toutes les requêtes doivent inclure votre clé dans le header{" "}
+            <code className="bg-[#f5f7fa] text-[#2f6fb8] px-1.5 py-0.5 rounded font-mono text-xs">Authorization</code>.
+          </p>
+          <ol className="space-y-2">
+            <Step n={1}>Connectez-vous avec un compte <strong>professionnel</strong></Step>
+            <Step n={2}>Rendez-vous dans <Link href="/profile/api-key" className="text-[#2f6fb8] hover:underline">Mon profil → API</Link></Step>
+            <Step n={3}>Donnez un nom à votre clé et cliquez sur <strong>"Générer"</strong></Step>
+            <Step n={4}>Copiez la clé — elle n'est affichée <strong>qu'une seule fois</strong></Step>
+          </ol>
+          <CodeBlock label="Header à inclure dans chaque requête" code={CODE.auth} />
+          <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
+            <span className="material-symbols-outlined text-[18px] mt-0.5 shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+            <p>Votre clé commence toujours par <code className="font-mono">dc_live_</code>. Ne la partagez jamais — elle donne accès à votre compte.</p>
+          </div>
+        </div>
 
-          {/* ── Introduction ── */}
-          <section id="intro">
-            <SectionTitle id="intro">Introduction</SectionTitle>
-            <div className="space-y-4 text-[#8b949e] leading-relaxed">
-              <p>
-                L'API Deal&Co vous permet de publier des annonces <strong className="text-[#e6edf3]">automobiles</strong> et <strong className="text-[#e6edf3]">immobilières</strong> directement depuis votre logiciel de gestion, site de diffusion, ou outil d'automatisation (Make, Zapier, n8n…).
-              </p>
-              <p>
-                Chaque annonce soumise via l'API est <strong className="text-[#e6edf3]">publiée immédiatement</strong> sur dealandcompany.fr, visible par tous les visiteurs, au nom de votre compte professionnel.
-              </p>
-              <p>
-                L'API utilise le protocole <strong className="text-[#e6edf3]">HTTPS</strong>, accepte et retourne du <strong className="text-[#e6edf3]">JSON</strong>, et s'authentifie via une <strong className="text-[#e6edf3]">clé API Bearer</strong>.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                {[
-                  { icon: "🔒", title: "Sécurisé", desc: "HTTPS + clé API par compte" },
-                  { icon: "⚡", title: "Instantané", desc: "Annonce en ligne dès la requête" },
-                  { icon: "🏢", title: "Pro", desc: "Réservé aux comptes professionnels" },
-                ].map((f) => (
-                  <div key={f.title} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                    <p className="text-xl mb-1">{f.icon}</p>
-                    <p className="text-sm font-bold text-[#e6edf3]">{f.title}</p>
-                    <p className="text-xs text-[#6b7280] mt-0.5">{f.desc}</p>
-                  </div>
-                ))}
+        {/* Démarrage rapide */}
+        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-5">
+          <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">rocket_launch</span>
+            </span>
+            Démarrage rapide
+          </h2>
+          <p className="text-sm text-slate-600">Publiez votre première annonce en 30 secondes.</p>
+          <CodeBlock label="cURL — exemple minimal" code={CODE.curl} />
+          <div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Réponse · 201 Created</p>
+            <CodeBlock code={CODE.response} />
+          </div>
+          <p className="text-sm text-slate-500">
+            Le champ <code className="bg-[#f5f7fa] text-[#2f6fb8] px-1.5 py-0.5 rounded font-mono text-xs">url</code> contient le lien direct vers l'annonce publiée.
+          </p>
+        </div>
+
+        {/* Champs requis */}
+        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-4">
+          <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">list_alt</span>
+            </span>
+            Champs requis
+          </h2>
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="grid grid-cols-12 px-4 py-2 bg-slate-50 border-b border-slate-200">
+              <span className="col-span-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Champ</span>
+              <span className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Type</span>
+              <span className="col-span-6 text-[10px] font-bold uppercase tracking-widest text-slate-400">Description</span>
+            </div>
+            {[
+              ["title",       "string",  "Titre de l'annonce (3–200 caractères)", true],
+              ["price",       "number",  "Prix en euros (≥ 0)", true],
+              ["category",   "string",  "Véhicules · Immobilier · Multimédia · Mode · Maison · Loisirs · Animaux · Services · Divers", true],
+              ["description","string",  "Description complète (10–10 000 caractères)", true],
+              ["location",   "string",  "Ville et code postal (ex : Paris 75001)", true],
+              ["subcategory","string",  "Sous-catégorie (optionnel)", false],
+              ["condition",  "string",  "Neuf · Très bon état · Bon état · État correct · Pour pièces", false],
+              ["phone",      "string",  "Numéro de téléphone du vendeur", false],
+              ["hidePhone",  "boolean", "true pour masquer le numéro au public", false],
+              ["images",     "string[]","URLs des photos (max 15 — voir section Photos)", false],
+              ["vehicle",    "object",  "Détails du véhicule (si category = Véhicules)", false],
+              ["immo",       "object",  "Détails du bien immobilier (si category = Immobilier)", false],
+            ].map(([name, type, desc, req]) => (
+              <div key={name as string} className="grid grid-cols-12 items-start px-4 py-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                <div className="col-span-4 flex items-center gap-1.5">
+                  <code className="text-[#2f6fb8] font-mono text-xs">{name}</code>
+                  {req && <span className="text-[9px] font-bold text-red-500 uppercase">requis</span>}
+                </div>
+                <span className="col-span-2 text-slate-400 font-mono text-[10px]">{type}</span>
+                <span className="col-span-6 text-xs text-slate-500">{desc}</span>
               </div>
-            </div>
-          </section>
+            ))}
+          </div>
+        </div>
 
-          {/* ── Authentification ── */}
-          <section id="auth">
-            <SectionTitle id="auth">Authentification</SectionTitle>
-            <div className="space-y-5 text-[#8b949e]">
-              <p>
-                Toutes les requêtes API doivent inclure votre clé dans le header <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded text-sm font-mono">Authorization</code>.
-              </p>
-              <div className="space-y-3">
-                <SubTitle>Obtenir une clé</SubTitle>
-                <ol className="space-y-2 text-sm">
-                  <li className="flex gap-3"><span className="w-5 h-5 rounded-full bg-[#2f6fb8] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">1</span><span>Connectez-vous avec un compte <strong className="text-[#e6edf3]">professionnel</strong></span></li>
-                  <li className="flex gap-3"><span className="w-5 h-5 rounded-full bg-[#2f6fb8] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">2</span><span>Accédez à <Link href="/profile#api" className="text-[#60a5fa] hover:underline">Mon profil → API</Link></span></li>
-                  <li className="flex gap-3"><span className="w-5 h-5 rounded-full bg-[#2f6fb8] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">3</span><span>Cliquez sur <strong className="text-[#e6edf3]">"Générer ma clé API"</strong></span></li>
-                  <li className="flex gap-3"><span className="w-5 h-5 rounded-full bg-[#2f6fb8] text-white text-xs flex items-center justify-center shrink-0 font-bold mt-0.5">4</span><span>Copiez la clé — elle n'est affichée <strong className="text-[#e6edf3]">qu'une seule fois</strong></span></li>
-                </ol>
+        {/* Photos */}
+        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-5">
+          <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">photo_library</span>
+            </span>
+            Photos
+          </h2>
+          <p className="text-sm text-slate-600">
+            Uploadez les photos via <code className="bg-[#f5f7fa] text-[#2f6fb8] px-1.5 py-0.5 rounded font-mono text-xs">POST /api/v1/upload</code>, puis passez les URLs dans le champ <code className="bg-[#f5f7fa] text-[#2f6fb8] px-1.5 py-0.5 rounded font-mono text-xs">images</code>.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { label: "Format", value: "multipart/form-data" },
+              { label: "Champ", value: "file" },
+              { label: "Taille max", value: "10 Mo / photo" },
+              { label: "Types", value: "JPEG, PNG, WebP, GIF" },
+              { label: "Max photos", value: "15 par annonce" },
+              { label: "Stockage", value: "Vercel Blob CDN" },
+            ].map((f) => (
+              <div key={f.label} className="bg-[#f5f7fa] rounded-xl px-4 py-3">
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">{f.label}</p>
+                <p className="text-sm text-slate-700 font-mono mt-0.5">{f.value}</p>
               </div>
-              <CodeBlock label="Headers requis" code={CODE.auth} color="text-[#86efac]" />
-              <Note>
-                Votre clé commence toujours par <code className="font-mono">dc_live_</code>. Ne la partagez pas — elle donne accès à votre compte.
-              </Note>
-            </div>
-          </section>
+            ))}
+          </div>
+          <CodeBlock label="Workflow upload + annonce" code={CODE.upload} />
+        </div>
 
-          {/* ── Quickstart ── */}
-          <section id="quickstart">
-            <SectionTitle id="quickstart">Démarrage rapide</SectionTitle>
-            <div className="space-y-5 text-[#8b949e]">
-              <p>Voici la requête minimale pour publier une annonce en 30 secondes.</p>
-              <CodeBlock label="cURL — annonce minimale" code={CODE.curl} color="text-[#fcd34d]" />
-              <SubTitle>Réponse</SubTitle>
-              <CodeBlock label="201 Created" code={CODE.response} color="text-[#86efac]" />
-              <p className="text-sm">
-                Le champ <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono">url</code> contient le lien direct vers l'annonce publiée sur le site.
-              </p>
-            </div>
-          </section>
-
-          {/* ── Automobile ── */}
-          <section id="auto">
-            <SectionTitle id="auto">
-              <span className="w-9 h-9 rounded-lg bg-blue-900/50 border border-blue-800/50 flex items-center justify-center text-lg shrink-0">🚗</span>
-              Automobile
-            </SectionTitle>
-            <div className="space-y-6 text-[#8b949e]">
-              <p>
-                Pour une annonce automobile, utilisez <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm">"category": "Véhicules"</code> et renseignez le bloc <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm">vehicle</code> avec les caractéristiques du véhicule.
-              </p>
-
-              <CodeBlock label="Exemple complet — Véhicule" code={CODE.auto} color="text-[#a5b4fc]" />
-
-              <div>
-                <SubTitle>Champs du bloc vehicle</SubTitle>
-                <div className="bg-[#161b22] border border-white/10 rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-12 px-4 py-2 bg-white/5 border-b border-white/10">
-                    <span className="col-span-5 text-[10px] font-bold uppercase tracking-widest text-[#6b7280]">Champ</span>
-                    <span className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-[#6b7280]">Type</span>
-                    <span className="col-span-5 text-[10px] font-bold uppercase tracking-widest text-[#6b7280]">Description</span>
-                  </div>
-                  <div className="divide-y divide-white/5">
-                    {[
-                      ["marque",              "string",   "Ex : BMW, Renault, Peugeot…"],
-                      ["modele",              "string",   "Ex : Série 7, 308, Clio…"],
-                      ["annee",               "number",   "Année de mise en circulation"],
-                      ["kilometrage",         "number",   "Kilométrage en km"],
-                      ["carburant",           "string",   "Essence · Diesel · Hybride · Électrique · GPL"],
-                      ["transmission",        "string",   "Manuelle · Automatique"],
-                      ["couleur",             "string",   "Ex : Noir, Gris, Blanc…"],
-                      ["puissanceFiscale",    "number",   "Chevaux fiscaux (CV)"],
-                      ["motorisation",        "string",   "Ex : 730d, 2.0 TDI, i4 eDrive40…"],
-                      ["nombrePortes",        "number",   "2, 3, 4 ou 5"],
-                      ["nombrePlaces",        "number",   "Nombre de places assises"],
-                      ["nombreVitesses",      "number",   "Nombre de rapports de boîte"],
-                      ["typeVehicule",        "string",   "Véhicule de tourisme · SUV · Berline · Break · Coupé · Cabriolet…"],
-                      ["dateImmatriculation", "string",   "Format AAAA-MM-JJ (ex : 2010-12-27)"],
-                      ["emissionCO2",         "number",   "Grammes/km (ex : 178)"],
-                      ["consoUrbaine",        "number",   "L/100km en ville"],
-                      ["consoExtraU",         "number",   "L/100km extra-urbain"],
-                      ["consoMixte",          "number",   "L/100km mixte"],
-                      ["critAir",             "string",   "Vignette Crit'Air : \"0\" (électrique) à \"5\""],
-                      ["options",             "string[]", "Liste des équipements : [\"ABS\", \"GPS\", \"Toit ouvrant\"…]"],
-                    ].map(([name, type, desc]) => (
-                      <div key={name} className="grid grid-cols-12 items-start px-4 py-2.5 hover:bg-white/3 transition-colors">
-                        <code className="col-span-5 text-[#93c5fd] font-mono text-xs">{name}</code>
-                        <span className="col-span-2 text-[#6b7280] font-mono text-[10px]">{type}</span>
-                        <span className="col-span-5 text-xs text-[#6b7280]">{desc}</span>
-                      </div>
-                    ))}
-                  </div>
+        {/* Erreurs */}
+        <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-4">
+          <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">error</span>
+            </span>
+            Codes d'erreur
+          </h2>
+          <div className="space-y-3">
+            {[
+              { code: "201", label: "Created",       color: "bg-emerald-50 border-emerald-200 text-emerald-700", desc: "Annonce créée avec succès." },
+              { code: "400", label: "Bad Request",   color: "bg-amber-50 border-amber-200 text-amber-700",       desc: "Champ requis manquant ou invalide." },
+              { code: "401", label: "Unauthorized",  color: "bg-red-50 border-red-200 text-red-700",             desc: "Clé API absente, invalide ou révoquée." },
+              { code: "429", label: "Too Many Reqs", color: "bg-orange-50 border-orange-200 text-orange-700",    desc: "Trop de requêtes. Patientez avant de réessayer." },
+              { code: "500", label: "Server Error",  color: "bg-slate-50 border-slate-200 text-slate-600",       desc: "Erreur interne. Réessayez dans quelques secondes." },
+            ].map((e) => (
+              <div key={e.code} className={`flex items-start gap-4 border rounded-xl px-5 py-3 ${e.color}`}>
+                <span className="font-mono text-xl font-black shrink-0">{e.code}</span>
+                <div>
+                  <p className="font-bold text-sm">{e.label}</p>
+                  <p className="text-xs mt-0.5 opacity-80">{e.desc}</p>
                 </div>
               </div>
-            </div>
-          </section>
+            ))}
+          </div>
+        </div>
 
-          {/* ── Immobilier ── */}
-          <section id="immo">
-            <SectionTitle id="immo">
-              <span className="w-9 h-9 rounded-lg bg-emerald-900/50 border border-emerald-800/50 flex items-center justify-center text-lg shrink-0">🏠</span>
-              Immobilier
-            </SectionTitle>
-            <div className="space-y-6 text-[#8b949e]">
-              <p>
-                Pour une annonce immobilière, utilisez <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm">"category": "Immobilier"</code> et renseignez le bloc <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm">immo</code>.
-              </p>
+        {/* CTA bas */}
+        <div className="bg-[#2f6fb8] rounded-2xl p-8 text-white text-center space-y-4">
+          <p className="text-lg font-extrabold font-['Manrope']">Prêt à intégrer l'API ?</p>
+          <p className="text-sm text-blue-100">Créez votre clé API en quelques secondes depuis votre espace professionnel.</p>
+          <CtaButton />
+        </div>
 
-              <CodeBlock label="Exemple complet — Bien immobilier" code={CODE.immo} color="text-[#86efac]" />
+      </main>
 
-              <div>
-                <SubTitle>Champs du bloc immo</SubTitle>
-                <div className="bg-[#161b22] border border-white/10 rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-12 px-4 py-2 bg-white/5 border-b border-white/10">
-                    <span className="col-span-5 text-[10px] font-bold uppercase tracking-widest text-[#6b7280]">Champ</span>
-                    <span className="col-span-2 text-[10px] font-bold uppercase tracking-widest text-[#6b7280]">Type</span>
-                    <span className="col-span-5 text-[10px] font-bold uppercase tracking-widest text-[#6b7280]">Description</span>
-                  </div>
-                  <div className="divide-y divide-white/5">
-                    {[
-                      ["typeBien",             "string",   "Appartement · Maison · Villa · Studio · Loft · Terrain · Local commercial · Bureau · Garage"],
-                      ["surface",              "number",   "Surface en m²"],
-                      ["nombrePieces",         "number",   "Nombre de pièces total"],
-                      ["nombreChambres",       "number",   "Nombre de chambres"],
-                      ["nombreSallesEau",      "number",   "Nombre de salles d'eau / bains"],
-                      ["etage",                "string",   "Ex : \"3\", \"RDC\", \"Dernier étage\""],
-                      ["exposition",           "string",   "Ex : Sud, Est, Sud-Ouest…"],
-                      ["classeEnergie",        "string",   "DPE : A · B · C · D · E · F · G"],
-                      ["ges",                  "string",   "GES : A · B · C · D · E · F · G"],
-                      ["typeCharuffe",         "string",   "Central · Individuel · Collectif"],
-                      ["modeCharuffe",         "string",   "Gaz · Électrique · Fioul · Pompe à chaleur · Bois"],
-                      ["placesParking",        "number",   "Nombre de places de parking"],
-                      ["anneeConstruction",    "number",   "Année de construction (ex : 1990)"],
-                      ["etatBien",             "string",   "État général du bien"],
-                      ["reference",            "string",   "Référence interne agence"],
-                      ["vueMer",               "boolean",  "true si vue sur mer"],
-                      ["visAVis",              "boolean",  "true si vis-à-vis"],
-                      ["prixHonorairesInclus", "number",   "Prix FAI en euros"],
-                      ["prixHonorairesExclus", "number",   "Prix hors honoraires en euros"],
-                      ["honorairesAcquereur",  "number",   "Honoraires à la charge acquéreur en euros"],
-                      ["taxeFonciere",         "number",   "Taxe foncière annuelle en euros"],
-                      ["caracteristiques",     "string[]", "Balcon · Terrasse · Jardin · Piscine · Cave · Parking · Ascenseur · Double vitrage…"],
-                    ].map(([name, type, desc]) => (
-                      <div key={name} className="grid grid-cols-12 items-start px-4 py-2.5 hover:bg-white/3 transition-colors">
-                        <code className="col-span-5 text-[#93c5fd] font-mono text-xs">{name}</code>
-                        <span className="col-span-2 text-[#6b7280] font-mono text-[10px]">{type}</span>
-                        <span className="col-span-5 text-xs text-[#6b7280]">{desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── Photos ── */}
-          <section id="photos">
-            <SectionTitle id="photos">Photos</SectionTitle>
-            <div className="space-y-5 text-[#8b949e]">
-              <p>
-                Les photos sont uploadées séparément via <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm">POST /api/v1/upload</code>, puis les URLs retournées sont passées dans le champ <code className="text-[#93c5fd] bg-white/10 px-1.5 py-0.5 rounded font-mono text-sm">images</code> de l'annonce.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { label: "Format", value: "multipart/form-data" },
-                  { label: "Champ", value: "file" },
-                  { label: "Taille max", value: "10 Mo par photo" },
-                  { label: "Types acceptés", value: "JPEG, PNG, WebP, GIF" },
-                  { label: "Nombre max", value: "15 photos par annonce" },
-                  { label: "Stockage", value: "Vercel Blob (CDN mondial)" },
-                ].map((f) => (
-                  <div key={f.label} className="bg-[#161b22] border border-white/10 rounded-xl px-4 py-3">
-                    <p className="text-[10px] text-[#6b7280] uppercase font-bold tracking-widest">{f.label}</p>
-                    <p className="text-sm text-[#e6edf3] font-mono mt-0.5">{f.value}</p>
-                  </div>
-                ))}
-              </div>
-              <CodeBlock label="Workflow upload + annonce" code={CODE.upload} color="text-[#fcd34d]" />
-              <Note>
-                La première URL dans le tableau <code className="font-mono">images</code> est utilisée comme photo principale de l'annonce.
-              </Note>
-            </div>
-          </section>
-
-          {/* ── Errors ── */}
-          <section id="errors">
-            <SectionTitle id="errors">Codes d'erreur</SectionTitle>
-            <div className="space-y-6 text-[#8b949e]">
-              <p>L'API retourne du JSON pour toutes les réponses, y compris les erreurs.</p>
-              <div className="space-y-4">
-                {[
-                  {
-                    code: "201", label: "Created", color: "text-emerald-400 border-emerald-800/50 bg-emerald-900/20",
-                    desc: "L'annonce a été créée avec succès.", example: CODE.response, exColor: "text-[#86efac]",
-                  },
-                  {
-                    code: "400", label: "Bad Request", color: "text-amber-400 border-amber-800/50 bg-amber-900/20",
-                    desc: "Un champ requis est manquant ou invalide (title, price, category, description, location).", example: CODE.error400, exColor: "text-[#fcd34d]",
-                  },
-                  {
-                    code: "401", label: "Unauthorized", color: "text-red-400 border-red-800/50 bg-red-900/20",
-                    desc: "Clé API absente, invalide ou révoquée.", example: CODE.error401, exColor: "text-red-400",
-                  },
-                  {
-                    code: "500", label: "Server Error", color: "text-[#6b7280] border-[#30363d] bg-white/5",
-                    desc: "Erreur interne. Réessayez dans quelques secondes.", example: `{ "error": "Erreur interne du serveur" }`, exColor: "text-[#6b7280]",
-                  },
-                ].map((e) => (
-                  <div key={e.code} className={`border rounded-2xl overflow-hidden ${e.color}`}>
-                    <div className="px-5 py-3 flex items-center gap-3">
-                      <span className={`font-mono text-2xl font-black ${e.color.split(" ")[0]}`}>{e.code}</span>
-                      <span className="font-bold text-sm text-[#e6edf3]">{e.label}</span>
-                    </div>
-                    <div className="border-t border-white/10 px-5 py-3 space-y-3 bg-[#0d1117]">
-                      <p className="text-sm">{e.desc}</p>
-                      <pre className={`text-xs font-mono ${e.exColor}`}>{e.example}</pre>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Footer */}
-          <footer className="border-t border-white/10 pt-10 pb-4 flex items-center justify-between flex-wrap gap-4">
-            <p className="text-xs text-[#6b7280]">
-              Deal&amp;Co · API v1 · Les annonces sont publiées instantanément ·{" "}
-              <a href="mailto:contact@dealandcompany.fr" className="text-[#60a5fa] hover:underline">
-                contact@dealandcompany.fr
-              </a>
-            </p>
-            <Link href="/" className="text-xs text-[#6b7280] hover:text-[#e6edf3] transition-colors">
-              ← Retour au site
-            </Link>
-          </footer>
-
-        </main>
-      </div>
+      <SiteFooter />
     </div>
   );
 }

@@ -9,7 +9,6 @@ import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ProfileTabs from "./ProfileTabs";
-import ApiKeyWidget from "./ApiKeyWidget";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -117,16 +116,23 @@ export default async function ProfilePage() {
         {!user.isPro && <UpgradePro />}
 
         {/* Clé API — pros uniquement */}
-        {user.isPro && (() => {
-          const existing = (user as any).apiKeys?.find((k: any) => !k.revokedAt) ?? null;
-          return (
-            <div id="api">
-              <ApiKeyWidget
-                existing={existing ? { keyPrefix: existing.keyPrefix, createdAt: existing.createdAt } : null}
-              />
+        {user.isPro && (
+          <Link
+            href="/profile/api-key"
+            className="flex items-center gap-3 bg-white rounded-2xl border border-[#eceef0] px-5 py-4 hover:border-[#2f6fb8] hover:shadow-[0_0_0_3px_rgba(47,111,184,0.08)] transition-all group"
+          >
+            <span className="w-9 h-9 rounded-xl bg-[#2f6fb8]/10 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[#2f6fb8] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>api</span>
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800">Clé API</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {(user as any).apiKeys?.length > 0 ? "Clé active — cliquer pour gérer" : "Aucune clé — cliquer pour en créer une"}
+              </p>
             </div>
-          );
-        })()}
+            <span className="material-symbols-outlined text-slate-400 group-hover:text-[#2f6fb8] transition-colors text-[20px]">chevron_right</span>
+          </Link>
+        )}
 
         <ProfileTabs listings={user.listings} />
       </main>

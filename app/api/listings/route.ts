@@ -44,6 +44,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
     }
 
+    if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 200) {
+      return NextResponse.json({ error: "Titre invalide (3-200 caractères)" }, { status: 400 });
+    }
+    if (typeof description !== "string" || description.trim().length < 10 || description.trim().length > 10_000) {
+      return NextResponse.json({ error: "Description invalide (10-10000 caractères)" }, { status: 400 });
+    }
+    if (typeof location !== "string" || location.trim().length < 2 || location.trim().length > 200) {
+      return NextResponse.json({ error: "Localisation invalide" }, { status: 400 });
+    }
+
     const parsedPrice = typeof price === "number" ? price : parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       return NextResponse.json({ error: "Prix invalide" }, { status: 400 });

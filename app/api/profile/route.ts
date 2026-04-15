@@ -13,6 +13,27 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "URL avatar invalide" }, { status: 400 });
   }
 
+
+  // Autoriser seulement les URLs de nos sources de confiance
+  let parsedAvatar: URL;
+  try {
+    parsedAvatar = new URL(avatar);
+  } catch {
+    return NextResponse.json({ error: "URL avatar invalide" }, { status: 400 });
+  }
+
+  const ALLOWED_AVATAR_HOSTS = [
+    /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/,
+    /^lh3\.googleusercontent\.com$/,
+  ];
+  const isAllowed =
+    parsedAvatar.protocol === "https:" &&
+    ALLOWED_AVATAR_HOSTS.some((p) => p.test(parsedAvatar.hostname));
+
+  if (!isAllowed) {
+    return NextResponse.json({ error: "Source d'avatar non autorisée" }, { status: 400 });
+  }
+
   const user = await prisma.user.update({
     where: { id: session.user.id },
     data: { avatar },

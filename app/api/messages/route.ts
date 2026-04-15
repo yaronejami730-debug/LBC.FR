@@ -73,6 +73,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Empty message" }, { status: 400 });
   }
 
+
+  if (typeof content !== "string" || content.trim().length > 5_000) {
+    return NextResponse.json({ error: "Message trop long (max 5000 caractères)" }, { status: 400 });
+  }
+
   // Verify participant
   const participant = await prisma.conversationParticipant.findUnique({
     where: {
@@ -139,7 +144,7 @@ export async function POST(req: NextRequest) {
           messageBody: message.content,
           conversationUrl: `${baseUrl}/messages/${conversationId}`,
         }),
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }
 

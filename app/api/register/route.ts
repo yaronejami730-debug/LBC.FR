@@ -3,12 +3,30 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
 import { welcomeEmail } from "@/lib/emails/welcome";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`register:${ip}`, 5, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: "Trop de tentatives. Réessayez dans quelques minutes." }, { status: 429 });
+  }
+
   const { name, email, password, isPro, siret, companyName } = await req.json();
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "All fields required" }, { status: 400 });
+  }
+
+  if (typeof password !== "string" || password.length < 8) {
+    return NextResponse.json({ error: "Le mot de passe doit contenir au moins 8 caractères" }, { status: 400 });
+  }
+
+  if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 100) {
+    return NextResponse.json({ error: "Nom invalide" }, { status: 400 });
+  }
+
+  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    return NextResponse.json({ error: "Email invalide" }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
