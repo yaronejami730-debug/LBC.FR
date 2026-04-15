@@ -24,6 +24,10 @@ function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
+    // Conserver les valeurs des attributs data-* et alt/title qui contiennent souvent DPE, classe énergie, etc.
+    .replace(/<[^>]*\s(?:data-[a-z-]+=["']([^"']+)["'])[^>]*>/gi, (_, val) => ` ${val} `)
+    .replace(/<img[^>]*\salt=["']([^"']+)["'][^>]*>/gi, (_, alt) => ` ${alt} `)
+    .replace(/<[^>]*\stitle=["']([^"']+)["'][^>]*>/gi, (_, title) => ` ${title} `)
     .replace(/<[^>]+>/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -104,22 +108,36 @@ export async function POST(req: NextRequest) {
   const fullContent = mainText + tabTexts.join("");
 
   // ── 4. Ask Claude ─────────────────────────────────────────────────────────────
-  const SYSTEM = `Tu es un extracteur d'annonces immobilières et automobiles expert. Tu analyses le texte brut d'une page web (qui peut contenir plusieurs onglets/sections dans le même HTML : Général, Détails, Financier, DPE/Énergie, Quartier, Carte…) et tu extrais TOUTES les données structurées disponibles.
+  const SYSTEM = `Tu es un extracteur d'annonces immobilières et automobiles expert. Tu analyses le texte brut d'une page web qui contient PLUSIEURS SECTIONS/ONGLETS dans le même HTML (Général, Détails, Financier, DPE/Énergie, Quartier, Carte…). TOUTES ces sections sont présentes dans le texte, même si elles semblent désordonnées ou répétées. Tu dois tout extraire.
 
 RÈGLES STRICTES :
 - Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte autour.
-- "price" est toujours un nombre (jamais une chaîne).
-- Si c'est un véhicule, remplis "vehicle" et laisse "immo" avec des nulls.
-- Si c'est de l'immobilier, remplis "immo" et laisse "vehicle" avec des nulls.
-- Le contenu est une page avec plusieurs sections/onglets (parfois cachés) dans le même HTML. TOUTES les sections sont présentes dans le texte — cherche bien partout, même dans les parties qui semblent répétées ou désordonnées.
-- Pour l'immobilier : cherche spécifiquement les données DPE (classe énergie A→G, GES A→G, consommation kWh/m²/an), les données financières (honoraires, taxe foncière, charges), et les caractéristiques (balcon, garage, jardin, piscine…).
-- Traduis en français si la source est dans une autre langue.
-- Pour les véhicules, extrais TOUS les équipements/options dans "vehicle.options".
-- "vehicle.critAir" : chiffre Crit'Air si mentionné (0 à 5).
-- "vehicle.emissionCO2" : grammes/km (nombre).
-- "vehicle.consoUrbaine/consoExtraU/consoMixte" : L/100km (nombre).
-- Pour "caracteristiques" immobilier : liste TOUS les équipements et caractéristiques mentionnés (cave, garage, terrasse, jardin, piscine, double vitrage, volets roulants, digicode, interphone, gardien, ascenseur…).
-- Si une valeur n'est pas trouvée, mets null (pas une chaîne vide).
+- "price" est toujours un nombre (jamais une chaîne). Si tu vois "250 000 €" → 250000.
+- Si c'est un véhicule → remplis "vehicle", laisse "immo" à null.
+- Si c'est de l'immobilier → remplis "immo", laisse "vehicle" à null.
+- Si une valeur est absente → null (jamais une chaîne vide "").
+
+IMMOBILIER — EXTRACTION OBLIGATOIRE :
+
+1. CHAUFFAGE : cherche "chauffage", "type de chauffage", "mode de chauffage", "énergie de chauffage". Exemples de valeurs typeCharuffe : "Individuel", "Collectif", "Central". Exemples de valeurs modeCharuffe : "Gaz", "Électrique", "Fioul", "Pompe à chaleur", "Bois", "Poêle".
+
+2. DPE / ÉNERGIE : cherche "DPE", "diagnostic de performance", "classe énergie", "classe énergétique", "consommation énergétique", "étiquette énergie", une lettre seule (A/B/C/D/E/F/G) suivie de "kWh". Pour GES/GES : cherche "émission de gaz", "GES", "bilan carbone". Les lettres A→G peuvent apparaître dans des attributs data-*, alt ou title — extrais-les. Ex : "Classe D", "DPE : C", "Énergie : E" → classeEnergie = "D", "C" ou "E".
+
+3. FINANCIER :
+   - prixHonorairesInclus : prix AVEC honoraires (FAI, TTC inclus, honoraires inclus)
+   - prixHonorairesExclus : prix SANS honoraires (hors honoraires, HH, net vendeur)
+   - honorairesAcquereur : montant ou pourcentage des honoraires à charge acquéreur (ex: "4,5%" → note le pourcentage en description si pas de montant fixe)
+   - taxeFonciere : taxe foncière annuelle en euros
+
+4. QUARTIER / PROXIMITÉ : cherche les sections "quartier", "à proximité", "commerces", "services", "transports", "écoles", "santé". Liste TOUT ce qui est mentionné dans "servicesProximite" : bar, presse, tabac, cinéma, bibliothèque, supermarché, école, médecin, pharmacie, gare, bus, etc.
+
+5. CARACTÉRISTIQUES : liste TOUS les équipements et points notables : cave, garage, parking, terrasse, balcon, jardin, piscine, dépendance, sous-sol, grenier, double vitrage, volets roulants, digicode, interphone, gardien, ascenseur, cuisine équipée, plain-pied, vue dégagée, vue mer, lumineux, calme…
+
+VÉHICULES :
+- Extrais TOUS les équipements dans "vehicle.options".
+- critAir : chiffre 0→5.
+- emissionCO2 : g/km (nombre).
+- consoUrbaine/consoExtraU/consoMixte : L/100km (nombre).
 
 SCHÉMA DE SORTIE :
 {
@@ -144,19 +162,34 @@ SCHÉMA DE SORTIE :
     "options": string[]
   },
   "immo": {
-    "typeBien": string|null, "surface": number|null, "nombrePieces": number|null,
-    "nombreChambres": number|null, "nombreSallesEau": number|null,
-    "etage": string|null, "exposition": string|null,
-    "typeCharuffe": string|null, "modeCharuffe": string|null,
-    "placesParking": number|null, "anneeConstruction": number|null,
-    "etatBien": string|null, "reference": string|null,
-    "classeEnergie": string|null, "ges": string|null,
-    "vueMer": boolean, "visAVis": boolean,
-    "prixHonorairesInclus": number|null, "prixHonorairesExclus": number|null,
-    "honorairesAcquereur": number|null, "taxeFonciere": number|null,
-    "caracteristiques": string[]
+    "typeBien": string|null,
+    "surface": number|null,
+    "nombrePieces": number|null,
+    "nombreChambres": number|null,
+    "nombreSallesEau": number|null,
+    "etage": string|null,
+    "exposition": string|null,
+    "typeCharuffe": string|null,
+    "modeCharuffe": string|null,
+    "placesParking": number|null,
+    "anneeConstruction": number|null,
+    "etatBien": string|null,
+    "reference": string|null,
+    "classeEnergie": string|null,
+    "ges": string|null,
+    "conso kWhEnergiePrimaire": number|null,
+    "vueMer": boolean,
+    "visAVis": boolean,
+    "prixHonorairesInclus": number|null,
+    "prixHonorairesExclus": number|null,
+    "honorairesAcquereur": number|null,
+    "taxeFonciere": number|null,
+    "caracteristiques": string[],
+    "servicesProximite": string[]
   }
 }`;
+
+  // (fin du SYSTEM prompt)
 
   const userContent = `Source : ${url}
 ${tabUrls.length > 0 ? `Onglets supplémentaires analysés : ${tabUrls.join(", ")}` : ""}
