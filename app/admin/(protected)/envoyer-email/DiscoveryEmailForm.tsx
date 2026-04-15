@@ -257,9 +257,9 @@ export default function DiscoveryEmailForm() {
                 <span className="inline-block bg-[#2f6fb8] text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full mb-3">
                   Offre fondateurs — 50 premiers pros
                 </span>
-                <p className="text-white font-black text-lg leading-tight mb-2">−50% sur toutes nos publicités, pendant 3 ans.</p>
+                <p className="text-white font-black text-lg leading-tight mb-2">−50% sur vos publicités, pendant 3 ans.</p>
                 <p className="text-[#b0b8cc] text-xs leading-relaxed mb-3">
-                  Les annonces restent gratuites pour toujours. Deal & Co se rémunère uniquement via des <strong className="text-white">espaces publicitaires</strong> (bannières, annonces sponsorisées). En rejoignant les 50 premiers pros, vous obtenez <strong className="text-[#fbbf24]">−50% pendant 3 ans</strong> sur tous nos forfaits pub.
+                  Les annonces restent gratuites pour toujours. Deal & Co se rémunère uniquement via des <strong className="text-white">espaces publicitaires</strong> (bannières, annonces sponsorisées). En rejoignant les 50 premiers pros, vous obtenez <strong className="text-[#fbbf24]">−50% pendant 3 ans</strong> sur vos forfaits pub.
                 </p>
                 <div className="bg-[#fbbf24] text-[#1a1b25] text-xs font-black px-5 py-2.5 rounded-full inline-block cursor-default select-none">
                   Je réserve ma place →

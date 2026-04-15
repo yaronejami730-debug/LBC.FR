@@ -143,7 +143,7 @@ export function earlyAdopterConfirmationEmail({
           Votre avantage Fondateur — −50% pendant 3 ans
         </p>
         <p style="margin:0;font-size:14px;color:#424751;line-height:1.65;">
-          En tant que partenaire fondateur, tous nos forfaits publicitaires
+          En tant que partenaire fondateur, tous vos forfaits publicitaires
           (bannières, mise en avant d'annonces, sponsoring de catégorie) vous seront proposés
           avec <strong style="color:#1a1b25;">50% de réduction pendant 3 ans</strong> dès leur lancement.
           Aucune action requise de votre part — il suffit de créer votre compte avec cette adresse email.

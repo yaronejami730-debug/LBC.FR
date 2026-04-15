@@ -1,76 +1,64 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-type CompanyResult = {
-  siret: string | null;
-  siren: string | null;
-  companyName: string;
-  ville: string;
-  activite: string;
-};
+type SiretMode = "siret" | "siren";
 
 export default function EarlyAdopterPage() {
-  const [companyQuery, setCompanyQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<CompanyResult[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<CompanyResult | null>(null);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [siretValue, setSiretValue] = useState("");
+  const [siretMode, setSiretMode] = useState<SiretMode>("siret");
+  const [companyName, setCompanyName] = useState("");
+  const [companyVille, setCompanyVille] = useState("");
+  const [checkingId, setCheckingId] = useState(false);
+  const [idError, setIdError] = useState("");
+
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
+
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "full" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [position, setPosition] = useState<number | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Autocomplete
-  useEffect(() => {
-    if (selectedCompany) return;
-    if (companyQuery.length < 2) { setSuggestions([]); return; }
+  const expectedLength = siretMode === "siret" ? 14 : 9;
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setLoadingSuggestions(true);
+  async function handleIdChange(value: string) {
+    const clean = value.replace(/\s/g, "").replace(/\D/g, "").slice(0, expectedLength);
+    setSiretValue(clean);
+    setCompanyName("");
+    setCompanyVille("");
+    setIdError("");
+
+    if (clean.length === expectedLength) {
+      setCheckingId(true);
       try {
-        const res = await fetch(`/api/company-search?q=${encodeURIComponent(companyQuery)}`);
+        const res = await fetch(`/api/siret?q=${clean}`);
         const data = await res.json();
-        setSuggestions(data.results ?? []);
+        if (!res.ok) {
+          setIdError(data.error ?? (siretMode === "siret" ? "SIRET invalide" : "SIREN invalide"));
+        } else {
+          setCompanyName(data.companyName ?? "");
+          if (!data.companyName) setIdError("Nom d'entreprise introuvable");
+        }
       } catch {
-        setSuggestions([]);
+        setIdError("Impossible de vérifier le numéro");
       } finally {
-        setLoadingSuggestions(false);
-      }
-    }, 300);
-  }, [companyQuery, selectedCompany]);
-
-  // Fermer dropdown si clic extérieur
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setSuggestions([]);
+        setCheckingId(false);
       }
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  function selectCompany(c: CompanyResult) {
-    setSelectedCompany(c);
-    setCompanyQuery(c.companyName);
-    setSuggestions([]);
   }
 
-  function resetCompany() {
-    setSelectedCompany(null);
-    setCompanyQuery("");
-    setSuggestions([]);
+  function reset() {
+    setSiretValue("");
+    setCompanyName("");
+    setCompanyVille("");
+    setIdError("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedCompany && !companyQuery.trim()) return;
+    if (!companyName) { setIdError("Veuillez entrer un SIRET ou SIREN valide"); return; }
 
     setStatus("loading");
     setErrorMsg("");
@@ -80,8 +68,8 @@ export default function EarlyAdopterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyName: selectedCompany?.companyName ?? companyQuery.trim(),
-          siret: selectedCompany?.siret ?? null,
+          companyName,
+          siret: siretMode === "siret" ? siretValue : null,
           managerFirstName: firstName.trim(),
           email: email.trim(),
         }),
@@ -99,27 +87,30 @@ export default function EarlyAdopterPage() {
     }
   }
 
+  // ── Succès ───────────────────────────────────────────────────────────────────
   if (status === "success") {
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center px-4 py-16">
         <div className="max-w-md w-full text-center space-y-6">
-          <div className="w-20 h-20 rounded-full bg-[#fbbf24]/20 flex items-center justify-center mx-auto">
-            <span className="text-4xl">🎯</span>
+          <div className="w-20 h-20 rounded-full bg-[#fbbf24]/20 flex items-center justify-center mx-auto text-4xl">
+            🎯
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-[#191c1e]">
-              Vous êtes pré-inscrit !
-            </h1>
+            <h1 className="text-2xl font-extrabold text-[#191c1e]">Vous êtes pré-inscrit !</h1>
             {position && (
-              <p className="text-[#2f6fb8] font-black text-lg mt-1">
-                Place n°{position} / 50
-              </p>
+              <p className="text-[#2f6fb8] font-black text-lg mt-1">Place n°{position} / 50</p>
             )}
             <p className="text-[#777683] text-sm mt-3 leading-relaxed">
               Bienvenue parmi nos <strong className="text-[#191c1e]">premiers partenaires professionnels</strong>.
               Dès votre inscription sur Deal&nbsp;&amp;&nbsp;Co avec cette adresse email,
-              vous bénéficierez automatiquement de <strong className="text-[#191c1e]">−50% pendant 3 ans</strong> sur
-              tous nos espaces publicitaires.
+              vous bénéficierez automatiquement de{" "}
+              <strong className="text-[#191c1e]">−50% pendant 3 ans</strong> sur vos espaces publicitaires.
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-left space-y-1">
+            <p className="text-xs font-black uppercase tracking-wider text-amber-700">⚠️ Étape suivante</p>
+            <p className="text-sm text-amber-900">
+              Créez votre compte avec <strong>exactement cette adresse email</strong> pour activer votre réduction automatiquement.
             </p>
           </div>
           <Link
@@ -128,14 +119,13 @@ export default function EarlyAdopterPage() {
           >
             Créer mon compte maintenant →
           </Link>
-          <p className="text-xs text-[#b0b3ba]">
-            Vous recevrez une confirmation par email très prochainement.
-          </p>
+          <p className="text-xs text-[#b0b3ba]">Un email de confirmation vous a été envoyé.</p>
         </div>
       </div>
     );
   }
 
+  // ── Complet ──────────────────────────────────────────────────────────────────
   if (status === "full") {
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center px-4 py-16">
@@ -143,7 +133,8 @@ export default function EarlyAdopterPage() {
           <div className="text-5xl">😕</div>
           <h1 className="text-2xl font-extrabold text-[#191c1e]">Les 50 places sont complètes</h1>
           <p className="text-[#777683] text-sm">
-            Toutes les places fondateurs sont prises. Inscrivez-vous quand même — nous annoncerons de nouvelles offres prochainement.
+            Toutes les places fondateurs sont prises. Créez quand même votre compte — la plateforme reste
+            100% gratuite pour publier vos annonces.
           </p>
           <Link href="/register" className="inline-block bg-[#2f6fb8] text-white font-bold px-8 py-4 rounded-full">
             Créer mon compte
@@ -153,6 +144,7 @@ export default function EarlyAdopterPage() {
     );
   }
 
+  // ── Formulaire ───────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       {/* Header */}
@@ -173,25 +165,30 @@ export default function EarlyAdopterPage() {
             Offre fondateurs — 50 places seulement
           </span>
           <h1 className="text-3xl font-extrabold text-[#191c1e] leading-tight">
-            −50% sur nos publicités<br/>pendant&nbsp;3&nbsp;ans
+            −50% sur vos publicités<br />pendant&nbsp;3&nbsp;ans
           </h1>
           <p className="text-[#777683] text-sm leading-relaxed">
-            Deal&nbsp;&amp;&nbsp;Co est la marketplace locale <strong className="text-[#191c1e]">100% gratuite</strong> pour publier vos annonces.
-            Notre modèle : nous nous rémunérons uniquement via des <strong className="text-[#191c1e]">espaces publicitaires</strong>.
-            En rejoignant nos 50 premiers partenaires pros, vous obtenez <strong className="text-[#191c1e]">−50% pendant 3 ans</strong> sur tous nos forfaits pub.
+            Deal&nbsp;&amp;&nbsp;Co est la marketplace locale{" "}
+            <strong className="text-[#191c1e]">100% gratuite</strong> pour publier vos annonces.
+            Notre modèle : nous nous rémunérons via des{" "}
+            <strong className="text-[#191c1e]">espaces publicitaires</strong>.
+            En rejoignant nos 50 premiers partenaires pros, vous obtenez{" "}
+            <strong className="text-[#191c1e]">−50% pendant 3 ans</strong> sur vos forfaits pub.
           </p>
         </div>
 
         {/* Avantages */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: "money_off", label: "Annonces\ngratuit à vie", color: "text-emerald-600 bg-emerald-50" },
+            { icon: "money_off", label: "Annonces\ngratuites", color: "text-emerald-600 bg-emerald-50" },
             { icon: "campaign", label: "Pub −50%\npendant 3 ans", color: "text-[#2f6fb8] bg-[#2f6fb8]/10" },
             { icon: "verified", label: "Badge Pro\nvérifié", color: "text-amber-600 bg-amber-50" },
           ].map(({ icon, label, color }) => (
             <div key={icon} className="bg-white rounded-2xl border border-[#eceef0] p-4 text-center space-y-2">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center mx-auto ${color}`}>
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {icon}
+                </span>
               </div>
               <p className="text-xs font-bold text-[#191c1e] leading-tight whitespace-pre-line">{label}</p>
             </div>
@@ -205,73 +202,71 @@ export default function EarlyAdopterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* Société avec autocomplete */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-black uppercase tracking-widest text-[#777683]">
-                Nom de la société
-              </label>
-              <div ref={dropdownRef} className="relative">
+            {/* SIRET / SIREN */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-black uppercase tracking-widest text-[#777683]">
+                  {siretMode === "siret" ? "Numéro SIRET" : "Numéro SIREN"}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => { setSiretMode(siretMode === "siret" ? "siren" : "siret"); reset(); }}
+                  className="text-[11px] text-[#2f6fb8] font-bold hover:underline"
+                >
+                  Utiliser le {siretMode === "siret" ? "SIREN (9 chiffres)" : "SIRET (14 chiffres)"}
+                </button>
+              </div>
+              <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#777683]">
                   store
                 </span>
                 <input
                   type="text"
-                  value={companyQuery}
-                  onChange={(e) => { setCompanyQuery(e.target.value); setSelectedCompany(null); }}
-                  placeholder="Rechercher votre société…"
+                  inputMode="numeric"
+                  value={siretValue}
+                  onChange={(e) => handleIdChange(e.target.value)}
+                  placeholder={siretMode === "siret" ? "14 chiffres" : "9 chiffres"}
+                  maxLength={expectedLength}
                   required
                   disabled={status === "loading"}
-                  className="w-full pl-11 pr-10 py-3.5 rounded-xl border border-[#eceef0] bg-[#f7f9fb] text-[#191c1e] text-sm placeholder:text-[#b0b3ba] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30 focus:border-[#2f6fb8] transition"
+                  className="w-full pl-11 pr-10 py-3.5 rounded-xl border border-[#eceef0] bg-[#f7f9fb] text-[#191c1e] text-sm placeholder:text-[#b0b3ba] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30 focus:border-[#2f6fb8] transition font-mono tracking-wider"
                 />
-                {/* Indicateurs */}
-                {loadingSuggestions && (
+                {checkingId && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     <div className="w-4 h-4 border-2 border-[#2f6fb8] border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
-                {selectedCompany && !loadingSuggestions && (
-                  <button type="button" onClick={resetCompany} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777683] hover:text-[#191c1e]">
-                    <span className="material-symbols-outlined text-[18px]">close</span>
-                  </button>
-                )}
-
-                {/* Dropdown suggestions */}
-                {suggestions.length > 0 && !selectedCompany && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl border border-[#eceef0] shadow-xl overflow-hidden">
-                    {suggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => selectCompany(s)}
-                        className="w-full flex items-start gap-3 px-4 py-3 hover:bg-[#f7f9fb] transition-colors text-left border-b border-[#f2f4f6] last:border-0"
-                      >
-                        <span className="material-symbols-outlined text-[18px] text-[#2f6fb8] flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          store
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-[#191c1e] truncate">{s.companyName}</p>
-                          <p className="text-xs text-[#777683] truncate">
-                            {[s.ville, s.activite].filter(Boolean).join(" · ")}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
+                {companyName && !checkingId && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <span className="material-symbols-outlined text-[20px] text-emerald-500" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      check_circle
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Confirmation société sélectionnée */}
-              {selectedCompany && (
-                <div className="flex items-center gap-2 bg-[#d5e3fc]/40 border border-[#d5e3fc] rounded-xl px-4 py-2.5">
-                  <span className="material-symbols-outlined text-[18px] text-[#2f6fb8]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              {/* Résultat trouvé */}
+              {companyName && (
+                <div className="flex items-center gap-3 bg-[#d5e3fc]/40 border border-[#d5e3fc] rounded-xl px-4 py-3">
+                  <span className="material-symbols-outlined text-[18px] text-[#2f6fb8] flex-shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    store
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-black text-[#2f6fb8] uppercase tracking-wider">Société trouvée</p>
-                    <p className="text-sm font-bold text-[#191c1e] truncate">{selectedCompany.companyName}</p>
-                    {selectedCompany.ville && (
-                      <p className="text-xs text-[#777683]">{selectedCompany.ville}{selectedCompany.siret ? ` · SIRET ${selectedCompany.siret}` : ""}</p>
-                    )}
+                    <p className="text-sm font-bold text-[#191c1e] truncate">{companyName}</p>
+                    {companyVille && <p className="text-xs text-[#777683]">{companyVille}</p>}
                   </div>
+                  <button type="button" onClick={reset} className="text-[#777683] hover:text-[#191c1e] flex-shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
                 </div>
+              )}
+
+              {idError && (
+                <p className="text-red-600 text-xs font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">error</span>
+                  {idError}
+                </p>
               )}
             </div>
 
@@ -316,7 +311,7 @@ export default function EarlyAdopterPage() {
                 />
               </div>
               <p className="text-[11px] text-[#b0b3ba]">
-                Utilisez cette même adresse pour créer votre compte — le rabais sera appliqué automatiquement.
+                Utilisez cette même adresse pour créer votre compte — la réduction sera appliquée automatiquement.
               </p>
             </div>
 
@@ -329,8 +324,8 @@ export default function EarlyAdopterPage() {
 
             <button
               type="submit"
-              disabled={status === "loading" || !companyQuery.trim() || !firstName.trim() || !email.trim()}
-              className="w-full flex items-center justify-center gap-2 bg-[#fbbf24] text-[#1a1b25] font-black py-4 rounded-full hover:bg-[#f59e0b] active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+              disabled={status === "loading" || !companyName || !firstName.trim() || !email.trim() || checkingId}
+              className="w-full flex items-center justify-center gap-2 bg-[#fbbf24] text-[#1a1b25] font-black py-4 rounded-full hover:bg-[#f59e0b] active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {status === "loading" ? (
                 <>

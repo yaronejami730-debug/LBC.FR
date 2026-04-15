@@ -148,7 +148,7 @@ export function platformDiscoveryEmail({
           <!-- Titre -->
           <p style="margin:0 0 10px;font-family:Manrope,sans-serif;font-size:22px;font-weight:800;
             color:#ffffff;line-height:1.25;">
-            −50% sur toutes nos publicités,<br/>pendant 3 ans.
+            −50% sur vos publicités,<br/>pendant 3 ans.
           </p>
           <!-- Explication -->
           <p style="margin:0 0 20px;font-size:14px;color:#b0b8cc;line-height:1.7;">
@@ -158,7 +158,7 @@ export function platformDiscoveryEmail({
             (bannières, annonces sponsorisées) visibles par des milliers d'utilisateurs locaux.<br/><br/>
             En vous inscrivant parmi nos <strong style="color:#ffffff;">50 premiers clients professionnels</strong>,
             vous bénéficiez pendant 3 ans d'une réduction de <strong style="color:#fbbf24;">−50%</strong> sur
-            tous nos forfaits publicitaires — dès leur lancement.
+            tous vos forfaits publicitaires — dès leur lancement.
           </p>
           <!-- CTA offre -->
           <a href="${BASE_URL}/early-adopter"
