@@ -9,6 +9,7 @@ import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ProfileTabs from "./ProfileTabs";
+import ApiKeyWidget from "./ApiKeyWidget";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -20,6 +21,12 @@ export default async function ProfilePage() {
       listings: {
         where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
+      },
+      apiKeys: {
+        where: { revokedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { keyPrefix: true, createdAt: true },
       },
     },
   });
@@ -108,6 +115,18 @@ export default async function ProfilePage() {
           return null;
         })()}
         {!user.isPro && <UpgradePro />}
+
+        {/* Clé API — pros uniquement */}
+        {user.isPro && (() => {
+          const existing = (user as any).apiKeys?.find((k: any) => !k.revokedAt) ?? null;
+          return (
+            <div id="api">
+              <ApiKeyWidget
+                existing={existing ? { keyPrefix: existing.keyPrefix, createdAt: existing.createdAt } : null}
+              />
+            </div>
+          );
+        })()}
 
         <ProfileTabs listings={user.listings} />
       </main>

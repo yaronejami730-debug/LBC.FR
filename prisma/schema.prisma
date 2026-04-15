@@ -29,6 +29,19 @@ model User {
   lastLoginAt         DateTime?
   reengagementSentAt  DateTime?
   earlyAdopterDiscount Boolean @default(false)
+  apiKeys             ApiKey[]
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String    @unique
+  keyPrefix  String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model EarlyAdopter {

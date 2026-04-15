@@ -111,10 +111,20 @@ export default async function ListingPage({
   const responseTime = await getUserResponseTime(listing.userId);
 
   // Parse vehicle metadata
-  let vehicleMeta: Record<string, string> = {};
+  type VehicleMeta = {
+    marque?: string; modele?: string; annee?: string; kilometrage?: string;
+    carburant?: string; transmission?: string; couleur?: string;
+    immatriculation?: string; puissanceFiscale?: string; nombrePortes?: string;
+    motorisation?: string; nombreVitesses?: string; nombrePlaces?: string;
+    typeVehicule?: string; emissionCO2?: string;
+    consoUrbaine?: string; consoExtraU?: string; consoMixte?: string;
+    critAir?: string; dateImmatriculation?: string;
+    options?: string[];
+  };
+  let vehicleMeta: VehicleMeta = {};
   if (listing.category === "Véhicules" && listing.metadata && listing.metadata !== "{}") {
     try {
-      vehicleMeta = JSON.parse(listing.metadata);
+      vehicleMeta = JSON.parse(listing.metadata) as VehicleMeta;
     } catch {
       // ignore malformed JSON
     }
@@ -316,6 +326,48 @@ export default async function ListingPage({
                   <span className="text-on-surface font-semibold font-mono">{vehicleMeta.immatriculation}</span>
                 </div>
               )}
+              {vehicleMeta.motorisation && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Motorisation</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.motorisation}</span>
+                </div>
+              )}
+              {vehicleMeta.typeVehicule && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Type</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.typeVehicule}</span>
+                </div>
+              )}
+              {vehicleMeta.nombreVitesses && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Vitesses</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.nombreVitesses}</span>
+                </div>
+              )}
+              {vehicleMeta.nombrePlaces && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Places</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.nombrePlaces}</span>
+                </div>
+              )}
+              {vehicleMeta.dateImmatriculation && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Date immat.</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.dateImmatriculation}</span>
+                </div>
+              )}
+              {vehicleMeta.critAir && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Crit&apos;Air</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.critAir === "0" ? "0 (Électrique)" : `Crit'Air ${vehicleMeta.critAir}`}</span>
+                </div>
+              )}
+              {vehicleMeta.emissionCO2 && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">CO₂</span>
+                  <span className="text-on-surface font-semibold">{vehicleMeta.emissionCO2} g/km</span>
+                </div>
+              )}
               {/* Immobilier fields */}
               {immoMeta.typeBien && (
                 <div className="flex flex-col gap-1">
@@ -414,6 +466,50 @@ export default async function ListingPage({
                 </div>
               )}
             </div>
+
+            {/* Consommations véhicule */}
+            {listing.category === "Véhicules" && (vehicleMeta.consoUrbaine || vehicleMeta.consoExtraU || vehicleMeta.consoMixte) && (
+              <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
+                <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-primary">local_gas_station</span>
+                  Consommations
+                </h2>
+                <div className="grid grid-cols-3 gap-3">
+                  {vehicleMeta.consoUrbaine && (
+                    <div className="flex flex-col gap-0.5 text-center">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Urbaine</span>
+                      <span className="text-on-surface font-bold text-sm">{vehicleMeta.consoUrbaine} L/100</span>
+                    </div>
+                  )}
+                  {vehicleMeta.consoExtraU && (
+                    <div className="flex flex-col gap-0.5 text-center">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Extra-urb.</span>
+                      <span className="text-on-surface font-bold text-sm">{vehicleMeta.consoExtraU} L/100</span>
+                    </div>
+                  )}
+                  {vehicleMeta.consoMixte && (
+                    <div className="flex flex-col gap-0.5 text-center">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Mixte</span>
+                      <span className="text-on-surface font-bold text-sm">{vehicleMeta.consoMixte} L/100</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Équipements véhicule */}
+            {listing.category === "Véhicules" && vehicleMeta.options && vehicleMeta.options.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-xl font-bold tracking-tight">Équipements &amp; options</h2>
+                <div className="flex flex-wrap gap-2">
+                  {vehicleMeta.options.map((opt) => (
+                    <span key={opt} className="bg-primary/8 text-primary text-sm font-semibold px-3 py-1.5 rounded-full border border-primary/15">
+                      {opt}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Honoraires & taxes — bloc dédié si au moins un champ renseigné */}
             {listing.category === "Immobilier" && (immoMeta.prixHonorairesInclus || immoMeta.prixHonorairesExclus || immoMeta.honorairesAcquereur || immoMeta.taxeFonciere) && (
@@ -588,6 +684,11 @@ export default async function ListingPage({
                     )}
                     {listing.user.isPro && (
                       <p className="text-outline text-xs mt-0.5">Vendeur professionnel</p>
+                    )}
+                    {listing.user.isPro && listing.user.siret && (
+                      <p className="text-[10px] text-outline/70 font-mono mt-0.5">
+                        SIRET {listing.user.siret}
+                      </p>
                     )}
                   </div>
                 </div>

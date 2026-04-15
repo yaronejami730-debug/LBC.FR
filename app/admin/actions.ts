@@ -144,7 +144,13 @@ export async function deleteAdvertisement(id: string) {
 
 // ── Client Account Creation ────────────────────────────────────────────────────
 
-export async function createClientAccount(email: string, name: string) {
+export async function createClientAccount(
+  email: string,
+  name: string,
+  isPro: boolean = false,
+  companyName: string | null = null,
+  siret: string | null = null,
+) {
   await requireAdmin();
 
   if (!email || !name) throw new Error("Email et nom requis");
@@ -163,6 +169,9 @@ export async function createClientAccount(email: string, name: string) {
       password: tempPassword,
       verified: false,
       memberSince: new Date().getFullYear(),
+      isPro,
+      companyName: isPro ? (companyName?.trim() || null) : null,
+      siret: isPro ? (siret?.trim() || null) : null,
     },
   });
 
@@ -177,7 +186,8 @@ export async function createClientAccount(email: string, name: string) {
   });
 
   const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
-  const activationUrl = `${baseUrl}/reset-password?token=${token}`;
+  // Use /activer-compte for admin-created accounts (handles SIRET step for pros)
+  const activationUrl = `${baseUrl}/activer-compte?token=${token}`;
 
   await sendEmail({
     to: normalizedEmail,

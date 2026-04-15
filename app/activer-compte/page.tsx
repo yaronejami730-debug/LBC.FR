@@ -26,7 +26,7 @@ export default async function ActivateAccountPage({
 
   const record = await prisma.passwordResetToken.findUnique({
     where: { token },
-    include: { user: { select: { name: true, email: true } } },
+    include: { user: { select: { name: true, email: true, isPro: true, siret: true } } },
   });
 
   const isValid = record && !record.used && record.expiresAt > new Date();
@@ -69,7 +69,10 @@ export default async function ActivateAccountPage({
         </div>
 
         <div className="bg-white rounded-3xl p-6 shadow-[0_8px_32px_rgba(21,21,125,0.08)]">
-          <ActivateForm token={token} />
+          <ActivateForm
+            token={token}
+            needsSiret={record.user.isPro && !record.user.siret}
+          />
         </div>
 
         <p className="text-center text-outline/70 text-xs mt-6">

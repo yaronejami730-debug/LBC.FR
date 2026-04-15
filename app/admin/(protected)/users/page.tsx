@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import UserActions from "@/components/admin/UserActions";
 
 export default async function UsersPage() {
+  const now = new Date();
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
     select: {
@@ -10,17 +11,42 @@ export default async function UsersPage() {
       email: true,
       avatar: true,
       role: true,
+      isPro: true,
+      companyName: true,
+      siret: true,
       verified: true,
       adminNote: true,
       memberSince: true,
       createdAt: true,
-      _count: { select: { listings: true } },
+      _count: {
+        select: {
+          listings: true,
+        },
+      },
+      listings: {
+        where: { deletedAt: null },
+        select: {
+          status: true,
+          expiresAt: true,
+        },
+      },
     },
   });
 
-  const total = users.length;
-  const verified = users.filter((u) => u.verified).length;
+  // Compute per-user breakdown from fetched listings
+  const usersWithBreakdown = users.map((u) => {
+    const active = u.listings.filter(
+      (l) => l.status === "APPROVED" && (!l.expiresAt || l.expiresAt > now)
+    ).length;
+    const pending = u.listings.filter((l) => l.status === "PENDING").length;
+    return { ...u, activeCount: active, pendingCount: pending };
+  });
+
+  const total = usersWithBreakdown.length;
+  const verified = usersWithBreakdown.filter((u) => u.verified).length;
   const unverified = total - verified;
+  const proCount = usersWithBreakdown.filter((u) => u.isPro).length;
+  const particulierCount = total - proCount;
 
   return (
     <div className="space-y-6">
@@ -30,9 +56,17 @@ export default async function UsersPage() {
           <h1 className="text-2xl font-extrabold text-[#191c1e] font-headline">Utilisateurs</h1>
           <p className="text-sm text-[#777683] mt-1">Gestion et vérification des comptes</p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-2 text-sm flex-wrap justify-end">
           <span className="bg-white border border-[#eceef0] px-3 py-1.5 rounded-xl font-medium text-[#191c1e]">
             {total} inscrits
+          </span>
+          <span className="bg-[#2f6fb8] text-white px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>business_center</span>
+            {proCount} Pro
+          </span>
+          <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+            {particulierCount} Particuliers
           </span>
           <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl font-semibold">
             {verified} vérifiés
@@ -51,6 +85,7 @@ export default async function UsersPage() {
               <tr className="border-b border-[#f2f4f6] bg-[#f7f9fb]">
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-6 py-3">ID</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-6 py-3">Utilisateur</th>
+                <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Compte</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Email</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Rôle</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Annonces</th>
@@ -60,7 +95,7 @@ export default async function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f2f4f6]">
-              {users.map((user) => (
+              {usersWithBreakdown.map((user) => (
                 <tr key={user.id} className="hover:bg-[#f7f9fb] transition-colors">
                   {/* ID */}
                   <td className="px-6 py-3">
@@ -82,6 +117,29 @@ export default async function UsersPage() {
                     </div>
                   </td>
 
+                  {/* Compte type */}
+                  <td className="px-4 py-3">
+                    {user.isPro ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#2f6fb8] text-white px-2.5 py-0.5 rounded-full w-fit">
+                          <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>business_center</span>
+                          Pro
+                        </span>
+                        {user.companyName && (
+                          <span className="text-[10px] text-[#777683] font-medium truncate max-w-[120px]">{user.companyName}</span>
+                        )}
+                        {user.siret && (
+                          <span className="text-[9px] text-[#9ca3af] font-mono">{user.siret}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#777683] bg-slate-100 px-2.5 py-0.5 rounded-full">
+                        <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                        Particulier
+                      </span>
+                    )}
+                  </td>
+
                   {/* Email */}
                   <td className="px-4 py-3">
                     <span className="text-sm text-[#464652]">{user.email}</span>
@@ -96,9 +154,23 @@ export default async function UsersPage() {
                     )}
                   </td>
 
-                  {/* Listings count */}
+                  {/* Listings breakdown */}
                   <td className="px-4 py-3">
-                    <span className="text-sm font-semibold text-[#191c1e]">{user._count.listings}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {user.activeCount > 0 && (
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                          {user.activeCount} active{user.activeCount > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {user.pendingCount > 0 && (
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                          {user.pendingCount} en attente
+                        </span>
+                      )}
+                      {user.activeCount === 0 && user.pendingCount === 0 && (
+                        <span className="text-xs text-[#c7c5d4]">—</span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Member since */}

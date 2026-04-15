@@ -8,6 +8,90 @@ import BrandPicker from "@/components/BrandPicker";
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
 const TRANSMISSIONS = ["Manuelle", "Automatique"];
+const CRIT_AIR = ["0", "1", "2", "3", "4", "5"];
+const VEHICLE_TYPES = ["Véhicule de tourisme", "Utilitaire", "SUV / 4x4", "Berline", "Break", "Coupé", "Cabriolet", "Monospace", "Pick-up", "Autre"];
+
+const VEHICLE_OPTION_GROUPS: { label: string; icon: string; items: string[] }[] = [
+  {
+    label: "Sécurité",
+    icon: "security",
+    items: [
+      "ABS", "ESP", "Airbag conducteur", "Airbag passager",
+      "Airbag latéral conducteur et passager", "Airbags rideaux avant", "Airbags rideaux arrière",
+      "Assistance au freinage d'urgence", "Alerte franchissement involontaire de lignes",
+      "Alerte sonore de pré-collision", "Détecteur actif d'angle mort",
+      "Contrôle pression pneus (RDC)", "Frein de stationnement électrique",
+      "Frein de parking automatique", "Pneus Runflat", "AFU",
+    ],
+  },
+  {
+    label: "Aide à la conduite",
+    icon: "assistant_navigation",
+    items: [
+      "Régulateur de vitesse adaptatif", "Limiteur de vitesse", "Aide au démarrage en pente",
+      "Radar de stationnement avant", "Radar de stationnement arrière",
+      "Aide parking avec caméra de recul", "Caméra de recul",
+      "Suspension réglable en hauteur", "Système de récupération d'énergie",
+    ],
+  },
+  {
+    label: "Confort",
+    icon: "airline_seat_recline_extra",
+    items: [
+      "Siège conducteur chauffant", "Siège passager chauffant",
+      "Siège conducteur réglable électriquement", "Siège passager réglable électriquement",
+      "Sièges à mémoire", "Siège conducteur à réglage lombaire", "Siège passager à réglage lombaire",
+      "Siège conducteur confort", "Appuie-tête arrière", "Accoudoir arrière",
+      "Banquette arrière partagée et rabattable", "Banquette 1/3 - 2/3",
+      "Ceinture centrale arrière 3 points", "Volant réglable électriquement",
+      "Volant sport", "Volant 3 branches", "Volant multifonctions",
+      "Direction assistée", "Rideaux pare-soleil vitres AR latérales électr.",
+      "Toit ouvrant coulissant/relevable", "Recyclage de l'air automatique",
+    ],
+  },
+  {
+    label: "Technologie & accès",
+    icon: "settings_remote",
+    items: [
+      "Démarrage sans clé", "Entrée sans clé", "Clé digitale",
+      "Carte mains-libres", "Antidémarrage",
+      "Ordinateur de bord", "Système information conducteur",
+      "Boîte automatisée 6 vitesses",
+    ],
+  },
+  {
+    label: "Multimédia",
+    icon: "queue_music",
+    items: [
+      "Lecteur MP3", "Prise audio USB", "Prise 12V",
+      "Soundsystem", "Pré-équipement téléphone portable",
+    ],
+  },
+  {
+    label: "Extérieur & carrosserie",
+    icon: "directions_car",
+    items: [
+      "Phares xénon", "Phares antibrouillard", "Éclairage d'accompagnement",
+      "Rétroviseurs extérieurs électriques", "Rétroviseurs extérieurs dégivrants",
+      "Rétroviseur extérieur électrochrome", "Rétroviseur intérieur électrochrome",
+      "Antenne automatique/antenne dans les vitres",
+      "Détecteur pluie", "Détecteur de luminosité", "Filtre à particules",
+      "Vitres teintées", "Peinture métallisée", "Peinture laquée/opaque",
+      "Pare-chocs couleur véhicule", "Hayon électrique",
+      "Lève-vitres avant électriques", "Lève-vitres arrière électriques",
+    ],
+  },
+  {
+    label: "Verrouillage & divers",
+    icon: "lock",
+    items: [
+      "Verrouillage centralisé", "Verrouillage centralisé télécommandé",
+      "Verrouillage indépendant du coffre/hayon",
+      "Fixation pour siège enfant", "Buses de lave-glace chauffantes",
+      "Garnitures intérieures bois", "Factures d'entretien", "Non fumeur",
+    ],
+  },
+];
 const MAX_PHOTOS = 15;
 
 const IMMO_TYPES = ["Appartement", "Maison", "Villa", "Studio", "Loft", "Terrain", "Local commercial", "Bureau", "Garage", "Autre"];
@@ -20,6 +104,11 @@ type VehicleFields = {
   marque: string; modele: string; annee: string; kilometrage: string;
   carburant: string; transmission: string; couleur: string;
   immatriculation: string; puissanceFiscale: string; nombrePortes: string;
+  // Fiche technique complète
+  motorisation: string; nombreVitesses: string; nombrePlaces: string;
+  typeVehicule: string; emissionCO2: string;
+  consoUrbaine: string; consoExtraU: string; consoMixte: string;
+  critAir: string; dateImmatriculation: string;
 };
 
 type ImmobilierFields = {
@@ -83,7 +172,12 @@ export default function AdminListingForm({
     marque: "", modele: "", annee: "", kilometrage: "",
     carburant: "Essence", transmission: "Manuelle",
     couleur: "", immatriculation: "", puissanceFiscale: "", nombrePortes: "5",
+    motorisation: "", nombreVitesses: "", nombrePlaces: "",
+    typeVehicule: "", emissionCO2: "",
+    consoUrbaine: "", consoExtraU: "", consoMixte: "",
+    critAir: "", dateImmatriculation: "",
   });
+  const [vehicleOptions, setVehicleOptions] = useState<string[]>([]);
 
   // ── Immobilier fields ────────────────────────────────────────────────────────
   const [immo, setImmo] = useState<ImmobilierFields>({
@@ -160,17 +254,28 @@ export default function AdminListingForm({
       if (d.vehicle) {
         setVehicle((prev) => ({
           ...prev,
-          marque:          d.vehicle.marque          ?? prev.marque,
-          modele:          d.vehicle.modele          ?? prev.modele,
-          annee:           d.vehicle.annee           ? String(d.vehicle.annee) : prev.annee,
-          kilometrage:     d.vehicle.kilometrage     ? String(d.vehicle.kilometrage) : prev.kilometrage,
-          carburant:       d.vehicle.carburant       ?? prev.carburant,
-          transmission:    d.vehicle.transmission    ?? prev.transmission,
-          couleur:         d.vehicle.couleur         ?? prev.couleur,
-          immatriculation: d.vehicle.immatriculation ?? prev.immatriculation,
-          puissanceFiscale:d.vehicle.puissanceFiscale ? String(d.vehicle.puissanceFiscale) : prev.puissanceFiscale,
-          nombrePortes:    d.vehicle.nombrePortes    ? String(d.vehicle.nombrePortes) : prev.nombrePortes,
+          marque:            d.vehicle.marque            ?? prev.marque,
+          modele:            d.vehicle.modele            ?? prev.modele,
+          annee:             d.vehicle.annee             ? String(d.vehicle.annee) : prev.annee,
+          kilometrage:       d.vehicle.kilometrage       ? String(d.vehicle.kilometrage) : prev.kilometrage,
+          carburant:         d.vehicle.carburant         ?? prev.carburant,
+          transmission:      d.vehicle.transmission      ?? prev.transmission,
+          couleur:           d.vehicle.couleur           ?? prev.couleur,
+          immatriculation:   d.vehicle.immatriculation   ?? prev.immatriculation,
+          puissanceFiscale:  d.vehicle.puissanceFiscale  ? String(d.vehicle.puissanceFiscale) : prev.puissanceFiscale,
+          nombrePortes:      d.vehicle.nombrePortes      ? String(d.vehicle.nombrePortes) : prev.nombrePortes,
+          motorisation:      d.vehicle.motorisation      ?? prev.motorisation,
+          nombreVitesses:    d.vehicle.nombreVitesses    ? String(d.vehicle.nombreVitesses) : prev.nombreVitesses,
+          nombrePlaces:      d.vehicle.nombrePlaces      ? String(d.vehicle.nombrePlaces) : prev.nombrePlaces,
+          typeVehicule:      d.vehicle.typeVehicule      ?? prev.typeVehicule,
+          emissionCO2:       d.vehicle.emissionCO2       ? String(d.vehicle.emissionCO2) : prev.emissionCO2,
+          consoUrbaine:      d.vehicle.consoUrbaine      ? String(d.vehicle.consoUrbaine) : prev.consoUrbaine,
+          consoExtraU:       d.vehicle.consoExtraU       ? String(d.vehicle.consoExtraU) : prev.consoExtraU,
+          consoMixte:        d.vehicle.consoMixte        ? String(d.vehicle.consoMixte) : prev.consoMixte,
+          critAir:           d.vehicle.critAir           ? String(d.vehicle.critAir) : prev.critAir,
+          dateImmatriculation: d.vehicle.dateImmatriculation ?? prev.dateImmatriculation,
         }));
+        if (Array.isArray(d.vehicle.options)) setVehicleOptions(d.vehicle.options);
       }
 
       // Immo fields
@@ -219,6 +324,12 @@ export default function AdminListingForm({
     }));
   }
 
+  function toggleVehicleOption(item: string) {
+    setVehicleOptions((prev) =>
+      prev.includes(item) ? prev.filter((o) => o !== item) : [...prev, item]
+    );
+  }
+
   // ── Photo upload ─────────────────────────────────────────────────────────────
   async function handleImageUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -254,7 +365,7 @@ export default function AdminListingForm({
     if (isNaN(parsedPrice) || parsedPrice < 0) { setError("Prix invalide"); return; }
 
     const metadata = isVehicle
-      ? JSON.stringify(vehicle)
+      ? JSON.stringify({ ...vehicle, options: vehicleOptions })
       : isImmo
       ? JSON.stringify({
           typeBien: immo.typeBien,
@@ -610,6 +721,109 @@ export default function AdminListingForm({
             <div>
               <label className={labelCls}>Immatriculation</label>
               <input type="text" value={vehicle.immatriculation} onChange={(e) => setV("immatriculation", e.target.value)} placeholder="AB-123-CD" className={fieldCls} />
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* ── Fiche technique complète ──────────────────────────────────────────── */}
+      {isVehicle && (
+        <Section title="Fiche technique complète" icon="fact_check">
+          {/* Motorisation & performance */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Motorisation</label>
+              <input type="text" value={vehicle.motorisation} onChange={(e) => setV("motorisation", e.target.value)} placeholder="Ex : 730d, 2.0 TDI…" className={fieldCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Type de véhicule</label>
+              <select value={vehicle.typeVehicule} onChange={(e) => setV("typeVehicule", e.target.value)} className={fieldCls}>
+                <option value="">—</option>
+                {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Nombre de vitesses</label>
+              <input type="number" value={vehicle.nombreVitesses} onChange={(e) => setV("nombreVitesses", e.target.value)} placeholder="6" min="1" max="12" className={fieldCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Nombre de places</label>
+              <input type="number" value={vehicle.nombrePlaces} onChange={(e) => setV("nombrePlaces", e.target.value)} placeholder="5" min="1" max="9" className={fieldCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Date d&apos;immatriculation</label>
+              <input type="date" value={vehicle.dateImmatriculation} onChange={(e) => setV("dateImmatriculation", e.target.value)} className={fieldCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Crit&apos;Air</label>
+              <select value={vehicle.critAir} onChange={(e) => setV("critAir", e.target.value)} className={fieldCls}>
+                <option value="">—</option>
+                {CRIT_AIR.map((c) => <option key={c} value={c}>{c === "0" ? "0 (Électrique)" : `Crit'Air ${c}`}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Émissions & consommations */}
+          <div>
+            <label className={labelCls}>Émissions & consommations</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-[#9ca3af] font-semibold block mb-1">Émission CO₂ (g/km)</label>
+                <input type="number" min="0" value={vehicle.emissionCO2} onChange={(e) => setV("emissionCO2", e.target.value)} placeholder="ex : 178" className={fieldCls} />
+              </div>
+              <div>
+                <label className="text-[10px] text-[#9ca3af] font-semibold block mb-1">Conso. Urbaine (L/100km)</label>
+                <input type="number" min="0" step="0.1" value={vehicle.consoUrbaine} onChange={(e) => setV("consoUrbaine", e.target.value)} placeholder="ex : 9.0" className={fieldCls} />
+              </div>
+              <div>
+                <label className="text-[10px] text-[#9ca3af] font-semibold block mb-1">Conso. Extra-urbaine (L/100km)</label>
+                <input type="number" min="0" step="0.1" value={vehicle.consoExtraU} onChange={(e) => setV("consoExtraU", e.target.value)} placeholder="ex : 5.5" className={fieldCls} />
+              </div>
+              <div>
+                <label className="text-[10px] text-[#9ca3af] font-semibold block mb-1">Conso. Mixte (L/100km)</label>
+                <input type="number" min="0" step="0.1" value={vehicle.consoMixte} onChange={(e) => setV("consoMixte", e.target.value)} placeholder="ex : 6.8" className={fieldCls} />
+              </div>
+            </div>
+          </div>
+
+          {/* Options & équipements */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className={labelCls}>Options & équipements</label>
+              {vehicleOptions.length > 0 && (
+                <span className="text-[10px] font-bold text-[#2f6fb8] bg-[#2f6fb8]/10 px-2 py-0.5 rounded-full">
+                  {vehicleOptions.length} sélectionné{vehicleOptions.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+            <div className="space-y-4">
+              {VEHICLE_OPTION_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#9ca3af] mb-2">
+                    <span className="material-symbols-outlined text-[14px]">{group.icon}</span>
+                    {group.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.items.map((item) => {
+                      const active = vehicleOptions.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => toggleVehicleOption(item)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            active
+                              ? "bg-[#2f6fb8] text-white border-[#2f6fb8]"
+                              : "bg-white text-[#464652] border-[#eceef0] hover:border-[#2f6fb8]/40"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </Section>

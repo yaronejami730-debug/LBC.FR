@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
 import DejaVuBadge from "@/components/DejaVuBadge";
+import ApiDocSection from "@/components/ApiDocSection";
 
 export const metadata: Metadata = {
   title: "Deal&Co — Petites annonces gratuites entre particuliers en France",
@@ -240,6 +241,9 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* API Documentation */}
+      <ApiDocSection />
 
       <BottomNav active="accueil" />
 

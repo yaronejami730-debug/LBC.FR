@@ -103,57 +103,76 @@ export async function POST(req: NextRequest) {
   const fullContent = mainText + tabTexts.join("");
 
   // ── 4. Ask Claude ─────────────────────────────────────────────────────────────
-  const prompt = `Tu es un assistant qui extrait les informations d'une annonce immobilière ou de vente depuis le texte brut d'une ou plusieurs pages web (page principale + onglets détectés automatiquement).
+  const SYSTEM = `Tu es un extracteur d'annonces expert. Tu analyses le texte brut d'une ou plusieurs pages web (annonce principale + onglets supplémentaires) et tu extrais toutes les données structurées disponibles.
 
-Source : ${url}
+RÈGLES STRICTES :
+- Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte autour.
+- "price" est toujours un nombre (jamais une chaîne).
+- Si c'est un véhicule, remplis "vehicle" (avec "options": tableau des équipements listés) et laisse "immo" avec des nulls.
+- Si c'est de l'immobilier, remplis "immo" et laisse "vehicle" avec des nulls.
+- Traduis en français si la source est dans une autre langue.
+- Cherche dans TOUS les onglets fournis, pas uniquement la page principale.
+- Pour les véhicules, extrais TOUS les équipements/options listés dans "vehicle.options" (tableau de strings).
+- "vehicle.critAir" : chiffre Crit'Air si mentionné (0 à 5).
+- "vehicle.emissionCO2" : grammes/km (nombre).
+- "vehicle.consoUrbaine/consoExtraU/consoMixte" : L/100km (nombre).
+
+SCHÉMA DE SORTIE :
+{
+  "title": string,
+  "price": number,
+  "description": string,
+  "location": string,
+  "condition": "Neuf"|"Très bon état"|"Bon état"|"État correct"|"Pour pièces"|null,
+  "category": "Immobilier"|"Véhicules"|"Multimédia"|"Mode"|"Maison"|"Loisirs"|"Animaux"|"Services"|"Divers",
+  "subcategory": string|null,
+  "phone": string|null,
+  "vehicle": {
+    "marque": string|null, "modele": string|null, "annee": number|null,
+    "kilometrage": number|null, "carburant": string|null, "transmission": string|null,
+    "couleur": string|null, "immatriculation": string|null,
+    "puissanceFiscale": number|null, "nombrePortes": number|null,
+    "motorisation": string|null, "nombreVitesses": number|null,
+    "nombrePlaces": number|null, "typeVehicule": string|null,
+    "dateImmatriculation": string|null, "critAir": string|null,
+    "emissionCO2": number|null, "consoUrbaine": number|null,
+    "consoExtraU": number|null, "consoMixte": number|null,
+    "options": string[]
+  },
+  "immo": {
+    "typeBien": string|null, "surface": number|null, "nombrePieces": number|null,
+    "nombreChambres": number|null, "nombreSallesEau": number|null,
+    "etage": string|null, "exposition": string|null,
+    "typeCharuffe": string|null, "modeCharuffe": string|null,
+    "placesParking": number|null, "anneeConstruction": number|null,
+    "etatBien": string|null, "reference": string|null,
+    "classeEnergie": string|null, "ges": string|null,
+    "vueMer": boolean, "visAVis": boolean,
+    "prixHonorairesInclus": number|null, "prixHonorairesExclus": number|null,
+    "honorairesAcquereur": number|null, "taxeFonciere": number|null,
+    "caracteristiques": string[]
+  }
+}`;
+
+  const userContent = `Source : ${url}
 ${tabUrls.length > 0 ? `Onglets supplémentaires analysés : ${tabUrls.join(", ")}` : ""}
 
 ---
 ${fullContent}
----
-
-Extrais TOUTES les informations disponibles dans l'ensemble du texte (y compris les onglets) et réponds UNIQUEMENT avec un objet JSON valide (pas de markdown, pas d'explication) :
-
-{
-  "title": "titre de l'annonce",
-  "price": 12345,
-  "description": "description complète",
-  "location": "ville ou code postal",
-  "condition": "Neuf | Très bon état | Bon état | État correct | Pour pièces | null",
-  "category": "Immobilier | Véhicules | Multimédia | Mode | Maison | Loisirs | Animaux | Services | Divers",
-  "subcategory": "sous-catégorie si disponible",
-  "phone": "numéro de téléphone si affiché",
-  "vehicle": {
-    "marque": null, "modele": null, "annee": null, "kilometrage": null,
-    "carburant": null, "transmission": null, "couleur": null,
-    "immatriculation": null, "puissanceFiscale": null, "nombrePortes": null
-  },
-  "immo": {
-    "typeBien": null, "surface": null, "nombrePieces": null, "nombreChambres": null,
-    "nombreSallesEau": null, "etage": null, "exposition": null,
-    "typeCharuffe": null, "modeCharuffe": null, "placesParking": null,
-    "anneeConstruction": null, "etatBien": null, "reference": null,
-    "classeEnergie": null, "ges": null,
-    "vueMer": false, "visAVis": false,
-    "prixHonorairesInclus": null, "prixHonorairesExclus": null,
-    "honorairesAcquereur": null, "taxeFonciere": null,
-    "caracteristiques": []
-  }
-}
-
-Règles :
-- price doit être un nombre (entier ou décimal), jamais une chaîne
-- Si c'est un véhicule, remplis le bloc "vehicle" et ignore "immo"
-- Si c'est de l'immobilier, remplis le bloc "immo" et ignore "vehicle"
-- Traduis en français si le texte source est dans une autre langue
-- Cherche dans TOUS les onglets, pas seulement la page principale
-- Ne génère RIEN d'autre que le JSON`;
+---`;
 
   try {
     const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
-      messages: [{ role: "user", content: prompt }],
+      model: "claude-haiku-4-5",
+      max_tokens: 3000,
+      system: [
+        {
+          type: "text",
+          text: SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
+      messages: [{ role: "user", content: userContent }],
     });
 
     const raw = (message.content[0] as { type: string; text: string }).text.trim();

@@ -18,20 +18,18 @@ export async function POST(req: NextRequest) {
 
   const hashed = await bcrypt.hash(password, 12);
 
-  await Promise.all([
-    prisma.user.update({ where: { id: record.userId }, data: { password: hashed } }),
+  const [user] = await Promise.all([
+    prisma.user.update({ where: { id: record.userId }, data: { password: hashed }, select: { id: true, email: true, name: true, isPro: true, siret: true } }),
     prisma.passwordResetToken.update({ where: { id: record.id }, data: { used: true } }),
   ]);
 
-  const user = await prisma.user.findUnique({ where: { id: record.userId } });
-  if (user) {
-    await sendEmail({
-      to: user.email,
-      toName: user.name,
-      subject: "Votre mot de passe a été modifié — Deal & Co",
-      html: passwordChangedEmail({ name: user.name }),
-    });
-  }
+  await sendEmail({
+    to: user.email,
+    toName: user.name,
+    subject: "Votre mot de passe a été modifié — Deal & Co",
+    html: passwordChangedEmail({ name: user.name }),
+  });
 
-  return NextResponse.json({ ok: true });
+  const needsSiret = user.isPro && !user.siret;
+  return NextResponse.json({ ok: true, userId: user.id, needsSiret });
 }

@@ -3,15 +3,26 @@ import Link from "next/link";
 import LiveVisitorCount from "@/components/admin/LiveVisitorCount";
 
 async function getStats() {
-  const [totalUsers, pendingListings, approvedListings, rejectedListings, totalAds] =
+  const now = new Date();
+  const [totalUsers, proUsers, pendingListings, activeListings, approvedListings, rejectedListings, totalAds] =
     await Promise.all([
       prisma.user.count(),
-      prisma.listing.count({ where: { status: "PENDING" } }),
+      prisma.user.count({ where: { isPro: true } }),
+      prisma.listing.count({ where: { status: "PENDING", deletedAt: null } }),
+      // Truly active = approved + not deleted + not expired
+      prisma.listing.count({
+        where: {
+          status: "APPROVED",
+          deletedAt: null,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+      }),
+      // All approved (including expired/deleted) — for the bar chart
       prisma.listing.count({ where: { status: "APPROVED" } }),
       prisma.listing.count({ where: { status: "REJECTED" } }),
       prisma.advertisement.count({ where: { isActive: true } }),
     ]);
-  return { totalUsers, pendingListings, approvedListings, rejectedListings, totalAds };
+  return { totalUsers, proUsers, pendingListings, activeListings, approvedListings, rejectedListings, totalAds };
 }
 
 async function getRecentPending() {
@@ -33,6 +44,7 @@ export default async function AdminDashboard() {
       icon: "group",
       color: "bg-[#e1e0ff] text-[#2f6fb8]",
       href: "/admin/users",
+      sub: `${stats.proUsers} Pro · ${stats.totalUsers - stats.proUsers} Particuliers`,
     },
     {
       label: "Annonces en attente",
@@ -43,8 +55,8 @@ export default async function AdminDashboard() {
       urgent: stats.pendingListings > 0,
     },
     {
-      label: "Annonces publiées",
-      value: stats.approvedListings,
+      label: "Annonces actives",
+      value: stats.activeListings,
       icon: "check_circle",
       color: "bg-emerald-100 text-emerald-700",
       href: "/admin/listings?status=APPROVED",
@@ -91,6 +103,9 @@ export default async function AdminDashboard() {
             </div>
             <p className="text-3xl font-extrabold text-[#191c1e] mt-4 font-headline">{card.value}</p>
             <p className="text-sm text-[#777683] mt-0.5">{card.label}</p>
+            {"sub" in card && card.sub && (
+              <p className="text-[10px] text-[#9ca3af] mt-1 font-medium">{card.sub}</p>
+            )}
           </Link>
         ))}
       </div>
@@ -161,7 +176,7 @@ export default async function AdminDashboard() {
           <div className="px-6 py-5 space-y-4">
             {[
               { label: "En attente", value: stats.pendingListings, color: "bg-amber-400" },
-              { label: "Approuvées", value: stats.approvedListings, color: "bg-emerald-400" },
+              { label: "Actives sur le site", value: stats.activeListings, color: "bg-emerald-400" },
               { label: "Refusées", value: stats.rejectedListings, color: "bg-[#ba1a1a]" },
             ].map((s) => {
               const total = stats.pendingListings + stats.approvedListings + stats.rejectedListings || 1;

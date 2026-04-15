@@ -28,6 +28,17 @@ export default async function Navbar({
   const session = await auth();
   const user = session?.user;
 
+  // Récupérer isPro pour le menu API
+  let isPro = false;
+  if (user?.id) {
+    const { prisma } = await import("@/lib/prisma");
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { isPro: true },
+    }).catch(() => null);
+    isPro = dbUser?.isPro ?? false;
+  }
+
   return (
     <nav className="fixed top-0 w-full z-50 bg-white border-b border-slate-200 shadow-sm">
       <div className="w-full max-w-[1248px] mx-auto px-4 lg:px-6">
@@ -48,7 +59,7 @@ export default async function Navbar({
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
-            <UserDropdown user={user} />
+            <UserDropdown user={user} isPro={isPro} />
           </div>
         </div>
 

@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 
 type Props = {
   user?: { name?: string | null; email?: string | null } | null;
+  isPro?: boolean;
 };
 
 const MENU_ITEMS = [
@@ -15,7 +16,7 @@ const MENU_ITEMS = [
   { label: "Mes recherches", icon: "notifications", href: "/recherches", badge: false },
 ];
 
-export default function UserDropdown({ user }: Props) {
+export default function UserDropdown({ user, isPro = false }: Props) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const [unread, setUnread] = useState(0);
@@ -120,6 +121,15 @@ export default function UserDropdown({ user }: Props) {
 
               {/* Pied */}
               <div className="border-t border-slate-100 py-1">
+                {isPro && (
+                  <Link href="/profile#api" onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">api</span>
+                    <span className="text-[14px] font-medium flex-1">API</span>
+                    <span className="text-[9px] font-bold bg-[#2f6fb8] text-white px-1.5 py-0.5 rounded">PRO</span>
+                  </Link>
+                )}
                 <Link href="/profile" onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
                 >
