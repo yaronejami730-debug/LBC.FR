@@ -18,6 +18,7 @@ import MarkViewed from "@/components/MarkViewed";
 import ExpiryTimer from "./ExpiryTimer";
 import ViewTracker from "@/components/ViewTracker";
 import LiveViewCount from "./LiveViewCount";
+import { getBrandLogo } from "@/lib/carBrands";
 
 export async function generateMetadata({
   params,
@@ -194,6 +195,25 @@ export default async function ListingPage({
                   <span className="material-symbols-outlined text-sm">schedule</span> {formatDistanceToNow(listing.createdAt)}
                 </span>
               </div>
+
+              {/* Brand logo — véhicules uniquement */}
+              {listing.category === "Véhicules" && vehicleMeta.marque && (() => {
+                const logo = getBrandLogo(vehicleMeta.marque as string);
+                return logo ? (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={logo}
+                      alt={vehicleMeta.marque as string}
+                      width={52}
+                      height={52}
+                      className="object-contain rounded-xl bg-slate-50 p-1.5 border border-slate-100"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                    <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">{vehicleMeta.marque as string}</span>
+                  </div>
+                ) : null;
+              })()}
+
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight">
                 {listing.title}
               </h1>

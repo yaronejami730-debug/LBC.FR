@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CATEGORIES } from "@/lib/categories";
 import { detectCategory } from "@/lib/autoCategory";
+import BrandPicker from "@/components/BrandPicker";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
@@ -1117,8 +1118,8 @@ export default function PostForm() {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Caractéristiques du véhicule</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Marque</label>
-                    <input value={vehicle.marque} onChange={(e) => setV("marque", e.target.value)} className={inputCls} placeholder="Renault, BMW…" /></div>
+                  <div className="col-span-2"><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Marque</label>
+                    <BrandPicker value={vehicle.marque} onChange={(v) => setV("marque", v)} inputCls={inputCls} /></div>
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Modèle</label>
                     <input value={vehicle.modele} onChange={(e) => setV("modele", e.target.value)} className={inputCls} placeholder="Clio, Série 3…" /></div>
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Année</label>

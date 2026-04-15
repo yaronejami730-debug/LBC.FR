@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { createListingForClient } from "@/app/admin/actions";
 import { CATEGORIES } from "@/lib/categories";
+import BrandPicker from "@/components/BrandPicker";
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
@@ -564,9 +565,9 @@ export default function AdminListingForm({
       {isVehicle && (
         <Section title="Caractéristiques du véhicule" icon="directions_car">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="col-span-2">
               <label className={labelCls}>Marque</label>
-              <input type="text" value={vehicle.marque} onChange={(e) => setV("marque", e.target.value)} placeholder="Ex : Audi" className={fieldCls} />
+              <BrandPicker value={vehicle.marque} onChange={(v) => setV("marque", v)} inputCls={fieldCls} />
             </div>
             <div>
               <label className={labelCls}>Modèle</label>
