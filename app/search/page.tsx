@@ -143,7 +143,7 @@ export default async function SearchPage({
           ) : (
             listings.map((listing, i) => {
               const images = JSON.parse(listing.images) as string[];
-              const img = images[0] || "";
+              const img = images[0] || undefined;
               // Insert an ad at positions 4, 9, 14, …
               const adIndex = Math.floor(i / 5);
               const ad = i % 5 === 4 ? ads[adIndex] ?? null : null;
@@ -173,7 +173,13 @@ export default async function SearchPage({
                     className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                      <img alt={listing.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={img} />
+                      {img ? (
+                        <img alt={listing.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={img} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
+                        </div>
+                      )}
                       {listing.isPremium && (
                         <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                           Premium

@@ -53,15 +53,13 @@ export async function generateMetadata({
       url: pageUrl,
       siteName: "Deal&Co",
       type: "website",
-      images: rawImg
-        ? [{ url: mainImg, width: 1200, height: 630, alt: listing.title }]
-        : [],
+      images: [{ url: `${BASE}/annonce/${id}/opengraph-image`, width: 1200, height: 630, alt: listing.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${listing.title} — ${priceStr}`,
       description: desc,
-      images: rawImg ? [mainImg] : [],
+      images: [`${BASE}/annonce/${id}/opengraph-image`],
     },
   };
 }
@@ -169,6 +167,7 @@ export default async function ListingPage({
         listingId={listing.id}
         userId={currentUserId}
         initialFavorite={isFavorite}
+        images={images}
       />
 
       {/* Content Canvas */}

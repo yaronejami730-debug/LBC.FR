@@ -144,7 +144,7 @@ export default async function Home() {
         <div className="flex gap-3 overflow-x-auto pb-3 px-6 no-scrollbar md:grid md:grid-cols-4 lg:grid-cols-5 md:gap-4 md:overflow-visible md:pb-0">
           {listings.map((listing, i) => {
             const images = JSON.parse(listing.images) as string[];
-            const img = images[0] || "";
+            const img = images[0] || undefined;
             const ad = i === 1 ? ads[0] : i === 5 ? ads[1] : null;
             return (
               <Fragment key={listing.id}>
@@ -173,11 +173,17 @@ export default async function Home() {
                   className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                 >
                   <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                    <img
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      alt={listing.title}
-                      src={img}
-                    />
+                    {img ? (
+                      <img
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        alt={listing.title}
+                        src={img}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
+                      </div>
+                    )}
                     {listing.isPremium && (
                       <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                         Premium
