@@ -9,7 +9,7 @@ const fieldCls =
   "w-full px-4 py-3 rounded-xl border border-[#eceef0] bg-white text-[#191c1e] text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30 focus:border-[#2f6fb8] transition-all";
 const labelCls = "block text-xs font-bold uppercase tracking-widest text-[#777683] mb-1.5";
 
-type SiretResult = { siret: string; companyName: string | null };
+type Suggestion = { siret: string; name: string; siren: string; ville?: string };
 
 export default function CreateClientForm({
   onCreated,
@@ -22,39 +22,57 @@ export default function CreateClientForm({
   const [accountType, setAccountType] = useState<"particulier" | "pro">("particulier");
   const [companyName, setCompanyName] = useState("");
   const [siret, setSiret] = useState("");
-  const [siretStatus, setSiretStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
-  const [siretMsg, setSiretMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const siretTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function handleSiretChange(val: string) {
-    const clean = val.replace(/\s/g, "").slice(0, 14);
-    setSiret(clean);
-    setSiretMsg("");
-    setSiretStatus("idle");
-    if (siretTimer.current) clearTimeout(siretTimer.current);
-    if (clean.length === 14) {
-      setSiretStatus("loading");
-      siretTimer.current = setTimeout(async () => {
-        try {
-          const res = await fetch(`/api/siret?q=${clean}`);
-          const data: SiretResult & { error?: string } = await res.json();
-          if (!res.ok || data.error) {
-            setSiretStatus("error");
-            setSiretMsg(data.error ?? "SIRET invalide");
-          } else {
-            setSiretStatus("ok");
-            setSiretMsg(`✓ ${data.companyName ?? "Entreprise trouvée"}`);
-            if (data.companyName && !companyName) setCompanyName(data.companyName);
-          }
-        } catch {
-          setSiretStatus("error");
-          setSiretMsg("Impossible de vérifier le SIRET");
-        }
-      }, 600);
-    }
+  // Autocomplétion entreprise
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<Suggestion | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  function handleQueryChange(val: string) {
+    setQuery(val);
+    setSelected(null);
+    setSuggestions([]);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (val.trim().length < 2) { setSearching(false); return; }
+    setSearching(true);
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(val.trim())}&page=1&per_page=6`
+        );
+        const data = await res.json();
+        const results: Suggestion[] = (data?.results ?? []).map((r: any) => ({
+          siret: r.siege?.siret ?? "",
+          name: r.nom_raison_sociale || r.nom_complet || "",
+          siren: r.siren ?? "",
+          ville: r.siege?.libelle_commune ?? "",
+        })).filter((r: Suggestion) => r.name);
+        setSuggestions(results);
+      } catch { /* ignore */ }
+      setSearching(false);
+    }, 350);
+  }
+
+  function selectSuggestion(s: Suggestion) {
+    setSelected(s);
+    setCompanyName(s.name);
+    setSiret(s.siret);
+    setQuery(s.name);
+    setSuggestions([]);
+  }
+
+  function clearSelection() {
+    setSelected(null);
+    setCompanyName("");
+    setSiret("");
+    setQuery("");
+    setSuggestions([]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -75,7 +93,7 @@ export default function CreateClientForm({
       onCreated(result);
       setPrenom(""); setNom(""); setEmail("");
       setAccountType("particulier"); setCompanyName(""); setSiret("");
-      setSiretStatus("idle"); setSiretMsg("");
+      setQuery(""); setSelected(null); setSuggestions([]);
     } catch (err: any) {
       setError(err.message ?? "Une erreur est survenue.");
     } finally {
@@ -181,56 +199,95 @@ export default function CreateClientForm({
         <div className="bg-[#f8f9fb] rounded-2xl border border-[#eceef0] p-4 space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#777683]">Informations professionnelles</p>
 
-          <div>
-            <label className={labelCls}>Nom de la société <span className="text-[#9ca3af] normal-case font-normal">(optionnel)</span></label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Ex : Immobilier Dupont SARL"
-              className={fieldCls}
-            />
-          </div>
-
-          <div>
-            <label className={labelCls}>
-              SIRET <span className="text-[#9ca3af] normal-case font-normal">(optionnel — sera demandé au client sinon)</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={siret}
-                onChange={(e) => handleSiretChange(e.target.value)}
-                placeholder="14 chiffres"
-                maxLength={14}
-                inputMode="numeric"
-                className={`${fieldCls} pr-10 font-mono ${
-                  siretStatus === "error" ? "border-red-300 focus:border-red-400 focus:ring-red-200/50" :
-                  siretStatus === "ok"    ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-200/50" : ""
-                }`}
-              />
-              {siretStatus === "loading" && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-[#2f6fb8] border-t-transparent animate-spin" />
-              )}
-              {siretStatus === "ok" && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-emerald-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              )}
-              {siretStatus === "error" && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-red-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
-              )}
+          {/* Société sélectionnée */}
+          {selected ? (
+            <div className="flex items-start justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <div className="flex items-start gap-2 min-w-0">
+                <span className="material-symbols-outlined text-emerald-600 text-[18px] shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#191c1e] truncate">{selected.name}</p>
+                  <p className="text-[10px] text-[#777683] font-mono mt-0.5">SIRET {selected.siret}</p>
+                  {selected.ville && <p className="text-[10px] text-[#9ca3af]">{selected.ville}</p>}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="shrink-0 text-[10px] font-bold text-[#777683] hover:text-red-500 transition-colors underline underline-offset-2 mt-1"
+              >
+                Changer
+              </button>
             </div>
-            {siretMsg && (
-              <p className={`text-xs mt-1.5 font-medium ${siretStatus === "ok" ? "text-emerald-600" : "text-red-500"}`}>
-                {siretMsg}
-              </p>
-            )}
-            {!siret && (
+          ) : (
+            <div>
+              <label className={labelCls}>
+                Rechercher la société
+                <span className="text-[#9ca3af] normal-case font-normal ml-1">(optionnel)</span>
+              </label>
+              <div className="relative" ref={dropdownRef}>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => handleQueryChange(e.target.value)}
+                    placeholder="Nom de société, SIRET ou SIREN…"
+                    autoComplete="off"
+                    className={`${fieldCls} pr-10`}
+                  />
+                  {searching ? (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-[#2f6fb8] border-t-transparent animate-spin" />
+                  ) : query.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#464652]"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  ) : (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[#c7c5d4] text-[18px]">search</span>
+                  )}
+                </div>
+
+                {/* Dropdown suggestions */}
+                {suggestions.length > 0 && (
+                  <ul className="absolute z-50 w-full mt-1 bg-white border border-[#eceef0] rounded-xl shadow-lg overflow-hidden">
+                    {suggestions.map((s) => (
+                      <li key={s.siret || s.siren}>
+                        <button
+                          type="button"
+                          onClick={() => selectSuggestion(s)}
+                          className="w-full text-left px-4 py-3 hover:bg-[#f8f9fb] transition-colors border-b border-[#f2f4f6] last:border-0 flex items-start gap-3"
+                        >
+                          <span className="material-symbols-outlined text-[#2f6fb8] text-[16px] shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>business</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#191c1e] truncate">{s.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {s.siret && <span className="text-[10px] text-[#777683] font-mono">SIRET {s.siret}</span>}
+                              {s.ville && <span className="text-[10px] text-[#9ca3af]">· {s.ville}</span>}
+                            </div>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Aucun résultat */}
+                {!searching && query.length >= 2 && suggestions.length === 0 && (
+                  <p className="text-xs text-[#9ca3af] mt-1.5 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">info</span>
+                    Aucune entreprise trouvée — vous pouvez continuer sans société.
+                  </p>
+                )}
+              </div>
+
               <p className="text-[10px] text-[#9ca3af] mt-1.5 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[12px]">info</span>
-                Si non renseigné, le SIRET sera demandé au client lors de l'activation de son compte.
+                Si non renseigné, le SIRET sera demandé au client lors de l'activation.
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
