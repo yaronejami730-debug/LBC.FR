@@ -11,6 +11,26 @@ import BrandPicker from "@/components/BrandPicker";
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS      = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
 const TRANSMISSIONS = ["Manuelle", "Automatique"];
+const VEHICLE_TYPES = ["Véhicule de tourisme", "Berline", "SUV / 4x4", "Coupé", "Cabriolet / Roadster", "Break", "Monospace", "Pick-up", "Utilitaire", "Camping-car", "Moto", "Scooter", "Autre"];
+const CRITAIR = ["0", "1", "2", "3", "4", "5", "Non classé"];
+const VEHICLE_EQUIPMENTS = [
+  "ABS", "ESP", "Airbags",
+  "Climatisation automatique bizone", "Climatisation manuelle",
+  "GPS / Navigation", "Interface Bluetooth",
+  "Caméra de recul", "Caméra 360°",
+  "Régulateur de vitesse", "Limiteur de vitesse",
+  "Radar de stationnement avant", "Radar de stationnement arrière",
+  "Affichage tête haute", "Détecteur de pluie",
+  "Allumage automatique des phares", "Phares xénon", "Phares LED",
+  "Rétroviseurs dégivrants", "Rétroviseurs rabattables électriquement",
+  "Vitres électriques", "Vitres arrière surteintées",
+  "Sièges chauffants", "Sièges électriques à mémoire",
+  "Siège conducteur confort", "Siège passager confort",
+  "Toit ouvrant panoramique", "Toit ouvrant électrique",
+  "Fixations ISOFIX", "Système Start/Stop",
+  "Avertisseur d'angle mort", "Sélection du mode de conduite",
+  "Contrôle pression pneus (RDC)", "Buses lave-glace chauffantes",
+];
 const MAX_PHOTOS = 15;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -19,9 +39,14 @@ type PhotoMode = "choose" | "guided" | "free";
 type FormStep  = 0 | 1 | 2 | 3 | 4; // 0=photos 1=titre 2=catégorie 3=desc 4=coordonnées
 
 type VehicleFields = {
-  marque: string; modele: string; annee: string; kilometrage: string;
+  marque: string; modele: string; nomModele: string; annee: string; kilometrage: string;
   carburant: string; transmission: string; couleur: string;
-  immatriculation: string; puissanceFiscale: string; nombrePortes: string;
+  immatriculation: string; dateImmatriculation: string;
+  puissanceFiscale: string; nombrePortes: string;
+  typeVehicule: string; motorisation: string;
+  nombreVitesses: string; nombrePlaces: string;
+  emissionCO2: string; consoUrbaine: string; consoExtraUrbaine: string; consoMixte: string;
+  critAir: string; equipements: string[];
 };
 
 type ImmobilierFields = {
@@ -237,9 +262,14 @@ export default function PostForm() {
   const [autoDetected, setAutoDetected] = useState(false);
   const [userPickedCategory, setUserPickedCategory] = useState(false);
   const [vehicle, setVehicle] = useState<VehicleFields>({
-    marque: "", modele: "", annee: "", kilometrage: "",
+    marque: "", modele: "", nomModele: "", annee: "", kilometrage: "",
     carburant: "Essence", transmission: "Manuelle",
-    couleur: "", immatriculation: "", puissanceFiscale: "", nombrePortes: "5",
+    couleur: "", immatriculation: "", dateImmatriculation: "",
+    puissanceFiscale: "", nombrePortes: "5",
+    typeVehicule: "Véhicule de tourisme", motorisation: "",
+    nombreVitesses: "", nombrePlaces: "",
+    emissionCO2: "", consoUrbaine: "", consoExtraUrbaine: "", consoMixte: "",
+    critAir: "", equipements: [],
   });
   const [immo, setImmo] = useState<ImmobilierFields>({
     typeBien: "Appartement", nombrePieces: "", nombreChambres: "",
@@ -283,6 +313,15 @@ export default function PostForm() {
       caracteristiques: v.caracteristiques.includes(item)
         ? v.caracteristiques.filter((c) => c !== item)
         : [...v.caracteristiques, item],
+    }));
+  }
+
+  function toggleEquip(item: string) {
+    setVehicle((v) => ({
+      ...v,
+      equipements: v.equipements.includes(item)
+        ? v.equipements.filter((e) => e !== item)
+        : [...v.equipements, item],
     }));
   }
 
@@ -357,7 +396,7 @@ export default function PostForm() {
           description, location, condition,
           images: images.filter(Boolean),
           metadata: categoryId === "vehicules"
-            ? JSON.stringify(vehicle)
+            ? JSON.stringify({ ...vehicle })
             : categoryId === "immobilier"
             ? JSON.stringify({
                 typeBien: immo.typeBien,
@@ -1115,29 +1154,75 @@ export default function PostForm() {
 
             {/* Champs véhicules */}
             {categoryId === "vehicules" && (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Caractéristiques du véhicule</p>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fiche technique</p>
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Marque */}
                   <div className="col-span-2"><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Marque</label>
                     <BrandPicker value={vehicle.marque} onChange={(v) => setV("marque", v)} inputCls={inputCls} /></div>
+                  {/* Modèle */}
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Modèle</label>
-                    <input value={vehicle.modele} onChange={(e) => setV("modele", e.target.value)} className={inputCls} placeholder="Clio, Série 3…" /></div>
+                    <input value={vehicle.modele} onChange={(e) => setV("modele", e.target.value)} className={inputCls} placeholder="Série 6, Clio…" /></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Nom complet du modèle</label>
+                    <input value={vehicle.nomModele} onChange={(e) => setV("nomModele", e.target.value)} className={inputCls} placeholder="SERIE 6 COUPE" /></div>
+                  {/* Motorisation */}
+                  <div className="col-span-2"><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Motorisation</label>
+                    <input value={vehicle.motorisation} onChange={(e) => setV("motorisation", e.target.value)} className={inputCls} placeholder="640d xDrive Coupé 313ch" /></div>
+                  {/* Année + Km */}
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Année</label>
                     <input value={vehicle.annee} onChange={(e) => setV("annee", e.target.value)} className={inputCls} placeholder="2021" type="number" /></div>
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Kilométrage</label>
                     <div className="relative"><input value={vehicle.kilometrage} onChange={(e) => setV("kilometrage", e.target.value)} className={inputCls + " pr-10"} placeholder="45 000" type="number" /><span className="absolute right-3 top-3 text-xs text-outline">km</span></div></div>
-                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Carburant</label>
+                  {/* Type véhicule */}
+                  <div className="col-span-2"><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Type de véhicule</label>
+                    <div className="flex flex-wrap gap-1.5">{VEHICLE_TYPES.map((t) => <button key={t} type="button" onClick={() => setV("typeVehicule", t)} className={pillCls(vehicle.typeVehicule === t) + " whitespace-nowrap"}>{t}</button>)}</div></div>
+                  {/* Carburant */}
+                  <div className="col-span-2"><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Énergie</label>
                     <div className="flex flex-wrap gap-1.5">{FUELS.map((f) => <button key={f} type="button" onClick={() => setV("carburant", f)} className={pillCls(vehicle.carburant === f)}>{f}</button>)}</div></div>
+                  {/* Transmission + Vitesses */}
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Boîte</label>
                     <div className="flex gap-2">{TRANSMISSIONS.map((t) => <button key={t} type="button" onClick={() => setV("transmission", t)} className={pillCls(vehicle.transmission === t) + " flex-1"}>{t}</button>)}</div></div>
-                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Couleur</label>
-                    <input value={vehicle.couleur} onChange={(e) => setV("couleur", e.target.value)} className={inputCls} placeholder="Gris, Blanc…" /></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Nbr de vitesses</label>
+                    <input value={vehicle.nombreVitesses} onChange={(e) => setV("nombreVitesses", e.target.value)} className={inputCls} placeholder="6" type="number" /></div>
+                  {/* Portes + Places */}
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Portes</label>
                     <div className="flex gap-1.5">{["2","3","4","5"].map((n) => <button key={n} type="button" onClick={() => setV("nombrePortes", n)} className={pillCls(vehicle.nombrePortes === n) + " flex-1"}>{n}</button>)}</div></div>
-                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Puissance</label>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Nbr de places</label>
+                    <input value={vehicle.nombrePlaces} onChange={(e) => setV("nombrePlaces", e.target.value)} className={inputCls} placeholder="5" type="number" /></div>
+                  {/* Couleur + Puissance */}
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Couleur</label>
+                    <input value={vehicle.couleur} onChange={(e) => setV("couleur", e.target.value)} className={inputCls} placeholder="Noir, Blanc…" /></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Puissance fiscale</label>
                     <div className="relative"><input value={vehicle.puissanceFiscale} onChange={(e) => setV("puissanceFiscale", e.target.value)} className={inputCls + " pr-8"} placeholder="7" type="number" /><span className="absolute right-3 top-3 text-xs text-outline">CV</span></div></div>
+                  {/* Immat + Date immat */}
                   <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Immatriculation</label>
                     <input value={vehicle.immatriculation} onChange={(e) => setV("immatriculation", e.target.value.toUpperCase())} className={inputCls + " font-mono tracking-widest"} placeholder="AB-123-CD" maxLength={10} /></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Date d&apos;immatriculation</label>
+                    <input value={vehicle.dateImmatriculation} onChange={(e) => setV("dateImmatriculation", e.target.value)} className={inputCls} type="date" /></div>
+                  {/* Consommations */}
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Conso. urbaine</label>
+                    <div className="relative"><input value={vehicle.consoUrbaine} onChange={(e) => setV("consoUrbaine", e.target.value)} className={inputCls + " pr-16"} placeholder="7.1" type="number" step="0.1" /><span className="absolute right-3 top-3 text-xs text-outline">L/100km</span></div></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Conso. extra-urbaine</label>
+                    <div className="relative"><input value={vehicle.consoExtraUrbaine} onChange={(e) => setV("consoExtraUrbaine", e.target.value)} className={inputCls + " pr-16"} placeholder="5.1" type="number" step="0.1" /><span className="absolute right-3 top-3 text-xs text-outline">L/100km</span></div></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Conso. mixte</label>
+                    <div className="relative"><input value={vehicle.consoMixte} onChange={(e) => setV("consoMixte", e.target.value)} className={inputCls + " pr-16"} placeholder="5.8" type="number" step="0.1" /><span className="absolute right-3 top-3 text-xs text-outline">L/100km</span></div></div>
+                  <div><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Émission CO₂</label>
+                    <div className="relative"><input value={vehicle.emissionCO2} onChange={(e) => setV("emissionCO2", e.target.value)} className={inputCls + " pr-12"} placeholder="153" type="number" /><span className="absolute right-3 top-3 text-xs text-outline">g/km</span></div></div>
+                  {/* Crit'Air */}
+                  <div className="col-span-2"><label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1">Crit&apos;Air</label>
+                    <div className="flex gap-2 flex-wrap">{CRITAIR.map((c) => <button key={c} type="button" onClick={() => setV("critAir", c)} className={pillCls(vehicle.critAir === c)}>{c === "0" ? "⚡ 0" : c}</button>)}</div></div>
+                </div>
+                {/* Équipements */}
+                <div className="space-y-2">
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Équipements & options</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {VEHICLE_EQUIPMENTS.map((eq) => (
+                      <button key={eq} type="button" onClick={() => toggleEquip(eq)}
+                        className={pillCls(vehicle.equipements.includes(eq)) + " whitespace-nowrap text-xs"}>
+                        {eq}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
