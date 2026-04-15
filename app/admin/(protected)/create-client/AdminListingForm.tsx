@@ -104,6 +104,7 @@ export default function AdminListingForm({
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
+  const [tabsFound, setTabsFound] = useState(0);
 
   // ── Submit state ─────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
@@ -134,6 +135,7 @@ export default function AdminListingForm({
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erreur inconnue");
 
+      setTabsFound(json.tabsFound ?? 0);
       const d = json.data;
 
       // Fill basic fields
@@ -380,7 +382,7 @@ export default function AdminListingForm({
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleImport(); } }}
             />
             <p className="text-xs text-[#9ca3af] mt-1.5">
-              Fonctionne avec LeBonCoin, SeLoger, PAP, Logic-Immo, La Centrale, AutoScout24…
+              Fonctionne avec LeBonCoin, SeLoger, PAP, Logic-Immo, La Centrale, AutoScout24… Les onglets (Détails, Financiers, DPE…) sont analysés automatiquement.
             </p>
           </div>
 
@@ -400,7 +402,7 @@ export default function AdminListingForm({
             {importing ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                Analyse en cours…
+                <span>Analyse en cours…</span>
               </>
             ) : (
               <>
@@ -409,6 +411,14 @@ export default function AdminListingForm({
               </>
             )}
           </button>
+
+          {/* Badge onglets trouvés — affiché après un import réussi si on revient sur l'écran IA */}
+          {!importing && tabsFound > 0 && (
+            <p className="text-xs text-center text-emerald-600 font-semibold flex items-center justify-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px]">tab</span>
+              {tabsFound} onglet{tabsFound > 1 ? "s" : ""} supplémentaire{tabsFound > 1 ? "s" : ""} analysé{tabsFound > 1 ? "s" : ""}
+            </p>
+          )}
         </div>
       </div>
     );
