@@ -99,23 +99,27 @@ export async function POST(req: NextRequest) {
   );
 
   // ── 3. Combine content ────────────────────────────────────────────────────────
-  const mainText = stripHtml(mainHtml).slice(0, 50_000);
+  // 80k pour capturer toutes les sections/onglets cachés dans le même HTML
+  const mainText = stripHtml(mainHtml).slice(0, 80_000);
   const fullContent = mainText + tabTexts.join("");
 
   // ── 4. Ask Claude ─────────────────────────────────────────────────────────────
-  const SYSTEM = `Tu es un extracteur d'annonces expert. Tu analyses le texte brut d'une ou plusieurs pages web (annonce principale + onglets supplémentaires) et tu extrais toutes les données structurées disponibles.
+  const SYSTEM = `Tu es un extracteur d'annonces immobilières et automobiles expert. Tu analyses le texte brut d'une page web (qui peut contenir plusieurs onglets/sections dans le même HTML : Général, Détails, Financier, DPE/Énergie, Quartier, Carte…) et tu extrais TOUTES les données structurées disponibles.
 
 RÈGLES STRICTES :
 - Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte autour.
 - "price" est toujours un nombre (jamais une chaîne).
-- Si c'est un véhicule, remplis "vehicle" (avec "options": tableau des équipements listés) et laisse "immo" avec des nulls.
+- Si c'est un véhicule, remplis "vehicle" et laisse "immo" avec des nulls.
 - Si c'est de l'immobilier, remplis "immo" et laisse "vehicle" avec des nulls.
+- Le contenu est une page avec plusieurs sections/onglets (parfois cachés) dans le même HTML. TOUTES les sections sont présentes dans le texte — cherche bien partout, même dans les parties qui semblent répétées ou désordonnées.
+- Pour l'immobilier : cherche spécifiquement les données DPE (classe énergie A→G, GES A→G, consommation kWh/m²/an), les données financières (honoraires, taxe foncière, charges), et les caractéristiques (balcon, garage, jardin, piscine…).
 - Traduis en français si la source est dans une autre langue.
-- Cherche dans TOUS les onglets fournis, pas uniquement la page principale.
-- Pour les véhicules, extrais TOUS les équipements/options listés dans "vehicle.options" (tableau de strings).
+- Pour les véhicules, extrais TOUS les équipements/options dans "vehicle.options".
 - "vehicle.critAir" : chiffre Crit'Air si mentionné (0 à 5).
 - "vehicle.emissionCO2" : grammes/km (nombre).
 - "vehicle.consoUrbaine/consoExtraU/consoMixte" : L/100km (nombre).
+- Pour "caracteristiques" immobilier : liste TOUS les équipements et caractéristiques mentionnés (cave, garage, terrasse, jardin, piscine, double vitrage, volets roulants, digicode, interphone, gardien, ascenseur…).
+- Si une valeur n'est pas trouvée, mets null (pas une chaîne vide).
 
 SCHÉMA DE SORTIE :
 {
@@ -164,7 +168,7 @@ ${fullContent}
   try {
     const message = await client.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 3000,
+      max_tokens: 4000,
       system: [
         {
           type: "text",
