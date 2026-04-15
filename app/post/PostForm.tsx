@@ -33,6 +33,10 @@ type ImmobilierFields = {
   etatBien: string; reference: string;
   classeEnergie: string; ges: string;
   vueMer: boolean; visAVis: boolean;
+  prixHonorairesInclus: string;
+  prixHonorairesExclus: string;
+  honorairesAcquereur: string;
+  taxeFonciere: string;
 };
 
 type PhotoGuide = { label: string; icon: string };
@@ -246,6 +250,8 @@ export default function PostForm() {
     etatBien: "", reference: "",
     classeEnergie: "", ges: "",
     vueMer: false, visAVis: false,
+    prixHonorairesInclus: "", prixHonorairesExclus: "",
+    honorairesAcquereur: "", taxeFonciere: "",
   });
 
   // Photo state
@@ -371,6 +377,10 @@ export default function PostForm() {
                 ges: immo.ges,
                 vueMer: immo.vueMer,
                 visAVis: immo.visAVis,
+                prixHonorairesInclus: immo.prixHonorairesInclus,
+                prixHonorairesExclus: immo.prixHonorairesExclus,
+                honorairesAcquereur: immo.honorairesAcquereur,
+                taxeFonciere: immo.taxeFonciere,
               })
             : "{}",
           phone: phone.trim() || null, hidePhone,
@@ -1051,6 +1061,28 @@ export default function PostForm() {
                 </div>
 
                 {/* Vue & vis-à-vis */}
+                <div className="space-y-2">
+                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Honoraires & taxes</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Prix honoraires TTC inclus (€)</label>
+                      <input value={immo.prixHonorairesInclus} onChange={(e) => setI("prixHonorairesInclus", e.target.value)} className={inputCls} placeholder="ex : 220 000" type="number" min="0" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Prix honoraires TTC exclus (€)</label>
+                      <input value={immo.prixHonorairesExclus} onChange={(e) => setI("prixHonorairesExclus", e.target.value)} className={inputCls} placeholder="ex : 210 000" type="number" min="0" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Honoraires TTC acquéreur (€)</label>
+                      <input value={immo.honorairesAcquereur} onChange={(e) => setI("honorairesAcquereur", e.target.value)} className={inputCls} placeholder="ex : 10 000" type="number" min="0" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Taxe foncière annuelle (€)</label>
+                      <input value={immo.taxeFonciere} onChange={(e) => setI("taxeFonciere", e.target.value)} className={inputCls} placeholder="ex : 1 200" type="number" min="0" />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Vue & environnement</label>
                   <div className="flex flex-col gap-2">

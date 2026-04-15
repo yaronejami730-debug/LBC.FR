@@ -402,6 +402,42 @@ export default async function ListingPage({
               )}
             </div>
 
+            {/* Honoraires & taxes — bloc dédié si au moins un champ renseigné */}
+            {listing.category === "Immobilier" && (immoMeta.prixHonorairesInclus || immoMeta.prixHonorairesExclus || immoMeta.honorairesAcquereur || immoMeta.taxeFonciere) && (
+              <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
+                <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-primary">account_balance</span>
+                  Honoraires &amp; taxes
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {immoMeta.prixHonorairesInclus && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Prix honoraires TTC inclus</span>
+                      <span className="text-on-surface font-bold text-sm">{Number(immoMeta.prixHonorairesInclus).toLocaleString("fr-FR")} €</span>
+                    </div>
+                  )}
+                  {immoMeta.prixHonorairesExclus && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Prix honoraires TTC exclus</span>
+                      <span className="text-on-surface font-bold text-sm">{Number(immoMeta.prixHonorairesExclus).toLocaleString("fr-FR")} €</span>
+                    </div>
+                  )}
+                  {immoMeta.honorairesAcquereur && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Honoraires TTC à la charge acquéreur</span>
+                      <span className="text-on-surface font-bold text-sm">{Number(immoMeta.honorairesAcquereur).toLocaleString("fr-FR")} €</span>
+                    </div>
+                  )}
+                  {immoMeta.taxeFonciere && (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-outline text-[10px] font-semibold uppercase tracking-widest">Taxe foncière annuelle</span>
+                      <span className="text-on-surface font-bold text-sm">{Number(immoMeta.taxeFonciere).toLocaleString("fr-FR")} €</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* DPE + GES + Équipements */}
             {listing.category === "Immobilier" && (immoMeta.classeEnergie || immoMeta.ges || (Array.isArray(immoMeta.caracteristiques) && (immoMeta.caracteristiques as string[]).length > 0)) && (
               <div className="space-y-4">

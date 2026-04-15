@@ -257,6 +257,10 @@ export async function createListingForClient(
     condition: string;
     images: string[];
     phone?: string;
+    hidePhone?: boolean;
+    metadata?: string;
+    brand?: string;
+    material?: string;
   }
 ) {
   await requireAdmin();
@@ -278,8 +282,11 @@ export async function createListingForClient(
       location: data.location,
       condition: data.condition || "Bon état",
       images: JSON.stringify(data.images ?? []),
-      metadata: "{}",
+      metadata: data.metadata ?? "{}",
       phone: data.phone ?? null,
+      hidePhone: data.hidePhone ?? false,
+      brand: data.brand ?? null,
+      material: data.material ?? null,
       userId,
       status: "APPROVED",
     } as any,
