@@ -9,7 +9,6 @@ import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
 import DejaVuBadge from "@/components/DejaVuBadge";
-import ApiDocSection from "@/components/ApiDocSection";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -242,9 +241,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* API Documentation */}
-      <ApiDocSection />
 
       {/* Footer */}
       <SiteFooter />
