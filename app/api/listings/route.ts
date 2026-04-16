@@ -6,6 +6,7 @@ import { sendEmail } from "@/lib/email";
 import { newListingAdminEmail } from "@/lib/emails/new-listing-admin";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingPendingEmail } from "@/lib/emails/listing-pending";
+import { CATEGORIES } from "@/lib/categories";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -70,9 +71,10 @@ export async function POST(req: NextRequest) {
     const immoSurface = metaObj.surface     ? (parseFloat(metaObj.surface)   || null) : null;
     const immoRooms   = metaObj.rooms       ? (parseInt(metaObj.rooms)       || null) : null;
 
-    // Check category approval mode
+    // The form sends the category label (e.g. "Véhicules"); settings are keyed by ID (e.g. "vehicules")
+    const categoryId = CATEGORIES.find((c) => c.label === category)?.id ?? category;
     const categorySetting = await prisma.categorySetting.findUnique({
-      where: { categoryId: category },
+      where: { categoryId },
     });
     const listingStatus = categorySetting?.approvalMode === "MANUAL" ? "PENDING" : "APPROVED";
 
