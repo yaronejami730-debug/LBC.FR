@@ -232,6 +232,23 @@ export async function resendInvitation(userId: string) {
   });
 }
 
+// ── Category Settings ─────────────────────────────────────────────────────────
+
+export async function getCategorySettings() {
+  await requireAdmin();
+  return prisma.categorySetting.findMany();
+}
+
+export async function updateCategoryApproval(categoryId: string, approvalMode: "AUTO" | "MANUAL") {
+  await requireAdmin();
+  await prisma.categorySetting.upsert({
+    where: { categoryId },
+    update: { approvalMode },
+    create: { categoryId, approvalMode },
+  });
+  revalidatePath("/admin/categories");
+}
+
 // ── Discovery Email ────────────────────────────────────────────────────────────
 
 export async function sendDiscoveryEmail(

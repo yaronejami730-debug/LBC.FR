@@ -10,6 +10,7 @@ const navItems = [
   { href: "/admin", icon: "grid_view", label: "Dashboard", exact: true },
   { href: "/admin/users", icon: "group", label: "Utilisateurs", exact: false },
   { href: "/admin/listings", icon: "list_alt", label: "Annonces", exact: false },
+  { href: "/admin/categories", icon: "tune", label: "Catégories", exact: false },
   { href: "/admin/create-client", icon: "person_add", label: "Créer un client", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
   { href: "/admin/banniere", icon: "wallpaper", label: "Bannière", exact: false },

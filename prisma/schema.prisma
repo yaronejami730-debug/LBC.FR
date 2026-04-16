@@ -167,6 +167,13 @@ model HeroBanner {
   createdAt   DateTime  @default(now())
 }
 
+model CategorySetting {
+  id           String   @id @default(cuid())
+  categoryId   String   @unique
+  approvalMode String   @default("AUTO") // "AUTO" | "MANUAL"
+  updatedAt    DateTime @updatedAt
+}
+
 model SearchLog {
   id        String   @id @default(cuid())
   query     String

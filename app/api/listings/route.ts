@@ -5,6 +5,7 @@ import { buildSearchWhere } from "@/lib/search-where";
 import { sendEmail } from "@/lib/email";
 import { newListingAdminEmail } from "@/lib/emails/new-listing-admin";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
+import { listingPendingEmail } from "@/lib/emails/listing-pending";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -69,6 +70,12 @@ export async function POST(req: NextRequest) {
     const immoSurface = metaObj.surface     ? (parseFloat(metaObj.surface)   || null) : null;
     const immoRooms   = metaObj.rooms       ? (parseInt(metaObj.rooms)       || null) : null;
 
+    // Check category approval mode
+    const categorySetting = await prisma.categorySetting.findUnique({
+      where: { categoryId: category },
+    });
+    const listingStatus = categorySetting?.approvalMode === "MANUAL" ? "PENDING" : "APPROVED";
+
     const listing = await prisma.listing.create({
       data: {
         title,
@@ -87,6 +94,7 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         hidePhone: hidePhone === true,
         userId: session.user.id,
+        status: listingStatus,
       } as any,
     });
 
@@ -96,19 +104,35 @@ export async function POST(req: NextRequest) {
     const seller2 = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, companyName: true, isPro: true } });
     if (seller2) {
       const displayName = seller2.isPro && seller2.companyName ? seller2.companyName : seller2.name;
-      sendEmail({
-        to: seller2.email,
-        toName: displayName,
-        subject: `Votre annonce "${title}" est en ligne — Deal & Co`,
-        html: listingPublishedEmail({
-          name: displayName,
-          listingTitle: title,
-          listingUrl: `${baseUrl}/annonce/${listing.id}`,
-          price: parsedPrice,
-          location,
-          imageUrl: parsedImages[0] ?? undefined,
-        }),
-      }).catch(() => {});
+      if (listingStatus === "PENDING") {
+        sendEmail({
+          to: seller2.email,
+          toName: displayName,
+          subject: `Votre annonce "${title}" est en cours de vérification — Deal & Co`,
+          html: listingPendingEmail({
+            name: displayName,
+            listingTitle: title,
+            listingUrl: `${baseUrl}/annonce/${listing.id}`,
+            price: parsedPrice,
+            location,
+            imageUrl: parsedImages[0] ?? undefined,
+          }),
+        }).catch(() => {});
+      } else {
+        sendEmail({
+          to: seller2.email,
+          toName: displayName,
+          subject: `Votre annonce "${title}" est en ligne — Deal & Co`,
+          html: listingPublishedEmail({
+            name: displayName,
+            listingTitle: title,
+            listingUrl: `${baseUrl}/annonce/${listing.id}`,
+            price: parsedPrice,
+            location,
+            imageUrl: parsedImages[0] ?? undefined,
+          }),
+        }).catch(() => {});
+      }
     }
 
     // Notification admin — fire and forget
