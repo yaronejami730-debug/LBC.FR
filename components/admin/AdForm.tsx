@@ -13,6 +13,9 @@ type Ad = {
   isActive: boolean;
   clicks: number;
   impressions: number;
+  impCarousel: number;
+  impRotator: number;
+  impGrid: number;
   scheduledAt: Date | null;
   expiresAt: Date | null;
   createdAt: Date;
@@ -403,9 +406,15 @@ function StatsModal({ ad, isActive, onClose }: { ad: Ad; isActive: boolean; onCl
 
   const stats = [
     { label: "Clics", value: ad.clicks.toLocaleString("fr-FR"), icon: "ads_click" },
-    { label: "Impressions", value: ad.impressions.toLocaleString("fr-FR"), icon: "visibility" },
+    { label: "Impressions totales", value: ad.impressions.toLocaleString("fr-FR"), icon: "visibility" },
     { label: "Taux de clic", value: `${ctr} %`, icon: "percent" },
     { label: "Jours en ligne", value: `${daysActive}`, icon: "calendar_today" },
+  ];
+
+  const placements = [
+    { label: "Bannière accueil", value: ad.impCarousel, icon: "home" },
+    { label: "Encart page annonce", value: ad.impRotator, icon: "article" },
+    { label: "Fil de résultats", value: ad.impGrid, icon: "grid_view" },
   ];
 
   return (
@@ -439,7 +448,7 @@ function StatsModal({ ad, isActive, onClose }: { ad: Ad; isActive: boolean; onCl
         {/* Divider */}
         <div className="h-px bg-[#f3f4f6] mx-6" />
 
-        {/* Stats */}
+        {/* Stats globales */}
         <div className="grid grid-cols-2 divide-x divide-y divide-[#f3f4f6] border border-[#f3f4f6] mx-6 mt-5 rounded-xl overflow-hidden">
           {stats.map(({ label, value, icon }) => (
             <div key={label} className="px-4 py-4">
@@ -453,6 +462,22 @@ function StatsModal({ ad, isActive, onClose }: { ad: Ad; isActive: boolean; onCl
               <p className="text-xs text-[#9ca3af] mt-1 font-medium">{label}</p>
             </div>
           ))}
+        </div>
+
+        {/* Impressions par emplacement */}
+        <div className="mx-6 mt-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#9ca3af] mb-2">Impressions par emplacement</p>
+          <div className="space-y-1.5">
+            {placements.map(({ label, value, icon }) => (
+              <div key={label} className="flex items-center justify-between bg-[#f9fafb] rounded-xl px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#2f6fb8] text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                  <span className="text-xs font-medium text-[#374151]">{label}</span>
+                </div>
+                <span className="text-sm font-bold text-[#111827]">{value.toLocaleString("fr-FR")}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Status */}

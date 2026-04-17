@@ -59,7 +59,7 @@ export default function AdCarousel({ ads: allAds }: { ads: AdRow[] }) {
     fetch("/api/ads/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: ad.id, type: "impression" }),
+      body: JSON.stringify({ id: ad.id, type: "impression", placement: "carousel" }),
     }).catch(() => {});
   }, [current, visibleAds]);
 

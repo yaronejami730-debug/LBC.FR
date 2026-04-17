@@ -189,6 +189,10 @@ model Advertisement {
   isActive       Boolean   @default(true)
   clicks         Int       @default(0)
   impressions    Int       @default(0)
+  // Impressions par emplacement
+  impCarousel    Int       @default(0)  // Bannière accueil
+  impRotator     Int       @default(0)  // Encart page annonce
+  impGrid        Int       @default(0)  // Fil de résultats
   scheduledAt    DateTime?
   expiresAt      DateTime?
   createdAt      DateTime  @default(now())

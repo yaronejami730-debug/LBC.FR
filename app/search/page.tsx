@@ -11,6 +11,7 @@ import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
 import HistoryTracker from "@/components/HistoryTracker";
 import DejaVuBadge from "@/components/DejaVuBadge";
+import GridAdCard from "@/components/GridAdCard";
 
 export async function generateMetadata({
   searchParams,
@@ -150,23 +151,13 @@ export default async function SearchPage({
               return (
                 <Fragment key={listing.id}>
                   {ad && (
-                    <a
-                      href={ad.destinationUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex flex-col bg-white rounded-xl overflow-hidden border border-[#c7c5d4] hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                        <img alt={ad.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={ad.imageUrl} />
-                        <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          Publicité
-                        </span>
-                      </div>
-                      <div className="p-2.5 flex flex-col gap-0.5">
-                        <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{ad.title}</p>
-                        <p className="text-outline text-xs line-clamp-2">{ad.description}</p>
-                      </div>
-                    </a>
+                    <GridAdCard
+                      id={ad.id}
+                      title={ad.title}
+                      description={ad.description}
+                      imageUrl={ad.imageUrl}
+                      destinationUrl={ad.destinationUrl}
+                    />
                   )}
                   <Link
                     href={`/annonce/${listing.id}`}
