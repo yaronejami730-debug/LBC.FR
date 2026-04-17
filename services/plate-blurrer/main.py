@@ -77,18 +77,74 @@ def _nms(boxes: list[tuple], threshold: float = 0.45) -> list[tuple]:
 # Méthode 1 — Haar cascade
 # ──────────────────────────────────────────────────────────────
 
-def _detect_cascade(gray: np.ndarray) -> list[tuple[int, int, int, int]]:
+def _validate_plate_candidate(color: np.ndarray, gray: np.ndarray, x: int, y: int, w: int, h: int) -> bool:
+    """
+    Post-validation stricte anti-faux-positifs.
+    Vraie plaque : ratio ~4.7:1, histogramme BIMODAL (texte noir + fond blanc),
+    densité de bords élevée, structure horizontale (lignes de texte).
+    """
+    if h == 0:
+        return False
+    ratio = w / h
+    if not (2.5 <= ratio <= 6.0):   # strict: plaque EU standard
+        return False
+
+    region_gray = gray[y : y + h, x : x + w]
+    if region_gray.size == 0:
+        return False
+
+    # 1) Fond clair obligatoire
+    brightness = float(np.mean(region_gray))
+    if brightness < 100:
+        return False
+
+    # 2) Fort contraste (std élevé)
+    std = float(np.std(region_gray))
+    if std < 35:
+        return False
+
+    # 3) HISTOGRAMME BIMODAL — plaque = beaucoup de pixels sombres (texte) ET clairs (fond)
+    # Un reflet de carrosserie/pare-brise n'a qu'un seul pic (lumineux).
+    hist = cv2.calcHist([region_gray], [0], None, [32], [0, 256]).ravel()
+    total = hist.sum()
+    if total == 0:
+        return False
+    dark_ratio = hist[:8].sum() / total     # pixels 0-63 (texte)
+    light_ratio = hist[-10:].sum() / total   # pixels 176-255 (fond)
+    if dark_ratio < 0.08:     # il faut au moins 8% de pixels sombres
+        return False
+    if light_ratio < 0.20:     # et au moins 20% de pixels clairs
+        return False
+
+    # 4) Densité de bords (texte → beaucoup d'edges)
+    edges = cv2.Canny(region_gray, 80, 200)
+    edge_density = float(np.mean(edges > 0))
+    if edge_density < 0.10:
+        return False
+
+    # 5) Structure HORIZONTALE — le texte crée des lignes horizontales.
+    # On somme les edges par ligne ; une plaque a plusieurs lignes concentrées au milieu.
+    row_edges = np.sum(edges > 0, axis=1)
+    if row_edges.max() < w * 0.25:
+        return False
+
+    return True
+
+
+def _detect_cascade(gray: np.ndarray, color: np.ndarray) -> list[tuple[int, int, int, int]]:
     boxes: list[tuple[int, int, int, int]] = []
     for clf in CASCADES:
         dets = clf.detectMultiScale(
             gray,
             scaleFactor=1.08,
-            minNeighbors=3,
-            minSize=(55, 14),
+            minNeighbors=5,  # plus strict (était 3) → moins de faux positifs
+            minSize=(60, 15),
             maxSize=(600, 180),
         )
-        if len(dets) > 0:
-            boxes.extend((int(x), int(y), int(w), int(h)) for x, y, w, h in dets)
+        for x, y, w, h in dets:
+            x, y, w, h = int(x), int(y), int(w), int(h)
+            if _validate_plate_candidate(color, gray, x, y, w, h):
+                boxes.append((x, y, w, h))
     return boxes
 
 
@@ -304,7 +360,7 @@ def process_image(data: bytes) -> tuple[bytes, list[dict]]:
     result_boxes: list[dict] = []
 
     # ── Méthode 1 : Haar cascade ────────────────────────────────
-    cascade_boxes = _detect_cascade(gray)
+    cascade_boxes = _detect_cascade(gray, img)
     for x, y, w, h in _nms(cascade_boxes):
         _blur_rect(img, x, y, w, h)
         result_boxes.append({"x": x, "y": y, "w": w, "h": h, "method": "cascade"})
@@ -367,7 +423,7 @@ async def detect(file: UploadFile = File(...)):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         ih, iw = img.shape[:2]
 
-        cascade_boxes = _detect_cascade(gray)
+        cascade_boxes = _detect_cascade(gray, img)
         quads = _detect_quads(gray, img)
         quad_bboxes = [_quad_to_bbox(q) for q in quads]
 
