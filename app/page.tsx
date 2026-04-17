@@ -116,7 +116,7 @@ export default async function Home() {
             { id: "maison", label: "Maison", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3" },
             { id: "services", label: "Services", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR" },
           ].map(({ id, label, src }) => (
-            <Link key={id} href={`/search?category=${encodeURIComponent(label)}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
+            <Link key={id} href={`/annonces/${id}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
               <img className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={label} src={src} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="relative z-10">
@@ -221,14 +221,18 @@ export default async function Home() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             {[
-              { label: "Voitures d'occasion", href: "/search?category=Véhicules" },
-              { label: "Immobilier", href: "/search?category=Immobilier" },
-              { label: "Mode & vêtements", href: "/search?category=Mode" },
-              { label: "Électronique", href: "/search?category=Multimédia" },
-              { label: "Mobilier & maison", href: "/search?category=Maison" },
-              { label: "Animaux", href: "/search?category=Animaux" },
-              { label: "Loisirs & sport", href: "/search?category=Loisirs" },
-              { label: "Services", href: "/search?category=Services" },
+              { label: "Voitures d'occasion", href: "/annonces/vehicules" },
+              { label: "Immobilier", href: "/annonces/immobilier" },
+              { label: "Mode & vêtements", href: "/annonces/mode" },
+              { label: "Électronique", href: "/annonces/multimedia" },
+              { label: "Mobilier & maison", href: "/annonces/maison" },
+              { label: "Animaux", href: "/annonces/animaux" },
+              { label: "Loisirs & sport", href: "/annonces/loisirs" },
+              { label: "Services", href: "/annonces/services" },
+              { label: "Matériel professionnel", href: "/annonces/materiel-pro" },
+              { label: "Bébé & Enfant", href: "/annonces/bebe-enfant" },
+              { label: "Vacances", href: "/annonces/vacances" },
+              { label: "Emploi", href: "/annonces/emploi" },
             ].map(({ label, href }) => (
               <Link
                 key={href}

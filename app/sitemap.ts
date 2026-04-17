@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
+import { cityToSlug } from "./annonces/[categorie]/[ville]/page";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -33,9 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Category pages
+  // Category pages — clean URLs for better indexing
   const categories: MetadataRoute.Sitemap = CATEGORIES.map((cat) => ({
-    url: `${BASE}/search?category=${encodeURIComponent(cat.label)}`,
+    url: `${BASE}/annonces/${cat.id}`,
     lastModified: new Date(),
     changeFrequency: "daily" as const,
     priority: 0.8,
@@ -60,5 +61,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // fail silently — sitemap still works without listings
   }
 
-  return [...statics, ...categories, ...listings];
+  // Category + ville pages — top combos by listing count
+  let cityPages: MetadataRoute.Sitemap = [];
+  try {
+    const cityRows = await prisma.listing.findMany({
+      where: { status: "APPROVED", deletedAt: null } as any,
+      select: { category: true, location: true },
+      distinct: ["category", "location"],
+    });
+    for (const row of cityRows) {
+      const cat = CATEGORIES.find((c) => c.label === row.category);
+      if (!cat || !row.location) continue;
+      cityPages.push({
+        url: `${BASE}/annonces/${cat.id}/${cityToSlug(row.location)}`,
+        lastModified: new Date(),
+        changeFrequency: "daily" as const,
+        priority: 0.75,
+      });
+    }
+  } catch {
+    // fail silently
+  }
+
+  return [...statics, ...categories, ...cityPages, ...listings];
 }
