@@ -144,10 +144,13 @@ export async function POST(req: NextRequest) {
       select: { name: true },
     });
     if (adminEmail && seller) {
+      const requiresApproval = listingStatus === "PENDING";
       sendEmail({
         to: adminEmail,
         toName: "Administration Deal & Co",
-        subject: `Nouvelle annonce : ${title}`,
+        subject: requiresApproval
+          ? `⚠️ Annonce à approuver : ${title}`
+          : `Nouvelle annonce publiée : ${title}`,
         html: newListingAdminEmail({
           sellerName: seller.name,
           listingTitle: title,
@@ -155,7 +158,10 @@ export async function POST(req: NextRequest) {
           category,
           location,
           listingUrl: `${baseUrl}/annonce/${listing.id}`,
-          adminUrl: `${baseUrl}/admin/listings`,
+          adminUrl: requiresApproval
+            ? `${baseUrl}/admin/listings?status=PENDING`
+            : `${baseUrl}/admin/listings`,
+          requiresApproval,
         }),
       }).catch(() => {});
     }
