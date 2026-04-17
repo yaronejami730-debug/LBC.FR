@@ -210,21 +210,14 @@ def _detect_quads(gray: np.ndarray, color: np.ndarray) -> list[np.ndarray]:
         ratio = w / h
         area_frac = (w * h) / (w_img * h_img)
 
-        if not (2.5 <= ratio <= 7.0):
-            continue
         if not (0.003 <= area_frac <= 0.15):
             continue
 
-        # Vérification luminosité (plaques blanches/claires)
-        region = color[y : y + h, x : x + w]
-        if region.size == 0:
-            continue
-        brightness = float(np.mean(cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)))
-        if brightness < 110:
+        # Validation stricte anti-faux-positifs (même filtre que cascade)
+        if not _validate_plate_candidate(color, gray, x, y, w, h):
             continue
 
         bbox = (x, y, w, h)
-        # NMS rapide sur les bboxes déjà retenues
         if any(_iou(bbox, s) > 0.45 for s in seen_bboxes):
             continue
 
@@ -256,15 +249,10 @@ def _detect_contours(gray: np.ndarray, color: np.ndarray) -> list[tuple[int, int
             continue
         if w > w_img * 0.95 or h > h_img * 0.5:
             continue
-        ratio = w / h
         area_frac = (w * h) / (w_img * h_img)
-        if not (2.5 <= ratio <= 7.0):
-            continue
         if not (0.003 <= area_frac <= 0.15):
             continue
-        region = color[y : y + h, x : x + w]
-        brightness = float(np.mean(cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)))
-        if brightness < 120:
+        if not _validate_plate_candidate(color, gray, x, y, w, h):
             continue
         candidates.append((x, y, w, h))
 
