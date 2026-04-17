@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { accountInvitationEmail } from "@/lib/emails/account-invitation";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
+import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -32,10 +33,25 @@ async function requireAdmin() {
 
 export async function approveListing(id: string) {
   await requireAdmin();
-  await prisma.listing.update({
+  const listing = await prisma.listing.update({
     where: { id },
     data: { status: "APPROVED", rejectionReason: null },
+    include: { user: { select: { name: true, email: true, companyName: true, isPro: true } } },
   });
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+  const displayName = listing.user.isPro && listing.user.companyName ? listing.user.companyName : listing.user.name;
+  sendEmail({
+    to: listing.user.email,
+    toName: displayName,
+    subject: `Votre annonce "${listing.title}" est en ligne — Deal & Co`,
+    html: listingApprovedEmail({
+      name: displayName,
+      listingTitle: listing.title,
+      listingUrl: `${baseUrl}/annonce/${listing.id}`,
+    }),
+  }).catch(() => {});
+
   revalidatePath("/admin/listings");
   revalidatePath("/");
 }
