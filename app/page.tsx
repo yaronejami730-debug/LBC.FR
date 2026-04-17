@@ -251,11 +251,6 @@ export default async function Home() {
 
       <BottomNav active="accueil" />
 
-      {/* FAB for Desktop Post */}
-      <Link href="/post" className="hidden md:flex fixed bottom-8 right-8 bg-primary text-white px-6 py-4 rounded-full font-bold shadow-xl items-center gap-2 active:scale-95 transition-transform z-50">
-        <span className="material-symbols-outlined">add</span>
-        Déposer une annonce
-      </Link>
     </div>
   );
 }

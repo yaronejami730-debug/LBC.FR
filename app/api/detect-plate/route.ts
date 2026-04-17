@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const HF_MODEL = "keremberke/license-plate-object-detection";
-const HF_API   = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+const PLATE_SERVICE = process.env.PLATE_BLUR_SERVICE_URL ?? "http://localhost:8001";
 
 const ALLOWED_IMAGE_HOSTS = [
   /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/,
@@ -12,7 +11,7 @@ function isAllowedImageUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
-    return ALLOWED_IMAGE_HOSTS.some((pattern) => pattern.test(parsed.hostname));
+    return ALLOWED_IMAGE_HOSTS.some((p) => p.test(parsed.hostname));
   } catch {
     return false;
   }
@@ -26,27 +25,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URL d'image non autorisée" }, { status: 400 });
   }
 
-  // Fetch the image server-side (avoids CORS)
   const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(5_000) });
   if (!imgRes.ok) return NextResponse.json({ error: "Cannot fetch image" }, { status: 400 });
-  const imageBlob = await imgRes.blob();
 
-  const hfRes = await fetch(HF_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.HF_TOKEN}`,
-      "Content-Type": imgRes.headers.get("content-type") || "image/jpeg",
-    },
-    body: imageBlob,
-  });
+  const form = new FormData();
+  form.append("file", await imgRes.blob(), "image.jpg");
 
-  if (!hfRes.ok) {
-    const text = await hfRes.text();
-    return NextResponse.json({ error: text }, { status: hfRes.status });
+  try {
+    const svcRes = await fetch(`${PLATE_SERVICE}/detect`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!svcRes.ok) {
+      return NextResponse.json({ detections: [] });
+    }
+
+    const data = await svcRes.json();
+    return NextResponse.json(data);
+  } catch {
+    // Graceful degradation — service down, return empty (user can place box manually)
+    return NextResponse.json({ detections: [] });
   }
-
-  // HF returns: [{ score, label, box: { xmin, ymin, xmax, ymax } }, ...]
-  // box values are absolute pixels on the original image
-  const detections = await hfRes.json();
-  return NextResponse.json({ detections });
 }

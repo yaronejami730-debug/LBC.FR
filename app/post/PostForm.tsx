@@ -286,10 +286,12 @@ export default function PostForm() {
   });
 
   // Photo state
-  const [images,     setImages]     = useState<string[]>([]);
-  const [photoMode,  setPhotoMode]  = useState<PhotoMode>("choose");
-  const [photoStep,  setPhotoStep]  = useState(0);
-  const [uploading,  setUploading]  = useState(false);
+  const [images,      setImages]      = useState<string[]>([]);
+  const [photoMode,   setPhotoMode]   = useState<PhotoMode>("choose");
+  const [photoStep,   setPhotoStep]   = useState(0);
+  const [uploading,   setUploading]   = useState(false);
+  // url → nombre de plaques floutées (0 = aucune, >0 = floutée)
+  const [plateStatus, setPlateStatus] = useState<Record<string, number>>({});
 
 
   // Publish state
@@ -354,6 +356,9 @@ export default function PostForm() {
         const data = await res.json();
         if (!data.url) throw new Error("Réponse invalide");
         uploads.push(data.url);
+        if (typeof data.platesFound === "number") {
+          setPlateStatus((prev) => ({ ...prev, [data.url]: data.platesFound }));
+        }
       }
       if (slotIndex !== undefined) {
         // Remplir depuis slotIndex pour les sélections multiples
@@ -376,7 +381,9 @@ export default function PostForm() {
   }
 
   function removeImage(index: number) {
+    const url = images[index];
     setImages((prev) => prev.filter((_, i) => i !== index));
+    if (url) setPlateStatus((prev) => { const next = { ...prev }; delete next[url]; return next; });
   }
 
   // ── Publish ──────────────────────────────────────────────────────────────────
@@ -577,6 +584,12 @@ export default function PostForm() {
                             <span className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
                               {isMain ? "Principale" : `Photo ${i + 1}`}
                             </span>
+                            {plateStatus[img] > 0 && (
+                              <span className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md">
+                                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>blur_on</span>
+                                Plaque floutée
+                              </span>
+                            )}
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
                               <button type="button" onClick={(e) => { e.stopPropagation(); removeImage(i); }}
                                 className="w-10 h-10 rounded-full bg-red-500/80 text-white flex items-center justify-center">
@@ -673,6 +686,12 @@ export default function PostForm() {
                             <img src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-40" />
                             <img src={img} alt={guide.label} className="relative w-full h-full object-contain" />
                             <span className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">{guide.label}</span>
+                            {plateStatus[img] > 0 && (
+                              <span className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md">
+                                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>blur_on</span>
+                                Plaque floutée
+                              </span>
+                            )}
                             <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 hover:opacity-100">
                               <button type="button" onClick={triggerUpload}
                                 className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors">

@@ -4,6 +4,31 @@ import { put } from "@vercel/blob";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+const PLATE_SERVICE = process.env.PLATE_BLUR_SERVICE_URL ?? "http://localhost:8001";
+
+interface BlurResult {
+  blob: Blob;
+  platesFound: number;
+}
+
+/** Call plate-blur microservice. Returns blurred blob + plate count, or null if unavailable. */
+async function tryBlurPlates(file: File): Promise<BlurResult | null> {
+  try {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    const res = await fetch(`${PLATE_SERVICE}/blur`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return null;
+    const platesFound = parseInt(res.headers.get("X-Plates-Found") ?? "0", 10);
+    return { blob: await res.blob(), platesFound };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -29,20 +54,24 @@ export async function POST(req: NextRequest) {
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    // En production (Vercel) → Vercel Blob
+    // Try to blur license plates — falls back silently if service is offline
+    const blurResult = await tryBlurPlates(file);
+    const payload: Blob | File = blurResult?.blob ?? file;
+    const platesFound = blurResult?.platesFound ?? 0;
+
     if (process.env.BLOB_READ_WRITE_TOKEN) {
-      const blob = await put(`uploads/${filename}`, file, { access: "public" });
-      console.log(`[UPLOAD] Blob: ${blob.url}`);
-      return NextResponse.json({ url: blob.url });
+      const blob = await put(`uploads/${filename}`, payload, { access: "public" });
+      console.log(`[UPLOAD] Blob: ${blob.url} | plaques floutées: ${platesFound}`);
+      return NextResponse.json({ url: blob.url, platesFound });
     }
 
-    // En développement local → filesystem
+    // Local dev — filesystem
     const uploadDir = path.join(process.cwd(), "public", "uploads");
-    const bytes = await file.arrayBuffer();
+    const bytes = await payload.arrayBuffer();
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, filename), Buffer.from(bytes));
-    console.log(`[UPLOAD] Local: /uploads/${filename}`);
-    return NextResponse.json({ url: `/uploads/${filename}` });
+    console.log(`[UPLOAD] Local: /uploads/${filename} | plaques floutées: ${platesFound}`);
+    return NextResponse.json({ url: `/uploads/${filename}`, platesFound });
   } catch (err) {
     console.error("[UPLOAD ERROR]", err);
     const message = err instanceof Error ? err.message : "Erreur lors de l'enregistrement";

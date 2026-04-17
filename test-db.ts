@@ -7,7 +7,7 @@ async function main() {
     const count = await prisma.user.count();
     console.log("SUCCESS: User count is", count);
   } catch (err) {
-    console.error("FAILURE:", err);
+    console.error("FAILURE:", err)
   } finally {
     await prisma.$disconnect();
   }

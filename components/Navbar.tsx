@@ -57,6 +57,15 @@ export default async function Navbar({
           {/* Search Bar avec autocomplétion */}
           <NavSearch />
 
+          {/* Déposer une annonce */}
+          <Link
+            href="/post"
+            className="hidden lg:flex items-center gap-2 bg-[#2f6fb8] hover:bg-[#2560a0] text-white px-4 py-2 rounded-full font-bold text-sm transition-colors flex-shrink-0 whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            Déposer une annonce
+          </Link>
+
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
             <UserDropdown user={user} isPro={isPro} />
