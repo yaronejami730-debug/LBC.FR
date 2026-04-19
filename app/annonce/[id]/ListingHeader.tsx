@@ -49,40 +49,9 @@ export default function ListingHeader({
     return { url, text };
   };
 
-  // Fetch listing images as File objects for Web Share API
-  const fetchImageFiles = async (): Promise<File[]> => {
-    const files: File[] = [];
-    for (const src of images.slice(0, 4)) {
-      try {
-        const res = await fetch(src);
-        const blob = await res.blob();
-        const ext = blob.type.includes("png") ? "png" : "jpg";
-        files.push(new File([blob], `annonce.${ext}`, { type: blob.type }));
-      } catch {
-        // skip inaccessible images
-      }
-    }
-    return files;
-  };
-
-  const handleWhatsApp = async () => {
+  const handleWhatsApp = () => {
     const { url, text } = getShareData();
     setShowShareMenu(false);
-
-    // On mobile: share with actual photos via Web Share API
-    if (typeof navigator !== "undefined" && "canShare" in navigator && images.length > 0) {
-      try {
-        const files = await fetchImageFiles();
-        if (files.length > 0 && navigator.canShare({ files })) {
-          await navigator.share({ files, title, text: text + "\n" + url });
-          return;
-        }
-      } catch {
-        // user cancelled or not supported — fall through
-      }
-    }
-
-    // Desktop fallback: wa.me text link (WhatsApp will show og:image preview)
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text + "\n" + url)}`,
       "_blank",
