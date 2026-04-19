@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
     let listingStatus: "APPROVED" | "PENDING" | "REJECTED";
     let rejectionReason: string | null = null;
     let adminNote: string | null = null;
+    let rejectedForProActivity = false;
 
     if (categorySetting?.approvalMode === "MANUAL") {
       listingStatus = "PENDING";
@@ -127,6 +128,7 @@ export async function POST(req: NextRequest) {
       if (result.verdict === "reject") {
         listingStatus = "REJECTED";
         rejectionReason = result.publicReason;
+        rejectedForProActivity = result.suggestsProActivity;
       } else if (result.verdict === "review") {
         listingStatus = "PENDING";
       } else {

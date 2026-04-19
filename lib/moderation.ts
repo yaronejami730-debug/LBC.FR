@@ -36,7 +36,11 @@ export type ModerationResult = {
   flags: ModerationFlag[];
   publicReason: string | null;
   adminNote: string;
+  suggestsProActivity: boolean;
 };
+
+const PRO_ACTIVITY_MESSAGE =
+  "Votre annonce semble correspondre à une activité professionnelle. Publiez-la depuis un compte professionnel pour qu'elle soit acceptée.";
 
 const FORBIDDEN_WORDS = [
   "cocaine", "cocaïne", "heroine", "héroïne", "crack", "mdma", "ecstasy",
@@ -241,6 +245,40 @@ export function moderateListing(input: ModerationInput): ModerationResult {
     }
   }
 
+  // 12. Détection d'activité professionnelle
+  const strongProTerms = [
+    "siret", "n° tva", "tva intracommunautaire", "sarl", " sas ", " sasu ", " eurl ",
+    "auto-entrepreneur", "auto entrepreneur", "micro-entreprise", "micro entreprise",
+    "profession libérale", "artisan déclaré",
+  ];
+  const weakProTerms = [
+    "devis gratuit", "devis sur mesure", "sur devis", "prestation", "prestations",
+    "forfait", "notre équipe", "nous intervenons", "nous proposons", "nos services",
+    "nos tarifs", "notre société", "notre entreprise", "à partir de", "€/h", "€ /h",
+    "tarif horaire", "facturation", " ht ", " ttc ",
+  ];
+  const fullLower = ` ${full.toLowerCase()} `;
+  const strongHits = strongProTerms.filter((t) => fullLower.includes(t));
+  const weakHits = weakProTerms.filter((t) => fullLower.includes(t));
+  const volumeSignal = ctx && !ctx.isPro && ctx.recentListingsCount24h >= 5;
+
+  let suggestsProActivity = false;
+  if (ctx && !ctx.isPro) {
+    if (strongHits.length >= 1) {
+      suggestsProActivity = true;
+      add("pro_activity_strong", "major", `Mentions professionnelles détectées : ${strongHits.join(", ")}`);
+    } else if (weakHits.length >= 2) {
+      suggestsProActivity = true;
+      add("pro_activity_weak", "major", `Vocabulaire professionnel récurrent : ${weakHits.slice(0, 3).join(", ")}`);
+    } else if (volumeSignal && weakHits.length >= 1) {
+      suggestsProActivity = true;
+      add("pro_activity_volume", "major", `Volume élevé (${ctx.recentListingsCount24h}/24h) + vocabulaire pro`);
+    } else if (input.category === "Services" && weakHits.length >= 1 && (fullLower.includes("€/h") || fullLower.includes("€ /h") || fullLower.includes("à partir de"))) {
+      suggestsProActivity = true;
+      add("pro_activity_services", "major", "Services avec tarification professionnelle");
+    }
+  }
+
   // Verdict
   const critical = flags.filter((f) => f.severity === "critical").length;
   const major = flags.filter((f) => f.severity === "major").length;
@@ -250,6 +288,7 @@ export function moderateListing(input: ModerationInput): ModerationResult {
 
   let verdict: ModerationVerdict;
   if (critical > 0) verdict = "reject";
+  else if (suggestsProActivity) verdict = "reject";
   else if (major >= 2) verdict = "reject";
   else if (major === 1) verdict = "review";
   else if (minor >= 2) verdict = "review";
@@ -259,11 +298,16 @@ export function moderateListing(input: ModerationInput): ModerationResult {
     .filter((f) => f.severity === "critical" || f.severity === "major")
     .map((f) => f.message);
 
-  const publicReason = verdict === "reject" ? rejectReasons.slice(0, 3).join(" · ") : null;
+  let publicReason: string | null = null;
+  if (verdict === "reject") {
+    publicReason = suggestsProActivity
+      ? PRO_ACTIVITY_MESSAGE
+      : rejectReasons.slice(0, 3).join(" · ");
+  }
 
   const adminNote = flags.length > 0
     ? flags.map((f) => `[${f.severity}] ${f.code}: ${f.message}`).join("\n")
     : "Aucun signal détecté";
 
-  return { verdict, score, flags, publicReason, adminNote };
+  return { verdict, score, flags, publicReason, adminNote, suggestsProActivity };
 }
