@@ -170,12 +170,16 @@ export async function POST(req: NextRequest) {
         sendEmail({
           to: seller2.email,
           toName: displayName,
-          subject: `Votre annonce "${title}" n'a pas été publiée — Deal & Co`,
+          subject: rejectedForProActivity
+            ? `Votre annonce "${title}" doit être publiée depuis un compte pro — Deal & Co`
+            : `Votre annonce "${title}" n'a pas été publiée — Deal & Co`,
           html: listingRejectedEmail({
             name: displayName,
             listingTitle: title,
             reason: rejectionReason ?? undefined,
             postUrl: `${baseUrl}/post`,
+            isProActivity: rejectedForProActivity,
+            proUpgradeUrl: `${baseUrl}/profile?tab=pro`,
           }),
         }).catch(() => {});
       } else if (listingStatus === "PENDING") {

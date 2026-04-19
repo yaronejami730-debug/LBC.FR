@@ -716,7 +716,12 @@ export default async function ListingPage({
                   />
                 )}
                 {isOwner && (
-                  <OwnerActions listingId={listing.id} />
+                  <OwnerActions
+                    listingId={listing.id}
+                    status={(listing as any).status}
+                    rejectionReason={(listing as any).rejectionReason ?? null}
+                    createdAt={listing.createdAt.toISOString()}
+                  />
                 )}
               </div>
 
