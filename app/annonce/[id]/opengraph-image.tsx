@@ -34,7 +34,9 @@ export default async function Image({
   }
 
   const images = JSON.parse(listing.images) as string[];
-  const mainImg = images[0] ?? "";
+  const rawImg = images[0] ?? "";
+  const BASE = "https://www.dealandcompany.fr";
+  const mainImg = rawImg.startsWith("http") ? rawImg : `${BASE}${rawImg}`;
   const priceStr = listing.price.toLocaleString("fr-FR") + " €";
 
   return new ImageResponse(
