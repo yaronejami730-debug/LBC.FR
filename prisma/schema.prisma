@@ -197,3 +197,25 @@ model Advertisement {
   expiresAt      DateTime?
   createdAt      DateTime  @default(now())
 }
+
+model SeoPageContent {
+  id              String   @id @default(cuid())
+  pageKey         String   @unique
+  categoryId      String
+  subcategorySlug String?
+  citySlug        String?
+  metaTitle       String
+  metaDescription String
+  h1              String
+  intro           String
+  localTips       String?
+  faq             String   @default("[]")
+  keywords        String   @default("[]")
+  model           String   @default("claude")
+  generatedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([citySlug])
+  @@index([categoryId, citySlug])
+}

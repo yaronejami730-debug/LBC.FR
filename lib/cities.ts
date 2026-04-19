@@ -1,0 +1,191 @@
+export type FrenchCity = {
+  name: string;
+  slug: string;
+  department: string;
+  departmentCode: string;
+  region: string;
+  population: number;
+  lat: number;
+  lng: number;
+};
+
+export function citySlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export function slugToCity(slug: string): FrenchCity | undefined {
+  return FRENCH_CITIES.find((c) => c.slug === slug);
+}
+
+export function slugToCityLabel(slug: string): string {
+  const city = slugToCity(slug);
+  if (city) return city.name;
+  return slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+export const FRENCH_CITIES: FrenchCity[] = [
+  { name: "Paris", slug: "paris", department: "Paris", departmentCode: "75", region: "Île-de-France", population: 2145906, lat: 48.8566, lng: 2.3522 },
+  { name: "Marseille", slug: "marseille", department: "Bouches-du-Rhône", departmentCode: "13", region: "Provence-Alpes-Côte d'Azur", population: 870731, lat: 43.2965, lng: 5.3698 },
+  { name: "Lyon", slug: "lyon", department: "Rhône", departmentCode: "69", region: "Auvergne-Rhône-Alpes", population: 522969, lat: 45.7640, lng: 4.8357 },
+  { name: "Toulouse", slug: "toulouse", department: "Haute-Garonne", departmentCode: "31", region: "Occitanie", population: 493465, lat: 43.6047, lng: 1.4442 },
+  { name: "Nice", slug: "nice", department: "Alpes-Maritimes", departmentCode: "06", region: "Provence-Alpes-Côte d'Azur", population: 342669, lat: 43.7102, lng: 7.2620 },
+  { name: "Nantes", slug: "nantes", department: "Loire-Atlantique", departmentCode: "44", region: "Pays de la Loire", population: 320732, lat: 47.2184, lng: -1.5536 },
+  { name: "Montpellier", slug: "montpellier", department: "Hérault", departmentCode: "34", region: "Occitanie", population: 299096, lat: 43.6108, lng: 3.8767 },
+  { name: "Strasbourg", slug: "strasbourg", department: "Bas-Rhin", departmentCode: "67", region: "Grand Est", population: 287228, lat: 48.5734, lng: 7.7521 },
+  { name: "Bordeaux", slug: "bordeaux", department: "Gironde", departmentCode: "33", region: "Nouvelle-Aquitaine", population: 260958, lat: 44.8378, lng: -0.5792 },
+  { name: "Lille", slug: "lille", department: "Nord", departmentCode: "59", region: "Hauts-de-France", population: 236234, lat: 50.6292, lng: 3.0573 },
+  { name: "Rennes", slug: "rennes", department: "Ille-et-Vilaine", departmentCode: "35", region: "Bretagne", population: 220488, lat: 48.1173, lng: -1.6778 },
+  { name: "Reims", slug: "reims", department: "Marne", departmentCode: "51", region: "Grand Est", population: 182211, lat: 49.2583, lng: 4.0317 },
+  { name: "Le Havre", slug: "le-havre", department: "Seine-Maritime", departmentCode: "76", region: "Normandie", population: 165830, lat: 49.4944, lng: 0.1079 },
+  { name: "Saint-Étienne", slug: "saint-etienne", department: "Loire", departmentCode: "42", region: "Auvergne-Rhône-Alpes", population: 172565, lat: 45.4397, lng: 4.3872 },
+  { name: "Toulon", slug: "toulon", department: "Var", departmentCode: "83", region: "Provence-Alpes-Côte d'Azur", population: 176198, lat: 43.1242, lng: 5.9280 },
+  { name: "Grenoble", slug: "grenoble", department: "Isère", departmentCode: "38", region: "Auvergne-Rhône-Alpes", population: 158454, lat: 45.1885, lng: 5.7245 },
+  { name: "Dijon", slug: "dijon", department: "Côte-d'Or", departmentCode: "21", region: "Bourgogne-Franche-Comté", population: 159346, lat: 47.3220, lng: 5.0415 },
+  { name: "Angers", slug: "angers", department: "Maine-et-Loire", departmentCode: "49", region: "Pays de la Loire", population: 155850, lat: 47.4784, lng: -0.5632 },
+  { name: "Nîmes", slug: "nimes", department: "Gard", departmentCode: "30", region: "Occitanie", population: 148561, lat: 43.8367, lng: 4.3601 },
+  { name: "Villeurbanne", slug: "villeurbanne", department: "Rhône", departmentCode: "69", region: "Auvergne-Rhône-Alpes", population: 152321, lat: 45.7719, lng: 4.8902 },
+  { name: "Saint-Denis", slug: "saint-denis", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 113116, lat: 48.9362, lng: 2.3574 },
+  { name: "Aix-en-Provence", slug: "aix-en-provence", department: "Bouches-du-Rhône", departmentCode: "13", region: "Provence-Alpes-Côte d'Azur", population: 143097, lat: 43.5297, lng: 5.4474 },
+  { name: "Clermont-Ferrand", slug: "clermont-ferrand", department: "Puy-de-Dôme", departmentCode: "63", region: "Auvergne-Rhône-Alpes", population: 147865, lat: 45.7772, lng: 3.0870 },
+  { name: "Le Mans", slug: "le-mans", department: "Sarthe", departmentCode: "72", region: "Pays de la Loire", population: 146172, lat: 48.0061, lng: 0.1996 },
+  { name: "Brest", slug: "brest", department: "Finistère", departmentCode: "29", region: "Bretagne", population: 139163, lat: 48.3904, lng: -4.4861 },
+  { name: "Tours", slug: "tours", department: "Indre-et-Loire", departmentCode: "37", region: "Centre-Val de Loire", population: 136463, lat: 47.3941, lng: 0.6848 },
+  { name: "Amiens", slug: "amiens", department: "Somme", departmentCode: "80", region: "Hauts-de-France", population: 134057, lat: 49.8941, lng: 2.2958 },
+  { name: "Limoges", slug: "limoges", department: "Haute-Vienne", departmentCode: "87", region: "Nouvelle-Aquitaine", population: 130876, lat: 45.8336, lng: 1.2611 },
+  { name: "Annecy", slug: "annecy", department: "Haute-Savoie", departmentCode: "74", region: "Auvergne-Rhône-Alpes", population: 130721, lat: 45.8992, lng: 6.1294 },
+  { name: "Perpignan", slug: "perpignan", department: "Pyrénées-Orientales", departmentCode: "66", region: "Occitanie", population: 119188, lat: 42.6887, lng: 2.8948 },
+  { name: "Boulogne-Billancourt", slug: "boulogne-billancourt", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 121334, lat: 48.8352, lng: 2.2401 },
+  { name: "Metz", slug: "metz", department: "Moselle", departmentCode: "57", region: "Grand Est", population: 117619, lat: 49.1193, lng: 6.1757 },
+  { name: "Besançon", slug: "besancon", department: "Doubs", departmentCode: "25", region: "Bourgogne-Franche-Comté", population: 116775, lat: 47.2378, lng: 6.0241 },
+  { name: "Orléans", slug: "orleans", department: "Loiret", departmentCode: "45", region: "Centre-Val de Loire", population: 116269, lat: 47.9025, lng: 1.9090 },
+  { name: "Rouen", slug: "rouen", department: "Seine-Maritime", departmentCode: "76", region: "Normandie", population: 114083, lat: 49.4431, lng: 1.0993 },
+  { name: "Mulhouse", slug: "mulhouse", department: "Haut-Rhin", departmentCode: "68", region: "Grand Est", population: 108038, lat: 47.7508, lng: 7.3359 },
+  { name: "Caen", slug: "caen", department: "Calvados", departmentCode: "14", region: "Normandie", population: 105512, lat: 49.1829, lng: -0.3707 },
+  { name: "Argenteuil", slug: "argenteuil", department: "Val-d'Oise", departmentCode: "95", region: "Île-de-France", population: 110210, lat: 48.9476, lng: 2.2471 },
+  { name: "Saint-Paul", slug: "saint-paul", department: "La Réunion", departmentCode: "974", region: "La Réunion", population: 104634, lat: -21.0096, lng: 55.2708 },
+  { name: "Montreuil", slug: "montreuil", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 111734, lat: 48.8615, lng: 2.4437 },
+  { name: "Nancy", slug: "nancy", department: "Meurthe-et-Moselle", departmentCode: "54", region: "Grand Est", population: 104885, lat: 48.6921, lng: 6.1844 },
+  { name: "Roubaix", slug: "roubaix", department: "Nord", departmentCode: "59", region: "Hauts-de-France", population: 98828, lat: 50.6901, lng: 3.1817 },
+  { name: "Tourcoing", slug: "tourcoing", department: "Nord", departmentCode: "59", region: "Hauts-de-France", population: 97368, lat: 50.7239, lng: 3.1612 },
+  { name: "Nanterre", slug: "nanterre", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 96807, lat: 48.8924, lng: 2.2070 },
+  { name: "Avignon", slug: "avignon", department: "Vaucluse", departmentCode: "84", region: "Provence-Alpes-Côte d'Azur", population: 92378, lat: 43.9493, lng: 4.8055 },
+  { name: "Créteil", slug: "creteil", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 91042, lat: 48.7909, lng: 2.4555 },
+  { name: "Poitiers", slug: "poitiers", department: "Vienne", departmentCode: "86", region: "Nouvelle-Aquitaine", population: 89055, lat: 46.5802, lng: 0.3404 },
+  { name: "Dunkerque", slug: "dunkerque", department: "Nord", departmentCode: "59", region: "Hauts-de-France", population: 86279, lat: 51.0383, lng: 2.3775 },
+  { name: "Asnières-sur-Seine", slug: "asnieres-sur-seine", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 86673, lat: 48.9159, lng: 2.2852 },
+  { name: "Courbevoie", slug: "courbevoie", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 82150, lat: 48.8960, lng: 2.2566 },
+  { name: "Versailles", slug: "versailles", department: "Yvelines", departmentCode: "78", region: "Île-de-France", population: 84771, lat: 48.8014, lng: 2.1301 },
+  { name: "Vitry-sur-Seine", slug: "vitry-sur-seine", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 95854, lat: 48.7886, lng: 2.3831 },
+  { name: "Colombes", slug: "colombes", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 85061, lat: 48.9227, lng: 2.2544 },
+  { name: "Fort-de-France", slug: "fort-de-france", department: "Martinique", departmentCode: "972", region: "Martinique", population: 75516, lat: 14.6161, lng: -61.0588 },
+  { name: "Aulnay-sous-Bois", slug: "aulnay-sous-bois", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 87155, lat: 48.9387, lng: 2.4940 },
+  { name: "La Rochelle", slug: "la-rochelle", department: "Charente-Maritime", departmentCode: "17", region: "Nouvelle-Aquitaine", population: 77205, lat: 46.1603, lng: -1.1511 },
+  { name: "Rueil-Malmaison", slug: "rueil-malmaison", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 78906, lat: 48.8778, lng: 2.1882 },
+  { name: "Champigny-sur-Marne", slug: "champigny-sur-marne", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 78976, lat: 48.8176, lng: 2.5100 },
+  { name: "Antibes", slug: "antibes", department: "Alpes-Maritimes", departmentCode: "06", region: "Provence-Alpes-Côte d'Azur", population: 73798, lat: 43.5804, lng: 7.1251 },
+  { name: "Saint-Maur-des-Fossés", slug: "saint-maur-des-fosses", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 74133, lat: 48.8021, lng: 2.4834 },
+  { name: "Calais", slug: "calais", department: "Pas-de-Calais", departmentCode: "62", region: "Hauts-de-France", population: 67544, lat: 50.9513, lng: 1.8587 },
+  { name: "Cannes", slug: "cannes", department: "Alpes-Maritimes", departmentCode: "06", region: "Provence-Alpes-Côte d'Azur", population: 74152, lat: 43.5528, lng: 7.0174 },
+  { name: "Béziers", slug: "beziers", department: "Hérault", departmentCode: "34", region: "Occitanie", population: 77177, lat: 43.3442, lng: 3.2158 },
+  { name: "Colmar", slug: "colmar", department: "Haut-Rhin", departmentCode: "68", region: "Grand Est", population: 69899, lat: 48.0794, lng: 7.3585 },
+  { name: "Bourges", slug: "bourges", department: "Cher", departmentCode: "18", region: "Centre-Val de Loire", population: 64668, lat: 47.0810, lng: 2.3988 },
+  { name: "Drancy", slug: "drancy", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 71062, lat: 48.9256, lng: 2.4461 },
+  { name: "Mérignac", slug: "merignac", department: "Gironde", departmentCode: "33", region: "Nouvelle-Aquitaine", population: 71736, lat: 44.8407, lng: -0.6428 },
+  { name: "Saint-Nazaire", slug: "saint-nazaire", department: "Loire-Atlantique", departmentCode: "44", region: "Pays de la Loire", population: 69993, lat: 47.2733, lng: -2.2138 },
+  { name: "Issy-les-Moulineaux", slug: "issy-les-moulineaux", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 69858, lat: 48.8244, lng: 2.2731 },
+  { name: "Noisy-le-Grand", slug: "noisy-le-grand", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 67079, lat: 48.8478, lng: 2.5504 },
+  { name: "Villeneuve-d'Ascq", slug: "villeneuve-d-ascq", department: "Nord", departmentCode: "59", region: "Hauts-de-France", population: 62308, lat: 50.6193, lng: 3.1663 },
+  { name: "Levallois-Perret", slug: "levallois-perret", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 66082, lat: 48.8938, lng: 2.2870 },
+  { name: "Troyes", slug: "troyes", department: "Aube", departmentCode: "10", region: "Grand Est", population: 61555, lat: 48.2973, lng: 4.0744 },
+  { name: "Neuilly-sur-Seine", slug: "neuilly-sur-seine", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 59293, lat: 48.8846, lng: 2.2695 },
+  { name: "Sarcelles", slug: "sarcelles", department: "Val-d'Oise", departmentCode: "95", region: "Île-de-France", population: 60042, lat: 48.9878, lng: 2.3792 },
+  { name: "Pessac", slug: "pessac", department: "Gironde", departmentCode: "33", region: "Nouvelle-Aquitaine", population: 63808, lat: 44.8063, lng: -0.6311 },
+  { name: "Vénissieux", slug: "venissieux", department: "Rhône", departmentCode: "69", region: "Auvergne-Rhône-Alpes", population: 65405, lat: 45.6978, lng: 4.8869 },
+  { name: "Clichy", slug: "clichy", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 62742, lat: 48.9042, lng: 2.3037 },
+  { name: "Ivry-sur-Seine", slug: "ivry-sur-seine", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 62583, lat: 48.8125, lng: 2.3876 },
+  { name: "Lorient", slug: "lorient", department: "Morbihan", departmentCode: "56", region: "Bretagne", population: 57274, lat: 47.7482, lng: -3.3702 },
+  { name: "Cergy", slug: "cergy", department: "Val-d'Oise", departmentCode: "95", region: "Île-de-France", population: 66814, lat: 49.0356, lng: 2.0778 },
+  { name: "Niort", slug: "niort", department: "Deux-Sèvres", departmentCode: "79", region: "Nouvelle-Aquitaine", population: 58707, lat: 46.3239, lng: -0.4609 },
+  { name: "Chambéry", slug: "chambery", department: "Savoie", departmentCode: "73", region: "Auvergne-Rhône-Alpes", population: 59490, lat: 45.5662, lng: 5.9203 },
+  { name: "Montauban", slug: "montauban", department: "Tarn-et-Garonne", departmentCode: "82", region: "Occitanie", population: 61867, lat: 44.0180, lng: 1.3549 },
+  { name: "Saint-Quentin", slug: "saint-quentin", department: "Aisne", departmentCode: "02", region: "Hauts-de-France", population: 54070, lat: 49.8485, lng: 3.2876 },
+  { name: "Villejuif", slug: "villejuif", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 57185, lat: 48.7891, lng: 2.3593 },
+  { name: "Hyères", slug: "hyeres", department: "Var", departmentCode: "83", region: "Provence-Alpes-Côte d'Azur", population: 55402, lat: 43.1205, lng: 6.1287 },
+  { name: "Beauvais", slug: "beauvais", department: "Oise", departmentCode: "60", region: "Hauts-de-France", population: 55876, lat: 49.4295, lng: 2.0807 },
+  { name: "Pau", slug: "pau", department: "Pyrénées-Atlantiques", departmentCode: "64", region: "Nouvelle-Aquitaine", population: 76708, lat: 43.2951, lng: -0.3708 },
+  { name: "Cholet", slug: "cholet", department: "Maine-et-Loire", departmentCode: "49", region: "Pays de la Loire", population: 54186, lat: 47.0593, lng: -0.8777 },
+  { name: "Épinay-sur-Seine", slug: "epinay-sur-seine", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 57073, lat: 48.9538, lng: 2.3086 },
+  { name: "La Seyne-sur-Mer", slug: "la-seyne-sur-mer", department: "Var", departmentCode: "83", region: "Provence-Alpes-Côte d'Azur", population: 65691, lat: 43.1004, lng: 5.8830 },
+  { name: "Chelles", slug: "chelles", department: "Seine-et-Marne", departmentCode: "77", region: "Île-de-France", population: 54902, lat: 48.8779, lng: 2.5927 },
+  { name: "Fontenay-sous-Bois", slug: "fontenay-sous-bois", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 53925, lat: 48.8497, lng: 2.4777 },
+  { name: "Saint-Louis", slug: "saint-louis", department: "La Réunion", departmentCode: "974", region: "La Réunion", population: 51919, lat: -21.2858, lng: 55.4131 },
+  { name: "Maisons-Alfort", slug: "maisons-alfort", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 55569, lat: 48.8054, lng: 2.4376 },
+  { name: "Évry-Courcouronnes", slug: "evry-courcouronnes", department: "Essonne", departmentCode: "91", region: "Île-de-France", population: 67821, lat: 48.6294, lng: 2.4411 },
+  { name: "Cagnes-sur-Mer", slug: "cagnes-sur-mer", department: "Alpes-Maritimes", departmentCode: "06", region: "Provence-Alpes-Côte d'Azur", population: 51988, lat: 43.6656, lng: 7.1491 },
+  { name: "Narbonne", slug: "narbonne", department: "Aude", departmentCode: "11", region: "Occitanie", population: 55516, lat: 43.1838, lng: 3.0036 },
+  { name: "Vannes", slug: "vannes", department: "Morbihan", departmentCode: "56", region: "Bretagne", population: 54020, lat: 47.6582, lng: -2.7608 },
+  { name: "Saint-André", slug: "saint-andre", department: "La Réunion", departmentCode: "974", region: "La Réunion", population: 56695, lat: -20.9572, lng: 55.6508 },
+  { name: "Bondy", slug: "bondy", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 55017, lat: 48.9024, lng: 2.4829 },
+  { name: "Bayonne", slug: "bayonne", department: "Pyrénées-Atlantiques", departmentCode: "64", region: "Nouvelle-Aquitaine", population: 52005, lat: 43.4933, lng: -1.4753 },
+  { name: "Sartrouville", slug: "sartrouville", department: "Yvelines", departmentCode: "78", region: "Île-de-France", population: 52606, lat: 48.9375, lng: 2.1613 },
+  { name: "Clamart", slug: "clamart", department: "Hauts-de-Seine", departmentCode: "92", region: "Île-de-France", population: 53800, lat: 48.8014, lng: 2.2660 },
+  { name: "Arles", slug: "arles", department: "Bouches-du-Rhône", departmentCode: "13", region: "Provence-Alpes-Côte d'Azur", population: 51031, lat: 43.6768, lng: 4.6278 },
+  { name: "Laval", slug: "laval", department: "Mayenne", departmentCode: "53", region: "Pays de la Loire", population: 49799, lat: 48.0734, lng: -0.7669 },
+  { name: "Belfort", slug: "belfort", department: "Territoire de Belfort", departmentCode: "90", region: "Bourgogne-Franche-Comté", population: 48253, lat: 47.6380, lng: 6.8629 },
+  { name: "Évreux", slug: "evreux", department: "Eure", departmentCode: "27", region: "Normandie", population: 46722, lat: 49.0241, lng: 1.1508 },
+  { name: "Charleville-Mézières", slug: "charleville-mezieres", department: "Ardennes", departmentCode: "08", region: "Grand Est", population: 46457, lat: 49.7628, lng: 4.7197 },
+  { name: "Saint-Brieuc", slug: "saint-brieuc", department: "Côtes-d'Armor", departmentCode: "22", region: "Bretagne", population: 44372, lat: 48.5136, lng: -2.7653 },
+  { name: "Vincennes", slug: "vincennes", department: "Val-de-Marne", departmentCode: "94", region: "Île-de-France", population: 50511, lat: 48.8474, lng: 2.4366 },
+  { name: "Cherbourg-en-Cotentin", slug: "cherbourg-en-cotentin", department: "Manche", departmentCode: "50", region: "Normandie", population: 77129, lat: 49.6337, lng: -1.6219 },
+  { name: "Brive-la-Gaillarde", slug: "brive-la-gaillarde", department: "Corrèze", departmentCode: "19", region: "Nouvelle-Aquitaine", population: 46961, lat: 45.1591, lng: 1.5336 },
+  { name: "Quimper", slug: "quimper", department: "Finistère", departmentCode: "29", region: "Bretagne", population: 63405, lat: 47.9959, lng: -4.1018 },
+  { name: "Bobigny", slug: "bobigny", department: "Seine-Saint-Denis", departmentCode: "93", region: "Île-de-France", population: 54272, lat: 48.9026, lng: 2.4397 },
+  { name: "Saint-Malo", slug: "saint-malo", department: "Ille-et-Vilaine", departmentCode: "35", region: "Bretagne", population: 46097, lat: 48.6493, lng: -2.0255 },
+  { name: "La Roche-sur-Yon", slug: "la-roche-sur-yon", department: "Vendée", departmentCode: "85", region: "Pays de la Loire", population: 55162, lat: 46.6705, lng: -1.4260 },
+  { name: "Valence", slug: "valence", department: "Drôme", departmentCode: "26", region: "Auvergne-Rhône-Alpes", population: 64483, lat: 44.9334, lng: 4.8924 },
+  { name: "Chalon-sur-Saône", slug: "chalon-sur-saone", department: "Saône-et-Loire", departmentCode: "71", region: "Bourgogne-Franche-Comté", population: 44429, lat: 46.7808, lng: 4.8530 },
+  { name: "Ajaccio", slug: "ajaccio", department: "Corse-du-Sud", departmentCode: "2A", region: "Corse", population: 71361, lat: 41.9192, lng: 8.7386 },
+  { name: "Bastia", slug: "bastia", department: "Haute-Corse", departmentCode: "2B", region: "Corse", population: 46312, lat: 42.7028, lng: 9.4509 },
+  { name: "Thionville", slug: "thionville", department: "Moselle", departmentCode: "57", region: "Grand Est", population: 41050, lat: 49.3576, lng: 6.1681 },
+  { name: "Blois", slug: "blois", department: "Loir-et-Cher", departmentCode: "41", region: "Centre-Val de Loire", population: 45734, lat: 47.5861, lng: 1.3359 },
+  { name: "Chartres", slug: "chartres", department: "Eure-et-Loir", departmentCode: "28", region: "Centre-Val de Loire", population: 38752, lat: 48.4469, lng: 1.4890 },
+  { name: "Tarbes", slug: "tarbes", department: "Hautes-Pyrénées", departmentCode: "65", region: "Occitanie", population: 40634, lat: 43.2326, lng: 0.0700 },
+  { name: "Alès", slug: "ales", department: "Gard", departmentCode: "30", region: "Occitanie", population: 40514, lat: 44.1280, lng: 4.0821 },
+  { name: "Thonon-les-Bains", slug: "thonon-les-bains", department: "Haute-Savoie", departmentCode: "74", region: "Auvergne-Rhône-Alpes", population: 35828, lat: 46.3722, lng: 6.4792 },
+  { name: "Albi", slug: "albi", department: "Tarn", departmentCode: "81", region: "Occitanie", population: 48896, lat: 43.9289, lng: 2.1478 },
+  { name: "Biarritz", slug: "biarritz", department: "Pyrénées-Atlantiques", departmentCode: "64", region: "Nouvelle-Aquitaine", population: 25369, lat: 43.4832, lng: -1.5586 },
+  { name: "Saint-Pierre", slug: "saint-pierre", department: "La Réunion", departmentCode: "974", region: "La Réunion", population: 85961, lat: -21.3393, lng: 55.4781 },
+  { name: "Agen", slug: "agen", department: "Lot-et-Garonne", departmentCode: "47", region: "Nouvelle-Aquitaine", population: 32485, lat: 44.2048, lng: 0.6266 },
+  { name: "Roanne", slug: "roanne", department: "Loire", departmentCode: "42", region: "Auvergne-Rhône-Alpes", population: 35222, lat: 46.0360, lng: 4.0684 },
+  { name: "Compiègne", slug: "compiegne", department: "Oise", departmentCode: "60", region: "Hauts-de-France", population: 40322, lat: 49.4179, lng: 2.8260 },
+  { name: "Châteauroux", slug: "chateauroux", department: "Indre", departmentCode: "36", region: "Centre-Val de Loire", population: 43442, lat: 46.8103, lng: 1.6908 },
+  { name: "Montluçon", slug: "montlucon", department: "Allier", departmentCode: "03", region: "Auvergne-Rhône-Alpes", population: 34900, lat: 46.3408, lng: 2.6037 },
+  { name: "Épernay", slug: "epernay", department: "Marne", departmentCode: "51", region: "Grand Est", population: 22946, lat: 49.0437, lng: 3.9600 },
+  { name: "Saint-Germain-en-Laye", slug: "saint-germain-en-laye", department: "Yvelines", departmentCode: "78", region: "Île-de-France", population: 45011, lat: 48.8987, lng: 2.0937 },
+  { name: "Vichy", slug: "vichy", department: "Allier", departmentCode: "03", region: "Auvergne-Rhône-Alpes", population: 25068, lat: 46.1274, lng: 3.4239 },
+  { name: "Fontainebleau", slug: "fontainebleau", department: "Seine-et-Marne", departmentCode: "77", region: "Île-de-France", population: 14965, lat: 48.4084, lng: 2.7019 },
+  { name: "Deauville", slug: "deauville", department: "Calvados", departmentCode: "14", region: "Normandie", population: 3573, lat: 49.3589, lng: 0.0766 },
+  { name: "Saint-Tropez", slug: "saint-tropez", department: "Var", departmentCode: "83", region: "Provence-Alpes-Côte d'Azur", population: 4285, lat: 43.2727, lng: 6.6407 },
+  { name: "Menton", slug: "menton", department: "Alpes-Maritimes", departmentCode: "06", region: "Provence-Alpes-Côte d'Azur", population: 28833, lat: 43.7764, lng: 7.5053 },
+  { name: "Carcassonne", slug: "carcassonne", department: "Aude", departmentCode: "11", region: "Occitanie", population: 46031, lat: 43.2130, lng: 2.3491 },
+  { name: "Saumur", slug: "saumur", department: "Maine-et-Loire", departmentCode: "49", region: "Pays de la Loire", population: 26734, lat: 47.2602, lng: -0.0777 },
+  { name: "Angoulême", slug: "angouleme", department: "Charente", departmentCode: "16", region: "Nouvelle-Aquitaine", population: 41574, lat: 45.6484, lng: 0.1562 },
+  { name: "Valenciennes", slug: "valenciennes", department: "Nord", departmentCode: "59", region: "Hauts-de-France", population: 42989, lat: 50.3577, lng: 3.5234 },
+  { name: "Rochefort", slug: "rochefort", department: "Charente-Maritime", departmentCode: "17", region: "Nouvelle-Aquitaine", population: 23641, lat: 45.9402, lng: -0.9581 },
+  { name: "Auxerre", slug: "auxerre", department: "Yonne", departmentCode: "89", region: "Bourgogne-Franche-Comté", population: 34843, lat: 47.7982, lng: 3.5703 },
+  { name: "Vesoul", slug: "vesoul", department: "Haute-Saône", departmentCode: "70", region: "Bourgogne-Franche-Comté", population: 15013, lat: 47.6262, lng: 6.1541 },
+  { name: "Bourg-en-Bresse", slug: "bourg-en-bresse", department: "Ain", departmentCode: "01", region: "Auvergne-Rhône-Alpes", population: 41569, lat: 46.2051, lng: 5.2254 },
+  { name: "Annemasse", slug: "annemasse", department: "Haute-Savoie", departmentCode: "74", region: "Auvergne-Rhône-Alpes", population: 37281, lat: 46.1946, lng: 6.2368 },
+  { name: "Cayenne", slug: "cayenne", department: "Guyane", departmentCode: "973", region: "Guyane", population: 63552, lat: 4.9224, lng: -52.3135 },
+  { name: "Pointe-à-Pitre", slug: "pointe-a-pitre", department: "Guadeloupe", departmentCode: "971", region: "Guadeloupe", population: 15410, lat: 16.2418, lng: -61.5336 },
+];
+
+export const TOP_CITIES = FRENCH_CITIES.slice(0, 30);
