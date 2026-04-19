@@ -142,6 +142,10 @@ export async function getOrCreateSeoContent(target: SeoPageTarget): Promise<SeoC
     };
   }
 
+  if (process.env.SEO_AI_ENABLED !== "true") {
+    return null;
+  }
+
   try {
     const content = await generateSeoContent(target);
     await prisma.seoPageContent.create({
