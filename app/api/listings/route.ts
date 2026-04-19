@@ -6,7 +6,9 @@ import { sendEmail } from "@/lib/email";
 import { newListingAdminEmail } from "@/lib/emails/new-listing-admin";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingPendingEmail } from "@/lib/emails/listing-pending";
+import { listingRejectedEmail } from "@/lib/emails/listing-rejected";
 import { CATEGORIES } from "@/lib/categories";
+import { moderateListing } from "@/lib/moderation";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -76,7 +78,61 @@ export async function POST(req: NextRequest) {
     const categorySetting = await prisma.categorySetting.findUnique({
       where: { categoryId },
     });
-    const listingStatus = categorySetting?.approvalMode === "MANUAL" ? "PENDING" : "APPROVED";
+
+    const imagesArr = Array.isArray(images) ? images : [];
+
+    let listingStatus: "APPROVED" | "PENDING" | "REJECTED";
+    let rejectionReason: string | null = null;
+    let adminNote: string | null = null;
+
+    if (categorySetting?.approvalMode === "MANUAL") {
+      listingStatus = "PENDING";
+    } else {
+      const userRow = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { createdAt: true, isPro: true },
+      });
+      const recentListingsCount24h = await prisma.listing.count({
+        where: {
+          userId: session.user.id,
+          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        },
+      });
+      const accountAgeHours = userRow
+        ? Math.max(0, (Date.now() - userRow.createdAt.getTime()) / (60 * 60 * 1000))
+        : 0;
+
+      const result = moderateListing({
+        title,
+        description,
+        price: parsedPrice,
+        category,
+        subcategory: subcategory ?? null,
+        location,
+        condition: condition || "Bon état",
+        images: imagesArr,
+        metadata: metaObj,
+        vehicleKm,
+        vehicleYear,
+        immoSurface,
+        immoRooms,
+        userContext: {
+          accountAgeHours,
+          recentListingsCount24h,
+          isPro: userRow?.isPro ?? false,
+        },
+      });
+
+      adminNote = result.adminNote;
+      if (result.verdict === "reject") {
+        listingStatus = "REJECTED";
+        rejectionReason = result.publicReason;
+      } else if (result.verdict === "review") {
+        listingStatus = "PENDING";
+      } else {
+        listingStatus = "APPROVED";
+      }
+    }
 
     const listing = await prisma.listing.create({
       data: {
@@ -87,7 +143,7 @@ export async function POST(req: NextRequest) {
         description,
         location,
         condition: condition || "Bon état",
-        images: JSON.stringify(images || []),
+        images: JSON.stringify(imagesArr),
         metadata: typeof metadata === "string" ? metadata : JSON.stringify(metadata || {}),
         vehicleKm,
         vehicleYear,
@@ -97,6 +153,8 @@ export async function POST(req: NextRequest) {
         hidePhone: hidePhone === true,
         userId: session.user.id,
         status: listingStatus,
+        rejectionReason,
+        adminNote,
       } as any,
     });
 
@@ -106,7 +164,19 @@ export async function POST(req: NextRequest) {
     const seller2 = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, companyName: true, isPro: true } });
     if (seller2) {
       const displayName = seller2.isPro && seller2.companyName ? seller2.companyName : seller2.name;
-      if (listingStatus === "PENDING") {
+      if (listingStatus === "REJECTED") {
+        sendEmail({
+          to: seller2.email,
+          toName: displayName,
+          subject: `Votre annonce "${title}" n'a pas été publiée — Deal & Co`,
+          html: listingRejectedEmail({
+            name: displayName,
+            listingTitle: title,
+            reason: rejectionReason ?? undefined,
+            postUrl: `${baseUrl}/post`,
+          }),
+        }).catch(() => {});
+      } else if (listingStatus === "PENDING") {
         sendEmail({
           to: seller2.email,
           toName: displayName,
@@ -145,10 +215,13 @@ export async function POST(req: NextRequest) {
     });
     if (adminEmail && seller) {
       const requiresApproval = listingStatus === "PENDING";
+      const wasRejected = listingStatus === "REJECTED";
       sendEmail({
         to: adminEmail,
         toName: "Administration Deal & Co",
-        subject: requiresApproval
+        subject: wasRejected
+          ? `🚫 Annonce auto-rejetée : ${title}`
+          : requiresApproval
           ? `⚠️ Annonce à approuver : ${title}`
           : `Nouvelle annonce publiée : ${title}`,
         html: newListingAdminEmail({
