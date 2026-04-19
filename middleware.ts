@@ -26,15 +26,23 @@ function isScraperBot(userAgent: string): boolean {
 }
 
 export default auth((req: any) => {
+  const { pathname } = req.nextUrl;
   const userAgent = req.headers.get("user-agent") || "";
 
-  // Skip auth middleware for scrapers — prevents AuthJS cookies
-  if (isScraperBot(userAgent)) {
+  // Skip auth entirely for OG image routes — prevents AuthJS cookies
+  if (pathname.includes("/opengraph-image")) {
     return NextResponse.next();
   }
 
+  // Skip auth middleware for scrapers — prevents AuthJS cookies
+  if (isScraperBot(userAgent)) {
+    const response = NextResponse.next();
+    // Override cache-control for bots — allow caching of public pages
+    response.headers.set("cache-control", "public, max-age=3600");
+    return response;
+  }
+
   const isLoggedIn = !!req.auth;
-  const { pathname } = req.nextUrl;
 
   const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
   const isAdmin = pathname.startsWith("/admin");
