@@ -20,10 +20,6 @@ import DejaVuBadge from "@/components/DejaVuBadge";
 export const revalidate = 86400;
 export const dynamicParams = true;
 
-export function cityToSlug(city: string): string {
-  return citySlug(city);
-}
-
 const BASE = "https://www.dealandcompany.fr";
 const PRIORITY_CATEGORIES = ["vehicules", "immobilier", "multimedia", "mode", "maison"];
 const PRIORITY_CITIES = TOP_CITIES.slice(0, 15);
