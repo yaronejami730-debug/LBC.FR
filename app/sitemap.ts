@@ -18,16 +18,60 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/register`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
   ];
 
-  const categories: MetadataRoute.Sitemap = CATEGORIES.map((cat) => ({
-    url: `${BASE}/annonces/${cat.id}`,
-    lastModified: now,
-    changeFrequency: "daily" as const,
-    priority: 0.8,
-  }));
+  // Aggregate listing counts so we only include pages that have real content.
+  // Pages with 0 listings are excluded — they look like doorway/thin pages to Google
+  // and waste crawl budget, which is what causes "Discovered, currently not indexed".
+  let countsByCatLocation = new Map<string, number>();
+  let countsByCatSubLocation = new Map<string, number>();
+  let countsByCategory = new Map<string, number>();
 
+  try {
+    const grouped = await prisma.listing.groupBy({
+      by: ["category", "subcategory", "location"],
+      where: { status: "APPROVED", deletedAt: null } as any,
+      _count: { _all: true },
+    });
+
+    for (const row of grouped) {
+      const count = row._count._all;
+      const cat = CATEGORIES.find((c) => c.label === row.category);
+      if (!cat) continue;
+
+      countsByCategory.set(cat.id, (countsByCategory.get(cat.id) ?? 0) + count);
+
+      if (!row.location) continue;
+      const slug = citySlug(row.location);
+      if (!slug) continue;
+
+      const catCityKey = `${cat.id}:${slug}`;
+      countsByCatLocation.set(catCityKey, (countsByCatLocation.get(catCityKey) ?? 0) + count);
+
+      if (row.subcategory) {
+        const subSlug = subcategoryToSlug(row.subcategory);
+        const key = `${cat.id}:${subSlug}:${slug}`;
+        countsByCatSubLocation.set(key, (countsByCatSubLocation.get(key) ?? 0) + count);
+      }
+    }
+  } catch {
+    // fail silently; we will still emit static + listing URLs
+  }
+
+  // Category landing pages: only include categories that have any listings.
+  const categories: MetadataRoute.Sitemap = CATEGORIES
+    .filter((cat) => (countsByCategory.get(cat.id) ?? 0) > 0)
+    .map((cat) => ({
+      url: `${BASE}/annonces/${cat.id}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    }));
+
+  // Category × city pages: only include combos with at least one listing.
   const cityPages: MetadataRoute.Sitemap = [];
   for (const cat of CATEGORIES) {
     for (const city of FRENCH_CITIES) {
+      const key = `${cat.id}:${city.slug}`;
+      if ((countsByCatLocation.get(key) ?? 0) === 0) continue;
       cityPages.push({
         url: `${BASE}/annonces/${cat.id}/${city.slug}`,
         lastModified: now,
@@ -37,13 +81,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
+  // Long-tail subcategory × city pages: only include combos with at least one listing.
   const longTailPages: MetadataRoute.Sitemap = [];
   for (const cat of CATEGORIES) {
     if (!PRIORITY_CATEGORIES.includes(cat.id)) continue;
     for (const sub of cat.subcategories) {
+      const subSlug = subcategoryToSlug(sub);
       for (const city of PRIORITY_LONGTAIL_CITIES) {
+        const key = `${cat.id}:${subSlug}:${city.slug}`;
+        if ((countsByCatSubLocation.get(key) ?? 0) === 0) continue;
         longTailPages.push({
-          url: `${BASE}/annonces/${cat.id}/${subcategoryToSlug(sub)}/${city.slug}`,
+          url: `${BASE}/annonces/${cat.id}/${subSlug}/${city.slug}`,
           lastModified: now,
           changeFrequency: "daily" as const,
           priority: 0.7,
@@ -70,29 +118,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // fail silently
   }
 
-  let extraLocations: MetadataRoute.Sitemap = [];
-  try {
-    const knownSlugs = new Set(FRENCH_CITIES.map((c) => c.slug));
-    const rows = await prisma.listing.findMany({
-      where: { status: "APPROVED", deletedAt: null } as any,
-      select: { category: true, location: true },
-      distinct: ["category", "location"],
-    });
-    for (const row of rows) {
-      const cat = CATEGORIES.find((c) => c.label === row.category);
-      if (!cat || !row.location) continue;
-      const slug = citySlug(row.location);
-      if (!slug || knownSlugs.has(slug)) continue;
-      extraLocations.push({
-        url: `${BASE}/annonces/${cat.id}/${slug}`,
-        lastModified: now,
-        changeFrequency: "daily" as const,
-        priority: 0.65,
-      });
-    }
-  } catch {
-    // fail silently
-  }
-
-  return [...statics, ...categories, ...cityPages, ...longTailPages, ...extraLocations, ...listings];
+  return [...statics, ...categories, ...cityPages, ...longTailPages, ...listings];
 }

@@ -30,10 +30,15 @@ export async function generateMetadata({
   const title = `Annonces ${cat.label} — Achetez et vendez entre particuliers | Deal&Co`;
   const description = `Parcourez toutes les annonces ${cat.label} sur Deal&Co. Achetez et vendez entre particuliers gratuitement en France. ${cat.subcategories.slice(0, 3).join(", ")} et bien plus.`;
 
+  const total = await prisma.listing
+    .count({ where: { status: "APPROVED", deletedAt: null, category: cat.label } as any })
+    .catch(() => 0);
+
   return {
     title,
     description,
     alternates: { canonical: url },
+    robots: total === 0 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,

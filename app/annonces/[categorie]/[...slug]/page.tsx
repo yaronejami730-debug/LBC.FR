@@ -83,6 +83,19 @@ export async function generateMetadata({
       ? { categoryId: categorie, citySlug: shape.citySlug }
       : { categoryId: categorie, subcategorySlug: shape.subcategorySlug, citySlug: shape.citySlug };
 
+  const cityLabel = slugToCity(shape.citySlug)?.name ?? slugToCityLabel(shape.citySlug);
+  const subLabel = shape.kind === "sub-city" ? slugToSubcategoryLabel(categorie, shape.subcategorySlug) : null;
+  const whereClause: any = {
+    status: "APPROVED",
+    deletedAt: null,
+    category: cat.label,
+    location: { contains: cityLabel, mode: "insensitive" },
+  };
+  if (shape.kind === "sub-city" && subLabel) {
+    whereClause.subcategory = subLabel;
+  }
+  const total = await prisma.listing.count({ where: whereClause }).catch(() => 0);
+
   const content = (await getOrCreateSeoContent(target)) ?? fallbackContent(target);
   const url = `${BASE}/annonces/${cat.id}/${slug.join("/")}`;
 
@@ -91,6 +104,7 @@ export async function generateMetadata({
     description: content.metaDescription,
     keywords: content.keywords,
     alternates: { canonical: url },
+    robots: total === 0 ? { index: false, follow: true } : undefined,
     openGraph: {
       title: content.metaTitle,
       description: content.metaDescription,
