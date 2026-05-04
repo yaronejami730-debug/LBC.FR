@@ -9,6 +9,8 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import DejaVuBadge from "@/components/DejaVuBadge";
+import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
+import StickyPublishFab from "@/components/StickyPublishFab";
 
 export const revalidate = 3600;
 
@@ -27,7 +29,7 @@ export async function generateMetadata({
 
   const BASE = "https://www.dealandcompany.fr";
   const url = `${BASE}/annonces/${cat.id}`;
-  const title = `Annonces ${cat.label} — Achetez et vendez entre particuliers | Deal&Co`;
+  const title = `Annonces ${cat.label} — Achetez et vendez entre particuliers`;
   const description = `Parcourez toutes les annonces ${cat.label} sur Deal&Co. Achetez et vendez entre particuliers gratuitement en France. ${cat.subcategories.slice(0, 3).join(", ")} et bien plus.`;
 
   const total = await prisma.listing
@@ -143,14 +145,7 @@ export default async function CategoryPage({
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {listings.length === 0 ? (
-            <div className="col-span-5 py-24 text-center text-on-surface-variant">
-              <span className="material-symbols-outlined text-5xl block mb-4">search_off</span>
-              <p className="text-lg font-semibold">Aucune annonce pour le moment</p>
-              <p className="text-sm mt-1">Soyez le premier à publier dans cette catégorie</p>
-              <Link href="/post" className="mt-4 inline-block px-6 py-2.5 bg-primary text-white rounded-full text-sm font-semibold">
-                Publier une annonce
-              </Link>
-            </div>
+            <EmptyStatePublishCTA categoryId={cat.id} categoryLabel={cat.label} />
           ) : (
             listings.map((listing) => {
               const images = JSON.parse(listing.images) as string[];
@@ -205,6 +200,7 @@ export default async function CategoryPage({
 
       <SiteFooter />
       <BottomNav />
+      <StickyPublishFab categoryId={cat.id} />
     </div>
   );
 }

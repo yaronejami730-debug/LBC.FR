@@ -17,7 +17,8 @@
     "db:studio": "prisma studio",
     "seo:generate": "tsx scripts/generate-seo-content.ts city",
     "seo:generate:all": "tsx scripts/generate-seo-content.ts all",
-    "seo:generate:sub": "tsx scripts/generate-seo-content.ts sub"
+    "seo:generate:sub": "tsx scripts/generate-seo-content.ts sub",
+    "blog:generate": "tsx scripts/generate-blog-article.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

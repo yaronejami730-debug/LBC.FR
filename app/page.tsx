@@ -12,27 +12,80 @@ import DejaVuBadge from "@/components/DejaVuBadge";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "Deal&Co — Petites annonces gratuites entre particuliers en France",
+  title: { absolute: "Deal&Co — Petites annonces gratuites entre particuliers en France" },
   description:
     "Achetez et vendez d'occasion près de chez vous sur Deal&Co. Voitures, immobilier, mode, électronique — petites annonces gratuites entre particuliers partout en France.",
   alternates: { canonical: "https://www.dealandcompany.fr" },
 };
 
+const HOME_FAQ = [
+  {
+    q: "Qu'est-ce que Deal&Co ?",
+    a: "Deal&Co est un site français de petites annonces gratuites entre particuliers et professionnels, permettant l'achat, la vente et l'échange de véhicules, biens immobiliers, mode, électronique, mobilier et plus de 14 catégories de biens partout en France, sans commission ni intermédiaire.",
+  },
+  {
+    q: "La publication d'annonces est-elle gratuite sur Deal&Co ?",
+    a: "Oui, la publication d'annonces entre particuliers est entièrement gratuite. Des options payantes de mise en avant existent pour les vendeurs souhaitant gagner en visibilité, mais elles sont totalement facultatives.",
+  },
+  {
+    q: "Comment vendre un objet sur Deal&Co ?",
+    a: "Créez un compte gratuit, cliquez sur « Publier une annonce », sélectionnez la catégorie correspondante, ajoutez un titre, une description, des photos et un prix. La modération valide l'annonce en quelques minutes et les acheteurs peuvent vous contacter directement via la messagerie interne ou par téléphone.",
+  },
+  {
+    q: "Deal&Co prélève-t-il une commission sur les ventes ?",
+    a: "Non. Aucune commission n'est prélevée sur les transactions entre particuliers. Les vendeurs et acheteurs traitent en direct, sans intermédiaire ni frais cachés.",
+  },
+  {
+    q: "Dans quelles villes Deal&Co est-il disponible ?",
+    a: "Deal&Co couvre toute la France métropolitaine et l'outre-mer. Plus de 150 villes principales disposent de pages dédiées par catégorie pour faciliter la recherche locale, dont Paris, Lyon, Marseille, Toulouse, Bordeaux, Lille, Nantes, Strasbourg, Montpellier, Rennes, Reims, Toulon, Nice et Grenoble.",
+  },
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "Deal&Co",
-  url: "https://www.dealandcompany.fr",
-  description:
-    "Petites annonces gratuites entre particuliers en France — voitures, immobilier, mode, électronique.",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: "https://www.dealandcompany.fr/search?q={search_term_string}",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://www.dealandcompany.fr/#website",
+      name: "Deal&Co",
+      alternateName: ["Deal and Co", "Dealandcompany"],
+      url: "https://www.dealandcompany.fr",
+      inLanguage: "fr-FR",
+      description:
+        "Petites annonces gratuites entre particuliers en France — voitures, immobilier, mode, électronique.",
+      publisher: { "@id": "https://www.dealandcompany.fr/#org" },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: "https://www.dealandcompany.fr/search?q={search_term_string}",
+        },
+        "query-input": "required name=search_term_string",
+      },
     },
-    "query-input": "required name=search_term_string",
-  },
+    {
+      "@type": "Organization",
+      "@id": "https://www.dealandcompany.fr/#org",
+      name: "Deal&Co",
+      alternateName: ["Deal and Co", "Dealandcompany"],
+      url: "https://www.dealandcompany.fr",
+      logo: "https://www.dealandcompany.fr/logo-dealco.png",
+      foundingDate: "2024",
+      areaServed: { "@type": "Country", name: "France" },
+      knowsLanguage: ["fr"],
+      description:
+        "Site français de petites annonces gratuites entre particuliers et professionnels, sans commission, couvrant 14 catégories principales partout en France.",
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://www.dealandcompany.fr/#faq",
+      mainEntity: HOME_FAQ.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+  ],
 };
 
 export default async function Home() {
@@ -90,6 +143,26 @@ export default async function Home() {
             {activeBanner?.subtitle && (
               <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow">{activeBanner.subtitle}</p>
             )}
+            {!activeBanner && (
+              <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow max-w-xl">
+                Publiez gratuitement votre annonce en 2 minutes. Sans commission, sans engagement, contact direct avec les acheteurs.
+              </p>
+            )}
+            <div className="mt-5 flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/login?callbackUrl=/post"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-white text-primary rounded-full font-bold shadow-lg active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-lg">add_circle</span>
+                Publier mon annonce
+              </Link>
+              <Link
+                href="/search"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
+              >
+                Parcourir les annonces
+              </Link>
+            </div>
           </div>
           {!activeBanner?.bgImage && (
             <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent" />
@@ -240,6 +313,55 @@ export default async function Home() {
                 className="text-xs font-semibold text-[#2f6fb8] hover:underline truncate"
               >
                 {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ — extraction friendly pour moteurs et IA */}
+      <section className="px-6 py-10 max-w-7xl mx-auto">
+        <div className="bg-white border border-[#eceef0] rounded-2xl p-6 md:p-8">
+          <h2 className="text-xl font-bold text-[#191c1e] mb-5">Questions fréquentes sur Deal&amp;Co</h2>
+          <div className="space-y-3">
+            {HOME_FAQ.map((item, i) => (
+              <details key={i} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0 group">
+                <summary className="cursor-pointer font-semibold text-on-surface flex justify-between items-center list-none">
+                  {item.q}
+                  <span className="material-symbols-outlined text-outline text-base group-open:rotate-180 transition-transform">expand_more</span>
+                </summary>
+                <p className="mt-2 text-sm text-on-surface-variant leading-relaxed">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Blog teaser */}
+      <section className="px-6 pb-10 max-w-7xl mx-auto">
+        <div className="bg-white border border-[#eceef0] rounded-2xl p-6 md:p-8">
+          <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
+            <div>
+              <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">À lire</span>
+              <h2 className="text-lg font-bold text-[#191c1e]">Guides pratiques sur le blog</h2>
+            </div>
+            <Link href="/blog" className="text-primary text-sm font-semibold flex items-center gap-1 group">
+              Tous les articles
+              <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { slug: "vendre-voiture-occasion-entre-particuliers", title: "Vendre sa voiture d'occasion entre particuliers" },
+              { slug: "eviter-arnaques-petites-annonces", title: "Éviter les arnaques sur les petites annonces" },
+              { slug: "estimer-loyer-appartement-location", title: "Estimer le loyer d'un appartement avant location" },
+            ].map((post) => (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className="text-sm font-semibold text-[#2f6fb8] hover:underline"
+              >
+                {post.title}
               </Link>
             ))}
           </div>

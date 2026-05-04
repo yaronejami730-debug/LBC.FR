@@ -16,6 +16,8 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import DejaVuBadge from "@/components/DejaVuBadge";
+import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
+import StickyPublishFab from "@/components/StickyPublishFab";
 
 export const revalidate = 86400;
 export const dynamicParams = true;
@@ -287,19 +289,14 @@ export default async function AnnoncesGeoPage({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {listings.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-on-surface-variant">
-              <span className="material-symbols-outlined text-5xl block mb-4">location_off</span>
-              <p className="text-lg font-semibold">Aucune annonce pour le moment {h2Scope}</p>
-              <p className="text-sm mt-1 mb-4">Élargissez votre recherche ou soyez le premier à publier</p>
-              <div className="flex gap-3 justify-center flex-wrap">
-                <Link href={`/annonces/${cat.id}`} className="px-6 py-2.5 bg-primary text-white rounded-full text-sm font-semibold">
-                  Toute la France
-                </Link>
-                <Link href="/post" className="px-6 py-2.5 bg-surface-container border border-outline-variant/20 text-on-surface rounded-full text-sm font-semibold">
-                  Publier une annonce
-                </Link>
-              </div>
-            </div>
+            <EmptyStatePublishCTA
+              categoryId={cat.id}
+              categoryLabel={cat.label}
+              citySlug={shape.citySlug}
+              cityName={cityLabel}
+              subcategorySlug={shape.kind === "sub-city" ? shape.subcategorySlug : undefined}
+              subcategoryLabel={subLabel ?? undefined}
+            />
           ) : (
             listings.map((listing) => {
               const images = JSON.parse(listing.images) as string[];
@@ -433,6 +430,7 @@ export default async function AnnoncesGeoPage({
 
       <SiteFooter />
       <BottomNav />
+      <StickyPublishFab categoryId={cat.id} />
     </div>
   );
 }

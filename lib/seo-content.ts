@@ -69,7 +69,7 @@ Contraintes strictes :
 
 Produis UNIQUEMENT un objet JSON valide (aucun texte avant/après), avec ces clés :
 {
-  "metaTitle": "60 caractères max, percutant, inclut la catégorie${city ? " et la ville" : ""}",
+  "metaTitle": "60 caractères max, percutant, inclut la catégorie${city ? " et la ville" : ""}. N'inclus PAS le nom de la marque (Deal&Co) — il sera ajouté automatiquement",
   "metaDescription": "155 caractères max, accrocheur, inclut un call-to-action",
   "h1": "titre principal de la page, différent du metaTitle",
   "intro": "paragraphe d'introduction de 80 à 130 mots, unique et informatif",
@@ -281,8 +281,8 @@ export function fallbackContent(target: SeoPageTarget): SeoContent {
   const whereLower = cityName ? ` à ${cityName}` : " partout en France";
 
   const metaTitle = subLabel
-    ? `${subLabel}${where} — Annonces ${catLabel} | Deal&Co`
-    : `Annonces ${catLabel}${where} | Deal&Co`;
+    ? `${subLabel}${where} — Annonces ${catLabel}`
+    : `Annonces ${catLabel}${where}`;
 
   const metaDescription = subLabel
     ? `Annonces ${subLabel.toLowerCase()}${whereLower} sur Deal&Co. Achetez et vendez entre particuliers en toute simplicité, photos, prix et contact direct du vendeur.`

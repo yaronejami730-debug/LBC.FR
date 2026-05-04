@@ -6,7 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import SearchesClient from "./SearchesClient";
 import { buildSearchWhere } from "@/lib/search-where";
 
-export const metadata = { title: "Mes recherches — Deal&Co" };
+export const metadata = { title: "Mes recherches" };
 
 export default async function RecherchesPage() {
   const session = await auth();

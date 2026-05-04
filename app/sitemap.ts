@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES, TOP_CITIES, citySlug } from "@/lib/cities";
 import { subcategoryToSlug } from "@/lib/seo-content";
+import { getAllArticles } from "@/lib/blog";
 
 const BASE = "https://www.dealandcompany.fr";
 const PRIORITY_CATEGORIES = ["vehicules", "immobilier", "multimedia", "mode", "maison"];
@@ -13,10 +14,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const statics: MetadataRoute.Sitemap = [
     { url: BASE, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/search`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE}/login`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
-    { url: `${BASE}/register`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${BASE}/a-propos`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/api-doc`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
   ];
+
+  const blogPosts: MetadataRoute.Sitemap = getAllArticles().map((a) => ({
+    url: `${BASE}/blog/${a.slug}`,
+    lastModified: new Date(a.updatedAt),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
 
   // Aggregate listing counts so we only include pages that have real content.
   // Pages with 0 listings are excluded — they look like doorway/thin pages to Google
@@ -118,5 +126,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // fail silently
   }
 
-  return [...statics, ...categories, ...cityPages, ...longTailPages, ...listings];
+  return [...statics, ...blogPosts, ...categories, ...cityPages, ...longTailPages, ...listings];
 }

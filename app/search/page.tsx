@@ -23,18 +23,18 @@ export async function generateMetadata({
   const category = params.category || "";
   const location = params.location || "";
 
-  let title = "Toutes les annonces — Deal&Co";
+  let title = "Toutes les annonces";
   let description =
     "Parcourez toutes les petites annonces gratuites sur Deal&Co. Voitures, immobilier, mode, électronique et bien plus entre particuliers en France.";
 
   if (category && q) {
-    title = `${q} en ${category} — Annonces gratuites | Deal&Co`;
+    title = `${q} en ${category} — Annonces gratuites`;
     description = `Trouvez "${q}" dans la catégorie ${category} sur Deal&Co. Petites annonces gratuites entre particuliers${location ? ` à ${location}` : " en France"}.`;
   } else if (category) {
-    title = `Annonces ${category}${location ? ` à ${location}` : ""} — Deal&Co`;
+    title = `Annonces ${category}${location ? ` à ${location}` : ""}`;
     description = `Parcourez toutes les annonces ${category} sur Deal&Co${location ? ` à ${location}` : " en France"}. Achetez et vendez entre particuliers gratuitement.`;
   } else if (q) {
-    title = `"${q}" — Petites annonces | Deal&Co`;
+    title = `"${q}" — Petites annonces`;
     description = `${
       (await prisma.listing.count({ where: { status: "APPROVED", deletedAt: null, OR: [{ title: { contains: q, mode: "insensitive" } }, { description: { contains: q, mode: "insensitive" } }] } as any }).catch(() => 0))
     } annonces trouvées pour "${q}" sur Deal&Co. Achetez et vendez entre particuliers gratuitement.`;

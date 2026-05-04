@@ -46,7 +46,7 @@ export async function generateMetadata({
   const desc = `${listing.description.slice(0, 150)}${listing.description.length > 150 ? "…" : ""} · ${listing.location} · ${priceStr}`;
 
   return {
-    title: `${listing.title} — ${priceStr} | Deal&Co`,
+    title: `${listing.title} — ${priceStr}`,
     description: desc,
     alternates: { canonical: pageUrl },
     openGraph: {

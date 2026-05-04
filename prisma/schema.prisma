@@ -55,6 +55,22 @@ model EarlyAdopter {
   userId           String?
 }
 
+model Waitlist {
+  id              String   @id @default(cuid())
+  email           String
+  citySlug        String?
+  categoryId      String?
+  subcategorySlug String?
+  source          String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  @@unique([email, categoryId, citySlug, subcategorySlug])
+  @@index([email])
+  @@index([categoryId])
+  @@index([citySlug])
+}
+
 model Listing {
   id              String         @id @default(cuid())
   title           String

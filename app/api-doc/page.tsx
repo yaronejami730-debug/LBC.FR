@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
-  title: "API — Deal&Co",
+  title: "API",
   description:
     "Publiez des annonces automobiles et immobilières depuis votre logiciel via l'API REST Deal&Co.",
 };

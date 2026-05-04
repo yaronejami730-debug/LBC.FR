@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 const LINKS = [
+  { label: "À propos",                    href: "/a-propos" },
+  { label: "Blog",                         href: "/blog" },
   { label: "Mentions légales",            href: "/mentions-legales" },
   { label: "CGU",                          href: "/cgu" },
   { label: "Politique de confidentialité", href: "/confidentialite" },

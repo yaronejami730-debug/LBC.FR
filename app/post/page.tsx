@@ -4,7 +4,7 @@ import PostForm from "./PostForm";
 
 export default async function PostPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/login?callbackUrl=/post");
 
   return <PostForm />;
 }
