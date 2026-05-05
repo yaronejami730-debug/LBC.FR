@@ -297,6 +297,7 @@ export default function PostForm() {
   // Publish state
   const [publishing,    setPublishing]    = useState(false);
   const [publishError,  setPublishError]  = useState<string | null>(null);
+  const [rejection,     setRejection]     = useState<{ id: string; reason: string | null; isProActivity?: boolean } | null>(null);
 
   const mainFileRef  = useRef<HTMLInputElement>(null);
   const extraFileRef = useRef<HTMLInputElement>(null);
@@ -435,10 +436,18 @@ export default function PostForm() {
       });
       if (res.status === 401) { router.push("/login?callbackUrl=/post"); return; }
       const text = await res.text();
-      let data: { id?: string; error?: string } = {};
+      let data: { id?: string; error?: string; status?: string; rejectionReason?: string | null } = {};
       try { data = JSON.parse(text); } catch { /* html error page */ }
       if (!res.ok) { setPublishError(data.error || `Erreur ${res.status}`); return; }
       if (!data.id) { setPublishError("Réponse inattendue. Réessayez."); return; }
+      if (data.status === "REJECTED") {
+        setRejection({
+          id: data.id,
+          reason: data.rejectionReason ?? null,
+          isProActivity: typeof (data as any).rejectedForProActivity === "boolean" ? (data as any).rejectedForProActivity : undefined,
+        });
+        return;
+      }
       router.push(`/annonce/${data.id}`);
     } catch {
       setPublishError("Impossible de joindre le serveur.");
@@ -462,6 +471,98 @@ export default function PostForm() {
   const guides    = getGuides(categoryId);
   const totalPhotoSteps = 1 + guides.length;
   const doneCount = images.filter(Boolean).length;
+
+  if (rejection) {
+    return (
+      <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+        <header className="bg-white fixed top-0 w-full z-50 shadow-[0_1px_0_rgba(0,0,0,0.06)]">
+          <div className="flex items-center justify-between px-5 py-3 max-w-2xl mx-auto">
+            <Link href="/" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-slate-500">
+              <span className="material-symbols-outlined text-xl">close</span>
+            </Link>
+            <img src="/logo.png" alt="Deal&Co" className="h-9 w-auto" />
+          </div>
+        </header>
+        <main className="max-w-2xl mx-auto px-5 pt-24">
+          <div className="bg-white rounded-3xl border border-red-100 shadow-sm p-6 md:p-8">
+            <div className="flex items-start gap-4">
+              <span className="flex-shrink-0 w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center">
+                <span className="material-symbols-outlined text-red-500 text-2xl">block</span>
+              </span>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-extrabold text-on-surface tracking-tight">
+                  Annonce non publiée
+                </h1>
+                <p className="text-sm text-outline mt-1">
+                  Notre modération automatique a refusé cette annonce.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-red-50 border border-red-100 p-4">
+              <p className="text-sm font-bold text-red-700 mb-1">Motif</p>
+              <p className="text-sm text-red-700/90 leading-relaxed">
+                {rejection.reason ?? "Le contenu de l'annonce ne respecte pas nos règles de publication."}
+              </p>
+            </div>
+
+            {rejection.isProActivity && (
+              <div className="mt-4 rounded-2xl bg-blue-50 border border-blue-100 p-4">
+                <p className="text-sm font-bold text-blue-800 mb-1">Activité professionnelle détectée</p>
+                <p className="text-sm text-blue-800/80 leading-relaxed">
+                  Cette annonce semble relever d&apos;une activité commerciale. Passez sur un compte professionnel
+                  pour publier vos annonces avec un badge de confiance et des outils dédiés.
+                </p>
+                <Link
+                  href="/profile?tab=pro"
+                  className="mt-3 inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-full font-semibold text-sm"
+                >
+                  Activer mon compte pro
+                </Link>
+              </div>
+            )}
+
+            <div className="mt-6 space-y-3">
+              <p className="text-sm font-semibold text-on-surface">Que faire maintenant ?</p>
+              <ul className="text-sm text-on-surface-variant space-y-1.5 list-disc pl-5">
+                <li>Modifier votre annonce pour corriger le motif et la soumettre à nouveau.</li>
+                <li>Recommencer une annonce différente si le sujet n&apos;est pas autorisé.</li>
+                <li>
+                  Nous contacter via{" "}
+                  <a href="mailto:contact@dealandcompany.fr" className="text-primary font-semibold underline">
+                    contact@dealandcompany.fr
+                  </a>{" "}
+                  si vous pensez qu&apos;il s&apos;agit d&apos;une erreur.
+                </li>
+              </ul>
+            </div>
+
+            <div className="mt-7 flex flex-col sm:flex-row gap-3">
+              <Link
+                href={`/annonce/${rejection.id}/edit`}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-bold shadow-md active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-lg">edit</span>
+                Modifier mon annonce
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setRejection(null);
+                  setPublishError(null);
+                  setFormStep(0);
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-surface-container text-on-surface rounded-full font-semibold hover:bg-slate-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">refresh</span>
+                Recommencer
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">

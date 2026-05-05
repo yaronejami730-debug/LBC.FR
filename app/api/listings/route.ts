@@ -245,7 +245,10 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     }
 
-    return NextResponse.json(listing, { status: 201 });
+    return NextResponse.json(
+      { ...listing, rejectedForProActivity },
+      { status: 201 },
+    );
   } catch (err) {
     console.error("[POST /api/listings]", err);
     const message = err instanceof Error ? err.message : "Erreur interne";
