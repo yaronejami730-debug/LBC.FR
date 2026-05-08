@@ -54,6 +54,8 @@ export async function approveListing(id: string) {
 
   revalidatePath("/admin/listings");
   revalidatePath("/");
+  revalidatePath("/annonces", "layout");
+  revalidatePath(`/annonce/${listing.id}`);
 }
 
 export async function rejectListing(id: string, reason: string) {
