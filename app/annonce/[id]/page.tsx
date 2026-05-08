@@ -20,6 +20,7 @@ import ViewTracker from "@/components/ViewTracker";
 import LiveViewCount from "./LiveViewCount";
 import { getBrandLogo } from "@/lib/carBrands";
 import BrandBadge from "./BrandBadge";
+import { CATEGORIES } from "@/lib/categories";
 
 export async function generateMetadata({
   params,
@@ -143,15 +144,22 @@ export default async function ListingPage({
   const images = JSON.parse(listing.images) as string[];
   const mainImg = images[0] || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwwxQgv4rI6XClzhTLjkwXug8TYby1cyK7AgQhc4UpMdyrjwq4jRPQo_ZvL_7xvjhVSon_iJvztv0bdEqqiFX0CHRW9IDYjccZpyP4v8zoDq0pcj4RtADoGgiXgRyW1_sPXiKqwZz8D1UwMIYilwBQMOTHJ4RMQl9Rp4vFbK6a0UCsy93TZ3-DYA8qYhHPO4LhM2csSFfFLlOh2P8D7w00bjyGrSMRlGSvhxZrGjVcqJUJ2-2y9XbKHb7ww02PREvAIJO3_wJ41hV5";
 
+  const BASE = "https://www.dealandcompany.fr";
+  const pageUrl = `${BASE}/annonce/${listing.id}`;
+  const cat = CATEGORIES.find((c) => c.label === listing.category);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: listing.title,
     description: listing.description,
     image: images.length ? images : [mainImg],
-    url: `https://www.dealandcompany.fr/annonce/${listing.id}`,
+    url: pageUrl,
+    datePublished: listing.createdAt.toISOString(),
+    dateModified: listing.updatedAt.toISOString(),
     offers: {
       "@type": "Offer",
+      url: pageUrl,
       price: listing.price,
       priceCurrency: "EUR",
       availability: "https://schema.org/InStock",
@@ -167,12 +175,20 @@ export default async function ListingPage({
     ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
   };
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
+      ...(cat ? [{ "@type": "ListItem", position: 2, name: cat.label, item: `${BASE}/annonces/${cat.id}` }] : []),
+      { "@type": "ListItem", position: cat ? 3 : 2, name: listing.title, item: pageUrl },
+    ],
+  };
+
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-12">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       {/* Navbar (Share, Favorites) */}
       <ListingHeader
         title={listing.title}

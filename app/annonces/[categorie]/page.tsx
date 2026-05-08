@@ -97,10 +97,25 @@ export default async function CategoryPage({
     url: `${BASE}/annonces/${cat.id}`,
   };
 
+  const itemListLd = listings.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Annonces ${cat.label}`,
+    url: `${BASE}/annonces/${cat.id}`,
+    numberOfItems: total,
+    itemListElement: listings.map((l, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${BASE}/annonce/${l.id}`,
+      name: l.title,
+    })),
+  } : null;
+
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-0">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }} />
+      {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">
