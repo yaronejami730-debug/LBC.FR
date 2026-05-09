@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { earlyAdopterConfirmationEmail } from "@/lib/emails/early-adopter-confirmation";
 
+export async function GET() {
+  const count = await prisma.earlyAdopter.count();
+  return NextResponse.json({ count, remaining: Math.max(0, 50 - count) });
+}
+
 export async function POST(req: NextRequest) {
   const { companyName, siret, managerFirstName, email } = await req.json();
 

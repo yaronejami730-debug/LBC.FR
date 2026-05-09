@@ -20,16 +20,22 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ categorie: string }>;
+  searchParams: Promise<{ page?: string }>;
 }): Promise<Metadata> {
   const { categorie } = await params;
+  const { page: pageParam } = await searchParams;
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) return {};
 
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const BASE = "https://www.dealandcompany.fr";
-  const url = `${BASE}/annonces/${cat.id}`;
-  const title = `Annonces ${cat.label} — Achetez et vendez entre particuliers`;
+  const canonical = page === 1 ? `${BASE}/annonces/${cat.id}` : `${BASE}/annonces/${cat.id}?page=${page}`;
+  const title = page === 1
+    ? `Annonces ${cat.label} — Achetez et vendez entre particuliers`
+    : `Annonces ${cat.label} — Page ${page}`;
   const description = `Parcourez toutes les annonces ${cat.label} sur Deal&Co. Achetez et vendez entre particuliers gratuitement en France. ${cat.subcategories.slice(0, 3).join(", ")} et bien plus.`;
 
   const total = await prisma.listing
@@ -39,12 +45,12 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical },
     robots: total === 0 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,
-      url,
+      url: canonical,
       siteName: "Deal&Co",
       type: "website",
       locale: "fr_FR",
@@ -57,26 +63,37 @@ export async function generateMetadata({
   };
 }
 
+const PER_PAGE = 24;
+
 export default async function CategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ categorie: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { categorie } = await params;
+  const { page: pageParam } = await searchParams;
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) notFound();
+
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const skip = (page - 1) * PER_PAGE;
 
   const [listings, total] = await Promise.all([
     prisma.listing.findMany({
       where: { status: "APPROVED", deletedAt: null, category: cat.label } as any,
       orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
-      take: 24,
+      take: PER_PAGE,
+      skip,
       include: { user: { select: { verified: true } } },
     }),
     prisma.listing.count({
       where: { status: "APPROVED", deletedAt: null, category: cat.label } as any,
     }),
   ]);
+
+  const totalPages = Math.ceil(total / PER_PAGE);
 
   const BASE = "https://www.dealandcompany.fr";
 
@@ -199,17 +216,33 @@ export default async function CategoryPage({
           )}
         </div>
 
-        {/* CTA voir plus */}
-        {total > 24 && (
-          <div className="mt-10 text-center">
-            <Link
-              href={`/search?category=${encodeURIComponent(cat.label)}`}
-              className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-white rounded-full font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Voir les {total.toLocaleString("fr-FR")} annonces
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
-          </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <nav aria-label="Pagination" className="mt-10 flex justify-center items-center gap-3">
+            {page > 1 && (
+              <Link
+                href={page === 2 ? `/annonces/${cat.id}` : `/annonces/${cat.id}?page=${page - 1}`}
+                rel="prev"
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-surface-container bg-white text-on-surface font-semibold text-sm hover:bg-slate-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_left</span>
+                Précédent
+              </Link>
+            )}
+            <span className="text-sm text-outline tabular-nums">
+              Page {page} / {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                href={`/annonces/${cat.id}?page=${page + 1}`}
+                rel="next"
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors"
+              >
+                Suivant
+                <span className="material-symbols-outlined text-sm">chevron_right</span>
+              </Link>
+            )}
+          </nav>
         )}
       </main>
 

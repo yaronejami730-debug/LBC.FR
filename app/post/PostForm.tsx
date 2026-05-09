@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession, signIn } from "next-auth/react";
 import { CATEGORIES } from "@/lib/categories";
 import { detectCategory } from "@/lib/autoCategory";
 import BrandPicker from "@/components/BrandPicker";
@@ -247,6 +248,14 @@ const STEP_LABELS = ["Titre", "Photos", "Prix", "Description", "Coordonnées"];
 
 export default function PostForm() {
   const router = useRouter();
+  const { data: session, update: updateSession } = useSession();
+
+  // Auth gate state
+  const [showAuthGate, setShowAuthGate] = useState(false);
+  const [gateEmail, setGateEmail] = useState("");
+  const [gatePassword, setGatePassword] = useState("");
+  const [gateError, setGateError] = useState("");
+  const [gateLoading, setGateLoading] = useState(false);
 
   // Form state
   const [formStep,    setFormStep]    = useState<FormStep>(0);
@@ -389,8 +398,31 @@ export default function PostForm() {
 
   // ── Publish ──────────────────────────────────────────────────────────────────
 
+  async function handleGateLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setGateError("");
+    setGateLoading(true);
+    const result = await signIn("credentials", {
+      email: gateEmail.trim().toLowerCase(),
+      password: gatePassword,
+      redirect: false,
+    });
+    setGateLoading(false);
+    if (!result?.ok || result.error) {
+      setGateError("Email ou mot de passe incorrect.");
+      return;
+    }
+    await updateSession();
+    setShowAuthGate(false);
+    setTimeout(() => handlePublish(), 150);
+  }
+
   async function handlePublish() {
     if (!title || !price || !description || !location) return;
+    if (!session) {
+      setShowAuthGate(true);
+      return;
+    }
     const cat = CATEGORIES.find((c) => c.id === categoryId);
     setPublishing(true);
     setPublishError(null);
@@ -1457,6 +1489,61 @@ export default function PostForm() {
           )}
         </div>
       </div>
+
+      {/* ── Auth gate overlay — shown when user hits publish without session ── */}
+      {showAuthGate && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+            <div className="text-center space-y-1">
+              <h2 className="text-lg font-extrabold text-on-surface">Connectez-vous pour publier</h2>
+              <p className="text-sm text-outline">Votre annonce est prête — connectez-vous pour la mettre en ligne.</p>
+            </div>
+            <form onSubmit={handleGateLogin} className="space-y-3">
+              <input
+                type="email"
+                value={gateEmail}
+                onChange={(e) => setGateEmail(e.target.value)}
+                placeholder="Adresse email"
+                required
+                autoComplete="email"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              />
+              <input
+                type="password"
+                value={gatePassword}
+                onChange={(e) => setGatePassword(e.target.value)}
+                placeholder="Mot de passe"
+                required
+                autoComplete="current-password"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              />
+              {gateError && <p className="text-red-600 text-xs font-semibold">{gateError}</p>}
+              <button
+                type="submit"
+                disabled={gateLoading}
+                className="w-full py-3.5 rounded-full bg-primary text-white font-bold text-sm disabled:opacity-50 transition-opacity"
+              >
+                {gateLoading ? "Connexion…" : "Se connecter et publier"}
+              </button>
+            </form>
+            <div className="text-center space-y-2">
+              <Link
+                href={`/register?callbackUrl=${encodeURIComponent("/post")}`}
+                className="block text-sm font-bold text-primary hover:underline"
+              >
+                Pas encore de compte ? Créer gratuitement →
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowAuthGate(false)}
+                className="text-xs text-outline hover:underline"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

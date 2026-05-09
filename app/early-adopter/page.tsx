@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -11,6 +11,7 @@ export default function EarlyAdopterPage() {
   const [siretMode, setSiretMode] = useState<SiretMode>("siret");
   const [companyName, setCompanyName] = useState("");
   const [companyVille, setCompanyVille] = useState("");
+  const [manualCompanyName, setManualCompanyName] = useState("");
   const [checkingId, setCheckingId] = useState(false);
   const [idError, setIdError] = useState("");
 
@@ -20,6 +21,15 @@ export default function EarlyAdopterPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "full" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [position, setPosition] = useState<number | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/early-adopter")
+      .then((r) => r.json())
+      .then((d) => setRemaining(d.remaining ?? null))
+      .catch(() => {});
+  }, []);
 
   const expectedLength = siretMode === "siret" ? 14 : 9;
 
@@ -56,9 +66,11 @@ export default function EarlyAdopterPage() {
     setIdError("");
   }
 
+  const effectiveCompany = companyName || manualCompanyName.trim();
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!companyName) { setIdError("Veuillez entrer un SIRET ou SIREN valide"); return; }
+    if (!effectiveCompany) { setIdError("Nom de votre société requis"); return; }
 
     setStatus("loading");
     setErrorMsg("");
@@ -68,8 +80,8 @@ export default function EarlyAdopterPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          companyName,
-          siret: siretMode === "siret" ? siretValue : null,
+          companyName: effectiveCompany,
+          siret: siretValue.length >= 9 ? siretValue : null,
           managerFirstName: firstName.trim(),
           email: email.trim(),
         }),
@@ -89,6 +101,8 @@ export default function EarlyAdopterPage() {
 
   // ── Succès ───────────────────────────────────────────────────────────────────
   if (status === "success") {
+    const shareUrl = "https://www.dealandcompany.fr/early-adopter";
+    const shareText = `Je viens de réserver une place partenaire fondateur sur Deal&Co — −50% sur les pubs pendant 3 ans ! Il reste des places : `;
     return (
       <div className="min-h-screen bg-[#f7f9fb] flex items-center justify-center px-4 py-16">
         <div className="max-w-md w-full text-center space-y-6">
@@ -119,6 +133,37 @@ export default function EarlyAdopterPage() {
           >
             Créer mon compte maintenant →
           </Link>
+
+          {/* Sharing section */}
+          <div className="bg-white rounded-2xl border border-[#eceef0] p-5 space-y-3">
+            <p className="text-sm font-extrabold text-[#191c1e]">Partagez l&apos;offre à d&apos;autres pros</p>
+            <p className="text-xs text-[#777683]">Il reste des places — faites-en profiter vos collègues et partenaires.</p>
+            <div className="flex gap-2">
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(shareText + shareUrl)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#25D366] text-white text-xs font-bold hover:opacity-90 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[16px]">chat</span>
+                WhatsApp
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl).then(() => {
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  });
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#f7f9fb] border border-[#eceef0] text-[#191c1e] text-xs font-bold hover:bg-[#eceef0] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">{linkCopied ? "check" : "link"}</span>
+                {linkCopied ? "Copié !" : "Copier le lien"}
+              </button>
+            </div>
+          </div>
+
           <p className="text-xs text-[#b0b3ba]">Un email de confirmation vous a été envoyé.</p>
         </div>
       </div>
@@ -162,7 +207,8 @@ export default function EarlyAdopterPage() {
         {/* Hero */}
         <div className="text-center space-y-3">
           <span className="inline-block bg-[#fbbf24]/20 text-[#b45309] text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full">
-            Offre fondateurs — 50 places seulement
+            Offre fondateurs
+            {remaining !== null ? ` — ${remaining} place${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}` : " — 50 places seulement"}
           </span>
           <h1 className="text-3xl font-extrabold text-[#191c1e] leading-tight">
             −50% sur vos publicités<br />pendant&nbsp;3&nbsp;ans
@@ -176,6 +222,22 @@ export default function EarlyAdopterPage() {
             <strong className="text-[#191c1e]">−50% pendant 3 ans</strong> sur vos forfaits pub.
           </p>
         </div>
+
+        {/* Progress bar urgency */}
+        {remaining !== null && (
+          <div className="bg-white rounded-2xl border border-[#eceef0] px-5 py-4 space-y-2">
+            <div className="flex justify-between items-center text-xs font-black">
+              <span className="text-[#191c1e]">{50 - remaining} pros inscrits</span>
+              <span className={remaining <= 10 ? "text-red-500" : "text-[#2f6fb8]"}>{remaining} place{remaining > 1 ? "s" : ""} restante{remaining > 1 ? "s" : ""}</span>
+            </div>
+            <div className="w-full h-2.5 bg-[#f0f2f5] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#2f6fb8] to-[#fbbf24] rounded-full transition-all duration-700"
+                style={{ width: `${Math.min(100, ((50 - remaining) / 50) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Avantages */}
         <div className="grid grid-cols-3 gap-3">
@@ -225,9 +287,8 @@ export default function EarlyAdopterPage() {
                   inputMode="numeric"
                   value={siretValue}
                   onChange={(e) => handleIdChange(e.target.value)}
-                  placeholder={siretMode === "siret" ? "14 chiffres" : "9 chiffres"}
+                  placeholder={`${siretMode === "siret" ? "14 chiffres" : "9 chiffres"} (optionnel)`}
                   maxLength={expectedLength}
-                  required
                   disabled={status === "loading"}
                   className="w-full pl-11 pr-10 py-3.5 rounded-xl border border-[#eceef0] bg-[#f7f9fb] text-[#191c1e] text-sm placeholder:text-[#b0b3ba] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30 focus:border-[#2f6fb8] transition font-mono tracking-wider"
                 />
@@ -269,6 +330,29 @@ export default function EarlyAdopterPage() {
                 </p>
               )}
             </div>
+
+            {/* Nom société manuel — si pas de SIRET trouvé */}
+            {!companyName && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-black uppercase tracking-widest text-[#777683]">
+                  Nom de votre société <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#777683]">
+                    store
+                  </span>
+                  <input
+                    type="text"
+                    value={manualCompanyName}
+                    onChange={(e) => setManualCompanyName(e.target.value)}
+                    placeholder="ex : Ma Société SAS"
+                    required
+                    disabled={status === "loading"}
+                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-[#eceef0] bg-[#f7f9fb] text-[#191c1e] text-sm placeholder:text-[#b0b3ba] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30 focus:border-[#2f6fb8] transition"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Prénom du gérant */}
             <div className="space-y-1.5">
@@ -324,7 +408,7 @@ export default function EarlyAdopterPage() {
 
             <button
               type="submit"
-              disabled={status === "loading" || !companyName || !firstName.trim() || !email.trim() || checkingId}
+              disabled={status === "loading" || !effectiveCompany || !firstName.trim() || !email.trim() || checkingId}
               className="w-full flex items-center justify-center gap-2 bg-[#fbbf24] text-[#1a1b25] font-black py-4 rounded-full hover:bg-[#f59e0b] active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {status === "loading" ? (

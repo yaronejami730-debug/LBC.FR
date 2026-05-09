@@ -148,32 +148,58 @@ export default async function ListingPage({
   const pageUrl = `${BASE}/annonce/${listing.id}`;
   const cat = CATEGORIES.find((c) => c.label === listing.category);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: listing.title,
-    description: listing.description,
-    image: images.length ? images : [mainImg],
+  const baseOffer = {
+    "@type": "Offer",
     url: pageUrl,
-    datePublished: listing.createdAt.toISOString(),
-    dateModified: listing.updatedAt.toISOString(),
-    offers: {
-      "@type": "Offer",
-      url: pageUrl,
-      price: listing.price,
-      priceCurrency: "EUR",
-      availability: "https://schema.org/InStock",
-      itemCondition:
-        listing.condition === "Neuf"
-          ? "https://schema.org/NewCondition"
-          : "https://schema.org/UsedCondition",
-      seller: {
-        "@type": "Person",
-        name: listing.user.name ?? "Particulier",
-      },
-    },
-    ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
+    price: listing.price,
+    priceCurrency: "EUR",
+    availability: "https://schema.org/InStock",
+    itemCondition: listing.condition === "Neuf"
+      ? "https://schema.org/NewCondition"
+      : "https://schema.org/UsedCondition",
+    seller: { "@type": "Person", name: listing.user.name ?? "Particulier" },
   };
+
+  const isVehicle = listing.category === "Véhicules";
+  const jsonLd = isVehicle
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Car",
+        name: listing.title,
+        description: listing.description,
+        image: images.length ? images : [mainImg],
+        url: pageUrl,
+        datePublished: listing.createdAt.toISOString(),
+        dateModified: listing.updatedAt.toISOString(),
+        offers: baseOffer,
+        ...(vehicleMeta.marque ? { brand: { "@type": "Brand", name: vehicleMeta.marque } } : {}),
+        ...(vehicleMeta.modele ? { model: vehicleMeta.modele } : {}),
+        ...(vehicleMeta.annee ? { vehicleModelDate: vehicleMeta.annee } : {}),
+        ...(vehicleMeta.kilometrage ? {
+          mileageFromOdometer: {
+            "@type": "QuantitativeValue",
+            value: parseInt(String(vehicleMeta.kilometrage).replace(/\D/g, ""), 10) || undefined,
+            unitCode: "KMT",
+          },
+        } : {}),
+        ...(vehicleMeta.carburant ? { fuelType: vehicleMeta.carburant } : {}),
+        ...(vehicleMeta.transmission ? { vehicleTransmission: vehicleMeta.transmission } : {}),
+        ...(vehicleMeta.couleur ? { color: vehicleMeta.couleur } : {}),
+        ...(vehicleMeta.nombrePortes ? { numberOfDoors: parseInt(String(vehicleMeta.nombrePortes), 10) || undefined } : {}),
+        ...(vehicleMeta.nombrePlaces ? { vehicleSeatingCapacity: parseInt(String(vehicleMeta.nombrePlaces), 10) || undefined } : {}),
+      }
+    : {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: listing.title,
+        description: listing.description,
+        image: images.length ? images : [mainImg],
+        url: pageUrl,
+        datePublished: listing.createdAt.toISOString(),
+        dateModified: listing.updatedAt.toISOString(),
+        offers: baseOffer,
+        ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
+      };
 
   const breadcrumbLd = {
     "@context": "https://schema.org",

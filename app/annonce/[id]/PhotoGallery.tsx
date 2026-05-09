@@ -30,6 +30,9 @@ function PhotoCell({
       <img
         src={src}
         alt={alt}
+        loading={badge ? "eager" : "lazy"}
+        fetchPriority={badge ? "high" : "low"}
+        decoding="async"
         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
       />
       {/* Logo — bottom-left of each cell */}
@@ -82,7 +85,7 @@ export default function PhotoGallery({ images, title }: PhotoGalleryProps) {
           <PhotoCell
             key={i}
             src={img}
-            alt={`${title} — photo ${i + 1}`}
+            alt={i === 0 ? title : `${title} — photo ${i + 1}`}
             onClick={() => openLightbox(i)}
             badge={
               i === 0 ? (
