@@ -13,6 +13,22 @@ export default function ListingActions({ listingId, status }: Props) {
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const [done, setDone] = useState<"approved" | "rejected" | null>(null);
+
+  if (done) {
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+        done === "approved"
+          ? "text-emerald-700 bg-emerald-100"
+          : "text-[#ba1a1a] bg-[#ffdad6]"
+      }`}>
+        <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+          {done === "approved" ? "check_circle" : "cancel"}
+        </span>
+        {done === "approved" ? "Validée" : "Refusée"}
+      </span>
+    );
+  }
 
   if (status === "REJECTED") {
     return (
@@ -27,7 +43,7 @@ export default function ListingActions({ listingId, status }: Props) {
             onClick={() => {
               setError("");
               startTransition(async () => {
-                try { await approveListing(listingId); }
+                try { await approveListing(listingId); setDone("approved"); }
                 catch (err) { setError(err instanceof Error ? err.message : "Erreur"); }
               });
             }}
@@ -51,7 +67,7 @@ export default function ListingActions({ listingId, status }: Props) {
               onClick={() => {
                 setError("");
                 startTransition(async () => {
-                  try { await approveListing(listingId); }
+                  try { await approveListing(listingId); setDone("approved"); }
                   catch (err) { setError(err instanceof Error ? err.message : "Erreur"); }
                 });
               }}
@@ -85,8 +101,7 @@ export default function ListingActions({ listingId, status }: Props) {
                   startTransition(async () => {
                     try {
                       await rejectListing(listingId, reason);
-                      setShowReject(false);
-                      setReason("");
+                      setDone("rejected");
                     } catch (err) {
                       setError(err instanceof Error ? err.message : "Erreur");
                     }
