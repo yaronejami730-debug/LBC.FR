@@ -16,6 +16,8 @@ export default async function UsersPage() {
       siret: true,
       verified: true,
       adminNote: true,
+      bannedAt: true,
+      banReason: true,
       memberSince: true,
       createdAt: true,
       _count: {
@@ -192,7 +194,7 @@ export default async function UsersPage() {
                     {user.role === "ADMIN" ? (
                       <span className="text-xs text-[#777683] italic">Compte admin</span>
                     ) : (
-                      <UserActions userId={user.id} verified={user.verified} />
+                      <UserActions userId={user.id} verified={user.verified} bannedAt={user.bannedAt?.toISOString() ?? null} />
                     )}
                   </td>
                 </tr>

@@ -72,14 +72,26 @@ export default async function BlogArticlePage({
     description: article.description,
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
-    author: { "@type": "Organization", name: "Deal&Co" },
+    author: {
+      "@type": "Organization",
+      name: "Deal&Co",
+      url: BASE,
+      "@id": `${BASE}/#org`,
+    },
     publisher: {
       "@type": "Organization",
       name: "Deal&Co",
-      logo: { "@type": "ImageObject", url: `${BASE}/logo-dealco.png` },
+      url: BASE,
+      logo: { "@type": "ImageObject", url: `${BASE}/logo-dealco.png`, width: 500, height: 160 },
     },
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    image: { "@type": "ImageObject", url: `${url}/opengraph-image`, width: 1200, height: 630 },
     keywords: article.keywords.join(", "),
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["h1", "h2", "article p:first-of-type"],
+    },
+    isPartOf: { "@type": "WebSite", "@id": `${BASE}/#website`, name: "Deal&Co" },
   };
 
   const breadcrumbLd = {

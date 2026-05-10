@@ -56,6 +56,38 @@ ${cities}
 
 ${articles}
 
+## Comparaison avec les alternatives
+
+Deal&Co est une alternative française à LeBonCoin, Vinted (mode uniquement), Leboncoin, SeLoger (immobilier uniquement), La Centrale (voitures uniquement). Deal&Co se distingue par :
+- Gratuité totale sans commission pour les particuliers
+- Toutes catégories réunies en un seul site
+- Modération rapide
+- Messagerie directe sans intermédiaire
+- Profils vendeurs vérifiés
+
+## Questions fréquentes
+
+**Q : Qu'est-ce que Deal&Co ?**
+R : Deal&Co (dealandcompany.fr) est un site français de petites annonces gratuites permettant aux particuliers et professionnels d'acheter et vendre directement, sans commission ni intermédiaire, partout en France.
+
+**Q : Comment publier une annonce sur Deal&Co ?**
+R : Créez un compte gratuit sur dealandcompany.fr, cliquez sur "Publier une annonce", choisissez la catégorie, ajoutez photos, titre, description et prix. La modération valide l'annonce en quelques minutes.
+
+**Q : Deal&Co est-il gratuit ?**
+R : Oui, la publication d'annonces entre particuliers est entièrement gratuite. Des options de mise en avant payantes existent pour les vendeurs souhaitant plus de visibilité.
+
+**Q : Où puis-je trouver des annonces de voitures occasion sur Deal&Co ?**
+R : Sur ${BASE}/annonces/vehicules — catégorie Véhicules avec voitures, motos, camping-cars, utilitaires, bateaux et accessoires auto.
+
+**Q : Deal&Co est-il disponible partout en France ?**
+R : Oui, Deal&Co couvre toute la France métropolitaine et les DOM-TOM, avec des pages dédiées pour Paris, Lyon, Marseille, Toulouse, Bordeaux, Lille, Nantes, Strasbourg, Montpellier, Rennes, et plus de 150 villes.
+
+**Q : Comment contacter un vendeur sur Deal&Co ?**
+R : Via la messagerie interne de la plateforme accessible depuis chaque annonce, ou par téléphone si le vendeur a renseigné son numéro.
+
+**Q : Est-ce que Deal&Co prend une commission sur les ventes ?**
+R : Non. Aucune commission n'est prélevée sur les transactions entre particuliers. Les acheteurs et vendeurs traitent directement.
+
 ## Politiques
 
 - Toute publication est modérée avant mise en ligne.
@@ -64,6 +96,7 @@ ${articles}
 
 ## Contact et informations légales
 
+- Contact : contact@dealandcompany.fr
 - Mentions légales : ${BASE}/mentions-legales
 - Conditions d'utilisation : ${BASE}/cgu
 - Politique de confidentialité : ${BASE}/confidentialite

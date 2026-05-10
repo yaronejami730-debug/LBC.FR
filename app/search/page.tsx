@@ -13,6 +13,8 @@ import HistoryTracker from "@/components/HistoryTracker";
 import DejaVuBadge from "@/components/DejaVuBadge";
 import GridAdCard from "@/components/GridAdCard";
 import { listingUrl } from "@/lib/listing-slug";
+import { Suspense } from "react";
+import SaveSearchButton from "./SaveSearchButton";
 
 export async function generateMetadata({
   searchParams,
@@ -102,7 +104,12 @@ export default async function SearchPage({
                 <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-secondary">Découvrez les articles</span>
                 <h2 className="text-3xl font-extrabold manrope text-primary tracking-tight">Annonces sélectionnées</h2>
               </div>
-              <SearchBar q={q} category={category} searchParams={params} />
+              <div className="flex items-center gap-3">
+                <Suspense>
+                  <SaveSearchButton />
+                </Suspense>
+                <SearchBar q={q} category={category} searchParams={params} />
+              </div>
             </div>
             {/* Chips/Filters */}
             <div className="flex flex-wrap gap-2">

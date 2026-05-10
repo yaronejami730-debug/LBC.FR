@@ -29,6 +29,8 @@ model User {
   lastLoginAt         DateTime?
   reengagementSentAt  DateTime?
   earlyAdopterDiscount Boolean @default(false)
+  bannedAt            DateTime?
+  banReason           String?
   apiKeys             ApiKey[]
 }
 
@@ -99,9 +101,10 @@ model Listing {
   status          String         @default("APPROVED")
   rejectionReason String?
   adminNote       String?
-  expiresAt       DateTime?
-  expiryNotifiedAt DateTime?
-  viewCount       Int            @default(0)
+  expiresAt            DateTime?
+  expiryNotifiedAt     DateTime?
+  photoReminderSentAt  DateTime?
+  viewCount            Int            @default(0)
   conversations   Conversation[]
   user            User           @relation(fields: [userId], references: [id])
   favorites       Favorite[]
@@ -150,13 +153,14 @@ model Message {
 }
 
 model SavedSearch {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  filters   String   @default("{}") // JSON: { category, q, minPrice, maxPrice, location, ... }
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  name           String
+  filters        String   @default("{}") // JSON: { category, q, minPrice, maxPrice, location, ... }
+  lastNotifiedAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordResetToken {

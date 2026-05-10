@@ -87,6 +87,30 @@ export async function rejectUser(id: string, adminNote: string) {
   revalidatePath("/admin/users");
 }
 
+export async function banUser(id: string, reason: string) {
+  await requireAdmin();
+  await prisma.user.update({
+    where: { id },
+    data: { bannedAt: new Date(), banReason: reason || null },
+  });
+  // Reject all active listings from this user
+  await prisma.listing.updateMany({
+    where: { userId: id, status: { in: ["APPROVED", "PENDING"] } },
+    data: { status: "REJECTED", rejectionReason: "Compte suspendu" },
+  });
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/listings");
+}
+
+export async function unbanUser(id: string) {
+  await requireAdmin();
+  await prisma.user.update({
+    where: { id },
+    data: { bannedAt: null, banReason: null },
+  });
+  revalidatePath("/admin/users");
+}
+
 // ── Advertisements ────────────────────────────────────────────────────────────
 
 function parseScheduleDate(value: FormDataEntryValue | null): Date | null {
