@@ -38,11 +38,13 @@ export async function generateMetadata({
       locale: "fr_FR",
       publishedTime: article.publishedAt,
       modifiedTime: article.updatedAt,
+      images: [{ url: `${BASE}/blog/${article.slug}/opengraph-image`, width: 1200, height: 630, alt: article.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: article.title,
       description: article.description,
+      images: [`${BASE}/blog/${article.slug}/opengraph-image`],
     },
   };
 }

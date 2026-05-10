@@ -18,6 +18,7 @@ import SiteFooter from "@/components/SiteFooter";
 import DejaVuBadge from "@/components/DejaVuBadge";
 import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
 import StickyPublishFab from "@/components/StickyPublishFab";
+import { listingUrl } from "@/lib/listing-slug";
 
 export const revalidate = 86400;
 export const dynamicParams = true;
@@ -69,16 +70,23 @@ export async function generateStaticParams() {
   return params;
 }
 
+const GEO_PER_PAGE = 24;
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ categorie: string; slug: string[] }>;
+  searchParams: Promise<{ page?: string }>;
 }): Promise<Metadata> {
   const { categorie, slug } = await params;
+  const { page: pageParam } = await searchParams;
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) return {};
   const shape = parseSlug(categorie, slug);
   if (!shape) return {};
+
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
 
   const target =
     shape.kind === "city"
@@ -99,25 +107,27 @@ export async function generateMetadata({
   const total = await prisma.listing.count({ where: whereClause }).catch(() => 0);
 
   const content = (await getOrCreateSeoContent(target)) ?? fallbackContent(target);
-  const url = `${BASE}/annonces/${cat.id}/${slug.join("/")}`;
+  const baseUrl = `${BASE}/annonces/${cat.id}/${slug.join("/")}`;
+  const canonical = page === 1 ? baseUrl : `${baseUrl}?page=${page}`;
+
+  const title = page === 1 ? content.metaTitle : `${content.metaTitle} — Page ${page}`;
 
   return {
-    title: content.metaTitle,
+    title,
     description: content.metaDescription,
     keywords: content.keywords,
-    alternates: { canonical: url },
-    robots: total === 0 ? { index: false, follow: true } : undefined,
+    alternates: { canonical },
     openGraph: {
-      title: content.metaTitle,
+      title,
       description: content.metaDescription,
-      url,
+      url: canonical,
       siteName: "Deal&Co",
       type: "website",
       locale: "fr_FR",
     },
     twitter: {
       card: "summary_large_image",
-      title: content.metaTitle,
+      title,
       description: content.metaDescription,
     },
   };
@@ -125,14 +135,20 @@ export async function generateMetadata({
 
 export default async function AnnoncesGeoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ categorie: string; slug: string[] }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { categorie, slug } = await params;
+  const { page: pageParam } = await searchParams;
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) notFound();
   const shape = parseSlug(categorie, slug);
   if (!shape) notFound();
+
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const skip = (page - 1) * GEO_PER_PAGE;
 
   const cityData = slugToCity(shape.citySlug);
   const cityLabel = cityData?.name ?? slugToCityLabel(shape.citySlug);
@@ -155,15 +171,21 @@ export default async function AnnoncesGeoPage({
     whereClause.subcategory = subLabel;
   }
 
-  const [listings, total] = await Promise.all([
-    prisma.listing.findMany({
-      where: whereClause,
-      orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
-      take: 24,
-      include: { user: { select: { verified: true } } },
-    }),
-    prisma.listing.count({ where: whereClause }),
-  ]);
+  const baseUrl = `/annonces/${cat.id}/${slug.join("/")}`;
+
+  const total = await prisma.listing.count({ where: whereClause });
+  // 404 for empty geo pages — cleaner signal than noindex (stops crawl budget waste)
+  if (total === 0 && page === 1) notFound();
+
+  const listings = await prisma.listing.findMany({
+    where: whereClause,
+    orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
+    take: GEO_PER_PAGE,
+    skip,
+    include: { user: { select: { verified: true } } },
+  });
+
+  const totalPages = Math.ceil(total / GEO_PER_PAGE);
 
   const neighbouringCities = cityData
     ? FRENCH_CITIES.filter((c) => c.departmentCode === cityData.departmentCode && c.slug !== cityData.slug).slice(0, 8)
@@ -201,7 +223,7 @@ export default async function AnnoncesGeoPage({
     itemListElement: listings.map((l, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `${BASE}/annonce/${l.id}`,
+      url: `${BASE}${listingUrl(l.id, l.title)}`,
       name: l.title,
     })),
   };
@@ -218,11 +240,6 @@ export default async function AnnoncesGeoPage({
           })),
         }
       : null;
-
-  const searchUrl =
-    shape.kind === "sub-city" && subLabel
-      ? `/search?category=${encodeURIComponent(cat.label)}&vehicleType=${encodeURIComponent(subLabel)}&location=${encodeURIComponent(cityLabel)}`
-      : `/search?category=${encodeURIComponent(cat.label)}&location=${encodeURIComponent(cityLabel)}`;
 
   const h2Scope = subLabel ? `${subLabel.toLowerCase()} à ${cityLabel}` : `${cat.label.toLowerCase()} à ${cityLabel}`;
 
@@ -304,7 +321,7 @@ export default async function AnnoncesGeoPage({
               return (
                 <Fragment key={listing.id}>
                   <Link
-                    href={`/annonce/${listing.id}`}
+                    href={listingUrl(listing.id, listing.title)}
                     className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
@@ -335,16 +352,32 @@ export default async function AnnoncesGeoPage({
           )}
         </div>
 
-        {total > 24 && (
-          <div className="mt-10 text-center">
-            <Link
-              href={searchUrl}
-              className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-white rounded-full font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Voir les {total.toLocaleString("fr-FR")} annonces
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
-          </div>
+        {totalPages > 1 && (
+          <nav aria-label="Pagination" className="mt-10 flex justify-center items-center gap-3">
+            {page > 1 && (
+              <Link
+                href={page === 2 ? baseUrl : `${baseUrl}?page=${page - 1}`}
+                rel="prev"
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-surface-container bg-white text-on-surface font-semibold text-sm hover:bg-slate-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_left</span>
+                Précédent
+              </Link>
+            )}
+            <span className="text-sm text-outline tabular-nums">
+              Page {page} / {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                href={`${baseUrl}?page=${page + 1}`}
+                rel="next"
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors"
+              >
+                Suivant
+                <span className="material-symbols-outlined text-sm">chevron_right</span>
+              </Link>
+            )}
+          </nav>
         )}
 
         {seo.localTips && (

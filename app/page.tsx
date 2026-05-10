@@ -10,6 +10,7 @@ import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
 import DejaVuBadge from "@/components/DejaVuBadge";
 import SiteFooter from "@/components/SiteFooter";
+import { listingUrl } from "@/lib/listing-slug";
 
 export const metadata: Metadata = {
   title: { absolute: "Deal&Co — Petites annonces gratuites entre particuliers en France" },
@@ -243,7 +244,7 @@ export default async function Home() {
                   </a>
                 )}
                 <Link
-                  href={`/annonce/${listing.id}`}
+                  href={listingUrl(listing.id, listing.title)}
                   className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                 >
                   <div className="relative aspect-square overflow-hidden bg-surface-container-low">

@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ConversationList from "./ConversationList";
+
+export const metadata: Metadata = {
+  title: "Messages — Deal&Co",
+  robots: { index: false, follow: false },
+};
 
 export default async function MessagesPage() {
   const session = await auth();

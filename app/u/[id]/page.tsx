@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -5,6 +6,40 @@ import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { getUserResponseTime } from "@/lib/user-stats";
+
+const BASE = "https://www.dealandcompany.fr";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { name: true, isPro: true, companyName: true },
+  }).catch(() => null);
+  if (!user) return {};
+  const displayName = user.isPro ? user.companyName || user.name : user.name;
+  const url = `${BASE}/u/${id}`;
+  return {
+    title: `${displayName} — Profil vendeur sur Deal&Co`,
+    description: `Consultez les annonces et le profil de ${displayName} sur Deal&Co, site de petites annonces gratuites en France.`,
+    alternates: { canonical: url },
+    openGraph: {
+      title: `${displayName} — Profil vendeur Deal&Co`,
+      description: `Toutes les annonces de ${displayName} sur Deal&Co.`,
+      url,
+      siteName: "Deal&Co",
+      type: "profile",
+      locale: "fr_FR",
+    },
+    twitter: {
+      card: "summary",
+      title: `${displayName} — Profil vendeur Deal&Co`,
+    },
+  };
+}
 
 export default async function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

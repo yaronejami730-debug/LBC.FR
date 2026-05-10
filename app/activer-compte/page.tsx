@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ActivateForm from "./ActivateForm";
+
+export const metadata: Metadata = {
+  title: "Activer mon compte — Deal&Co",
+  robots: { index: false, follow: false },
+};
 
 export default async function ActivateAccountPage({
   searchParams,

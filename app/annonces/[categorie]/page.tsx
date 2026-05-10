@@ -11,6 +11,7 @@ import SiteFooter from "@/components/SiteFooter";
 import DejaVuBadge from "@/components/DejaVuBadge";
 import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
 import StickyPublishFab from "@/components/StickyPublishFab";
+import { listingUrl } from "@/lib/listing-slug";
 
 export const revalidate = 3600;
 
@@ -46,7 +47,6 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical },
-    robots: total === 0 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,
@@ -95,6 +95,9 @@ export default async function CategoryPage({
 
   const totalPages = Math.ceil(total / PER_PAGE);
 
+  // 404 for empty categories — cleaner signal than noindex (stops crawl budget waste)
+  if (total === 0 && page === 1) notFound();
+
   const BASE = "https://www.dealandcompany.fr";
 
   const breadcrumbLd = {
@@ -123,7 +126,7 @@ export default async function CategoryPage({
     itemListElement: listings.map((l, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `${BASE}/annonce/${l.id}`,
+      url: `${BASE}${listingUrl(l.id, l.title)}`,
       name: l.title,
     })),
   } : null;
@@ -185,7 +188,7 @@ export default async function CategoryPage({
               return (
                 <Fragment key={listing.id}>
                   <Link
-                    href={`/annonce/${listing.id}`}
+                    href={listingUrl(listing.id, listing.title)}
                     className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">

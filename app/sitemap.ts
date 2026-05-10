@@ -4,6 +4,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES, TOP_CITIES, citySlug } from "@/lib/cities";
 import { subcategoryToSlug } from "@/lib/seo-content";
 import { getAllArticles } from "@/lib/blog";
+import { listingSlug } from "@/lib/listing-slug";
 
 const BASE = "https://www.dealandcompany.fr";
 const PRIORITY_CATEGORIES = ["vehicules", "immobilier", "multimedia", "mode", "maison"];
@@ -16,6 +17,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: BASE, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${BASE}/a-propos`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/mentions-legales`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/cgu`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE}/confidentialite`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/api-doc`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
   ];
 
@@ -112,12 +116,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const rows = await prisma.listing.findMany({
       where: { status: "APPROVED", deletedAt: null } as any,
-      select: { id: true, updatedAt: true },
+      select: { id: true, title: true, updatedAt: true },
       orderBy: { createdAt: "desc" },
       take: 5000,
     });
     listings = rows.map((l) => ({
-      url: `${BASE}/annonce/${l.id}`,
+      url: `${BASE}/annonce/${l.id}/${listingSlug(l.title)}`,
       lastModified: l.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.7,

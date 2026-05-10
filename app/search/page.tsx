@@ -12,6 +12,7 @@ import SearchBar from "./SearchBar";
 import HistoryTracker from "@/components/HistoryTracker";
 import DejaVuBadge from "@/components/DejaVuBadge";
 import GridAdCard from "@/components/GridAdCard";
+import { listingUrl } from "@/lib/listing-slug";
 
 export async function generateMetadata({
   searchParams,
@@ -160,7 +161,7 @@ export default async function SearchPage({
                     />
                   )}
                   <Link
-                    href={`/annonce/${listing.id}`}
+                    href={listingUrl(listing.id, listing.title)}
                     className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">

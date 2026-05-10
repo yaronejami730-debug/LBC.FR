@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNow } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Mes favoris — Deal&Co",
+  robots: { index: false, follow: false },
+};
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 
