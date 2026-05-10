@@ -33,10 +33,14 @@ export async function generateMetadata({
   const { id } = await params;
   const listing = await prisma.listing.findUnique({
     where: { id },
-    select: { title: true, description: true, images: true, price: true, location: true },
+    select: { title: true, description: true, images: true, price: true, location: true, shadowBanned: true },
   }).catch(() => null);
 
   if (!listing) return {};
+
+  if ((listing as any).shadowBanned) {
+    return { robots: { index: false, follow: false } };
+  }
 
   const imgs = JSON.parse(listing.images) as string[];
   const rawImg = imgs[0] ?? "";

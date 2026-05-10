@@ -70,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const grouped = await prisma.listing.groupBy({
       by: ["category", "subcategory", "location"],
-      where: { status: "APPROVED", deletedAt: null } as any,
+      where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
       _count: { _all: true },
     });
 
@@ -145,7 +145,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let listings: MetadataRoute.Sitemap = [];
   try {
     const rows = await prisma.listing.findMany({
-      where: { status: "APPROVED", deletedAt: null } as any,
+      where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
       select: { id: true, title: true, updatedAt: true },
       orderBy: { createdAt: "desc" },
       take: 5000,

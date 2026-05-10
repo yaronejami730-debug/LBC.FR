@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
     let rejectionReason: string | null = null;
     let adminNote: string | null = null;
     let rejectedForProActivity = false;
+    let reviewPriority = 0;
 
     if (categorySetting?.approvalMode === "MANUAL") {
       listingStatus = "PENDING";
@@ -147,6 +148,55 @@ export async function POST(req: NextRequest) {
       } else {
         listingStatus = "APPROVED";
       }
+
+      // Geographic spread check — if user has 3+ distinct cities in 24h → PENDING
+      if (listingStatus === "APPROVED") {
+        const recentLocations = await prisma.listing.findMany({
+          where: {
+            userId: session.user.id,
+            createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+            deletedAt: null,
+          },
+          select: { location: true },
+        });
+        const extractCity = (loc: string) =>
+          loc.toLowerCase()
+            .replace(/\b\d+(e|ème|er|ère)?\b/g, "") // strip arrondissements/ordinals
+            .replace(/\b\d{5}\b/g, "")               // strip postal codes
+            .replace(/[^a-zàâäéèêëîïôùûü\s-]/g, "")
+            .trim()
+            .split(/\s+/)[0];                         // first word = city
+
+        const allLocations = [...recentLocations.map((l) => l.location), location];
+        const uniqueCities = new Set(allLocations.map(extractCity).filter(Boolean));
+        if (uniqueCities.size >= 3) {
+          listingStatus = "PENDING";
+          adminNote = `[GEO_SPREAD] ${uniqueCities.size} villes distinctes en 24h : ${[...uniqueCities].join(", ")}\n` + (adminNote ?? "");
+        }
+      }
+
+      // Spam score — run before creation so shouldPend can downgrade to PENDING
+      if (listingStatus === "APPROVED") {
+        const spamReport = await detectSpam(session.user.id as string);
+        if (spamReport.shouldRestrict) {
+          applySpamRestriction(session.user.id as string, spamReport).catch(console.error);
+        } else if (spamReport.shouldPend) {
+          listingStatus = "PENDING";
+          adminNote = `[SPAM_PEND] score=${spamReport.totalScore}\n` + (adminNote ?? "");
+        }
+      }
+
+      // Review priority for PENDING listings (admin queue sort)
+      if (listingStatus === "PENDING") {
+        const moderationFlags = result?.flags ?? [];
+        if (moderationFlags.some((f) => f.code === "no_image"))                                           reviewPriority += 3;
+        if (moderationFlags.some((f) => ["price_too_low", "price_too_high"].includes(f.code)))            reviewPriority += 2;
+        if (moderationFlags.some((f) => f.code === "desc_too_short"))                                     reviewPriority += 2;
+        if ((accountAgeHours ?? 999) < 24)                                                               reviewPriority += 3;
+        if ((recentListingsCount24h ?? 0) > 10)                                                          reviewPriority += 2;
+        if (adminNote?.includes("[GEO_SPREAD]"))                                                         reviewPriority += 2;
+        if (adminNote?.includes("[SPAM_PEND]"))                                                          reviewPriority += 3;
+      }
     }
 
     const listing = await prisma.listing.create({
@@ -170,6 +220,7 @@ export async function POST(req: NextRequest) {
         status: listingStatus,
         rejectionReason,
         adminNote,
+        reviewPriority,
       } as any,
     });
 
@@ -224,16 +275,6 @@ export async function POST(req: NextRequest) {
           }),
         }).catch(() => {});
       }
-    }
-
-    // Behavioral spam detection — fire and forget (only for approved listings)
-    if (listingStatus === "APPROVED") {
-      const userId = session.user.id as string;
-      detectSpam(userId).then((report) => {
-        if (report.shouldRestrict) {
-          applySpamRestriction(userId, report).catch(console.error);
-        }
-      }).catch(console.error);
     }
 
     // Notification admin — fire and forget

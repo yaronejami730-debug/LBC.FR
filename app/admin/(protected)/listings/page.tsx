@@ -19,7 +19,9 @@ export default async function ListingsPage({
   const [listings, counts] = await Promise.all([
     prisma.listing.findMany({
       where: { status, deletedAt: null },
-      orderBy: { createdAt: "desc" },
+      orderBy: status === "PENDING"
+        ? [{ reviewPriority: "desc" }, { createdAt: "desc" }]
+        : { createdAt: "desc" },
       include: { user: { select: { name: true, email: true, verified: true } } },
     }),
     Promise.all(

@@ -283,6 +283,7 @@ export function moderateListing(input: ModerationInput): ModerationResult {
   const critical = flags.filter((f) => f.severity === "critical").length;
   const major = flags.filter((f) => f.severity === "major").length;
   const minor = flags.filter((f) => f.severity === "minor").length;
+  const hasNoImage = flags.some((f) => f.code === "no_image");
 
   const score = Math.max(0, Math.min(1, 1 - 0.35 * critical - 0.15 * major - 0.05 * minor));
 
@@ -292,6 +293,7 @@ export function moderateListing(input: ModerationInput): ModerationResult {
   else if (major >= 2) verdict = "reject";
   else if (major === 1) verdict = "review";
   else if (minor >= 2) verdict = "review";
+  else if (hasNoImage) verdict = "review"; // no photo → always manual approval
   else verdict = "approve";
 
   const rejectReasons = flags
