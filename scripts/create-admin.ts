@@ -11,9 +11,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const EMAIL    = "admin@presdetoi.fr";
-const PASSWORD = "Admin1234!";
-const NAME     = "Admin";
+const EMAIL    = process.env.ADMIN_EMAIL    ?? "admin@presdetoi.fr";
+const PASSWORD = process.env.ADMIN_PASSWORD ?? "Admin1234!";
+const NAME     = process.env.ADMIN_NAME     ?? "Admin";
 
 async function main() {
   const hashed = await bcrypt.hash(PASSWORD, 12);

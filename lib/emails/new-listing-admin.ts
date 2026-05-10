@@ -9,6 +9,7 @@ export function newListingAdminEmail({
   listingUrl,
   adminUrl,
   requiresApproval = false,
+  wasRejected = false,
 }: {
   sellerName: string;
   listingTitle: string;
@@ -18,7 +19,27 @@ export function newListingAdminEmail({
   listingUrl: string;
   adminUrl: string;
   requiresApproval?: boolean;
+  wasRejected?: boolean;
 }): string {
+  if (wasRejected) {
+    return baseEmail({
+      title: "Annonce auto-rejetée — Deal & Co",
+      heading: "🚫 Annonce rejetée automatiquement",
+      body: `
+        <p style="margin:0 0 16px;">Une annonce a été <strong>automatiquement rejetée</strong> par le système de modération.</p>
+        <div style="background:#fff1f2;border-left:3px solid #ef4444;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 16px;text-align:left;">
+          <p style="font-size:14px;color:#1a1b25;font-weight:700;margin:0 0 6px;">${listingTitle}</p>
+          <p style="font-size:13px;color:#424751;margin:0 0 4px;">Vendeur : <strong>${sellerName}</strong></p>
+          <p style="font-size:13px;color:#424751;margin:0 0 4px;">Catégorie : ${category} · ${location}</p>
+          <p style="font-size:13px;color:#2f6fb8;font-weight:700;margin:0;">${price.toLocaleString("fr-FR")} €</p>
+        </div>
+        <p style="margin:0;">L'annonce n'est pas visible. Consultez le panneau admin pour revoir la décision si nécessaire.</p>
+      `,
+      ctaLabel: "Voir dans l'administration",
+      ctaUrl: adminUrl,
+    });
+  }
+
   if (requiresApproval) {
     return baseEmail({
       title: "Annonce en attente d'approbation — Deal & Co",

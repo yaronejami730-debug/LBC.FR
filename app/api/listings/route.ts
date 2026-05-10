@@ -9,6 +9,7 @@ import { listingPendingEmail } from "@/lib/emails/listing-pending";
 import { listingRejectedEmail } from "@/lib/emails/listing-rejected";
 import { CATEGORIES } from "@/lib/categories";
 import { moderateListing } from "@/lib/moderation";
+import { detectSpam, applySpamRestriction } from "@/lib/spam-detector";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -39,6 +40,18 @@ export async function POST(req: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Block restricted accounts from posting
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restrictedAt: true },
+    });
+    if (currentUser?.restrictedAt) {
+      return NextResponse.json(
+        { error: "Votre compte est temporairement limité. Contactez le support." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
@@ -213,6 +226,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Behavioral spam detection — fire and forget (only for approved listings)
+    if (listingStatus === "APPROVED") {
+      const userId = session.user.id as string;
+      detectSpam(userId).then((report) => {
+        if (report.shouldRestrict) {
+          applySpamRestriction(userId, report).catch(console.error);
+        }
+      }).catch(console.error);
+    }
+
     // Notification admin — fire and forget
     const adminEmail = process.env.ADMIN_EMAIL;
     const seller = await prisma.user.findUnique({
@@ -237,10 +260,13 @@ export async function POST(req: NextRequest) {
           category,
           location,
           listingUrl: `${baseUrl}/annonce/${listing.id}`,
-          adminUrl: requiresApproval
+          adminUrl: wasRejected
+            ? `${baseUrl}/admin/listings?status=REJECTED`
+            : requiresApproval
             ? `${baseUrl}/admin/listings?status=PENDING`
             : `${baseUrl}/admin/listings`,
           requiresApproval,
+          wasRejected,
         }),
       }).catch(() => {});
     }

@@ -31,6 +31,8 @@ model User {
   earlyAdopterDiscount Boolean @default(false)
   bannedAt            DateTime?
   banReason           String?
+  restrictedAt        DateTime?
+  spamScore           Int       @default(0)
   apiKeys             ApiKey[]
 }
 
@@ -105,6 +107,7 @@ model Listing {
   expiryNotifiedAt     DateTime?
   photoReminderSentAt  DateTime?
   viewCount            Int            @default(0)
+  shadowBanned         Boolean        @default(false)
   conversations   Conversation[]
   user            User           @relation(fields: [userId], references: [id])
   favorites       Favorite[]

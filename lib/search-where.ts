@@ -122,7 +122,7 @@ export function buildSearchWhere(
   }
 
   return {
-    ...(opts.includeNonApproved ? {} : { status: "APPROVED" }),
+    ...(opts.includeNonApproved ? {} : { status: "APPROVED", shadowBanned: false }),
     deletedAt: null,
 
     // Full-text: q searches across ALL meaningful text fields + metadata JSON
