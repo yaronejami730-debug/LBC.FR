@@ -42,11 +42,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Block restricted accounts from posting
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { restrictedAt: true },
+      select: { restrictedAt: true, verified: true },
     });
+    if (!currentUser?.verified) {
+      return NextResponse.json(
+        { error: "Veuillez confirmer votre adresse email avant de publier une annonce." },
+        { status: 403 }
+      );
+    }
     if (currentUser?.restrictedAt) {
       return NextResponse.json(
         { error: "Votre compte est temporairement limité. Contactez le support." },

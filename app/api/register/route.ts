@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { sendEmail } from "@/lib/email";
-import { welcomeEmail } from "@/lib/emails/welcome";
+import { verifyEmail } from "@/lib/emails/verify-email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -34,7 +35,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }
 
-  // Validate SIRET uniqueness for pro accounts
   if (isPro && siret) {
     const siretUsed = await prisma.user.findUnique({ where: { siret } });
     if (siretUsed) {
@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Vérifier si cet email est pré-inscrit early adopter
   const earlyAdopter = await prisma.earlyAdopter.findUnique({
     where: { email: email.trim().toLowerCase() },
   });
@@ -54,14 +53,11 @@ export async function POST(req: NextRequest) {
       email,
       password: hashed,
       memberSince: new Date().getFullYear(),
-      ...(isPro && siret && companyName
-        ? { isPro: true, siret, companyName }
-        : {}),
+      ...(isPro && siret && companyName ? { isPro: true, siret, companyName } : {}),
       ...(earlyAdopter ? { earlyAdopterDiscount: true } : {}),
     },
   });
 
-  // Marquer l'early adopter comme réclamé
   if (earlyAdopter && !earlyAdopter.claimedAt) {
     prisma.earlyAdopter.update({
       where: { id: earlyAdopter.id },
@@ -69,13 +65,19 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
   }
 
-  // Email de bienvenue — fire and forget
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.emailVerificationToken.create({ data: { userId: user.id, token, expiresAt } });
+
+  const verifyUrl = `${process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr"}/api/verify-email?token=${token}`;
+  const displayName = user.isPro ? user.companyName ?? user.name : user.name;
+
   sendEmail({
     to: user.email,
-    toName: user.isPro ? user.companyName ?? user.name : user.name,
-    subject: "Bienvenue sur Deal & Co 🎉",
-    html: welcomeEmail({ name: user.isPro ? user.companyName ?? user.name : user.name }),
+    toName: displayName,
+    subject: "Confirmez votre adresse email — Deal & Co",
+    html: verifyEmail({ name: displayName, verifyUrl }),
   }).catch(() => {});
 
-  return NextResponse.json({ id: user.id }, { status: 201 });
+  return NextResponse.json({ id: user.id, pendingVerification: true }, { status: 201 });
 }

@@ -62,6 +62,12 @@ function LoginForm() {
                 placeholder="••••••••"
               />
             </div>
+            {searchParams.get("verified") === "1" && (
+              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-4 py-3 rounded-xl">
+                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                Email confirmé ! Connectez-vous maintenant.
+              </div>
+            )}
             {error && (
               <p className="text-error text-sm font-medium bg-error-container px-4 py-3 rounded-xl">{error}</p>
             )}

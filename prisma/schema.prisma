@@ -22,7 +22,8 @@ model User {
   sentMessages         Message[]                 @relation("SentMessages")
   favorites            Favorite[]
   savedSearches        SavedSearch[]
-  passwordResetTokens  PasswordResetToken[]
+  passwordResetTokens       PasswordResetToken[]
+  emailVerificationTokens   EmailVerificationToken[]
   isPro                Boolean                   @default(false)
   siret                String?                   @unique
   companyName          String?
@@ -173,6 +174,15 @@ model PasswordResetToken {
   token     String   @unique
   expiresAt DateTime
   used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

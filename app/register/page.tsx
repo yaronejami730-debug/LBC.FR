@@ -67,7 +67,7 @@ export default function RegisterPage() {
       const data = await res.json();
       setError(data.error || "Échec de l'inscription");
     } else {
-      router.push("/login");
+      router.push(`/verifier-email?email=${encodeURIComponent(email)}`);
     }
   }
 
