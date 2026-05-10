@@ -65,18 +65,17 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
   }
 
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await prisma.emailVerificationToken.create({ data: { userId: user.id, token, expiresAt } });
 
-  const verifyUrl = `${process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr"}/api/verify-email?token=${token}`;
   const displayName = user.isPro ? user.companyName ?? user.name : user.name;
 
   sendEmail({
     to: user.email,
     toName: displayName,
     subject: "Confirmez votre adresse email — Deal & Co",
-    html: verifyEmail({ name: displayName, verifyUrl }),
+    html: verifyEmail({ name: displayName, code: token }),
   }).catch(() => {});
 
   return NextResponse.json({ id: user.id, pendingVerification: true }, { status: 201 });
