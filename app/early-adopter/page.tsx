@@ -28,7 +28,7 @@ export default function EarlyAdopterPage() {
     fetch("/api/early-adopter")
       .then((r) => r.json())
       .then((d) => setRemaining(d.remaining ?? null))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const expectedLength = siretMode === "siret" ? 14 : 9;
@@ -258,7 +258,7 @@ export default function EarlyAdopterPage() {
         </div>
 
         {/* Formulaire */}
-        <div className="bg-white rounded-2xl border border-[#eceef0] p-6 shadow-sm">
+        <div className="bg-white ni rounded-2xl border border-[#eceef0] p-6 shadow-sm">
           <h2 className="font-extrabold text-[#191c1e] mb-1">Réservez votre place</h2>
           <p className="text-xs text-[#777683] mb-5">Aucun paiement requis. Juste votre société et votre email.</p>
 
