@@ -37,7 +37,7 @@ const MAX_PHOTOS = 15;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type PhotoMode = "choose" | "guided" | "free";
-type FormStep  = 0 | 1 | 2 | 3 | 4; // 0=photos 1=titre 2=catégorie 3=desc 4=coordonnées
+type FormStep  = 0 | 1 | 2 | 3 | 4 | 5; // 0=titre 1=photos 2=prix 3=desc 4=coordonnées 5=récap
 
 type VehicleFields = {
   marque: string; modele: string; nomModele: string; annee: string; kilometrage: string;
@@ -238,8 +238,8 @@ const pillCls = (active: boolean) =>
 
 // ── Step labels ───────────────────────────────────────────────────────────────
 
-// 0=Titre  1=Photos  2=Prix(+catégorie)  3=Description  4=Coordonnées
-const STEP_LABELS = ["Titre", "Photos", "Prix", "Description", "Coordonnées"];
+// 0=Titre  1=Photos  2=Prix(+catégorie)  3=Description  4=Coordonnées  5=Récap
+const STEP_LABELS = ["Titre", "Photos", "Prix", "Description", "Coordonnées", "Récap"];
 
 // ── Tips per step ─────────────────────────────────────────────────────────────
 
@@ -298,10 +298,15 @@ export default function PostForm() {
   const [images,      setImages]      = useState<string[]>([]);
   const [photoMode,   setPhotoMode]   = useState<PhotoMode>("choose");
   const [photoStep,   setPhotoStep]   = useState(0);
-  const [uploading,   setUploading]   = useState(false);
+  const [uploading,       setUploading]       = useState(false);
+  const [plateDetecting,  setPlateDetecting]  = useState(false);
   // url → nombre de plaques floutées (0 = aucune, >0 = floutée)
   const [plateStatus, setPlateStatus] = useState<Record<string, number>>({});
 
+
+  // AI assist state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError,   setAiError]   = useState<string | null>(null);
 
   // Publish state
   const [publishing,    setPublishing]    = useState(false);
@@ -346,6 +351,75 @@ export default function PostForm() {
     setPhotoMode(mode);
   }
 
+  // ── Plate detection + client-side blur ───────────────────────────────────────
+
+async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFound: number }> {
+    try {
+      console.log("[PlateDetect] start —", file.name, file.type, file.size);
+
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/detect-plate", { method: "POST", body: form });
+      const json = await res.json() as { boxes?: { xmin: number; ymin: number; xmax: number; ymax: number }[] };
+      console.log("[PlateDetect] response:", JSON.stringify(json));
+      const { boxes } = json;
+      if (!boxes || boxes.length === 0) return { file, platesFound: 0 };
+
+      const blurredFile = await new Promise<File>((resolve, reject) => {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+
+          for (const box of boxes) {
+            // Raw pixel coords from Plate Recognizer — apply directly, canvas = full image
+            const pad = Math.round((box.xmax - box.xmin) * 0.20);
+            const bx = Math.max(0, box.xmin - pad);
+            const by = Math.max(0, box.ymin - pad);
+            const bw = Math.min(canvas.width - bx, (box.xmax - box.xmin) + pad * 2);
+            const bh = Math.min(canvas.height - by, (box.ymax - box.ymin) + pad * 2);
+            if (bw <= 0 || bh <= 0) continue;
+
+            console.log("[PlateDetect] blur px:", { bx, by, bw, bh });
+
+            const FACTOR = 10;
+            const sw = Math.max(2, Math.round(bw / FACTOR));
+            const sh = Math.max(2, Math.round(bh / FACTOR));
+            const tmp = document.createElement("canvas");
+            tmp.width = sw; tmp.height = sh;
+            const tCtx = tmp.getContext("2d")!;
+            tCtx.drawImage(canvas, bx, by, bw, bh, 0, 0, sw, sh);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(tmp, 0, 0, sw, sh, bx, by, bw, bh);
+            ctx.imageSmoothingEnabled = true;
+          }
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) { reject(new Error("Canvas export failed")); return; }
+              console.log("[PlateDetect] blur done, blob size:", blob.size);
+              resolve(new File([blob], file.name, { type: "image/jpeg" }));
+            },
+            "image/jpeg",
+            0.92,
+          );
+        };
+        img.onerror = (e) => { URL.revokeObjectURL(objectUrl); console.error("[PlateDetect] img load error", e); reject(new Error("Image load failed")); };
+        img.src = objectUrl;
+      });
+
+      return { file: blurredFile, platesFound: boxes.length };
+    } catch (err) {
+      console.error("[PlateDetect] error:", err);
+      return { file, platesFound: 0 };
+    }
+  }
+
   // ── Upload ───────────────────────────────────────────────────────────────────
 
   async function handleImageUpload(files: FileList | null, slotIndex?: number) {
@@ -355,9 +429,24 @@ export default function PostForm() {
     setPublishError(null);
     try {
       const uploads: string[] = [];
-      for (const file of Array.from(files)) {
+      for (const rawFile of Array.from(files)) {
+        let uploadFile = rawFile;
+        let clientPlatesFound = 0;
+
+        // Always detect plates — Claude returns [] if no plate visible, cheap call
+        setPlateDetecting(true);
+        try {
+          const result = await detectAndBlurPlates(rawFile);
+          uploadFile = result.file;
+          clientPlatesFound = result.platesFound;
+        } catch {
+          // silent fallback — upload original
+        } finally {
+          setPlateDetecting(false);
+        }
+
         const form = new FormData();
-        form.append("file", file);
+        form.append("file", uploadFile);
         const res = await fetch("/api/upload", { method: "POST", body: form });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -366,8 +455,9 @@ export default function PostForm() {
         const data = await res.json();
         if (!data.url) throw new Error("Réponse invalide");
         uploads.push(data.url);
-        if (typeof data.platesFound === "number") {
-          setPlateStatus((prev) => ({ ...prev, [data.url]: data.platesFound }));
+        const totalPlates = Math.max(clientPlatesFound, typeof data.platesFound === "number" ? data.platesFound : 0);
+        if (totalPlates > 0) {
+          setPlateStatus((prev) => ({ ...prev, [data.url]: totalPlates }));
         }
       }
       if (slotIndex !== undefined) {
@@ -485,6 +575,40 @@ export default function PostForm() {
       setPublishError("Impossible de joindre le serveur.");
     } finally {
       setPublishing(false);
+    }
+  }
+
+  // ── AI assist ────────────────────────────────────────────────────────────────
+
+  async function handleAiAssist() {
+    if (!title) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const cat = CATEGORIES.find((c) => c.id === categoryId);
+      const res = await fetch("/api/ai-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          category: cat?.label || categoryId,
+          subcategory: subcategory || null,
+          imageUrl: images[0] || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur IA");
+      if (data.description) setDescription(data.description);
+      if (data.titre && !title.trim()) setTitle(data.titre);
+      if (data.etat && CONDITIONS.includes(data.etat)) setCondition(data.etat);
+      if (data.prixMin && data.prixMax && !price) {
+        const mid = Math.round((data.prixMin + data.prixMax) / 2);
+        setPrice(String(mid));
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Erreur lors de la génération");
+    } finally {
+      setAiLoading(false);
     }
   }
 
@@ -732,7 +856,12 @@ export default function PostForm() {
                           </>
                         ) : (
                           <div className="w-full h-full flex items-center justify-center gap-3">
-                            {uploading ? (
+                            {plateDetecting ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="animate-spin rounded-full h-6 w-6 border-[3px] border-amber-500 border-t-transparent" />
+                                <p className="text-xs text-amber-600 font-semibold">Analyse des plaques…</p>
+                              </div>
+                            ) : uploading ? (
                               <div className="animate-spin rounded-full h-6 w-6 border-[3px] border-primary border-t-transparent" />
                             ) : (
                               <>
@@ -750,9 +879,9 @@ export default function PostForm() {
                   })}
                 </div>
 
-                <input ref={mainFileRef} type="file" accept="image/*" className="hidden"
+                <input ref={mainFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                   onChange={(e) => { handleImageUpload(e.target.files, 0); e.target.value = ""; }} />
-                <input ref={extraFileRef} type="file" accept="image/*" multiple className="hidden"
+                <input ref={extraFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden"
                   onChange={(e) => {
                     const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
                     handleImageUpload(e.target.files, isNaN(slot) ? undefined : slot);
@@ -838,7 +967,12 @@ export default function PostForm() {
                           </>
                         ) : (
                           <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                            {uploading ? (
+                            {plateDetecting ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-amber-500 border-t-transparent" />
+                                <p className="text-xs text-amber-600 font-semibold">Analyse des plaques…</p>
+                              </div>
+                            ) : uploading ? (
                               <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-primary border-t-transparent" />
                             ) : (
                               <>
@@ -905,13 +1039,13 @@ export default function PostForm() {
                   );
                 })()}
 
-                <input ref={mainFileRef} type="file" accept="image/*" className="hidden"
+                <input ref={mainFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
                   onChange={async (e) => {
                     await handleImageUpload(e.target.files, 0);
                     setPhotoStep((s) => s === 0 ? 1 : s);
                     e.target.value = "";
                   }} />
-                <input ref={extraFileRef} type="file" accept="image/*" multiple className="hidden"
+                <input ref={extraFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden"
                   onChange={async (e) => {
                     const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
                     const target = isNaN(slot) ? photoStep : slot;
@@ -1385,6 +1519,28 @@ export default function PostForm() {
         {formStep === 3 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-extrabold">Description & État</h2>
+
+            {/* AI assist button */}
+            <button
+              type="button"
+              onClick={handleAiAssist}
+              disabled={aiLoading || !title}
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 to-indigo-500 text-white font-bold text-sm shadow-[0_4px_16px_rgba(109,40,217,0.25)] active:scale-[0.99] transition-all disabled:opacity-50"
+            >
+              {aiLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-[2.5px] border-white border-t-transparent" />
+                  Génération en cours…
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+                  Générer la description avec l&apos;IA
+                </>
+              )}
+            </button>
+            {aiError && <p className="text-red-500 text-xs text-center font-medium">{aiError}</p>}
+
             {/* Une seule carte — pas de vide entre état et description */}
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
               <div className="px-5 py-4 space-y-3">
@@ -1403,6 +1559,140 @@ export default function PostForm() {
             </div>
           </div>
         )}
+
+        {/* ══ STEP 5 : RÉCAPITULATIF ═══════════════════════════════════════ */}
+        {formStep === 5 && (() => {
+          const cat = CATEGORIES.find((c) => c.id === categoryId);
+          return (
+            <div className="space-y-4">
+              <h2 className="text-2xl font-extrabold">Récapitulatif</h2>
+              <p className="text-sm text-outline -mt-2">Vérifiez avant de publier. Cliquez sur Modifier pour corriger.</p>
+
+              {/* Photos */}
+              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Photos</span>
+                  <button type="button" onClick={() => setFormStep(1)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary">
+                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  </button>
+                </div>
+                {images.filter(Boolean).length > 0 ? (
+                  <div className="flex gap-2 overflow-x-auto p-4">
+                    {images.filter(Boolean).map((img, i) => (
+                      <div key={i} className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden border border-slate-100">
+                        <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm scale-110 opacity-50" />
+                        <img src={img} alt={`Photo ${i + 1}`} className="relative w-full h-full object-contain" />
+                        {i === 0 && <span className="absolute bottom-0 left-0 right-0 text-center text-[8px] font-bold bg-primary text-white py-0.5">Principale</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-5 py-4 text-sm text-outline italic">Aucune photo — l&apos;annonce sera moins visible</p>
+                )}
+              </div>
+
+              {/* Titre + Prix */}
+              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                <div className="flex items-start justify-between px-5 py-4">
+                  <div className="flex-1 min-w-0 pr-3">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Titre</p>
+                    <p className="font-bold text-on-surface text-base leading-snug">{title || <span className="text-outline italic">Non renseigné</span>}</p>
+                  </div>
+                  <button type="button" onClick={() => setFormStep(0)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  </button>
+                </div>
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Prix</p>
+                    <p className="text-2xl font-extrabold text-on-surface">{price ? `${price} €` : <span className="text-outline italic text-base">Non renseigné</span>}</p>
+                  </div>
+                  <button type="button" onClick={() => setFormStep(2)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  </button>
+                </div>
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Catégorie</p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-primary">{cat?.icon}</span>
+                      <p className="font-semibold text-sm text-on-surface">{cat?.label}{subcategory ? ` › ${subcategory}` : ""}</p>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setFormStep(2)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  </button>
+                </div>
+              </div>
+
+              {/* État + Description */}
+              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">État</p>
+                    <p className="font-semibold text-sm text-on-surface">{condition}</p>
+                  </div>
+                  <button type="button" onClick={() => setFormStep(3)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  </button>
+                </div>
+                <div className="px-5 py-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Description</p>
+                    <button type="button" onClick={() => setFormStep(3)}
+                      className="flex items-center gap-1 text-xs font-bold text-primary shrink-0 ml-3">
+                      <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                    </button>
+                  </div>
+                  {description ? (
+                    <p className="text-sm text-on-surface leading-relaxed whitespace-pre-line line-clamp-5">{description}</p>
+                  ) : (
+                    <p className="text-sm text-outline italic">Non renseignée</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Localisation + Téléphone */}
+              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-xl">location_on</span>
+                    <p className="font-semibold text-sm text-on-surface">{location || <span className="text-outline italic font-normal">Non renseignée</span>}</p>
+                  </div>
+                  <button type="button" onClick={() => setFormStep(4)}
+                    className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                  </button>
+                </div>
+                {phone && (
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-outline text-xl">call</span>
+                      <p className="font-semibold text-sm text-on-surface">{phone}{hidePhone && <span className="ml-2 text-[10px] text-outline font-normal">(masqué)</span>}</p>
+                    </div>
+                    <button type="button" onClick={() => setFormStep(4)}
+                      className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                      <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {publishError && <p className="text-red-500 text-sm font-medium text-center">{publishError}</p>}
+
+              <p className="text-xs text-outline text-center leading-relaxed">
+                En publiant, vous acceptez nos{" "}
+                <a href="#" className="underline font-bold text-primary">Conditions d&apos;utilisation</a> et{" "}
+                <a href="#" className="underline font-bold text-primary">Règles de publication</a>.
+              </p>
+            </div>
+          );
+        })()}
 
         {/* ══ STEP 4 : COORDONNÉES ═════════════════════════════════════════ */}
         {formStep === 4 && (
@@ -1445,13 +1735,6 @@ export default function PostForm() {
               </div>
             </div>
 
-            {publishError && <p className="text-red-500 text-sm font-medium text-center">{publishError}</p>}
-
-            <p className="text-xs text-outline text-center leading-relaxed">
-              En publiant, vous acceptez nos{" "}
-              <a href="#" className="underline font-bold text-primary">Conditions d&apos;utilisation</a> et{" "}
-              <a href="#" className="underline font-bold text-primary">Règles de publication</a>.
-            </p>
           </div>
         )}
 
@@ -1469,7 +1752,7 @@ export default function PostForm() {
             </button>
           )}
 
-          {formStep < 4 ? (
+          {formStep < 5 ? (
             <button type="button"
               onClick={() => {
                 if (!canAdvance(formStep)) return;
@@ -1477,8 +1760,11 @@ export default function PostForm() {
               }}
               disabled={!canAdvance(formStep)}
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-40">
-              {formStep === 1 && photoMode === "choose" ? "Passer les photos →" : "Suivant"}
-              {formStep !== 0 && <span className="material-symbols-outlined text-base">arrow_forward</span>}
+              {formStep === 4 ? (
+                <><span className="material-symbols-outlined text-base">checklist</span>Vérifier l&apos;annonce</>
+              ) : formStep === 1 && photoMode === "choose" ? "Passer les photos →" : (
+                <>Suivant{formStep !== 0 && <span className="material-symbols-outlined text-base">arrow_forward</span>}</>
+              )}
             </button>
           ) : (
             <button type="button" onClick={handlePublish}

@@ -1,51 +1,63 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-const PLATE_SERVICE = process.env.PLATE_BLUR_SERVICE_URL ?? "http://localhost:8001";
+export async function POST(req: Request) {
+  const token = process.env.PLATE_RECOGNIZER_TOKEN;
+  if (!token) return NextResponse.json({ boxes: [] });
 
-const ALLOWED_IMAGE_HOSTS = [
-  /^[a-z0-9-]+\.public\.blob\.vercel-storage\.com$/,
-  /^lh3\.googleusercontent\.com$/,
-];
+  let fileBlob: Blob;
+  let filename = "image.jpg";
 
-function isAllowedImageUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "https:") return false;
-    return ALLOWED_IMAGE_HOSTS.some((p) => p.test(parsed.hostname));
-  } catch {
-    return false;
-  }
-}
+  const contentType = req.headers.get("content-type") ?? "";
 
-export async function POST(req: NextRequest) {
-  const { imageUrl } = await req.json();
-  if (!imageUrl) return NextResponse.json({ error: "imageUrl required" }, { status: 400 });
-
-  if (!isAllowedImageUrl(imageUrl)) {
-    return NextResponse.json({ error: "URL d'image non autorisée" }, { status: 400 });
+  if (contentType.includes("multipart/form-data")) {
+    const form = await req.formData();
+    const file = form.get("file") as File | null;
+    if (!file) return NextResponse.json({ boxes: [] });
+    fileBlob = file;
+    filename = file.name || "image.jpg";
+  } else {
+    const body = await req.json();
+    if (!body.imageBase64) return NextResponse.json({ boxes: [] });
+    const bytes = Uint8Array.from(atob(body.imageBase64), (c) => c.charCodeAt(0));
+    fileBlob = new Blob([bytes], { type: body.mimeType || "image/jpeg" });
   }
 
-  const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(5_000) });
-  if (!imgRes.ok) return NextResponse.json({ error: "Cannot fetch image" }, { status: 400 });
-
-  const form = new FormData();
-  form.append("file", await imgRes.blob(), "image.jpg");
-
   try {
-    const svcRes = await fetch(`${PLATE_SERVICE}/detect`, {
+    const prForm = new FormData();
+    prForm.append("upload", fileBlob, filename);
+    prForm.append("regions", "fr");
+
+    const res = await fetch("https://api.platerecognizer.com/v1/plate-reader/", {
       method: "POST",
-      body: form,
-      signal: AbortSignal.timeout(10_000),
+      headers: { Authorization: `Token ${token}` },
+      body: prForm,
+      signal: AbortSignal.timeout(15000),
     });
 
-    if (!svcRes.ok) {
-      return NextResponse.json({ detections: [] });
+    if (!res.ok) {
+      console.error("[PlateRecognizer] error:", res.status, await res.text().catch(() => ""));
+      return NextResponse.json({ boxes: [] });
     }
 
-    const data = await svcRes.json();
-    return NextResponse.json(data);
-  } catch {
-    // Graceful degradation — service down, return empty (user can place box manually)
-    return NextResponse.json({ detections: [] });
+    const data = await res.json() as {
+      results?: { box: { xmin: number; ymin: number; xmax: number; ymax: number } }[];
+    };
+
+    console.log("[PlateRecognizer] raw:", JSON.stringify(data));
+
+    if (!data.results?.length) return NextResponse.json({ boxes: [] });
+
+    // Return raw pixel coordinates — client uses directly on canvas (same coordinate space)
+    const boxes = data.results.map((r) => ({
+      xmin: r.box.xmin,
+      ymin: r.box.ymin,
+      xmax: r.box.xmax,
+      ymax: r.box.ymax,
+    }));
+
+    return NextResponse.json({ boxes });
+  } catch (err) {
+    console.error("[PlateRecognizer] exception:", err);
+    return NextResponse.json({ boxes: [] });
   }
 }

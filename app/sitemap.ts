@@ -5,6 +5,7 @@ import { FRENCH_CITIES, TOP_CITIES, citySlug } from "@/lib/cities";
 import { subcategoryToSlug } from "@/lib/seo-content";
 import { getAllArticles } from "@/lib/blog";
 import { listingSlug } from "@/lib/listing-slug";
+import { CAR_BRANDS } from "@/lib/carBrands";
 
 const BASE = "https://www.dealandcompany.fr";
 const PRIORITY_CATEGORIES = ["vehicules", "immobilier", "multimedia", "mode", "maison"];
@@ -28,6 +29,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${BASE}/blog/${a.slug}`,
     lastModified: new Date(a.updatedAt),
     changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
+  function marqueToSlug(name: string) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  const brandPages: MetadataRoute.Sitemap = CAR_BRANDS.map((b) => ({
+    url: `${BASE}/annonces/vehicules/${marqueToSlug(b.name)}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.8,
+  }));
+
+  const POPULAR_MODELS = [
+    "renault-clio-occasion", "peugeot-208-occasion", "citroen-c3-occasion",
+    "volkswagen-golf-occasion", "renault-megane-occasion", "peugeot-308-occasion",
+    "dacia-sandero-occasion", "toyota-yaris-occasion", "ford-fiesta-occasion",
+    "bmw-serie-3-occasion", "mercedes-classe-a-occasion", "audi-a3-occasion",
+    "renault-scenic-occasion", "opel-corsa-occasion", "nissan-qashqai-occasion",
+    "iphone-14-occasion", "iphone-13-occasion", "samsung-galaxy-s23-occasion",
+    "canape-ikea-occasion", "table-occasion", "velo-occasion",
+  ];
+
+  const prixPages: MetadataRoute.Sitemap = POPULAR_MODELS.map((slug) => ({
+    url: `${BASE}/prix/${slug}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
     priority: 0.7,
   }));
 
@@ -131,5 +160,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // fail silently
   }
 
-  return [...statics, ...blogPosts, ...categories, ...cityPages, ...longTailPages, ...listings];
+  return [...statics, ...blogPosts, ...brandPages, ...prixPages, ...categories, ...cityPages, ...longTailPages, ...listings];
 }

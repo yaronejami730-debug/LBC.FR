@@ -9,6 +9,10 @@ import { article as vendreMeubles } from "./posts/vendre-meubles-occasion";
 import { article as acheterVoiture } from "./posts/acheter-voiture-occasion-particulier";
 import { article as guideAcheteur } from "./posts/guide-acheteur-petites-annonces";
 import { article as vendreAppartement } from "./posts/vendre-appartement-entre-particuliers";
+import { article as vendreVoitureParticulier } from "./posts/vendre-voiture-entre-particuliers-sans-agence";
+import { article as acheterAppartementParis } from "./posts/acheter-appartement-paris-particulier";
+import { article as louerSansAgence } from "./posts/louer-appartement-sans-agence";
+import { article as voitureMoins5000 } from "./posts/voiture-occasion-moins-5000-euros";
 
 const articles: BlogArticle[] = [
   vendreVoiture,
@@ -21,6 +25,10 @@ const articles: BlogArticle[] = [
   acheterVoiture,
   guideAcheteur,
   vendreAppartement,
+  vendreVoitureParticulier,
+  acheterAppartementParis,
+  louerSansAgence,
+  voitureMoins5000,
 ].sort(
   (a, b) => (a.publishedAt < b.publishedAt ? 1 : -1),
 );

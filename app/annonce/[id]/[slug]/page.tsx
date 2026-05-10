@@ -161,6 +161,14 @@ export default async function ListingPage({
   };
 
   const isVehicle = listing.category === "Véhicules";
+  const isImmo = listing.category === "Immobilier";
+
+  const immoType = String(immoMeta.typeBien ?? "").toLowerCase();
+  const immoSchemaType =
+    immoType.includes("maison") || immoType.includes("villa") ? "House"
+    : immoType.includes("appartement") || immoType.includes("studio") || immoType.includes("loft") ? "Apartment"
+    : "Accommodation";
+
   const jsonLd = isVehicle
     ? {
         "@context": "https://schema.org",
@@ -187,6 +195,31 @@ export default async function ListingPage({
         ...(vehicleMeta.couleur ? { color: vehicleMeta.couleur } : {}),
         ...(vehicleMeta.nombrePortes ? { numberOfDoors: parseInt(String(vehicleMeta.nombrePortes), 10) || undefined } : {}),
         ...(vehicleMeta.nombrePlaces ? { vehicleSeatingCapacity: parseInt(String(vehicleMeta.nombrePlaces), 10) || undefined } : {}),
+      }
+    : isImmo
+    ? {
+        "@context": "https://schema.org",
+        "@type": immoSchemaType,
+        name: listing.title,
+        description: listing.description,
+        image: images.length ? images : [mainImg],
+        url: pageUrl,
+        datePublished: listing.createdAt.toISOString(),
+        dateModified: listing.updatedAt.toISOString(),
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: listing.location,
+          addressCountry: "FR",
+        },
+        offers: baseOffer,
+        ...(immoMeta.surface ? {
+          floorSize: { "@type": "QuantitativeValue", value: parseFloat(String(immoMeta.surface)), unitCode: "MTK" },
+        } : {}),
+        ...(immoMeta.rooms ? { numberOfRooms: parseInt(String(immoMeta.rooms), 10) } : {}),
+        ...(immoMeta.chambres ? { numberOfBedrooms: parseInt(String(immoMeta.chambres), 10) } : {}),
+        ...(immoMeta.classeEnergie ? {
+          amenityFeature: [{ "@type": "LocationFeatureSpecification", name: "Classe énergie", value: String(immoMeta.classeEnergie) }],
+        } : {}),
       }
     : {
         "@context": "https://schema.org",
