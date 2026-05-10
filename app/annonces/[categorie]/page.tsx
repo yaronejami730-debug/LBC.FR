@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -80,7 +81,7 @@ export default async function CategoryPage({
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const skip = (page - 1) * PER_PAGE;
 
-  const [listings, total] = await Promise.all([
+  const [listings, total, priceAgg] = await Promise.all([
     prisma.listing.findMany({
       where: { status: "APPROVED", deletedAt: null, category: cat.label } as any,
       orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
@@ -90,6 +91,11 @@ export default async function CategoryPage({
     }),
     prisma.listing.count({
       where: { status: "APPROVED", deletedAt: null, category: cat.label } as any,
+    }),
+    prisma.listing.aggregate({
+      where: { status: "APPROVED", deletedAt: null, category: cat.label, price: { gt: 0 } } as any,
+      _min: { price: true },
+      _max: { price: true },
     }),
   ]);
 
@@ -123,6 +129,15 @@ export default async function CategoryPage({
     name: `Annonces ${cat.label}`,
     url: `${BASE}/annonces/${cat.id}`,
     numberOfItems: total,
+    ...(priceAgg._min.price && priceAgg._max.price ? {
+      offers: {
+        "@type": "AggregateOffer",
+        offerCount: total,
+        lowPrice: priceAgg._min.price,
+        highPrice: priceAgg._max.price,
+        priceCurrency: "EUR",
+      },
+    } : {}),
     itemListElement: listings.map((l, i) => ({
       "@type": "ListItem",
       position: i + 1,
@@ -193,7 +208,7 @@ export default async function CategoryPage({
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
                       {img ? (
-                        <img alt={listing.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" src={img} />
+                        <Image src={img} alt={listing.title} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <span className="material-symbols-outlined text-3xl text-outline/30">image</span>

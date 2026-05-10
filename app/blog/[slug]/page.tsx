@@ -247,6 +247,15 @@ export default async function BlogArticlePage({
                   Voir les annonces {relatedCategory.label}
                 </Link>
               )}
+              {article.keywords[0] && (
+                <Link
+                  href={`/search?q=${encodeURIComponent(article.keywords[0])}${relatedCategory ? `&category=${encodeURIComponent(relatedCategory.label)}` : ""}`}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-base">search</span>
+                  Rechercher &laquo; {article.keywords[0]} &raquo;
+                </Link>
+              )}
             </div>
             <p className="mt-4 text-xs text-white/70">
               100% gratuit · Sans commission · Modération rapide

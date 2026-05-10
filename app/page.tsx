@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
@@ -266,10 +267,12 @@ export default async function Home() {
                 >
                   <div className="relative aspect-square overflow-hidden bg-surface-container-low">
                     {img ? (
-                      <img
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        alt={listing.title}
+                      <Image
                         src={img}
+                        alt={listing.title}
+                        fill
+                        sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
