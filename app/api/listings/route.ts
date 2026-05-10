@@ -224,15 +224,29 @@ export async function POST(req: NextRequest) {
       } as any,
     });
 
-    // Email confirmation au vendeur — fire and forget
+    // Emails vendeur + admin — fire and forget
     const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
     const parsedImages = (() => { try { return JSON.parse(JSON.stringify(images || [])) as string[]; } catch { return [] as string[]; } })();
-    const seller2 = await prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true, email: true, companyName: true, isPro: true } });
-    if (seller2) {
-      const displayName = seller2.isPro && seller2.companyName ? seller2.companyName : seller2.name;
-      if (listingStatus === "REJECTED") {
+    const adminEmail = process.env.ADMIN_EMAIL;
+
+    const sellerUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true, email: true, companyName: true, isPro: true },
+    });
+
+    if (!sellerUser) {
+      console.error("[EMAIL] sellerUser not found for", session.user.id);
+    }
+
+    if (sellerUser) {
+      const displayName = sellerUser.isPro && sellerUser.companyName ? sellerUser.companyName : sellerUser.name;
+      const requiresApproval = listingStatus === "PENDING";
+      const wasRejected = listingStatus === "REJECTED";
+
+      // Email vendeur
+      if (wasRejected) {
         sendEmail({
-          to: seller2.email,
+          to: sellerUser.email,
           toName: displayName,
           subject: rejectedForProActivity
             ? `Votre annonce "${title}" doit être publiée depuis un compte pro — Deal & Co`
@@ -245,10 +259,10 @@ export async function POST(req: NextRequest) {
             isProActivity: rejectedForProActivity,
             proUpgradeUrl: `${baseUrl}/profile?tab=pro`,
           }),
-        }).catch(() => {});
-      } else if (listingStatus === "PENDING") {
+        }).catch((err) => console.error("[SELLER EMAIL REJECTED]", err));
+      } else if (requiresApproval) {
         sendEmail({
-          to: seller2.email,
+          to: sellerUser.email,
           toName: displayName,
           subject: `Votre annonce "${title}" est en cours de vérification — Deal & Co`,
           html: listingPendingEmail({
@@ -259,10 +273,10 @@ export async function POST(req: NextRequest) {
             location,
             imageUrl: parsedImages[0] ?? undefined,
           }),
-        }).catch(() => {});
+        }).catch((err) => console.error("[SELLER EMAIL PENDING]", err));
       } else {
         sendEmail({
-          to: seller2.email,
+          to: sellerUser.email,
           toName: displayName,
           subject: `Votre annonce "${title}" est en ligne — Deal & Co`,
           html: listingPublishedEmail({
@@ -273,43 +287,38 @@ export async function POST(req: NextRequest) {
             location,
             imageUrl: parsedImages[0] ?? undefined,
           }),
-        }).catch(() => {});
+        }).catch((err) => console.error("[SELLER EMAIL APPROVED]", err));
       }
-    }
 
-    // Notification admin — fire and forget
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const seller = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { name: true },
-    });
-    if (adminEmail && seller) {
-      const requiresApproval = listingStatus === "PENDING";
-      const wasRejected = listingStatus === "REJECTED";
-      sendEmail({
-        to: adminEmail,
-        toName: "Administration Deal & Co",
-        subject: wasRejected
-          ? `🚫 Annonce auto-rejetée : ${title}`
-          : requiresApproval
-          ? `⚠️ Annonce à approuver : ${title}`
-          : `Nouvelle annonce publiée : ${title}`,
-        html: newListingAdminEmail({
-          sellerName: seller.name,
-          listingTitle: title,
-          price: parsedPrice,
-          category,
-          location,
-          listingUrl: `${baseUrl}/annonce/${listing.id}`,
-          adminUrl: wasRejected
-            ? `${baseUrl}/admin/listings?status=REJECTED`
+      // Email admin
+      if (!adminEmail) {
+        console.error("[ADMIN EMAIL] ADMIN_EMAIL env var not set");
+      } else {
+        sendEmail({
+          to: adminEmail,
+          toName: "Administration Deal & Co",
+          subject: wasRejected
+            ? `🚫 Annonce auto-rejetée : ${title}`
             : requiresApproval
-            ? `${baseUrl}/admin/listings?status=PENDING`
-            : `${baseUrl}/admin/listings`,
-          requiresApproval,
-          wasRejected,
-        }),
-      }).catch((err) => console.error("[ADMIN EMAIL]", err));
+            ? `⚠️ Annonce à approuver : ${title}`
+            : `✅ Nouvelle annonce publiée : ${title}`,
+          html: newListingAdminEmail({
+            sellerName: sellerUser.name,
+            listingTitle: title,
+            price: parsedPrice,
+            category,
+            location,
+            listingUrl: `${baseUrl}/annonce/${listing.id}`,
+            adminUrl: wasRejected
+              ? `${baseUrl}/admin/listings?status=REJECTED`
+              : requiresApproval
+              ? `${baseUrl}/admin/listings?status=PENDING`
+              : `${baseUrl}/admin/listings`,
+            requiresApproval,
+            wasRejected,
+          }),
+        }).catch((err) => console.error("[ADMIN EMAIL]", err));
+      }
     }
 
     return NextResponse.json(
