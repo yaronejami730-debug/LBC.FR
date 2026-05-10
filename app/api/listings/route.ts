@@ -309,7 +309,7 @@ export async function POST(req: NextRequest) {
           requiresApproval,
           wasRejected,
         }),
-      }).catch(() => {});
+      }).catch((err) => console.error("[ADMIN EMAIL]", err));
     }
 
     return NextResponse.json(

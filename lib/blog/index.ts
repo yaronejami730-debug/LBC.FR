@@ -13,6 +13,15 @@ import { article as vendreVoitureParticulier } from "./posts/vendre-voiture-entr
 import { article as acheterAppartementParis } from "./posts/acheter-appartement-paris-particulier";
 import { article as louerSansAgence } from "./posts/louer-appartement-sans-agence";
 import { article as voitureMoins5000 } from "./posts/voiture-occasion-moins-5000-euros";
+import { article as vendreObjetsRapidement } from "./posts/comment-vendre-objets-rapidement";
+import { article as economieCirulaire } from "./posts/economie-circulaire-meubles-occasion";
+import { article as estimerPrixObjet } from "./posts/estimer-prix-objet-occasion";
+import { article as materielPro } from "./posts/materiel-professionnel-occasion";
+import { article as viderMaison } from "./posts/vider-maison-faire-profit";
+import { article as puericulture } from "./posts/puericulture-occasion";
+import { article as domTom } from "./posts/marketplace-dom-tom";
+import { article as annonceImmo } from "./posts/annonce-immobiliere-gratuite";
+import { article as jobAppoint } from "./posts/trouver-job-appoint-local";
 
 const articles: BlogArticle[] = [
   vendreVoiture,
@@ -29,6 +38,15 @@ const articles: BlogArticle[] = [
   acheterAppartementParis,
   louerSansAgence,
   voitureMoins5000,
+  vendreObjetsRapidement,
+  economieCirulaire,
+  estimerPrixObjet,
+  materielPro,
+  viderMaison,
+  puericulture,
+  domTom,
+  annonceImmo,
+  jobAppoint,
 ].sort(
   (a, b) => (a.publishedAt < b.publishedAt ? 1 : -1),
 );

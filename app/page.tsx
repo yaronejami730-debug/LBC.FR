@@ -14,9 +14,21 @@ import SiteFooter from "@/components/SiteFooter";
 import { listingUrl } from "@/lib/listing-slug";
 
 export const metadata: Metadata = {
-  title: { absolute: "Deal&Co — Petites annonces gratuites entre particuliers en France" },
+  title: { absolute: "Deal&Co — Achetez et vendez tout près de chez vous" },
   description:
-    "Achetez et vendez d'occasion près de chez vous sur Deal&Co. Voitures, immobilier, mode, électronique — petites annonces gratuites entre particuliers partout en France.",
+    "Trouvez les meilleures occasions dans votre quartier. Voitures, immobilier, mode, multimédia, matériel pro, emploi, services à domicile et plus — petites annonces gratuites entre particuliers partout en France et dans les DOM-TOM.",
+  keywords: [
+    "petites annonces gratuites France",
+    "occasion France",
+    "vente entre particuliers",
+    "seconde main France",
+    "marketplace France",
+    "déposer annonce gratuite",
+    "voitures occasion",
+    "immobilier particulier",
+    "matériel professionnel occasion",
+    "petites annonces DOM-TOM",
+  ],
   alternates: { canonical: "https://www.dealandcompany.fr" },
 };
 
@@ -27,11 +39,11 @@ const HOME_FAQ = [
   },
   {
     q: "La publication d'annonces est-elle gratuite sur Deal&Co ?",
-    a: "Oui, la publication d'annonces entre particuliers est entièrement gratuite. Des options payantes de mise en avant existent pour les vendeurs souhaitant gagner en visibilité, mais elles sont totalement facultatives.",
+    a: "Oui, la publication d'annonces entre particuliers est entièrement gratuite sur Deal&Co, sans limite de nombre d'annonces actives. Des options payantes de mise en avant existent pour les vendeurs souhaitant gagner en visibilité, mais elles sont totalement facultatives.",
   },
   {
-    q: "Comment vendre un objet sur Deal&Co ?",
-    a: "Créez un compte gratuit, cliquez sur « Publier une annonce », sélectionnez la catégorie correspondante, ajoutez un titre, une description, des photos et un prix. La modération valide l'annonce en quelques minutes et les acheteurs peuvent vous contacter directement via la messagerie interne ou par téléphone.",
+    q: "Comment vendre un objet rapidement sur Deal&Co ?",
+    a: "Créez un compte gratuit, cliquez sur « Publier une annonce », sélectionnez la catégorie correspondante, ajoutez un titre précis avec la marque et le modèle, des photos en lumière naturelle et un prix légèrement sous le marché. La modération valide l'annonce en quelques minutes et les premiers contacts arrivent généralement dans les 24 heures.",
   },
   {
     q: "Deal&Co prélève-t-il une commission sur les ventes ?",
@@ -39,7 +51,27 @@ const HOME_FAQ = [
   },
   {
     q: "Dans quelles villes Deal&Co est-il disponible ?",
-    a: "Deal&Co couvre toute la France métropolitaine et l'outre-mer. Plus de 150 villes principales disposent de pages dédiées par catégorie pour faciliter la recherche locale, dont Paris, Lyon, Marseille, Toulouse, Bordeaux, Lille, Nantes, Strasbourg, Montpellier, Rennes, Reims, Toulon, Nice et Grenoble.",
+    a: "Deal&Co couvre toute la France métropolitaine et l'outre-mer (Martinique, Guadeloupe, La Réunion, Guyane, Mayotte). Plus de 150 villes principales disposent de pages dédiées par catégorie, dont Paris, Lyon, Marseille, Toulouse, Bordeaux, Lille, Nantes, Strasbourg, Fort-de-France et Saint-Denis.",
+  },
+  {
+    q: "Quel est le meilleur site de petites annonces gratuites en France ?",
+    a: "Deal&Co se distingue par sa gratuité totale pour les particuliers, sa couverture nationale incluant les DOM-TOM, et ses pages locales dédiées par catégorie et par ville. Contrairement aux grandes plateformes, Deal&Co ne prélève aucune commission et met en relation directe acheteurs et vendeurs partout en France.",
+  },
+  {
+    q: "Comment acheter en toute sécurité sur Deal&Co ?",
+    a: "Vérifiez le profil et les évaluations du vendeur, communiquez uniquement via la messagerie interne avant de partager vos coordonnées, organisez la remise en main propre dans un lieu public, et payez uniquement à la remise de l'objet. Ne faites jamais de virement avant d'avoir reçu et vérifié l'article.",
+  },
+  {
+    q: "Comment trouver des bonnes affaires près de chez moi sur Deal&Co ?",
+    a: "Utilisez la recherche par localisation et activez les alertes de recherche sauvegardée pour être notifié dès qu'une annonce correspondant à vos critères est publiée dans votre zone. Filtrez par catégorie, fourchette de prix et distance pour affiner les résultats en temps réel.",
+  },
+  {
+    q: "Deal&Co propose-t-il des annonces d'emploi et de services locaux ?",
+    a: "Oui. Deal&Co référence des offres d'emploi (CDD, CDI, missions ponctuelles, saisonniers) et des annonces de services de proximité (baby-sitting, cours particuliers, jardinage, bricolage, ménage) dans toutes les régions de France. Ces catégories permettent de trouver ou proposer des services localement, sans intermédiaire.",
+  },
+  {
+    q: "Peut-on publier des annonces immobilières gratuitement sur Deal&Co ?",
+    a: "Oui. La publication d'annonces immobilières — vente, location, colocation — est gratuite pour les particuliers sur Deal&Co. Vous pouvez vendre ou louer votre bien sans passer par une agence, économisant ainsi 3 à 8 % du prix de vente ou 1 à 2 mois de loyer en honoraires d'agence.",
   },
 ];
 
