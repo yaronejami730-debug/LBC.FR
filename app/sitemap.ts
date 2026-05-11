@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES, TOP_CITIES, citySlug } from "@/lib/cities";
@@ -6,6 +7,48 @@ import { subcategoryToSlug } from "@/lib/seo-content";
 import { getAllArticles } from "@/lib/blog";
 import { listingSlug } from "@/lib/listing-slug";
 import { CAR_BRANDS } from "@/lib/carBrands";
+
+const getGroupedCounts = unstable_cache(
+  async () =>
+    prisma.listing
+      .groupBy({
+        by: ["category", "subcategory", "location"],
+        where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
+        _count: { _all: true },
+      })
+      .catch(() => [] as any[]),
+  ["sitemap-grouped-counts"],
+  { revalidate: 1800, tags: ["listings"] },
+);
+
+const getVehicleBrandModelMeta = unstable_cache(
+  async () =>
+    prisma.listing
+      .findMany({
+        where: {
+          status: "APPROVED",
+          shadowBanned: false,
+          deletedAt: null,
+          category: "Véhicules",
+        } as any,
+        select: { metadata: true },
+        take: 5000,
+      })
+      .catch(() => [] as { metadata: string }[]),
+  ["sitemap-vehicle-meta"],
+  { revalidate: 3600, tags: ["listings"] },
+);
+
+const getListingsTotal = unstable_cache(
+  async () =>
+    prisma.listing
+      .count({
+        where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
+      })
+      .catch(() => 0),
+  ["sitemap-listings-total"],
+  { revalidate: 1800, tags: ["listings"] },
+);
 
 const BASE = "https://www.dealandcompany.fr";
 const PRIORITY_CATEGORIES = ["vehicules", "immobilier", "multimedia", "mode", "maison"];
@@ -17,14 +60,7 @@ const LISTINGS_PER_CHUNK = 20000;
 const MAX_LISTING_CHUNKS = 5; // hard ceiling — 100k listings before we'd need to bump
 
 export async function generateSitemaps() {
-  let total = 0;
-  try {
-    total = await prisma.listing.count({
-      where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
-    });
-  } catch {
-    total = 0;
-  }
+  const total = await getListingsTotal();
   const chunks = Math.min(
     MAX_LISTING_CHUNKS,
     Math.max(1, Math.ceil(total / LISTINGS_PER_CHUNK)),
@@ -84,16 +120,7 @@ export default async function sitemap({
 
     // Discover brand+model combos that have listings — only those get indexed
     try {
-      const rows = await prisma.listing.findMany({
-        where: {
-          status: "APPROVED",
-          shadowBanned: false,
-          deletedAt: null,
-          category: "Véhicules",
-        } as any,
-        select: { metadata: true },
-        take: 5000,
-      });
+      const rows = await getVehicleBrandModelMeta();
       const combos = new Map<string, number>();
       for (const r of rows) {
         try {
@@ -147,11 +174,7 @@ export default async function sitemap({
 
   if (id === "categories" || id === "cities" || id === "longtail") {
     try {
-      const grouped = await prisma.listing.groupBy({
-        by: ["category", "subcategory", "location"],
-        where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
-        _count: { _all: true },
-      });
+      const grouped = await getGroupedCounts();
 
       for (const row of grouped) {
         const count = row._count._all;

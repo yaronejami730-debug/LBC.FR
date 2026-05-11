@@ -212,7 +212,7 @@ export default async function CategoryPage({
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
                       {img ? (
-                        <Image src={img} alt={listing.title} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                        <Image src={img} alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <span className="material-symbols-outlined text-3xl text-outline/30">image</span>

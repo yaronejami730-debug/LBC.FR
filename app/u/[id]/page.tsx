@@ -170,7 +170,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                     {img ? (
                       <img
                         src={img}
-                        alt={listing.title}
+                        alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     ) : (

@@ -234,7 +234,7 @@ export default async function PrixPage({
                     {img ? (
                       <Image
                         src={img}
-                        alt={listing.title}
+                        alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
                         fill
                         sizes="(max-width:640px) 50vw,25vw"
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
