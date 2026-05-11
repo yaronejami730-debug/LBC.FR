@@ -50,7 +50,10 @@ export async function generateMetadata({
     alternates: {
       canonical: `https://www.dealandcompany.fr/search${category ? `?category=${encodeURIComponent(category)}` : q ? `?q=${encodeURIComponent(q)}` : ""}`,
     },
-    robots: { index: !q, follow: true },
+    // Index only the bare /search index page (no filters). Any filtered view
+    // duplicates /annonces/{cat} or /ville/{slug} variants → noindex to keep
+    // crawl budget on the canonical SEO routes.
+    robots: { index: !q && !category && !location, follow: true },
   };
 }
 

@@ -10,8 +10,8 @@ export async function GET() {
     (c) => `- [Annonces ${c.label}](${BASE}/annonces/${c.id}): petites annonces ${c.label.toLowerCase()} entre particuliers en France.`,
   ).join("\n");
 
-  const cities = TOP_CITIES.slice(0, 10)
-    .map((city) => `- [Annonces à ${city.name}](${BASE}/annonces/vehicules/${city.slug}): annonces véhicules à ${city.name}, ${city.region}.`)
+  const cities = TOP_CITIES.slice(0, 15)
+    .map((city) => `- [Annonces à ${city.name}](${BASE}/ville/${city.slug}): petites annonces à ${city.name}, ${city.region}.`)
     .join("\n");
 
   const articles = getAllArticles()

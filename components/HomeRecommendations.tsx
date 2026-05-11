@@ -62,7 +62,12 @@ export default function HomeRecommendations() {
           <h3 className="text-xl font-extrabold text-on-surface tracking-tight">Pour vous</h3>
         </div>
         <Link
-          href={`/search?category=${encodeURIComponent(current.category)}`}
+          href={`/annonces/${current.category
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[̀-ͯ]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")}`}
           className="text-primary text-sm font-semibold flex items-center gap-1 group"
         >
           Voir tout

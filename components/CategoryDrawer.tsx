@@ -52,7 +52,7 @@ export default function CategoryDrawer() {
               {CATEGORIES.map((cat) => (
                 <Link
                   key={cat.id}
-                  href={`/search?category=${encodeURIComponent(cat.label)}`}
+                  href={`/annonces/${cat.id}`}
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-slate-50 transition-all group active:scale-[0.98]"
                 >

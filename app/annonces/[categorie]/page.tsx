@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
+import { subcategoryToSlug } from "@/lib/seo-content";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -50,6 +51,7 @@ export async function generateMetadata({
     : `Annonces ${cat.label} — Page ${page}`;
   const description = `${countLabel} ${cat.label.toLowerCase()} sur Deal&Co. Achetez et vendez entre particuliers gratuitement en France. ${cat.subcategories.slice(0, 3).join(", ")} et bien plus.`;
 
+  const ogImage = `${BASE}/annonces/${cat.id}/opengraph-image`;
   return {
     title,
     description,
@@ -61,11 +63,13 @@ export async function generateMetadata({
       siteName: "Deal&Co",
       type: "website",
       locale: "fr_FR",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `Annonces ${cat.label}` }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [ogImage],
     },
   };
 }
@@ -179,7 +183,7 @@ export default async function CategoryPage({
           {/* Subcategory chips */}
           <div className="flex flex-wrap gap-2 mt-4">
             <Link
-              href={`/search?category=${encodeURIComponent(cat.label)}`}
+              href={`/annonces/${cat.id}`}
               className="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-white"
             >
               Toutes
@@ -187,7 +191,7 @@ export default async function CategoryPage({
             {cat.subcategories.map((sub) => (
               <Link
                 key={sub}
-                href={`/search?category=${encodeURIComponent(cat.label)}&vehicleType=${encodeURIComponent(sub)}`}
+                href={`/annonces/${cat.id}/${subcategoryToSlug(sub)}`}
                 className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
               >
                 {sub}

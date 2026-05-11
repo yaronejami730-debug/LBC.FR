@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -62,6 +62,12 @@ export async function generateMetadata({
     title: titleSeo,
     description: desc,
     alternates: { canonical: pageUrl },
+    other: {
+      "product:price:amount": String(listing.price),
+      "product:price:currency": "EUR",
+      "product:availability": "in stock",
+      "product:condition": listing.condition === "Neuf" ? "new" : "used",
+    },
     openGraph: {
       title: titleSeo,
       description: desc,
@@ -261,6 +267,7 @@ export default async function ListingPage({
         datePublished: listing.createdAt.toISOString(),
         dateModified: listing.updatedAt.toISOString(),
         offers: baseOffer,
+        ...(listing.subcategory ? { category: listing.subcategory } : (cat ? { category: cat.label } : {})),
         ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
       };
 
@@ -878,19 +885,33 @@ export default async function ListingPage({
           </div>
         </section>
 
-        {/* Similar listings — SEO + UX */}
-        <SimilarListings
-          listingId={listing.id}
-          category={listing.category}
-          subcategory={listing.subcategory}
-          city={cityShort}
-          sellerId={listing.userId}
-          sellerName={
-            (listing.user as any).isPro && (listing.user as any).companyName
-              ? (listing.user as any).companyName
-              : (listing.user.name ?? "Particulier")
+        {/* Similar listings — SEO + UX. Streamed via Suspense so they don't
+            block TTFB / LCP of the main listing details. */}
+        <Suspense
+          fallback={
+            <div className="px-4 md:px-6 mt-4 pb-12">
+              <div className="h-6 w-48 bg-slate-100 rounded animate-pulse mb-3" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-xl bg-slate-100 animate-pulse" />
+                ))}
+              </div>
+            </div>
           }
-        />
+        >
+          <SimilarListings
+            listingId={listing.id}
+            category={listing.category}
+            subcategory={listing.subcategory}
+            city={cityShort}
+            sellerId={listing.userId}
+            sellerName={
+              (listing.user as any).isPro && (listing.user as any).companyName
+                ? (listing.user as any).companyName
+                : (listing.user.name ?? "Particulier")
+            }
+          />
+        </Suspense>
       </main>
     </div>
   );

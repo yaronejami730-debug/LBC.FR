@@ -4,18 +4,21 @@ import CategoryDrawer from "./CategoryDrawer";
 import UserDropdown from "./UserDropdown";
 import NavSearch from "./NavSearch";
 
+// Use canonical SEO routes (indexable, with full content) rather than search
+// query strings. Top-level nav drives most internal PageRank — every navbar
+// click is a crawl signal.
 const CATEGORIES = [
-  { label: "Immobilier",           href: "/search?category=Immobilier" },
-  { label: "Véhicules",            href: "/search?category=V%C3%A9hicules" },
-  { label: "Vacances",             href: "/search?category=Vacances" },
-  { label: "Emploi",               href: "/search?category=Emploi" },
-  { label: "Mode",                 href: "/search?category=Mode" },
-  { label: "Maison",               href: "/search?category=Maison" },
-  { label: "Bébé & Enfant",        href: "/search?category=B%C3%A9b%C3%A9%20%26%20Enfant" },
-  { label: "Multimédia",           href: "/search?category=Multim%C3%A9dia" },
-  { label: "Loisirs",              href: "/search?category=Loisirs" },
-  { label: "Animaux",              href: "/search?category=Animaux" },
-  { label: "Bons plans !",         href: "/search" },
+  { label: "Immobilier",           href: "/annonces/immobilier" },
+  { label: "Véhicules",            href: "/annonces/vehicules" },
+  { label: "Vacances",             href: "/annonces/vacances" },
+  { label: "Emploi",               href: "/annonces/emploi" },
+  { label: "Mode",                 href: "/annonces/mode" },
+  { label: "Maison",               href: "/annonces/maison" },
+  { label: "Bébé & Enfant",        href: "/annonces/bebe-enfant" },
+  { label: "Multimédia",           href: "/annonces/multimedia" },
+  { label: "Loisirs",              href: "/annonces/loisirs" },
+  { label: "Animaux",              href: "/annonces/animaux" },
+  { label: "Bons plans !",         href: "/nouveautes" },
 ];
 
 export default async function Navbar({

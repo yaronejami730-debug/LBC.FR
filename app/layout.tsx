@@ -28,6 +28,13 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.dealandcompany.fr"),
   alternates: {
     canonical: "https://www.dealandcompany.fr",
+    languages: {
+      "fr-FR": "https://www.dealandcompany.fr",
+      "x-default": "https://www.dealandcompany.fr",
+    },
+    types: {
+      "application/rss+xml": "https://www.dealandcompany.fr/rss.xml",
+    },
   },
   robots: {
     index: true,
@@ -67,6 +74,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#2f6fb8",
 };
 
 export default function RootLayout({
@@ -83,6 +91,12 @@ export default function RootLayout({
             covers users without JS. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Deal&Co — Dernières annonces"
+          href="/rss.xml"
+        />
         <link
           rel="preload"
           as="style"

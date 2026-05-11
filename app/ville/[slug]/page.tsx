@@ -46,6 +46,7 @@ export async function generateMetadata({
   const description = `${countLabel} entre particuliers à ${city.name}, ${city.department}. Voitures, immobilier, mode, électroménager — vendez et achetez près de chez vous gratuitement sur Deal&Co.`;
   const canonical = `${BASE}/ville/${city.slug}`;
 
+  const ogImage = `${BASE}/ville/${city.slug}/opengraph-image`;
   return {
     title,
     description,
@@ -57,8 +58,14 @@ export async function generateMetadata({
       siteName: "Deal&Co",
       type: "website",
       locale: "fr_FR",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `Annonces à ${city.name}` }],
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
