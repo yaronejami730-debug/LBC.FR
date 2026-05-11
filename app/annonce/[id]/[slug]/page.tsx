@@ -70,6 +70,23 @@ export async function generateMetadata({
   const descBase = `${listing.description.slice(0, 155)}${listing.description.length > 155 ? "…" : ""}`;
   const desc = `${descBase} · ${listing.location} · ${priceStr}`;
 
+  // Direct image (fast, cached on CDN) — fallback to dynamic OG renderer.
+  // WhatsApp scraper has a ~10s timeout and won't wait on the runtime
+  // ImageResponse renderer, so the static photo must come first.
+  let directImg = "";
+  try {
+    const imgs = JSON.parse(listing.images) as string[];
+    const raw = imgs[0] ?? "";
+    if (raw) directImg = raw.startsWith("http") ? raw : `${BASE}${raw}`;
+  } catch {}
+  const dynamicOg = `${BASE}/annonce/${id}/opengraph-image`;
+  const ogImages = directImg
+    ? [
+        { url: directImg, alt: listing.title },
+        { url: dynamicOg, alt: listing.title, width: 1200, height: 630 },
+      ]
+    : [{ url: dynamicOg, alt: listing.title, width: 1200, height: 630 }];
+
   return {
     title: titleSeo,
     description: desc,
@@ -86,13 +103,13 @@ export async function generateMetadata({
       url: pageUrl,
       siteName: "Deal&Co",
       type: "website",
-      images: [{ url: `${BASE}/annonce/${id}/opengraph-image`, width: 1200, height: 630, alt: listing.title }],
+      images: ogImages,
     },
     twitter: {
       card: "summary_large_image",
       title: titleSeo,
       description: desc,
-      images: [`${BASE}/annonce/${id}/opengraph-image`],
+      images: directImg ? [directImg] : [dynamicOg],
     },
   };
 }

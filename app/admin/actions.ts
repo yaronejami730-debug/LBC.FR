@@ -57,6 +57,7 @@ export async function approveListing(id: string) {
   }).catch(() => {});
 
   revalidatePath("/admin/listings");
+  revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath("/annonces", "layout");
   revalidatePath(`/annonce/${listing.id}`);
@@ -80,6 +81,7 @@ export async function rejectListing(id: string, reason: string) {
     data: { status: "REJECTED", rejectionReason: reason || null },
   });
   revalidatePath("/admin/listings");
+  revalidatePath("/admin");
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────

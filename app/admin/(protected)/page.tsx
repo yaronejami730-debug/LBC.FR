@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import LiveVisitorCount from "@/components/admin/LiveVisitorCount";
 
+export const dynamic = "force-dynamic";
+
 async function getStats() {
   const now = new Date();
   const [totalUsers, proUsers, pendingListings, activeListings, approvedListings, rejectedListings, totalAds] =
