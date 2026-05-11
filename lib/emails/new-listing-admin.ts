@@ -61,11 +61,11 @@ export function newListingAdminEmail({
   }
 
   return baseEmail({
-    title: "Nouvelle annonce publiée — Deal & Co",
-    heading: "Nouvelle annonce publiée",
+    title: "Annonce auto-approuvée — Deal & Co",
+    heading: "✅ Annonce auto-approuvée",
     body: `
-      <p style="margin:0 0 16px;">Une nouvelle annonce vient d'être publiée automatiquement sur Deal&nbsp;&amp;&nbsp;Co.</p>
-      <div style="background:#f5f2ff;border-left:3px solid #2f6fb8;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 16px;text-align:left;">
+      <p style="margin:0 0 16px;">Cette annonce a été <strong>auto-approuvée</strong> par le système de modération et est maintenant visible sur Deal&nbsp;&amp;&nbsp;Co.</p>
+      <div style="background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 16px;text-align:left;">
         <p style="font-size:14px;color:#1a1b25;font-weight:700;margin:0 0 6px;">${listingTitle}</p>
         <p style="font-size:13px;color:#424751;margin:0 0 4px;">Vendeur : <strong>${sellerName}</strong></p>
         <p style="font-size:13px;color:#424751;margin:0 0 4px;">Catégorie : ${category} · ${location}</p>

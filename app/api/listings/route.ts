@@ -305,8 +305,8 @@ export async function POST(req: NextRequest) {
           subject: wasRejected
             ? `🚫 Annonce auto-rejetée : ${title}`
             : requiresApproval
-            ? `⚠️ Annonce à approuver : ${title}`
-            : `✅ Nouvelle annonce publiée : ${title}`,
+            ? `⚠️ Annonce en attente d'approbation : ${title}`
+            : `✅ Annonce auto-approuvée : ${title}`,
           html: newListingAdminEmail({
             sellerName: sellerUser.name,
             listingTitle: title,
@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
               ? `${baseUrl}/admin/listings?status=REJECTED`
               : requiresApproval
               ? `${baseUrl}/admin/listings?status=PENDING`
-              : `${baseUrl}/admin/listings`,
+              : `${baseUrl}/admin/listings?status=APPROVED`,
             requiresApproval,
             wasRejected,
           }),

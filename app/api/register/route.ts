@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import { sendEmail } from "@/lib/email";
 import { verifyEmail } from "@/lib/emails/verify-email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  try {
   const ip = getClientIp(req);
   if (!rateLimit(`register:${ip}`, 5, 10 * 60 * 1000)) {
     return NextResponse.json({ error: "Trop de tentatives. Réessayez dans quelques minutes." }, { status: 429 });
   }
 
-  const { name, email, password, isPro, siret, companyName } = await req.json();
+  const { name, email, password, isPro, siret, companyName, marketingConsent } = await req.json();
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "All fields required" }, { status: 400 });
@@ -53,6 +53,8 @@ export async function POST(req: NextRequest) {
       email,
       password: hashed,
       memberSince: new Date().getFullYear(),
+      consentGivenAt: new Date(),
+      marketingConsent: marketingConsent === true,
       ...(isPro && siret && companyName ? { isPro: true, siret, companyName } : {}),
       ...(earlyAdopter ? { earlyAdopterDiscount: true } : {}),
     },
@@ -76,7 +78,12 @@ export async function POST(req: NextRequest) {
     toName: displayName,
     subject: "Confirmez votre adresse email — Deal & Co",
     html: verifyEmail({ name: displayName, code: token }),
-  }).catch(() => {});
+  }).catch((err) => console.error("[REGISTER] sendEmail failed:", err?.message ?? err));
 
   return NextResponse.json({ id: user.id, pendingVerification: true }, { status: 201 });
+  } catch (err) {
+    console.error("[POST /api/register]", err);
+    const message = err instanceof Error ? err.message : "Erreur interne";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

@@ -35,6 +35,8 @@ model User {
   restrictedAt         DateTime?
   spamScore            Int                       @default(0)
   apiKeys              ApiKey[]
+  consentGivenAt       DateTime?
+  marketingConsent     Boolean                   @default(false)
 }
 
 model ApiKey {

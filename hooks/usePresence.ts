@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { supabaseClient } from "@/lib/supabase-presence";
 
 const HEARTBEAT_INTERVAL = 5_000; // 5s — stable et suffisamment réactif
@@ -16,6 +16,7 @@ function getSessionId(): string {
 export function usePresence(channel: string, role: "user" | "admin" = "user"): number {
   const [count, setCount] = useState(0);
   const sessionId = useRef<string | null>(null);
+  const client = useMemo(() => supabaseClient(), []);
 
   useEffect(() => {
     sessionId.current = getSessionId();
@@ -57,7 +58,7 @@ export function usePresence(channel: string, role: "user" | "admin" = "user"): n
     const interval = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
     // Realtime Supabase : écoute les changements sur presence_sessions
-    const sub = supabaseClient
+    const sub = client
       .channel(`presence_realtime_${channel}_${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
@@ -88,7 +89,7 @@ export function usePresence(channel: string, role: "user" | "admin" = "user"): n
     return () => {
       clearInterval(interval);
       if (debounceTimer) clearTimeout(debounceTimer);
-      supabaseClient.removeChannel(sub);
+      client.removeChannel(sub);
       fetch("/api/presence", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },

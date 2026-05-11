@@ -142,43 +142,42 @@ export default function PhotoGallery({ images, title }: PhotoGalleryProps) {
 
           {/* Main image area */}
           <div
-            className="relative flex-1 flex items-center justify-center px-14 min-h-0"
+            className="relative flex-1 min-h-0 w-full flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="absolute left-3 z-20 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+              className="absolute left-2 z-20 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
               onClick={goPrev}
             >
               <span className="material-symbols-outlined text-2xl">chevron_left</span>
             </button>
 
-            {/*
-              Wrapper sized to the image — logo is absolutely positioned
-              inside this wrapper so it's always bottom-right of the photo itself
-            */}
-            <div
-              className="relative flex items-center justify-center"
-              style={{ maxHeight: "calc(100dvh - 180px)", maxWidth: "100%" }}
-            >
+            {/* Wrapper relatif qui se taille sur l'image — logo toujours en bas-droit de la photo */}
+            <div className="relative inline-flex items-center justify-center">
               <img
                 key={currentIndex}
                 src={images[currentIndex]}
                 alt={`${title} — photo ${currentIndex + 1}`}
-                className="block max-w-full object-contain rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
-                style={{ maxHeight: "calc(100dvh - 180px)" }}
+                className="block rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.6)]"
+                style={{
+                  maxHeight: "calc(100dvh - 155px)",
+                  maxWidth: "calc(100vw - 88px)",
+                  width: "auto",
+                  height: "auto",
+                  objectFit: "contain",
+                }}
               />
-              {/* Logo — bottom-right of the photo (inline-block trick via parent shrink) */}
-              <div className="absolute bottom-4 right-4 pointer-events-none select-none">
+              <div className="absolute bottom-3 right-3 pointer-events-none select-none">
                 <img
                   src="/logo.png"
                   alt=""
-                  className="h-7 w-auto brightness-0 invert opacity-65 drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
+                  className="h-6 w-auto brightness-0 invert opacity-65 drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
                 />
               </div>
             </div>
 
             <button
-              className="absolute right-3 z-20 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
+              className="absolute right-2 z-20 w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-sm flex items-center justify-center text-white transition-colors"
               onClick={goNext}
             >
               <span className="material-symbols-outlined text-2xl">chevron_right</span>

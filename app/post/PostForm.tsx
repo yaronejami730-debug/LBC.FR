@@ -406,7 +406,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               resolve(new File([blob], file.name, { type: "image/jpeg" }));
             },
             "image/jpeg",
-            0.92,
+            0.96,
           );
         };
         img.onerror = (e) => { URL.revokeObjectURL(objectUrl); console.error("[PlateDetect] img load error", e); reject(new Error("Image load failed")); };

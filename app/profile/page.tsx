@@ -15,6 +15,7 @@ import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ProfileTabs from "./ProfileTabs";
+import PrivacySection from "./PrivacySection";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -34,7 +35,10 @@ export default async function ProfilePage() {
         select: { keyPrefix: true, createdAt: true },
       },
     },
-  });
+  }) as (Awaited<ReturnType<typeof prisma.user.findUnique>> & {
+    marketingConsent?: boolean;
+    consentGivenAt?: Date | null;
+  }) | null;
 
   if (!user) redirect("/login");
 
@@ -141,6 +145,11 @@ export default async function ProfilePage() {
         )}
 
         <ProfileTabs listings={user.listings} />
+
+        <PrivacySection
+          marketingConsent={user.marketingConsent ?? false}
+          consentGivenAt={user.consentGivenAt?.toISOString() ?? null}
+        />
       </main>
 
       <BottomNav active="profil" />

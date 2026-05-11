@@ -8,11 +8,22 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  const { avatar } = await req.json();
+  const body = await req.json();
+
+  // marketingConsent toggle
+  if (typeof body.marketingConsent === "boolean") {
+    const user = await prisma.user.update({
+      where: { id: session.user.id },
+      data: { marketingConsent: body.marketingConsent },
+      select: { id: true, marketingConsent: true },
+    });
+    return NextResponse.json(user);
+  }
+
+  const { avatar } = body;
   if (!avatar || typeof avatar !== "string") {
     return NextResponse.json({ error: "URL avatar invalide" }, { status: 400 });
   }
-
 
   // Autoriser seulement les URLs de nos sources de confiance
   let parsedAvatar: URL;
