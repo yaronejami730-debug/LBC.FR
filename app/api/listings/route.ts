@@ -305,6 +305,7 @@ export async function POST(req: NextRequest) {
         sendEmail({
           to: adminEmail,
           toName: "Administration Deal & Co",
+          adSource: "admin-new-listing",
           subject: wasRejected
             ? `🚫 Annonce auto-rejetée : ${title}`
             : requiresApproval

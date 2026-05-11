@@ -10,6 +10,7 @@ export function baseEmail({
   ctaLabel,
   ctaUrl,
   postCta,
+  adHtml,
 }: {
   title: string;
   heading: string;
@@ -19,6 +20,8 @@ export function baseEmail({
   ctaUrl: string;
   /** Texte facultatif affiché sous le bouton */
   postCta?: string;
+  /** Bloc publicitaire optionnel rendu avant le séparateur */
+  adHtml?: string;
 }): string {
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -82,6 +85,8 @@ export function baseEmail({
       ${postCta}
     </p>
   </td></tr>` : ""}
+
+  ${adHtml ?? ""}
 
   <!-- SÉPARATEUR -->
   <tr><td style="padding-bottom:32px;">

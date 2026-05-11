@@ -208,7 +208,7 @@ export default async function Home() {
                 Publier mon annonce
               </Link>
               <Link
-                href="/search"
+                href="/nouveautes"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
               >
                 Parcourir les annonces
@@ -228,7 +228,7 @@ export default async function Home() {
             <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">Explorer par</span>
             <h3 className="text-2xl font-bold text-on-surface">Catégories populaires</h3>
           </div>
-          <Link href="/search" className="text-primary font-semibold flex items-center gap-1 group">
+          <Link href="/nouveautes" className="text-primary font-semibold flex items-center gap-1 group">
             Toutes les catégories <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </Link>
         </div>
@@ -261,7 +261,7 @@ export default async function Home() {
       <section className="py-10 max-w-7xl mx-auto bg-surface-container-low rounded-t-[3rem]">
         <div className="flex items-center justify-between mb-5 px-6">
           <h3 className="text-xl font-extrabold text-on-surface tracking-tight">Annonces récentes</h3>
-          <Link href="/search" className="text-primary text-sm font-semibold flex items-center gap-1 group">
+          <Link href="/nouveautes" className="text-primary text-sm font-semibold flex items-center gap-1 group">
             Voir tout <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
           </Link>
         </div>
