@@ -10,6 +10,7 @@ import ListingHeader from "../ListingHeader";
 import AdRotator from "../AdRotator";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "../SellerActions";
+import ReportButton from "../ReportButton";
 import OwnerActions from "../OwnerActions";
 import PhotoGallery from "../PhotoGallery";
 import HistoryTracker from "@/components/HistoryTracker";
@@ -43,8 +44,19 @@ export async function generateMetadata({
 
   if (!listing) return {};
 
-  if ((listing as any).shadowBanned) {
+  const ld = listing as any;
+  if (ld.shadowBanned) {
     return { robots: { index: false, follow: false } };
+  }
+  // Thin/low-quality/reported listings → noindex but still followable so
+  // Google can discover internal links from the page.
+  if (
+    (ld.qualityScore != null && ld.qualityScore < 40) ||
+    (ld.reportCount != null && ld.reportCount >= 3) ||
+    !ld.description ||
+    ld.description.length < 80
+  ) {
+    return { robots: { index: false, follow: true } };
   }
 
   const priceStr = listing.price.toLocaleString("fr-FR") + " €";
@@ -879,6 +891,12 @@ export default async function ListingPage({
                   <p className="text-blue-800/70 text-xs mt-1 leading-snug">Rencontrez-vous dans des lieux publics et ne payez jamais avant d&apos;avoir vu l&apos;article.</p>
                 </div>
               </div>
+
+              {!isOwner && (
+                <div className="pt-2 text-center">
+                  <ReportButton listingId={listing.id} loggedIn={!!currentUserId} />
+                </div>
+              )}
 
               {ads.length > 0 && <AdRotator ads={ads} />}
             </div>

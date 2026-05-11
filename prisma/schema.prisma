@@ -7,36 +7,51 @@ datasource db {
 }
 
 model User {
-  id                   String                    @id @default(cuid())
-  email                String                    @unique
-  password             String
-  name                 String
-  avatar               String?
-  verified             Boolean                   @default(false)
-  memberSince          Int                       @default(2024)
-  createdAt            DateTime                  @default(now())
-  role                 String                    @default("USER")
-  adminNote            String?
-  participants         ConversationParticipant[]
-  listings             Listing[]
-  sentMessages         Message[]                 @relation("SentMessages")
-  favorites            Favorite[]
-  savedSearches        SavedSearch[]
-  passwordResetTokens       PasswordResetToken[]
-  emailVerificationTokens   EmailVerificationToken[]
-  isPro                Boolean                   @default(false)
-  siret                String?                   @unique
-  companyName          String?
-  lastLoginAt          DateTime?
-  reengagementSentAt   DateTime?
-  earlyAdopterDiscount Boolean                   @default(false)
-  bannedAt             DateTime?
-  banReason            String?
-  restrictedAt         DateTime?
-  spamScore            Int                       @default(0)
-  apiKeys              ApiKey[]
-  consentGivenAt       DateTime?
-  marketingConsent     Boolean                   @default(false)
+  id                      String                    @id @default(cuid())
+  email                   String                    @unique
+  password                String
+  name                    String
+  avatar                  String?
+  verified                Boolean                   @default(false)
+  memberSince             Int                       @default(2024)
+  createdAt               DateTime                  @default(now())
+  role                    String                    @default("USER")
+  adminNote               String?
+  participants            ConversationParticipant[]
+  listings                Listing[]
+  sentMessages            Message[]                 @relation("SentMessages")
+  favorites               Favorite[]
+  savedSearches           SavedSearch[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  isPro                   Boolean                   @default(false)
+  siret                   String?                   @unique
+  companyName             String?
+  lastLoginAt             DateTime?
+  reengagementSentAt      DateTime?
+  earlyAdopterDiscount    Boolean                   @default(false)
+  bannedAt                DateTime?
+  banReason               String?
+  restrictedAt            DateTime?
+  spamScore               Int                       @default(0)
+  apiKeys                 ApiKey[]
+  consentGivenAt          DateTime?
+  marketingConsent        Boolean                   @default(false)
+
+  // Trust & safety
+  trustScore           Int      @default(50)
+  trustScoreUpdatedAt  DateTime @default(now())
+  emailVerified        Boolean  @default(false)
+  phoneNumber          String?
+  phoneVerified        Boolean  @default(false)
+  totalReportsAgainst  Int      @default(0)
+  rejectedListingCount Int      @default(0)
+
+  reportsMade      Report[]          @relation("ReportReporter")
+  reportsAgainst   Report[]          @relation("ReportSubject")
+  moderationEvents ModerationEvent[]
+  deviceSessions   DeviceSession[]
+  rateLimitBuckets RateLimitBucket[]
 }
 
 model ApiKey {
@@ -79,42 +94,146 @@ model Waitlist {
 }
 
 model Listing {
-  id                  String         @id @default(cuid())
+  id                  String    @id @default(cuid())
   title               String
   description         String
   price               Float
   category            String
   subcategory         String?
   location            String
-  condition           String         @default("Good")
+  condition           String    @default("Good")
   brand               String?
   material            String?
-  images              String         @default("[]")
-  isPremium           Boolean        @default(false)
-  isVerified          Boolean        @default(false)
+  images              String    @default("[]")
+  isPremium           Boolean   @default(false)
+  isVerified          Boolean   @default(false)
   userId              String
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
-  metadata            String         @default("{}")
+  metadata            String    @default("{}")
   vehicleKm           Int?
   vehicleYear         Int?
   immoSurface         Float?
   immoRooms           Int?
   phone               String?
-  hidePhone           Boolean        @default(false)
-  status              String         @default("APPROVED")
+  hidePhone           Boolean   @default(false)
+  status              String    @default("APPROVED")
   rejectionReason     String?
   adminNote           String?
   expiresAt           DateTime?
   expiryNotifiedAt    DateTime?
   photoReminderSentAt DateTime?
-  viewCount           Int            @default(0)
-  shadowBanned        Boolean        @default(false)
-  reviewPriority      Int            @default(0)
-  conversations       Conversation[]
-  user                User           @relation(fields: [userId], references: [id])
-  favorites           Favorite[]
+  viewCount           Int       @default(0)
+  shadowBanned        Boolean   @default(false)
+  reviewPriority      Int       @default(0)
+
+  // Trust & safety
+  qualityScore          Int      @default(50)
+  qualityScoreUpdatedAt DateTime @default(now())
+  reportCount           Int      @default(0)
+  imageDupCount         Int      @default(0)
+  ipAtCreate            String?
+  uaAtCreate            String?
+  flagsJson             String   @default("[]")
+
+  conversations    Conversation[]
+  user             User              @relation(fields: [userId], references: [id])
+  favorites        Favorite[]
+  listingImages    ListingImage[]
+  reports          Report[]
+  moderationEvents ModerationEvent[]
+
+  @@index([status, deletedAt, shadowBanned])
+  @@index([qualityScore])
+}
+
+model ListingImage {
+  id           String   @id @default(cuid())
+  listingId    String
+  listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  url          String
+  phash        BigInt?
+  width        Int?
+  height       Int?
+  sizeBytes    Int?
+  blurVar      Float?
+  isScreenshot Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([phash])
+  @@index([listingId])
+}
+
+model Report {
+  id         String    @id @default(cuid())
+  listingId  String?
+  userId     String?
+  reporterId String
+  category   String // scam, spam, illegal, offensive, fake, wrong_category, duplicate, personal_data, stolen_photos, other
+  message    String?
+  status     String    @default("OPEN") // OPEN, RESOLVED, DISMISSED
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime  @default(now())
+
+  reporter User     @relation("ReportReporter", fields: [reporterId], references: [id])
+  subject  User?    @relation("ReportSubject", fields: [userId], references: [id])
+  listing  Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([listingId, status])
+  @@index([userId, status])
+  @@index([reporterId, createdAt])
+  @@index([status, createdAt])
+}
+
+model ModerationEvent {
+  id          String   @id @default(cuid())
+  listingId   String?
+  userId      String?
+  actor       String // "system", "admin:{id}", "cron:{name}"
+  action      String // auto_approve, auto_pending, auto_shadow, auto_reject, admin_approve, report_flagged, rate_limit_hit, etc
+  reason      String
+  flagsJson   String   @default("[]")
+  scoreBefore Int?
+  scoreAfter  Int?
+  createdAt   DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id])
+  listing Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([listingId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+  userId      String
+  ipHash      String
+  uaHash      String
+  fingerprint String?
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([ipHash])
+  @@index([fingerprint])
+  @@index([userId])
+}
+
+model RateLimitBucket {
+  id          String   @id @default(cuid())
+  userId      String?
+  ipHash      String?
+  bucket      String // listing_create, message_send, image_upload, report_submit, signup
+  count       Int      @default(1)
+  windowStart DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, bucket, windowStart])
+  @@index([ipHash, bucket])
+  @@index([userId, bucket])
 }
 
 model Favorite {

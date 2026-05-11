@@ -290,8 +290,17 @@ export default async function sitemap({
   if (id.startsWith("listings-")) {
     const chunk = parseInt(id.replace("listings-", ""), 10) || 0;
     try {
+      // Only listings that pass quality bar are included — thin / reported
+      // / shadow listings are excluded to avoid wasting crawl budget on
+      // pages Google would flag as "Discovered, currently not indexed".
       const rows = await prisma.listing.findMany({
-        where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
+        where: {
+          status: "APPROVED",
+          shadowBanned: false,
+          deletedAt: null,
+          qualityScore: { gte: 40 },
+          reportCount: { lt: 3 },
+        } as any,
         select: { id: true, title: true, updatedAt: true },
         orderBy: { createdAt: "desc" },
         skip: chunk * LISTINGS_PER_CHUNK,

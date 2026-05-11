@@ -13,6 +13,8 @@ import { detectSpam, applySpamRestriction } from "@/lib/spam-detector";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
 import { citySlug } from "@/lib/cities";
+import { computeQualityScore } from "@/lib/quality-score";
+import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest) {
     let adminNote: string | null = null;
     let rejectedForProActivity = false;
     let reviewPriority = 0;
+    let moderationFlags: { code: string; severity: string; message: string }[] = [];
 
     if (categorySetting?.approvalMode === "MANUAL") {
       listingStatus = "PENDING";
@@ -147,6 +150,7 @@ export async function POST(req: NextRequest) {
       });
 
       adminNote = result.adminNote;
+      moderationFlags = result.flags ?? [];
       if (result.verdict === "reject") {
         listingStatus = "REJECTED";
         rejectionReason = result.publicReason;
@@ -196,7 +200,6 @@ export async function POST(req: NextRequest) {
 
       // Review priority for PENDING listings (admin queue sort)
       if (listingStatus === "PENDING") {
-        const moderationFlags = result?.flags ?? [];
         if (moderationFlags.some((f) => f.code === "no_image"))                                           reviewPriority += 3;
         if (moderationFlags.some((f) => ["price_too_low", "price_too_high"].includes(f.code)))            reviewPriority += 2;
         if (moderationFlags.some((f) => f.code === "desc_too_short"))                                     reviewPriority += 2;
@@ -206,6 +209,33 @@ export async function POST(req: NextRequest) {
         if (adminNote?.includes("[SPAM_PEND]"))                                                          reviewPriority += 3;
       }
     }
+
+    // Quality score
+    const quality = computeQualityScore({
+      title,
+      description,
+      price: parsedPrice,
+      category,
+      subcategory: subcategory ?? null,
+      location,
+      images: imagesArr,
+      metadata: metaObj,
+      immoSurface,
+      immoRooms,
+    });
+
+    // Trust & safety capture: hashed IP + UA for later anomaly detection
+    const rawIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      req.headers.get("x-real-ip") ??
+      null;
+    const rawUa = req.headers.get("user-agent") ?? null;
+    const ipHash = rawIp
+      ? crypto.createHash("sha256").update(rawIp).digest("hex").slice(0, 32)
+      : null;
+    const uaHash = rawUa
+      ? crypto.createHash("sha256").update(rawUa).digest("hex").slice(0, 32)
+      : null;
 
     const listing = await prisma.listing.create({
       data: {
@@ -229,8 +259,30 @@ export async function POST(req: NextRequest) {
         rejectionReason,
         adminNote,
         reviewPriority,
+        qualityScore: quality.score,
+        ipAtCreate: ipHash,
+        uaAtCreate: uaHash,
+        flagsJson: JSON.stringify(moderationFlags ?? []),
       } as any,
     });
+
+    // Audit log
+    prisma.moderationEvent.create({
+      data: {
+        listingId: listing.id,
+        userId: session.user.id,
+        actor: "system",
+        action:
+          listingStatus === "APPROVED"
+            ? "auto_approve"
+            : listingStatus === "REJECTED"
+              ? "auto_reject"
+              : "auto_pending",
+        reason: `quality=${quality.score} status=${listingStatus}`,
+        flagsJson: JSON.stringify(moderationFlags ?? []),
+        scoreAfter: quality.score,
+      } as any,
+    }).catch(() => {});
 
     // Emails vendeur + admin — fire and forget
     const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
