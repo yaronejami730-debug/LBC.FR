@@ -75,12 +75,49 @@ export default async function sitemap({
     function marqueToSlug(name: string) {
       return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
-    return CAR_BRANDS.map((b) => ({
+    const out: MetadataRoute.Sitemap = CAR_BRANDS.map((b) => ({
       url: `${BASE}/annonces/vehicules/${marqueToSlug(b.name)}`,
       lastModified: now,
       changeFrequency: "daily" as const,
       priority: 0.8,
     }));
+
+    // Discover brand+model combos that have listings — only those get indexed
+    try {
+      const rows = await prisma.listing.findMany({
+        where: {
+          status: "APPROVED",
+          shadowBanned: false,
+          deletedAt: null,
+          category: "Véhicules",
+        } as any,
+        select: { metadata: true },
+        take: 5000,
+      });
+      const combos = new Map<string, number>();
+      for (const r of rows) {
+        try {
+          const m = JSON.parse(r.metadata) as { marque?: string; modele?: string };
+          if (!m.marque || !m.modele) continue;
+          const marqueS = m.marque.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          const modeleS = m.modele.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+          if (!marqueS || !modeleS) continue;
+          const key = `${marqueS}/${modeleS}`;
+          combos.set(key, (combos.get(key) ?? 0) + 1);
+        } catch {}
+      }
+      for (const [combo, count] of combos.entries()) {
+        if (count < 1) continue;
+        out.push({
+          url: `${BASE}/annonces/vehicules/${combo}`,
+          lastModified: now,
+          changeFrequency: "daily",
+          priority: 0.7,
+        });
+      }
+    } catch {}
+
+    return out;
   }
 
   if (id === "prix") {

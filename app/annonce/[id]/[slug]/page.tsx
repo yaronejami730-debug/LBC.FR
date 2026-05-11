@@ -22,7 +22,7 @@ import LiveViewCount from "../LiveViewCount";
 import { getBrandLogo } from "@/lib/carBrands";
 import BrandBadge from "../BrandBadge";
 import { CATEGORIES } from "@/lib/categories";
-import { listingSlug } from "@/lib/listing-slug";
+import { listingSlug, listingUrl } from "@/lib/listing-slug";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -157,6 +157,8 @@ export default async function ListingPage({
   const pageUrl = `${BASE}/annonce/${listing.id}/${correctSlug}`;
   const cat = CATEGORIES.find((c) => c.label === listing.category);
 
+  const cityShort = listing.location?.split(/[,(]/)[0]?.trim() ?? listing.location ?? "";
+
   const baseOffer = {
     "@type": "Offer",
     url: pageUrl,
@@ -166,7 +168,23 @@ export default async function ListingPage({
     itemCondition: listing.condition === "Neuf"
       ? "https://schema.org/NewCondition"
       : "https://schema.org/UsedCondition",
-    seller: { "@type": "Person", name: listing.user.name ?? "Particulier" },
+    priceValidUntil: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    areaServed: { "@type": "Country", name: "France" },
+    ...(cityShort
+      ? {
+          availableAtOrFrom: {
+            "@type": "Place",
+            address: { "@type": "PostalAddress", addressLocality: cityShort, addressCountry: "FR" },
+          },
+        }
+      : {}),
+    seller: {
+      "@type": (listing.user as any).isPro ? "Organization" : "Person",
+      name: (listing.user as any).isPro && (listing.user as any).companyName
+        ? (listing.user as any).companyName
+        : listing.user.name ?? "Particulier",
+      url: `${BASE}/u/${listing.userId}`,
+    },
   };
 
   const isVehicle = listing.category === "Véhicules";
@@ -204,6 +222,9 @@ export default async function ListingPage({
         ...(vehicleMeta.couleur ? { color: vehicleMeta.couleur } : {}),
         ...(vehicleMeta.nombrePortes ? { numberOfDoors: parseInt(String(vehicleMeta.nombrePortes), 10) || undefined } : {}),
         ...(vehicleMeta.nombrePlaces ? { vehicleSeatingCapacity: parseInt(String(vehicleMeta.nombrePlaces), 10) || undefined } : {}),
+        ...(vehicleMeta.typeVehicule ? { bodyType: vehicleMeta.typeVehicule } : {}),
+        ...(vehicleMeta.motorisation ? { vehicleEngine: { "@type": "EngineSpecification", name: vehicleMeta.motorisation } } : {}),
+        ...(vehicleMeta.emissionCO2 ? { meetsEmissionStandard: vehicleMeta.emissionCO2 } : {}),
       }
     : isImmo
     ? {
@@ -243,14 +264,37 @@ export default async function ListingPage({
         ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
       };
 
+  const cityShortForCrumb = cityShort;
+  const cityCrumbSlug = cityShortForCrumb
+    ? cityShortForCrumb
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+    : "";
+
+  const breadcrumbItems: Array<Record<string, unknown>> = [
+    { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
+  ];
+  let pos = 2;
+  if (cat) {
+    breadcrumbItems.push({ "@type": "ListItem", position: pos++, name: cat.label, item: `${BASE}/annonces/${cat.id}` });
+  }
+  if (cat && cityCrumbSlug) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: pos++,
+      name: cityShortForCrumb,
+      item: `${BASE}/annonces/${cat.id}/${cityCrumbSlug}`,
+    });
+  }
+  breadcrumbItems.push({ "@type": "ListItem", position: pos, name: listing.title, item: pageUrl });
+
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
-      ...(cat ? [{ "@type": "ListItem", position: 2, name: cat.label, item: `${BASE}/annonces/${cat.id}` }] : []),
-      { "@type": "ListItem", position: cat ? 3 : 2, name: listing.title, item: pageUrl },
-    ],
+    itemListElement: breadcrumbItems,
   };
 
   return (
@@ -269,6 +313,40 @@ export default async function ListingPage({
         <HistoryTracker category={listing.category} />
         <MarkViewed listingId={listing.id} />
         {!isOwner && <ViewTracker listingId={listing.id} />}
+
+        {/* Breadcrumb visible — SEO + UX */}
+        <nav
+          aria-label="Fil d'Ariane"
+          className="px-4 md:px-6 mt-2 text-xs text-outline flex flex-wrap items-center gap-1.5"
+        >
+          <Link href="/" className="hover:text-primary transition-colors">Accueil</Link>
+          {cat && (
+            <>
+              <span className="text-slate-300">›</span>
+              <Link
+                href={`/annonces/${cat.id}`}
+                className="hover:text-primary transition-colors"
+              >
+                {cat.label}
+              </Link>
+            </>
+          )}
+          {cat && cityCrumbSlug && (
+            <>
+              <span className="text-slate-300">›</span>
+              <Link
+                href={`/annonces/${cat.id}/${cityCrumbSlug}`}
+                className="hover:text-primary transition-colors"
+              >
+                {cityShortForCrumb}
+              </Link>
+            </>
+          )}
+          <span className="text-slate-300">›</span>
+          <span className="text-on-surface font-medium truncate max-w-[40ch]">
+            {listing.title}
+          </span>
+        </nav>
 
         <section className="px-4 md:px-6 mt-2">
           <PhotoGallery images={images} title={listing.title} />
@@ -799,7 +877,166 @@ export default async function ListingPage({
             </div>
           </div>
         </section>
+
+        {/* Similar listings — SEO + UX */}
+        <SimilarListings
+          listingId={listing.id}
+          category={listing.category}
+          subcategory={listing.subcategory}
+          city={cityShort}
+          sellerId={listing.userId}
+          sellerName={
+            (listing.user as any).isPro && (listing.user as any).companyName
+              ? (listing.user as any).companyName
+              : (listing.user.name ?? "Particulier")
+          }
+        />
       </main>
+    </div>
+  );
+}
+
+async function SimilarListings({
+  listingId,
+  category,
+  subcategory,
+  city,
+  sellerId,
+  sellerName,
+}: {
+  listingId: string;
+  category: string;
+  subcategory: string | null;
+  city: string;
+  sellerId: string;
+  sellerName: string;
+}) {
+  const [sameCity, sameCategory, fromSeller] = await Promise.all([
+    city
+      ? prisma.listing.findMany({
+          where: {
+            id: { not: listingId },
+            status: "APPROVED",
+            deletedAt: null,
+            shadowBanned: false,
+            category,
+            location: { contains: city, mode: "insensitive" },
+          } as any,
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          select: { id: true, title: true, price: true, images: true, location: true },
+        }).catch(() => [])
+      : Promise.resolve([] as any[]),
+    prisma.listing.findMany({
+      where: {
+        id: { not: listingId },
+        status: "APPROVED",
+        deletedAt: null,
+        shadowBanned: false,
+        category,
+        ...(subcategory ? { subcategory } : {}),
+      } as any,
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: { id: true, title: true, price: true, images: true, location: true },
+    }).catch(() => []),
+    prisma.listing.findMany({
+      where: {
+        id: { not: listingId },
+        userId: sellerId,
+        status: "APPROVED",
+        deletedAt: null,
+        shadowBanned: false,
+      } as any,
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: { id: true, title: true, price: true, images: true, location: true },
+    }).catch(() => []),
+  ]);
+
+  const sameCityFiltered = sameCity.filter((l: any) => !fromSeller.find((s: any) => s.id === l.id));
+  const sameCategoryFiltered = sameCategory.filter(
+    (l: any) =>
+      !fromSeller.find((s: any) => s.id === l.id) &&
+      !sameCityFiltered.find((c: any) => c.id === l.id),
+  ).slice(0, 12);
+
+  const renderCard = (l: any) => {
+    let img = "";
+    try {
+      const imgs = JSON.parse(l.images) as string[];
+      img = imgs[0] ?? "";
+    } catch {}
+    return (
+      <Link
+        key={l.id}
+        href={listingUrl(l.id, l.title)}
+        className="group flex flex-col bg-white rounded-xl overflow-hidden border border-slate-200 hover:shadow-md transition-all"
+      >
+        <div className="relative aspect-square bg-slate-100 overflow-hidden">
+          {img && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={img}
+              alt={l.title}
+              loading="lazy"
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          )}
+        </div>
+        <div className="p-2.5">
+          <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{l.title}</p>
+          <p className="text-primary font-bold text-base mt-1">
+            {l.price.toLocaleString("fr-FR")} €
+          </p>
+          <p className="text-outline text-[11px] truncate">{l.location}</p>
+        </div>
+      </Link>
+    );
+  };
+
+  return (
+    <div className="px-4 md:px-6 mt-4 space-y-10 pb-12">
+      {fromSeller.length > 0 && (
+        <section>
+          <div className="flex items-end justify-between mb-3">
+            <h2 className="text-lg font-extrabold text-on-surface font-['Manrope']">
+              Autres annonces de {sellerName}
+            </h2>
+            <Link
+              href={`/u/${sellerId}`}
+              className="text-xs text-primary font-bold hover:underline whitespace-nowrap"
+            >
+              Voir le profil →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            {fromSeller.map(renderCard)}
+          </div>
+        </section>
+      )}
+
+      {sameCityFiltered.length > 0 && city && (
+        <section>
+          <h2 className="text-lg font-extrabold text-on-surface font-['Manrope'] mb-3">
+            {category} à {city}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            {sameCityFiltered.map(renderCard)}
+          </div>
+        </section>
+      )}
+
+      {sameCategoryFiltered.length > 0 && (
+        <section>
+          <h2 className="text-lg font-extrabold text-on-surface font-['Manrope'] mb-3">
+            Annonces similaires {subcategory ? `— ${subcategory}` : `en ${category}`}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            {sameCategoryFiltered.map(renderCard)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

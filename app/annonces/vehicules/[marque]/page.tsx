@@ -124,6 +124,30 @@ export default async function MarquePage({
   const avgPrice = Math.round(priceAgg._avg.price ?? 0);
   const minPrice = Math.round(priceAgg._min.price ?? 0);
 
+  // Discover popular models from listings metadata to build maillage interne
+  const modelStats = new Map<string, { count: number; raw: string }>();
+  for (const l of listings) {
+    try {
+      const meta = JSON.parse(l.metadata) as { modele?: string };
+      if (!meta.modele) continue;
+      const slug = meta.modele
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      if (!slug) continue;
+      const existing = modelStats.get(slug);
+      modelStats.set(slug, {
+        count: (existing?.count ?? 0) + 1,
+        raw: existing?.raw ?? meta.modele,
+      });
+    } catch {}
+  }
+  const topModels = Array.from(modelStats.entries())
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 12);
+
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -310,6 +334,27 @@ export default async function MarquePage({
             et le statut administratif sur Cartegrise.gouv.fr. Pour un achat serein, faites réaliser une expertise pré-achat (Dekra, Autovision, Sécuritest).
           </p>
         </section>
+
+        {/* Top models for this brand */}
+        {topModels.length > 0 && (
+          <section className="mt-10">
+            <h3 className="text-base font-bold text-on-surface mb-3">
+              Modèles {brand.name} populaires
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {topModels.map(([slug, info]) => (
+                <Link
+                  key={slug}
+                  href={`/annonces/vehicules/${marqueSlug}/${slug}`}
+                  className="px-3 py-1.5 bg-white border border-surface-container rounded-full text-xs font-semibold text-on-surface-variant hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  {brand.name} {info.raw}{" "}
+                  <span className="text-outline">({info.count})</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Other brands */}
         <section className="mt-10">

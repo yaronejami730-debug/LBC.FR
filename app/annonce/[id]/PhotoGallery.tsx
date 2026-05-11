@@ -33,6 +33,8 @@ function PhotoCell({
         loading={badge ? "eager" : "lazy"}
         fetchPriority={badge ? "high" : "low"}
         decoding="async"
+        width={800}
+        height={800}
         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
       />
       {/* Logo — bottom-left of each cell */}

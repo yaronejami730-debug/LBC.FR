@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
@@ -6,45 +7,12 @@ import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { getUserResponseTime } from "@/lib/user-stats";
+import { listingUrl } from "@/lib/listing-slug";
 
 const BASE = "https://www.dealandcompany.fr";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}): Promise<Metadata> {
-  const { id } = await params;
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: { name: true, isPro: true, companyName: true },
-  }).catch(() => null);
-  if (!user) return {};
-  const displayName = user.isPro ? user.companyName || user.name : user.name;
-  const url = `${BASE}/u/${id}`;
-  return {
-    title: `${displayName} — Profil vendeur sur Deal&Co`,
-    description: `Consultez les annonces et le profil de ${displayName} sur Deal&Co, site de petites annonces gratuites en France.`,
-    alternates: { canonical: url },
-    openGraph: {
-      title: `${displayName} — Profil vendeur Deal&Co`,
-      description: `Toutes les annonces de ${displayName} sur Deal&Co.`,
-      url,
-      siteName: "Deal&Co",
-      type: "profile",
-      locale: "fr_FR",
-    },
-    twitter: {
-      card: "summary",
-      title: `${displayName} — Profil vendeur Deal&Co`,
-    },
-  };
-}
-
-export default async function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-
-  const user = (await prisma.user.findUnique({
+const getUserWithListings = cache((id: string) =>
+  prisma.user.findUnique({
     where: { id },
     include: {
       listings: {
@@ -52,8 +20,48 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
         orderBy: { createdAt: "desc" },
       },
     },
-  })) as any;
+  }).catch(() => null),
+);
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const user = await getUserWithListings(id);
+  if (!user) return {};
+  const displayName = (user as any).isPro
+    ? (user as any).companyName || user.name
+    : user.name;
+  const count = (user as any).listings?.length ?? 0;
+  const url = `${BASE}/u/${id}`;
+  const title = count > 0
+    ? `${displayName} — ${count} annonce${count > 1 ? "s" : ""} sur Deal&Co`
+    : `${displayName} — Profil vendeur sur Deal&Co`;
+  const description = count > 0
+    ? `Toutes les annonces de ${displayName} (${count}) sur Deal&Co — petites annonces gratuites entre particuliers en France.`
+    : `Profil de ${displayName} sur Deal&Co, site de petites annonces gratuites en France.`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "Deal&Co",
+      type: "profile",
+      locale: "fr_FR",
+    },
+    twitter: { card: "summary", title, description },
+  };
+}
+
+export default async function UserProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
+  const user = (await getUserWithListings(id)) as any;
   if (!user) notFound();
 
   const responseTime = await getUserResponseTime(user.id);
@@ -65,8 +73,43 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
     .toUpperCase()
     .slice(0, 2);
 
+  const displayName = user.isPro ? user.companyName || user.name : user.name;
+  const profileUrl = `${BASE}/u/${user.id}`;
+  const profileLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": user.isPro ? "Organization" : "Person",
+      name: displayName,
+      url: profileUrl,
+      ...(user.avatar ? { image: user.avatar } : {}),
+    },
+  };
+  const itemListLd = user.listings.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Annonces de ${displayName}`,
+    numberOfItems: user.listings.length,
+    itemListElement: user.listings.slice(0, 20).map((l: any, i: number) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${BASE}${listingUrl(l.id, l.title)}`,
+      name: l.title,
+    })),
+  } : null;
+
   return (
     <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(profileLd) }}
+      />
+      {itemListLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
+        />
+      )}
       <Navbar active="" />
 
       <main className="pt-32 pb-10 px-6 max-w-3xl mx-auto">
@@ -120,7 +163,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
               return (
                 <Link
                   key={listing.id}
-                  href={`/annonce/${listing.id}`}
+                  href={listingUrl(listing.id, listing.title)}
                   className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100"
                 >
                   <div className="relative aspect-square overflow-hidden">
