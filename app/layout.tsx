@@ -73,7 +73,6 @@ export const metadata: Metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#2f6fb8",
 };
 
@@ -85,10 +84,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className="light">
       <head>
-        {/* Material Symbols — icon font, no next/font support.
-            Preconnect speeds up handshake; the link below loads as print stylesheet
-            (non-blocking), then JS swaps media to "all" once loaded. noscript fallback
-            covers users without JS. */}
+        {/* Material Symbols — icon font, no next/font support. Preconnect cuts handshake cost. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -97,6 +93,7 @@ export default function RootLayout({
           title="Deal&Co — Dernières annonces"
           href="/rss.xml"
         />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <link
           rel="preload"
           as="style"
@@ -104,7 +101,6 @@ export default function RootLayout({
         />
         <link
           rel="stylesheet"
-          media="all"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
       </head>

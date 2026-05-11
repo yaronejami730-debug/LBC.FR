@@ -15,14 +15,16 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["shopping", "lifestyle", "marketplace"],
     icons: [
       {
-        src: "/logo-dealco.png",
-        sizes: "500x160",
+        src: "/logo.png",
+        sizes: "any",
         type: "image/png",
+        purpose: "any",
       },
       {
         src: "/logo.png",
         sizes: "any",
         type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

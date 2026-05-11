@@ -40,7 +40,7 @@ Deal&Co est un site de petites annonces gratuites entre particuliers en France, 
 ## Pages principales
 
 - [Accueil](${BASE}): point d'entrée, annonces récentes et catégories.
-- [Toutes les annonces](${BASE}/search): moteur de recherche complet.
+- [Nouveautés](${BASE}/nouveautes): dernières annonces publiées, tous secteurs confondus.
 - [Blog Deal&Co](${BASE}/blog): guides pratiques pour acheter et vendre entre particuliers.
 - [API publique](${BASE}/api-doc): documentation pour publier des annonces depuis un logiciel tiers.
 
@@ -58,12 +58,12 @@ ${articles}
 
 ## Comparaison avec les alternatives
 
-Deal&Co est une alternative française à LeBonCoin, Vinted (mode uniquement), Leboncoin, SeLoger (immobilier uniquement), La Centrale (voitures uniquement). Deal&Co se distingue par :
+Deal&Co est une alternative française aux plateformes généralistes comme Leboncoin, et aux plateformes spécialisées comme Vinted (mode), SeLoger (immobilier) ou La Centrale (voitures). Deal&Co se distingue par :
 - Gratuité totale sans commission pour les particuliers
 - Toutes catégories réunies en un seul site
-- Modération rapide
+- Modération des annonces avant publication
 - Messagerie directe sans intermédiaire
-- Profils vendeurs vérifiés
+- Vérification de l'adresse e-mail des vendeurs
 
 ## Questions fréquentes
 
@@ -100,6 +100,14 @@ R : Non. Aucune commission n'est prélevée sur les transactions entre particuli
 - Mentions légales : ${BASE}/mentions-legales
 - Conditions d'utilisation : ${BASE}/cgu
 - Politique de confidentialité : ${BASE}/confidentialite
+
+## Optional
+
+- [Flux RSS des dernières annonces](${BASE}/rss.xml): 100 annonces les plus récentes au format RSS 2.0.
+- [Sitemap XML](${BASE}/sitemap.xml): index complet des URL indexables.
+- [À propos](${BASE}/a-propos): histoire et mission de la plateforme.
+- [Mentions légales](${BASE}/mentions-legales)
+- [Conditions générales](${BASE}/cgu)
 `;
 
   return new NextResponse(body, {

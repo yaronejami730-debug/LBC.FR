@@ -41,7 +41,37 @@ export function pageKey(target: SeoPageTarget): string {
   return [target.categoryId, target.subcategorySlug ?? "_", target.citySlug ?? "_"].join(":");
 }
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const MODEL_ID = "claude-haiku-4-5-20251001";
+
+let _client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!_client) {
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _client;
+}
+
+// On-demand generation budget per process. Resets every hour.
+// Protects against bots crawling random /annonces/[cat]/[sub]/[city] URLs
+// and racking up Anthropic costs.
+const GEN_BUDGET_PER_HOUR = 60;
+let genBudget = { count: 0, resetAt: Date.now() + 3600_000 };
+function consumeGenBudget(): boolean {
+  const now = Date.now();
+  if (now > genBudget.resetAt) {
+    genBudget = { count: 0, resetAt: now + 3600_000 };
+  }
+  if (genBudget.count >= GEN_BUDGET_PER_HOUR) return false;
+  genBudget.count++;
+  return true;
+}
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd() + "…";
+}
 
 function buildPrompt(target: SeoPageTarget, city: FrenchCity | null, subLabel: string | null): string {
   const cat = getCategoryById(target.categoryId);
@@ -85,16 +115,18 @@ Produis UNIQUEMENT un objet JSON valide (aucun texte avant/après), avec ces cl�
 }
 
 function parseJsonFromResponse(text: string): SeoContent {
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  const parsed = JSON.parse(cleaned);
+  const stripped = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
+  const match = stripped.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("Aucun objet JSON détecté dans la réponse IA");
+  const parsed = JSON.parse(match[0]);
 
   if (!parsed.metaTitle || !parsed.metaDescription || !parsed.h1 || !parsed.intro) {
     throw new Error("Réponse IA incomplète");
   }
 
   return {
-    metaTitle: String(parsed.metaTitle).slice(0, 70),
-    metaDescription: String(parsed.metaDescription).slice(0, 170),
+    metaTitle: truncate(String(parsed.metaTitle), 70),
+    metaDescription: truncate(String(parsed.metaDescription), 170),
     h1: String(parsed.h1),
     intro: String(parsed.intro),
     localTips: parsed.localTips ? String(parsed.localTips) : null,
@@ -114,8 +146,8 @@ export async function generateSeoContent(target: SeoPageTarget): Promise<SeoCont
 
   const prompt = buildPrompt(target, city, subLabel);
 
-  const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+  const response = await getClient().messages.create({
+    model: MODEL_ID,
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
   });
@@ -146,10 +178,16 @@ export async function getOrCreateSeoContent(target: SeoPageTarget): Promise<SeoC
     return null;
   }
 
+  if (!consumeGenBudget()) {
+    console.warn("[seo-content] budget de génération horaire atteint, skip", key);
+    return null;
+  }
+
   try {
     const content = await generateSeoContent(target);
-    await prisma.seoPageContent.create({
-      data: {
+    await prisma.seoPageContent.upsert({
+      where: { pageKey: key },
+      create: {
         pageKey: key,
         categoryId: target.categoryId,
         subcategorySlug: target.subcategorySlug ?? null,
@@ -161,7 +199,17 @@ export async function getOrCreateSeoContent(target: SeoPageTarget): Promise<SeoC
         localTips: content.localTips,
         faq: JSON.stringify(content.faq),
         keywords: JSON.stringify(content.keywords),
-        model: "claude-haiku-4-5",
+        model: MODEL_ID,
+      },
+      update: {
+        metaTitle: content.metaTitle,
+        metaDescription: content.metaDescription,
+        h1: content.h1,
+        intro: content.intro,
+        localTips: content.localTips,
+        faq: JSON.stringify(content.faq),
+        keywords: JSON.stringify(content.keywords),
+        model: MODEL_ID,
       },
     });
     return content;
@@ -178,7 +226,7 @@ function populationTier(p: number): "metropole" | "grande-ville" | "ville-moyenn
   return "petite-ville";
 }
 
-function introByCategory(categoryId: string, cityName: string, region: string, tier: string): string {
+function introByCategory(categoryId: string, cityName: string, region: string): string {
   const base: Record<string, string> = {
     immobilier: `Trouvez votre futur logement à ${cityName} parmi les annonces immobilières publiées par des particuliers et des professionnels. Que vous cherchiez à acheter une maison, louer un appartement, trouver une colocation ou investir dans un bien commercial, notre sélection couvre tous les quartiers de ${cityName} et ses environs en ${region}. Les annonces sont mises à jour en continu pour vous donner accès aux dernières opportunités du marché local.`,
     vehicules: `Achetez ou vendez un véhicule à ${cityName} directement entre particuliers. Notre plateforme regroupe voitures d'occasion, motos, utilitaires, caravanes et équipements auto proposés à ${cityName} et dans toute la région ${region}. Chaque annonce inclut photos, kilométrage et année du véhicule, pour vous permettre de comparer facilement avant de prendre rendez-vous avec le vendeur sur place.`,
@@ -258,7 +306,6 @@ function faqFor(categoryId: string, cityName: string | null, subLabel: string | 
         a: `Demandez à allumer l'appareil devant vous, vérifiez l'autonomie de la batterie, testez les ports, l'écran et les haut-parleurs. Pour un smartphone, contrôlez qu'il n'est pas bloqué iCloud ou compte Google, et que l'IMEI n'est pas en liste noire.`,
       },
     ],
-    immobilier_fallback: [],
   };
 
   const specific = perCategory[categoryId] ?? [];
@@ -295,7 +342,7 @@ export function fallbackContent(target: SeoPageTarget): SeoContent {
   const intro = cityName
     ? (subLabel
         ? `Parcourez les annonces ${subLabel.toLowerCase()} publiées à ${cityName} et dans la région ${region}. Les annonces sont publiées par des particuliers et professionnels locaux, avec photos, prix et contact direct du vendeur. Un moyen efficace de trouver ou vendre ${subLabel.toLowerCase()} près de chez vous, sans frais d'envoi et avec possibilité d'inspection sur place.`
-        : introByCategory(target.categoryId, cityName, region, tier))
+        : introByCategory(target.categoryId, cityName, region))
     : subLabel
       ? `Toutes les annonces ${subLabel.toLowerCase()} d'occasion entre particuliers en France, regroupées sur une seule page. Que vous cherchiez à acheter ou vendre, Deal&Co met en relation directement les vendeurs et les acheteurs partout sur le territoire, sans commission ni frais cachés.\n\nChaque annonce ${subLabel.toLowerCase()} inclut des photos, un prix négocié directement avec le propriétaire, la localisation précise et un moyen de contact (messagerie sécurisée ou téléphone si le vendeur l'a renseigné). Filtrez par ville pour ne voir que les annonces près de chez vous, ou parcourez l'ensemble des offres ${subLabel.toLowerCase()} disponibles aux quatre coins de la France.\n\nLa publication d'annonces ${subLabel.toLowerCase()} est entièrement gratuite sur Deal&Co. Créez votre compte en quelques secondes, ajoutez vos photos et publiez votre annonce — elle sera visible par des milliers d'acheteurs potentiels en moins de 10 minutes après modération. Pour les vendeurs réguliers ou professionnels, un compte pro permet d'accéder à des options de mise en avant ciblées.`
       : `Retrouvez toutes les annonces ${segment.toLowerCase()} publiées en France sur Deal&Co. Achat, vente et échange entre particuliers dans toutes les régions, avec photos, prix et contact direct avec le vendeur. Filtrez par ville pour trouver les annonces près de chez vous.`;
@@ -314,8 +361,8 @@ export function fallbackContent(target: SeoPageTarget): SeoContent {
   ];
 
   return {
-    metaTitle: metaTitle.slice(0, 70),
-    metaDescription: metaDescription.slice(0, 170),
+    metaTitle: truncate(metaTitle, 70),
+    metaDescription: truncate(metaDescription, 170),
     h1,
     intro,
     localTips,

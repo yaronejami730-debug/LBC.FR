@@ -14,9 +14,24 @@ function esc(s: string) {
 
 export const revalidate = 1800;
 
+function mimeFromUrl(url: string): string {
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "avif") return "image/avif";
+  return "image/jpeg";
+}
+
 export async function GET() {
   const listings = await prisma.listing.findMany({
-    where: { status: "APPROVED", deletedAt: null },
+    where: {
+      status: "APPROVED",
+      deletedAt: null,
+      shadowBanned: false,
+      qualityScore: { gte: 40 },
+      reportCount: { lt: 3 },
+    } as any,
     orderBy: { createdAt: "desc" },
     take: 100,
     select: {
@@ -36,13 +51,14 @@ export async function GET() {
     try { imgs = JSON.parse(l.images); } catch { /* empty */ }
     const url = `${BASE}/annonce/${l.id}/${listingSlug(l.title)}`;
     const desc = `${l.price.toLocaleString("fr-FR")} € — ${l.location}. ${l.description.slice(0, 300)}`;
+    const firstImg = typeof imgs[0] === "string" ? imgs[0] : null;
     return `  <item>
     <title>${esc(l.title)}</title>
     <link>${url}</link>
     <guid isPermaLink="true">${url}</guid>
     <description>${esc(desc)}</description>
     <category>${esc(l.category)}</category>
-    <pubDate>${l.createdAt.toUTCString()}</pubDate>${imgs[0] ? `\n    <enclosure url="${esc(imgs[0])}" type="image/jpeg" length="0"/>` : ""}
+    <pubDate>${l.createdAt.toUTCString()}</pubDate>${firstImg ? `\n    <enclosure url="${esc(firstImg)}" type="${mimeFromUrl(firstImg)}" length="0"/>` : ""}
   </item>`;
   }).join("\n");
 
