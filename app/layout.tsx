@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Manrope, Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
 import VisitorTracker from "@/components/VisitorTracker";
+
+const GA_ID = "G-31WRQ5YXX6";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -105,6 +108,16 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${manrope.variable}`}>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GA_ID}');`}
+        </Script>
         <VisitorTracker />
         <Providers>{children}</Providers>
       </body>
