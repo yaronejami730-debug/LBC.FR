@@ -6,6 +6,7 @@ import Providers from "./providers";
 import VisitorTracker from "@/components/VisitorTracker";
 
 const GA_ID = "G-31WRQ5YXX6";
+const ADSENSE_CLIENT = "ca-pub-1774647148412256";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,6 +47,7 @@ export const metadata: Metadata = {
   },
   verification: {
     google: "8N5Ojonm2AEamRcn_DoTTdkvL1KlGbObhKrqDUorZ5E",
+    other: { "google-adsense-account": ADSENSE_CLIENT },
   },
   openGraph: {
     title: "Deal&Co — Petites annonces gratuites entre particuliers",
@@ -118,6 +120,12 @@ function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', '${GA_ID}');`}
         </Script>
+        <Script
+          id="adsense"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <VisitorTracker />
         <Providers>{children}</Providers>
       </body>
