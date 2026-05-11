@@ -53,6 +53,7 @@ export default function CategoryDrawer() {
                 <Link
                   key={cat.id}
                   href={`/annonces/${cat.id}`}
+                  title={`Annonces ${cat.label}`}
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-4 px-4 py-3.5 rounded-2xl hover:bg-slate-50 transition-all group active:scale-[0.98]"
                 >
@@ -73,8 +74,9 @@ export default function CategoryDrawer() {
 
           {/* Footer */}
           <div className="p-6 bg-slate-50 border-t border-slate-100">
-            <Link 
-              href="/post" 
+            <Link
+              href="/post"
+              title="Déposer une annonce gratuite"
               onClick={() => setIsOpen(false)}
               className="w-full py-4 bg-[#2f6fb8] text-white rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-[#2f6fb8]/20 active:scale-95 transition-all"
             >

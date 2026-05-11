@@ -106,7 +106,7 @@ export default async function SearchPage({
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="space-y-1">
                 <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-secondary">Découvrez les articles</span>
-                <h2 className="text-3xl font-extrabold manrope text-primary tracking-tight">Annonces sélectionnées</h2>
+                <h1 className="text-3xl font-extrabold manrope text-primary tracking-tight">Annonces sélectionnées</h1>
               </div>
               <div className="flex items-center gap-3">
                 <Suspense>

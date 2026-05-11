@@ -68,6 +68,7 @@ export default function HomeRecommendations() {
             .replace(/[̀-ͯ]/g, "")
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/^-|-$/g, "")}`}
+          title={`Voir toutes les annonces ${current.category}`}
           className="text-primary text-sm font-semibold flex items-center gap-1 group"
         >
           Voir tout
@@ -107,6 +108,7 @@ export default function HomeRecommendations() {
             <Link
               key={listing.id}
               href={`/annonce/${listing.id}`}
+              title={`${listing.title} — ${listing.price.toLocaleString("fr-FR")} €`}
               className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
             >
               <div className="relative aspect-square overflow-hidden bg-surface-container-low">

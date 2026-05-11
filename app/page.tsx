@@ -14,9 +14,9 @@ import SiteFooter from "@/components/SiteFooter";
 import { listingUrl } from "@/lib/listing-slug";
 
 export const metadata: Metadata = {
-  title: { absolute: "Deal&Co — Achetez et vendez tout près de chez vous" },
+  title: { absolute: "Petites annonces gratuites entre particuliers — Deal&Co" },
   description:
-    "Trouvez les meilleures occasions dans votre quartier. Voitures, immobilier, mode, multimédia, matériel pro, emploi, services à domicile et plus — petites annonces gratuites entre particuliers partout en France et dans les DOM-TOM.",
+    "Achetez et vendez d'occasion près de chez vous : voitures, immobilier, mode, multimédia. Petites annonces gratuites entre particuliers partout en France.",
   keywords: [
     "petites annonces gratuites France",
     "occasion France",
@@ -226,9 +226,9 @@ export default async function Home() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">Explorer par</span>
-            <h3 className="text-2xl font-bold text-on-surface">Catégories populaires</h3>
+            <h2 className="text-2xl font-bold text-on-surface">Catégories populaires</h2>
           </div>
-          <Link href="/nouveautes" className="text-primary font-semibold flex items-center gap-1 group">
+          <Link href="/nouveautes" title="Voir toutes les catégories" className="text-primary font-semibold flex items-center gap-1 group">
             Toutes les catégories <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </Link>
         </div>
@@ -240,7 +240,7 @@ export default async function Home() {
             { id: "maison", label: "Maison", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3" },
             { id: "services", label: "Services", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR" },
           ].map(({ id, label, src }) => (
-            <Link key={id} href={`/annonces/${id}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
+            <Link key={id} href={`/annonces/${id}`} title={`Annonces ${label}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
               <img className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={label} src={src} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="relative z-10">
@@ -260,8 +260,8 @@ export default async function Home() {
       {/* Recent Listings Section */}
       <section className="py-10 max-w-7xl mx-auto bg-surface-container-low rounded-t-[3rem]">
         <div className="flex items-center justify-between mb-5 px-6">
-          <h3 className="text-xl font-extrabold text-on-surface tracking-tight">Annonces récentes</h3>
-          <Link href="/nouveautes" className="text-primary text-sm font-semibold flex items-center gap-1 group">
+          <h2 className="text-xl font-extrabold text-on-surface tracking-tight">Annonces récentes</h2>
+          <Link href="/nouveautes" title="Voir toutes les annonces récentes" className="text-primary text-sm font-semibold flex items-center gap-1 group">
             Voir tout <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
           </Link>
         </div>
@@ -279,6 +279,7 @@ export default async function Home() {
                     href={ad.destinationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    title={ad.title}
                     className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-[#c7c5d4] hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
@@ -295,6 +296,7 @@ export default async function Home() {
                 )}
                 <Link
                   href={listingUrl(listing.id, listing.title)}
+                  title={`${listing.title} — ${listing.price.toLocaleString("fr-FR")} €`}
                   className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
                 >
                   <div className="relative aspect-square overflow-hidden bg-surface-container-low">
@@ -330,7 +332,7 @@ export default async function Home() {
           })}
         </div>
         <div className="mt-8 flex justify-center px-6">
-          <Link href="/search" className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+          <Link href="/search" title="Lancer une recherche" className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
             Voir plus d'annonces
           </Link>
         </div>
@@ -398,7 +400,7 @@ export default async function Home() {
               <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">À lire</span>
               <h2 className="text-lg font-bold text-[#191c1e]">Guides pratiques sur le blog</h2>
             </div>
-            <Link href="/blog" className="text-primary text-sm font-semibold flex items-center gap-1 group">
+            <Link href="/blog" title="Voir tous les articles du blog" className="text-primary text-sm font-semibold flex items-center gap-1 group">
               Tous les articles
               <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
             </Link>
@@ -412,6 +414,7 @@ export default async function Home() {
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
+                title={post.title}
                 className="text-sm font-semibold text-[#2f6fb8] hover:underline"
               >
                 {post.title}

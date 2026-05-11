@@ -52,8 +52,8 @@ export default async function Navbar({
             <div className="lg:hidden flex-shrink-0">
               <CategoryDrawer />
             </div>
-            <Link href="/" className="flex items-center">
-              <img src="/logo.png" alt="Le Bon Deal" className="w-44 h-auto" />
+            <Link href="/" title="Accueil Deal&Co" className="flex items-center">
+              <img src="/logo.png" alt="Deal&Co" className="w-44 h-auto" />
             </Link>
           </div>
 
@@ -63,6 +63,7 @@ export default async function Navbar({
           {/* Déposer une annonce */}
           <Link
             href="/post"
+            title="Déposer une annonce gratuite"
             className="hidden lg:flex items-center gap-2 bg-[#2f6fb8] hover:bg-[#2560a0] text-white px-4 py-2 rounded-full font-bold text-sm transition-colors flex-shrink-0 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -81,6 +82,7 @@ export default async function Navbar({
             <div key={cat.label} className="flex items-center flex-shrink-0">
               <Link
                 href={cat.href}
+                title={cat.label === "Bons plans !" ? "Découvrir les nouveautés" : `Annonces ${cat.label}`}
                 className={`hover:text-[#2f6fb8] hover:underline transition-colors ${cat.label === "Bons plans !" ? "font-[800] text-slate-800" : "font-[500]"}`}
               >
                 {cat.label}

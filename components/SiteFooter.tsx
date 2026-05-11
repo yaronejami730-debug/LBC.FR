@@ -39,6 +39,7 @@ export default function SiteFooter() {
                 <li key={c.id}>
                   <Link
                     href={`/annonces/${c.id}`}
+                    title={`Annonces ${c.label}`}
                     className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
                   >
                     {c.label}
@@ -57,6 +58,7 @@ export default function SiteFooter() {
                 <li key={city.slug}>
                   <Link
                     href={`/ville/${city.slug}`}
+                    title={`Annonces à ${city.name}`}
                     className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
                   >
                     {city.name}
@@ -75,6 +77,7 @@ export default function SiteFooter() {
                 <li key={q.href}>
                   <Link
                     href={q.href}
+                    title={`Voir les prix : ${q.label}`}
                     className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
                   >
                     {q.label}
@@ -93,6 +96,7 @@ export default function SiteFooter() {
                 <li key={l.href}>
                   <Link
                     href={l.href}
+                    title={l.label}
                     className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
                   >
                     {l.label}
@@ -102,6 +106,7 @@ export default function SiteFooter() {
               <li>
                 <Link
                   href="/nouveautes"
+                  title="Dernières annonces publiées"
                   className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
                 >
                   Dernières annonces
@@ -110,6 +115,7 @@ export default function SiteFooter() {
               <li>
                 <Link
                   href="/post"
+                  title="Publier une annonce gratuite"
                   className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
                 >
                   Publier une annonce
@@ -129,6 +135,7 @@ export default function SiteFooter() {
                 {i > 0 && <span className="text-slate-300 mx-2 select-none">·</span>}
                 <Link
                   href={link.href}
+                  title={link.label}
                   className="text-[11px] text-slate-400 hover:text-[#2f6fb8] transition-colors"
                 >
                   {link.label}

@@ -122,7 +122,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
                 <span className="text-2xl font-bold text-outline">{initials}</span>
               )}
             </div>
-            <h2 className="text-2xl font-extrabold text-[#2f6fb8] font-['Manrope']">{user.name}</h2>
+            <h1 className="text-2xl font-extrabold text-[#2f6fb8] font-['Manrope']">{user.name}</h1>
             {user.verified && (
               <div className="flex items-center gap-1.5 text-[#00a67e] font-bold text-xs mt-2 bg-[#e6fcf5] px-3 py-1 rounded-full uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
@@ -145,10 +145,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        <h3 className="text-xl font-extrabold text-[#2f6fb8] font-['Manrope'] mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-extrabold text-[#2f6fb8] font-['Manrope'] mb-6 flex items-center gap-2">
           Annonces en ligne
           <span className="text-sm font-medium text-outline">({user.listings.length})</span>
-        </h3>
+        </h2>
 
         {user.listings.length === 0 ? (
           <div className="bg-slate-50 rounded-2xl p-12 text-center border-2 border-dashed border-slate-200">
