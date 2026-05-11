@@ -22,6 +22,7 @@ export default function SellerActions({
   const [phoneRevealed, setPhoneRevealed] = useState(false);
 
   const hasPhone = !!phone && !hidePhone;
+  const hasWhatsApp = !!phone;
 
   async function startConversation() {
     setLoading(true);
@@ -95,8 +96,8 @@ export default function SellerActions({
         )}
       </div>
 
-      {/* WhatsApp button — only if phone exists and not hidden */}
-      {hasPhone && (
+      {/* WhatsApp button — shows whenever a phone exists, even if hidden (WhatsApp doesn't reveal the raw number) */}
+      {hasWhatsApp && (
         <a
           href={`https://wa.me/${phone!.replace(/[\s\-().+]/g, "").replace(/^0/, "33")}`}
           target="_blank"

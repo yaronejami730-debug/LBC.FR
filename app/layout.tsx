@@ -77,10 +77,21 @@ export default function RootLayout({
   return (
     <html lang="fr" className="light">
       <head>
-        {/* Material Symbols — icon font, no next/font support */}
+        {/* Material Symbols — icon font, no next/font support.
+            Preconnect speeds up handshake; the link below loads as print stylesheet
+            (non-blocking), then JS swaps media to "all" once loaded. noscript fallback
+            covers users without JS. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
+          rel="preload"
+          as="style"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        />
+        <link
           rel="stylesheet"
+          media="all"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
       </head>
       <body className={`${inter.variable} ${manrope.variable}`}>

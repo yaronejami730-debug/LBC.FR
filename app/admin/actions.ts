@@ -8,6 +8,10 @@ import { accountInvitationEmail } from "@/lib/emails/account-invitation";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
+import { pingIndexNow } from "@/lib/indexnow";
+import { listingSlug } from "@/lib/listing-slug";
+import { CATEGORIES } from "@/lib/categories";
+import { citySlug } from "@/lib/cities";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -56,6 +60,17 @@ export async function approveListing(id: string) {
   revalidatePath("/");
   revalidatePath("/annonces", "layout");
   revalidatePath(`/annonce/${listing.id}`);
+
+  const listingPublicUrl = `${baseUrl}/annonce/${listing.id}/${listingSlug(listing.title)}`;
+  const catId = CATEGORIES.find((c) => c.label === (listing as any).category)?.id;
+  const villeSlug = listing.location
+    ? citySlug(listing.location.split(/[,(]/)[0]?.trim() ?? listing.location)
+    : "";
+  const urls = [listingPublicUrl, baseUrl, `${baseUrl}/nouveautes`];
+  if (catId) urls.push(`${baseUrl}/annonces/${catId}`);
+  if (villeSlug) urls.push(`${baseUrl}/ville/${villeSlug}`);
+  if (catId && villeSlug) urls.push(`${baseUrl}/annonces/${catId}/${villeSlug}`);
+  pingIndexNow(urls).catch(() => {});
 }
 
 export async function rejectListing(id: string, reason: string) {

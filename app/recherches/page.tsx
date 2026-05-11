@@ -6,7 +6,10 @@ import BottomNav from "@/components/BottomNav";
 import SearchesClient from "./SearchesClient";
 import { buildSearchWhere } from "@/lib/search-where";
 
-export const metadata = { title: "Mes recherches" };
+export const metadata = {
+  title: "Mes recherches",
+  robots: { index: false, follow: false },
+};
 
 export default async function RecherchesPage() {
   const session = await auth();

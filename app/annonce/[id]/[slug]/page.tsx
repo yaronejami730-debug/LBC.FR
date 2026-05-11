@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -25,16 +26,20 @@ import { listingSlug } from "@/lib/listing-slug";
 
 const BASE = "https://www.dealandcompany.fr";
 
+const getListing = cache((id: string) =>
+  prisma.listing.findUnique({
+    where: { id },
+    include: { user: true },
+  }).catch(() => null)
+);
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string; slug: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const listing = await prisma.listing.findUnique({
-    where: { id },
-    select: { title: true, description: true, images: true, price: true, location: true, shadowBanned: true },
-  }).catch(() => null);
+  const listing = await getListing(id);
 
   if (!listing) return {};
 
@@ -42,20 +47,23 @@ export async function generateMetadata({
     return { robots: { index: false, follow: false } };
   }
 
-  const imgs = JSON.parse(listing.images) as string[];
-  const rawImg = imgs[0] ?? "";
   const priceStr = listing.price.toLocaleString("fr-FR") + " €";
-  const mainImg = rawImg.startsWith("http") ? rawImg : `${BASE}${rawImg}`;
   const pageUrl = `${BASE}/annonce/${id}/${listingSlug(listing.title)}`;
+  const cityShort = listing.location?.split(/[,(]/)[0]?.trim() ?? listing.location ?? "";
 
-  const desc = `${listing.description.slice(0, 150)}${listing.description.length > 150 ? "…" : ""} · ${listing.location} · ${priceStr}`;
+  const titleSeo = cityShort
+    ? `${listing.title} à ${cityShort} — ${priceStr}`
+    : `${listing.title} — ${priceStr}`;
+
+  const descBase = `${listing.description.slice(0, 155)}${listing.description.length > 155 ? "…" : ""}`;
+  const desc = `${descBase} · ${listing.location} · ${priceStr}`;
 
   return {
-    title: `${listing.title} — ${priceStr}`,
+    title: titleSeo,
     description: desc,
     alternates: { canonical: pageUrl },
     openGraph: {
-      title: `${listing.title} — ${priceStr}`,
+      title: titleSeo,
       description: desc,
       url: pageUrl,
       siteName: "Deal&Co",
@@ -64,7 +72,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${listing.title} — ${priceStr}`,
+      title: titleSeo,
       description: desc,
       images: [`${BASE}/annonce/${id}/opengraph-image`],
     },
@@ -78,10 +86,7 @@ export default async function ListingPage({
 }) {
   const { id, slug } = await params;
   const [listing, session] = await Promise.all([
-    prisma.listing.findUnique({
-      where: { id },
-      include: { user: true },
-    }),
+    getListing(id),
     auth(),
   ]);
 

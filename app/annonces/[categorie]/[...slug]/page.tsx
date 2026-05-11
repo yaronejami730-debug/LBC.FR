@@ -30,6 +30,7 @@ const PRIORITY_CITIES = TOP_CITIES.slice(0, 15);
 
 type RouteShape =
   | { kind: "city"; citySlug: string }
+  | { kind: "sub"; subcategorySlug: string }
   | { kind: "sub-city"; subcategorySlug: string; citySlug: string };
 
 function parseSlug(categorie: string, slug: string[]): RouteShape | null {
@@ -37,6 +38,10 @@ function parseSlug(categorie: string, slug: string[]): RouteShape | null {
   if (!cat) return null;
 
   if (slug.length === 1) {
+    // Prefer subcategory match over city — subcategory slugs are domain-specific
+    // (voitures, appartements…) and unlikely to collide with city slugs.
+    const asSub = slugToSubcategoryLabel(categorie, slug[0]);
+    if (asSub) return { kind: "sub", subcategorySlug: slug[0] };
     return { kind: "city", citySlug: slug[0] };
   }
   if (slug.length === 2) {
@@ -53,6 +58,13 @@ export async function generateStaticParams() {
   for (const cat of CATEGORIES) {
     for (const city of TOP_CITIES) {
       params.push({ categorie: cat.id, slug: [city.slug] });
+    }
+  }
+
+  // Sub-only landing pages (cat × sub)
+  for (const cat of CATEGORIES) {
+    for (const sub of cat.subcategories) {
+      params.push({ categorie: cat.id, slug: [subcategoryToSlug(sub)] });
     }
   }
 
@@ -92,17 +104,27 @@ export async function generateMetadata({
   const target =
     shape.kind === "city"
       ? { categoryId: categorie, citySlug: shape.citySlug }
-      : { categoryId: categorie, subcategorySlug: shape.subcategorySlug, citySlug: shape.citySlug };
+      : shape.kind === "sub"
+        ? { categoryId: categorie, subcategorySlug: shape.subcategorySlug }
+        : { categoryId: categorie, subcategorySlug: shape.subcategorySlug, citySlug: shape.citySlug };
 
-  const cityLabel = slugToCity(shape.citySlug)?.name ?? slugToCityLabel(shape.citySlug);
-  const subLabel = shape.kind === "sub-city" ? slugToSubcategoryLabel(categorie, shape.subcategorySlug) : null;
+  const cityLabel =
+    shape.kind === "sub"
+      ? null
+      : slugToCity(shape.citySlug)?.name ?? slugToCityLabel(shape.citySlug);
+  const subLabel =
+    shape.kind === "sub" || shape.kind === "sub-city"
+      ? slugToSubcategoryLabel(categorie, shape.subcategorySlug)
+      : null;
   const whereClause: any = {
     status: "APPROVED",
     deletedAt: null,
     category: cat.label,
-    location: { contains: cityLabel, mode: "insensitive" },
   };
-  if (shape.kind === "sub-city" && subLabel) {
+  if (cityLabel) {
+    whereClause.location = { contains: cityLabel, mode: "insensitive" };
+  }
+  if ((shape.kind === "sub" || shape.kind === "sub-city") && subLabel) {
     whereClause.subcategory = subLabel;
   }
   const total = await prisma.listing.count({ where: whereClause }).catch(() => 0);
@@ -151,14 +173,20 @@ export default async function AnnoncesGeoPage({
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const skip = (page - 1) * GEO_PER_PAGE;
 
-  const cityData = slugToCity(shape.citySlug);
-  const cityLabel = cityData?.name ?? slugToCityLabel(shape.citySlug);
-  const subLabel = shape.kind === "sub-city" ? slugToSubcategoryLabel(categorie, shape.subcategorySlug) : null;
+  const cityData = shape.kind === "sub" ? null : slugToCity(shape.citySlug);
+  const cityLabel =
+    shape.kind === "sub" ? null : (cityData?.name ?? slugToCityLabel(shape.citySlug));
+  const subLabel =
+    shape.kind === "sub" || shape.kind === "sub-city"
+      ? slugToSubcategoryLabel(categorie, shape.subcategorySlug)
+      : null;
 
   const target =
     shape.kind === "city"
       ? { categoryId: categorie, citySlug: shape.citySlug }
-      : { categoryId: categorie, subcategorySlug: shape.subcategorySlug, citySlug: shape.citySlug };
+      : shape.kind === "sub"
+        ? { categoryId: categorie, subcategorySlug: shape.subcategorySlug }
+        : { categoryId: categorie, subcategorySlug: shape.subcategorySlug, citySlug: shape.citySlug };
 
   const seo = (await getOrCreateSeoContent(target)) ?? fallbackContent(target);
 
@@ -166,9 +194,11 @@ export default async function AnnoncesGeoPage({
     status: "APPROVED",
     deletedAt: null,
     category: cat.label,
-    location: { contains: cityLabel, mode: "insensitive" },
   };
-  if (shape.kind === "sub-city" && subLabel) {
+  if (cityLabel) {
+    whereClause.location = { contains: cityLabel, mode: "insensitive" };
+  }
+  if ((shape.kind === "sub" || shape.kind === "sub-city") && subLabel) {
     whereClause.subcategory = subLabel;
   }
 
@@ -190,26 +220,35 @@ export default async function AnnoncesGeoPage({
 
   const neighbouringCities = cityData
     ? FRENCH_CITIES.filter((c) => c.departmentCode === cityData.departmentCode && c.slug !== cityData.slug).slice(0, 8)
-    : TOP_CITIES.filter((c) => c.slug !== shape.citySlug).slice(0, 8);
+    : shape.kind === "sub"
+      ? TOP_CITIES.slice(0, 8)
+      : TOP_CITIES.filter((c) => c.slug !== shape.citySlug).slice(0, 8);
 
   const otherCategories = CATEGORIES.filter((c) => c.id !== cat.id).slice(0, 8);
   const siblingSubs =
-    shape.kind === "sub-city"
+    shape.kind === "sub-city" || shape.kind === "sub"
       ? cat.subcategories.filter((s) => subcategoryToSlug(s) !== shape.subcategorySlug)
       : cat.subcategories;
 
-  const breadcrumbItems = [
-    { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
-    { "@type": "ListItem", position: 2, name: cat.label, item: `${BASE}/annonces/${cat.id}` },
-    ...(shape.kind === "sub-city" && subLabel
+  const breadcrumbItems =
+    shape.kind === "sub"
       ? [
-          { "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` },
-          { "@type": "ListItem", position: 4, name: subLabel, item: `${BASE}/annonces/${cat.id}/${slug.join("/")}` },
+          { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
+          { "@type": "ListItem", position: 2, name: cat.label, item: `${BASE}/annonces/${cat.id}` },
+          { "@type": "ListItem", position: 3, name: subLabel ?? "Sous-catégorie", item: `${BASE}/annonces/${cat.id}/${shape.subcategorySlug}` },
         ]
       : [
-          { "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` },
-        ]),
-  ];
+          { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
+          { "@type": "ListItem", position: 2, name: cat.label, item: `${BASE}/annonces/${cat.id}` },
+          ...(shape.kind === "sub-city" && subLabel
+            ? [
+                { "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` },
+                { "@type": "ListItem", position: 4, name: subLabel, item: `${BASE}/annonces/${cat.id}/${slug.join("/")}` },
+              ]
+            : [
+                { "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` },
+              ]),
+        ];
 
   const breadcrumbLd = {
     "@context": "https://schema.org",
@@ -242,7 +281,12 @@ export default async function AnnoncesGeoPage({
         }
       : null;
 
-  const h2Scope = subLabel ? `${subLabel.toLowerCase()} à ${cityLabel}` : `${cat.label.toLowerCase()} à ${cityLabel}`;
+  const h2Scope =
+    shape.kind === "sub"
+      ? `${subLabel?.toLowerCase()} en France`
+      : subLabel
+        ? `${subLabel.toLowerCase()} à ${cityLabel}`
+        : `${cat.label.toLowerCase()} à ${cityLabel}`;
 
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-0">
@@ -263,6 +307,8 @@ export default async function AnnoncesGeoPage({
               <span>/</span>
               <span className="text-on-surface font-semibold">{subLabel}</span>
             </>
+          ) : shape.kind === "sub" ? (
+            <span className="text-on-surface font-semibold">{subLabel}</span>
           ) : (
             <span className="text-on-surface font-semibold">{cityLabel}</span>
           )}
@@ -305,14 +351,35 @@ export default async function AnnoncesGeoPage({
           </div>
         )}
 
+        {shape.kind === "sub" && (
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-on-surface mb-3">{subLabel} par ville</h2>
+            <div className="flex flex-wrap gap-2">
+              {TOP_CITIES.slice(0, 15).map((city) => (
+                <Link
+                  key={city.slug}
+                  href={`/annonces/${cat.id}/${shape.subcategorySlug}/${city.slug}`}
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                >
+                  {city.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {listings.length === 0 ? (
             <EmptyStatePublishCTA
               categoryId={cat.id}
               categoryLabel={cat.label}
-              citySlug={shape.citySlug}
-              cityName={cityLabel}
-              subcategorySlug={shape.kind === "sub-city" ? shape.subcategorySlug : undefined}
+              citySlug={shape.kind === "sub" ? "" : shape.citySlug}
+              cityName={cityLabel ?? ""}
+              subcategorySlug={
+                shape.kind === "sub-city" || shape.kind === "sub"
+                  ? shape.subcategorySlug
+                  : undefined
+              }
               subcategoryLabel={subLabel ?? undefined}
             />
           ) : (
@@ -405,28 +472,30 @@ export default async function AnnoncesGeoPage({
           </section>
         )}
 
-        <section className="mt-12">
-          <h2 className="text-lg font-bold text-on-surface mb-3">
-            {subLabel ?? cat.label} dans les villes voisines
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {neighbouringCities.map((c) => {
-              const href =
-                shape.kind === "sub-city"
-                  ? `/annonces/${cat.id}/${shape.subcategorySlug}/${c.slug}`
-                  : `/annonces/${cat.id}/${c.slug}`;
-              return (
-                <Link
-                  key={c.slug}
-                  href={href}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
-                >
-                  {c.name}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        {shape.kind !== "sub" && (
+          <section className="mt-12">
+            <h2 className="text-lg font-bold text-on-surface mb-3">
+              {subLabel ?? cat.label} dans les villes voisines
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {neighbouringCities.map((c) => {
+                const href =
+                  shape.kind === "sub-city"
+                    ? `/annonces/${cat.id}/${shape.subcategorySlug}/${c.slug}`
+                    : `/annonces/${cat.id}/${c.slug}`;
+                return (
+                  <Link
+                    key={c.slug}
+                    href={href}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                  >
+                    {c.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {shape.kind === "sub-city" ? (
           <section className="mt-8">
@@ -436,6 +505,21 @@ export default async function AnnoncesGeoPage({
                 <Link
                   key={sub}
                   href={`/annonces/${cat.id}/${subcategoryToSlug(sub)}/${shape.citySlug}`}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                >
+                  {sub}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : shape.kind === "sub" ? (
+          <section className="mt-8">
+            <h2 className="text-lg font-bold text-on-surface mb-3">Autres {cat.label.toLowerCase()}</h2>
+            <div className="flex flex-wrap gap-2">
+              {siblingSubs.map((sub) => (
+                <Link
+                  key={sub}
+                  href={`/annonces/${cat.id}/${subcategoryToSlug(sub)}`}
                   className="px-3 py-1.5 rounded-full text-xs font-medium bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
                 >
                   {sub}

@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, cache } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -15,6 +15,12 @@ import StickyPublishFab from "@/components/StickyPublishFab";
 import { listingUrl } from "@/lib/listing-slug";
 
 export const revalidate = 3600;
+
+const getCategoryTotal = cache((label: string) =>
+  prisma.listing
+    .count({ where: { status: "APPROVED", deletedAt: null, category: label } as any })
+    .catch(() => 0),
+);
 
 export async function generateStaticParams() {
   return CATEGORIES.map((cat) => ({ categorie: cat.id }));
@@ -35,14 +41,14 @@ export async function generateMetadata({
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const BASE = "https://www.dealandcompany.fr";
   const canonical = page === 1 ? `${BASE}/annonces/${cat.id}` : `${BASE}/annonces/${cat.id}?page=${page}`;
-  const title = page === 1
-    ? `Annonces ${cat.label} — Achetez et vendez entre particuliers`
-    : `Annonces ${cat.label} — Page ${page}`;
-  const description = `Parcourez toutes les annonces ${cat.label} sur Deal&Co. Achetez et vendez entre particuliers gratuitement en France. ${cat.subcategories.slice(0, 3).join(", ")} et bien plus.`;
 
-  const total = await prisma.listing
-    .count({ where: { status: "APPROVED", deletedAt: null, category: cat.label } as any })
-    .catch(() => 0);
+  const total = await getCategoryTotal(cat.label);
+
+  const countLabel = total > 0 ? `${total.toLocaleString("fr-FR")} annonces` : "Annonces";
+  const title = page === 1
+    ? `${cat.label} — ${countLabel} gratuites entre particuliers`
+    : `Annonces ${cat.label} — Page ${page}`;
+  const description = `${countLabel} ${cat.label.toLowerCase()} sur Deal&Co. Achetez et vendez entre particuliers gratuitement en France. ${cat.subcategories.slice(0, 3).join(", ")} et bien plus.`;
 
   return {
     title,
@@ -89,9 +95,7 @@ export default async function CategoryPage({
       skip,
       include: { user: { select: { verified: true } } },
     }),
-    prisma.listing.count({
-      where: { status: "APPROVED", deletedAt: null, category: cat.label } as any,
-    }),
+    getCategoryTotal(cat.label),
     prisma.listing.aggregate({
       where: { status: "APPROVED", deletedAt: null, category: cat.label, price: { gt: 0 } } as any,
       _min: { price: true },

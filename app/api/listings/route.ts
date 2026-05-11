@@ -10,6 +10,9 @@ import { listingRejectedEmail } from "@/lib/emails/listing-rejected";
 import { CATEGORIES } from "@/lib/categories";
 import { moderateListing } from "@/lib/moderation";
 import { detectSpam, applySpamRestriction } from "@/lib/spam-detector";
+import { pingIndexNow } from "@/lib/indexnow";
+import { listingSlug } from "@/lib/listing-slug";
+import { citySlug } from "@/lib/cities";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -324,6 +327,17 @@ export async function POST(req: NextRequest) {
           }),
         }).catch((err) => console.error("[ADMIN EMAIL]", err));
       }
+    }
+
+    if (listingStatus === "APPROVED") {
+      const listingPublicUrl = `${baseUrl}/annonce/${listing.id}/${listingSlug(title)}`;
+      const catId = CATEGORIES.find((c) => c.label === category)?.id;
+      const villeSlug = location ? citySlug(location.split(/[,(]/)[0]?.trim() ?? location) : "";
+      const urls = [listingPublicUrl, baseUrl, `${baseUrl}/nouveautes`];
+      if (catId) urls.push(`${baseUrl}/annonces/${catId}`);
+      if (villeSlug) urls.push(`${baseUrl}/ville/${villeSlug}`);
+      if (catId && villeSlug) urls.push(`${baseUrl}/annonces/${catId}/${villeSlug}`);
+      pingIndexNow(urls).catch(() => {});
     }
 
     return NextResponse.json(
