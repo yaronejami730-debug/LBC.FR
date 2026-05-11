@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
 import VisitorTracker from "@/components/VisitorTracker";
+import CookieBanner from "@/components/CookieBanner";
 
 const GA_ID = "G-31WRQ5YXX6";
 const ADSENSE_CLIENT = "ca-pub-1774647148412256";
@@ -110,14 +111,35 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} ${manrope.variable}`}>
+        {/* Consent Mode v2 — default DENIED for EEA/CNIL compliance.
+            Must run BEFORE GA/AdSense load so cookies are not set until
+            CookieBanner explicitly updates consent. */}
+        <Script id="consent-default" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {
+  ad_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  analytics_storage: 'denied',
+  wait_for_update: 500
+});
+var m = document.cookie.match(/(?:^|; )consent_v1=([^;]*)/);
+if (m && decodeURIComponent(m[1]) === 'granted') {
+  gtag('consent', 'update', {
+    ad_storage: 'granted',
+    ad_user_data: 'granted',
+    ad_personalization: 'granted',
+    analytics_storage: 'granted'
+  });
+}`}
+        </Script>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
           strategy="afterInteractive"
         />
         <Script id="ga-init" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
+          {`gtag('js', new Date());
 gtag('config', '${GA_ID}');`}
         </Script>
         <Script
@@ -128,6 +150,7 @@ gtag('config', '${GA_ID}');`}
         />
         <VisitorTracker />
         <Providers>{children}</Providers>
+        <CookieBanner />
       </body>
     </html>
   );

@@ -282,21 +282,48 @@ export default function ConfidentialitePage() {
           <section>
             <h2 className="text-xl font-bold text-on-surface mb-3">8. Cookies et traceurs</h2>
             <p className="mb-3">
-              Deal&amp;Co utilise un nombre limité de cookies, strictement nécessaires au fonctionnement du service :
+              Deal&amp;Co utilise plusieurs catégories de cookies. Lors de votre première visite,
+              un bandeau vous permet d&apos;accepter ou de refuser ceux qui nécessitent votre consentement.
+              Votre choix est conservé 13 mois.
             </p>
             <ul className="list-disc list-inside space-y-2 mb-4">
               <li>
-                <strong>Cookies de session :</strong> maintien de votre connexion et authentification sécurisée.
-                Ces cookies sont essentiels au service et ne nécessitent pas votre consentement.
+                <strong>Cookies essentiels (sans consentement) :</strong> maintien de votre session,
+                authentification, sécurité (CSRF), mémorisation de vos préférences d&apos;affichage et
+                de votre choix de consentement (<code>consent_v1</code>).
               </li>
               <li>
-                <strong>Cookies de préférences :</strong> mémorisation de vos choix d'affichage.
+                <strong>Cookies de mesure d&apos;audience (Google Analytics 4) :</strong> nous aident
+                à comprendre comment le site est utilisé (pages visitées, durée, parcours).
+                Identifiant utilisé : <code>G-31WRQ5YXX6</code>. Données traitées par Google Ireland
+                Ltd, transferts encadrés par le DPF UE-États-Unis.
+              </li>
+              <li>
+                <strong>Cookies publicitaires (Google AdSense) :</strong> permettent à Google
+                d&apos;afficher des annonces personnalisées et de mesurer leur performance.
+                Éditeur : <code>ca-pub-1774647148412256</code>. Données traitées par Google Ireland Ltd.
               </li>
             </ul>
+            <p className="mb-3">
+              Nous utilisons le <strong>Consent Mode v2</strong> de Google : tant que vous n&apos;avez
+              pas explicitement consenti, aucun cookie publicitaire ni d&apos;analyse n&apos;est posé,
+              et les requêtes vers Google sont anonymisées (« cookieless pings »).
+            </p>
+            <p className="mb-3">
+              Vous pouvez à tout moment modifier votre choix en supprimant le cookie
+              <code> consent_v1</code> depuis votre navigateur, ou en utilisant le lien
+              « Gérer mes cookies » que nous afficherons en pied de page.
+            </p>
             <p>
-              Deal&amp;Co n'utilise pas de cookies publicitaires tiers ni de traceurs de réseaux sociaux
-              sans votre consentement explicite. Si de tels outils devaient être intégrés à l'avenir,
-              un bandeau de consentement conforme à la recommandation CNIL vous serait présenté.
+              Pour exercer vos droits ou paramétrer la publicité personnalisée Google directement
+              chez l&apos;éditeur, consultez :{" "}
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                policies.google.com/privacy
+              </a>{" "}
+              et{" "}
+              <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                adssettings.google.com
+              </a>.
             </p>
           </section>
 
