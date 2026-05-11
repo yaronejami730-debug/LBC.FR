@@ -624,6 +624,11 @@ function AdCard({
   const [editIsDragging, setEditIsDragging] = useState(false);
   const [editIsUploading, setEditIsUploading] = useState(false);
   const editFileInputRef = useRef<HTMLInputElement>(null);
+  const [editImageUrlWide, setEditImageUrlWide] = useState(ad.imageUrlWide ?? "");
+  const [editPreviewWide, setEditPreviewWide] = useState(ad.imageUrlWide ?? "");
+  const [editIsDraggingWide, setEditIsDraggingWide] = useState(false);
+  const [editIsUploadingWide, setEditIsUploadingWide] = useState(false);
+  const editFileInputWideRef = useRef<HTMLInputElement>(null);
 
   async function uploadEditFile(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -647,11 +652,34 @@ function AdCard({
     }
   }
 
+  async function uploadEditFileWide(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setEditError("Seules les images sont acceptées");
+      return;
+    }
+    setEditIsUploadingWide(true);
+    setEditError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur upload");
+      setEditImageUrlWide(data.url);
+      setEditPreviewWide(data.url);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Erreur upload");
+    } finally {
+      setEditIsUploadingWide(false);
+    }
+  }
+
   function handleEditSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editImageUrl) { setEditError("Image requise"); return; }
     const fd = new FormData(e.currentTarget);
     fd.set("imageUrl", editImageUrl);
+    fd.set("imageUrlWide", editImageUrlWide);
     setEditError("");
     startTransition(async () => {
       try {
@@ -776,10 +804,13 @@ function AdCard({
               className="w-full text-sm border border-[#c7c5d4] rounded-xl px-3 py-2 outline-none focus:border-[#2f6fb8] resize-none" />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">Image</label>
+            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">
+              Image carrée 1:1 (1200×1200 recommandé)
+            </label>
+            <p className="text-[9px] text-[#9ca3af]">Accueil · fil de résultats · carousel mobile · emails</p>
             <input type="hidden" name="imageUrl" value={editImageUrl} />
             {editPreview ? (
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-[#f2f4f6]">
+              <div className="relative aspect-square w-32 rounded-xl overflow-hidden bg-[#f2f4f6]">
                 <img src={editPreview} alt="Aperçu" className="w-full h-full object-cover" />
                 <button type="button" onClick={() => { setEditImageUrl(""); setEditPreview(""); }}
                   className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-[#f2f4f6]">
@@ -797,13 +828,46 @@ function AdCard({
                 {editIsUploading ? <p className="text-sm text-[#777683]">Chargement…</p> : (
                   <>
                     <span className="material-symbols-outlined text-3xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
-                    <p className="text-xs text-[#777683] mt-1">Glisser-déposer ou <span className="text-[#2f6fb8] font-semibold">parcourir</span></p>
+                    <p className="text-xs text-[#777683] mt-1">Image carrée — <span className="text-[#2f6fb8] font-semibold">parcourir</span></p>
                   </>
                 )}
               </div>
             )}
             <input ref={editFileInputRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadEditFile(f); }} />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold text-[#464652] uppercase tracking-wide">
+              Image panorama 16:9 (1280×720 recommandé, optionnel)
+            </label>
+            <p className="text-[9px] text-[#9ca3af]">Encart sur page d&apos;une annonce</p>
+            <input type="hidden" name="imageUrlWide" value={editImageUrlWide} />
+            {editPreviewWide ? (
+              <div className="relative aspect-video w-full max-w-xs rounded-xl overflow-hidden bg-[#f2f4f6]">
+                <img src={editPreviewWide} alt="Aperçu" className="w-full h-full object-cover" />
+                <button type="button" onClick={() => { setEditImageUrlWide(""); setEditPreviewWide(""); }}
+                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-[#f2f4f6]">
+                  <span className="material-symbols-outlined text-sm text-[#191c1e]">close</span>
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setEditIsDraggingWide(true); }}
+                onDragLeave={() => setEditIsDraggingWide(false)}
+                onDrop={(e) => { e.preventDefault(); setEditIsDraggingWide(false); const f = e.dataTransfer.files[0]; if (f) uploadEditFileWide(f); }}
+                onClick={() => editFileInputWideRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${editIsDraggingWide ? "border-[#2f6fb8] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#2f6fb8]"}`}
+              >
+                {editIsUploadingWide ? <p className="text-sm text-[#777683]">Chargement…</p> : (
+                  <>
+                    <span className="material-symbols-outlined text-2xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>panorama</span>
+                    <p className="text-xs text-[#777683] mt-1">Panorama 16:9 — <span className="text-[#2f6fb8] font-semibold">parcourir</span></p>
+                  </>
+                )}
+              </div>
+            )}
+            <input ref={editFileInputWideRef} type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadEditFileWide(f); }} />
           </div>
           {/* Programmation édition */}
           <div className="border border-[#eceef0] rounded-xl p-3 space-y-2 bg-[#f7f9fb]">
