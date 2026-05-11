@@ -6,6 +6,7 @@ type Ad = {
   title: string;
   description: string;
   imageUrl: string;
+  imageUrlWide: string | null;
   destinationUrl: string;
   isActive: boolean;
   clicks: number;
@@ -20,7 +21,7 @@ type Ad = {
 
 export default async function AdsPage() {
   const ads = await prisma.$queryRaw<Ad[]>`
-    SELECT id, title, description, "imageUrl", "destinationUrl", "isActive",
+    SELECT id, title, description, "imageUrl", "imageUrlWide", "destinationUrl", "isActive",
            COALESCE(clicks, 0) AS clicks, COALESCE(impressions, 0) AS impressions,
            COALESCE("impCarousel", 0) AS "impCarousel",
            COALESCE("impRotator", 0) AS "impRotator",

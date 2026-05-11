@@ -9,6 +9,7 @@ type Ad = {
   title: string;
   description: string;
   imageUrl: string;
+  imageUrlWide: string | null;
   destinationUrl: string;
   isActive: boolean;
   clicks: number;
@@ -29,12 +30,17 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
   const [preview, setPreview] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [imageUrlWide, setImageUrlWide] = useState("");
+  const [previewWide, setPreviewWide] = useState("");
+  const [isDraggingWide, setIsDraggingWide] = useState(false);
+  const [isUploadingWide, setIsUploadingWide] = useState(false);
   const [destUrl, setDestUrl] = useState("");
   const [ogLoading, setOgLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputWideRef = useRef<HTMLInputElement>(null);
 
   async function fetchOgData() {
     if (!destUrl) return;
@@ -87,11 +93,40 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
     }
   }
 
+  async function uploadFileWide(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setError("Seules les images sont acceptées");
+      return;
+    }
+    setIsUploadingWide(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur lors de l'upload");
+      setImageUrlWide(data.url);
+      setPreviewWide(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur upload");
+    } finally {
+      setIsUploadingWide(false);
+    }
+  }
+
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) uploadFile(file);
+  }
+
+  function handleDropWide(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDraggingWide(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFileWide(file);
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -102,6 +137,7 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
     }
     const fd = new FormData(e.currentTarget);
     fd.set("imageUrl", imageUrl);
+    fd.set("imageUrlWide", imageUrlWide);
     fd.set("title", title);
     fd.set("description", description);
     fd.set("destinationUrl", destUrl);
@@ -112,6 +148,8 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
         formRef.current?.reset();
         setImageUrl("");
         setPreview("");
+        setImageUrlWide("");
+        setPreviewWide("");
         setDestUrl("");
         setTitle("");
         setDescription("");
@@ -188,11 +226,18 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
               />
             </div>
           </div>
+          {/* Image carrée — utilisée partout sauf encart page annonce */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">Image *</label>
+            <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">
+              Image carrée 1:1 *
+            </label>
+            <p className="text-[10px] text-[#9ca3af] leading-relaxed">
+              Affichée sur : accueil, fil de résultats, carousel mobile, emails.
+              Recommandé : <strong>1200×1200 px</strong> · min 600×600 · PNG/JPG/WEBP · &lt; 500 KB · sujet centré.
+            </p>
             <input type="hidden" name="imageUrl" value={imageUrl} />
             {preview ? (
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-[#f2f4f6]">
+              <div className="relative aspect-square w-48 rounded-xl overflow-hidden bg-[#f2f4f6]">
                 <img src={preview} alt="Aperçu" className="w-full h-full object-cover" />
                 <button
                   type="button"
@@ -218,10 +263,9 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
                   <>
                     <span className="material-symbols-outlined text-4xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
                     <p className="text-sm text-[#777683] mt-2">
-                      Glisser-déposer une image ici ou{" "}
+                      Image carrée — glisser-déposer ou{" "}
                       <span className="text-[#2f6fb8] font-semibold">parcourir</span>
                     </p>
-                    <p className="text-xs text-[#aaa9b8] mt-1">PNG, JPG, WEBP acceptés</p>
                   </>
                 )}
               </div>
@@ -232,6 +276,60 @@ export default function AdForm({ ads }: { ads: Ad[] }) {
               accept="image/*"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }}
+            />
+          </div>
+
+          {/* Image panorama 16:9 — encart page annonce */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#464652] uppercase tracking-wide">
+              Image panorama 16:9 (optionnel)
+            </label>
+            <p className="text-[10px] text-[#9ca3af] leading-relaxed">
+              Affichée dans l&apos;encart sur la page d&apos;une annonce.
+              Recommandé : <strong>1280×720 px</strong> · min 800×450 · PNG/JPG/WEBP · &lt; 500 KB.
+              Si vide, l&apos;image carrée sera recadrée.
+            </p>
+            <input type="hidden" name="imageUrlWide" value={imageUrlWide} />
+            {previewWide ? (
+              <div className="relative aspect-video w-full max-w-md rounded-xl overflow-hidden bg-[#f2f4f6]">
+                <img src={previewWide} alt="Aperçu" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => { setImageUrlWide(""); setPreviewWide(""); }}
+                  className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-[#f2f4f6] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm text-[#191c1e]">close</span>
+                </button>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingWide(true); }}
+                onDragLeave={() => setIsDraggingWide(false)}
+                onDrop={handleDropWide}
+                onClick={() => fileInputWideRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                  isDraggingWide ? "border-[#2f6fb8] bg-[#e1e0ff]" : "border-[#c7c5d4] hover:border-[#2f6fb8] hover:bg-[#f7f7ff]"
+                }`}
+              >
+                {isUploadingWide ? (
+                  <p className="text-sm text-[#777683]">Chargement en cours…</p>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-3xl text-[#777683]" style={{ fontVariationSettings: "'FILL' 1" }}>panorama</span>
+                    <p className="text-sm text-[#777683] mt-1">
+                      Panorama 16:9 — glisser-déposer ou{" "}
+                      <span className="text-[#2f6fb8] font-semibold">parcourir</span>
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+            <input
+              ref={fileInputWideRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFileWide(f); }}
             />
           </div>
           <div className="space-y-1.5">

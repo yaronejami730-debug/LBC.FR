@@ -7,6 +7,7 @@ type Ad = {
   title: string;
   description: string;
   imageUrl: string;
+  imageUrlWide?: string | null;
   destinationUrl: string;
 };
 
@@ -59,7 +60,7 @@ export default function AdRotator({ ads }: { ads: Ad[] }) {
       style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease-in-out" }}
     >
       <div className="relative aspect-video overflow-hidden">
-        <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
+        <img src={ad.imageUrlWide || ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
         <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
           Publicité
         </span>

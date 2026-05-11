@@ -5,6 +5,7 @@ export type AdRow = {
   title: string;
   description: string;
   imageUrl: string;
+  imageUrlWide: string | null;
   destinationUrl: string;
   isActive: boolean;
   scheduledAt: Date | null;
@@ -17,7 +18,7 @@ export type AdRow = {
 export async function getActiveAds(take = 100): Promise<AdRow[]> {
   const now = new Date();
   const rows = await prisma.$queryRaw<AdRow[]>`
-    SELECT id, title, description, "imageUrl", "destinationUrl",
+    SELECT id, title, description, "imageUrl", "imageUrlWide", "destinationUrl",
            "isActive", "scheduledAt", "expiresAt"
     FROM "Advertisement"
     WHERE ("isActive" = true OR "scheduledAt" IS NOT NULL)

@@ -141,6 +141,7 @@ export async function createAdvertisement(formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const imageUrl = formData.get("imageUrl") as string;
+  const imageUrlWide = (formData.get("imageUrlWide") as string) || null;
   const destinationUrl = formData.get("destinationUrl") as string;
   const scheduledAt = parseScheduleDate(formData.get("scheduledAt"));
   const expiresAt = parseScheduleDate(formData.get("expiresAt"));
@@ -153,7 +154,7 @@ export async function createAdvertisement(formData: FormData) {
   const isActive = scheduledAt ? scheduledAt <= new Date() : true;
 
   await prisma.advertisement.create({
-    data: { title, description, imageUrl, destinationUrl, scheduledAt, expiresAt, isActive },
+    data: { title, description, imageUrl, imageUrlWide, destinationUrl, scheduledAt, expiresAt, isActive },
   });
   revalidatePath("/admin/ads");
   revalidatePath("/");
@@ -165,6 +166,7 @@ export async function updateAdvertisement(id: string, formData: FormData) {
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const imageUrl = formData.get("imageUrl") as string;
+  const imageUrlWide = (formData.get("imageUrlWide") as string) || null;
   const destinationUrl = formData.get("destinationUrl") as string;
   const scheduledAt = parseScheduleDate(formData.get("scheduledAt"));
   const expiresAt = parseScheduleDate(formData.get("expiresAt"));
@@ -175,7 +177,7 @@ export async function updateAdvertisement(id: string, formData: FormData) {
 
   await prisma.advertisement.update({
     where: { id },
-    data: { title, description, imageUrl, destinationUrl, scheduledAt, expiresAt },
+    data: { title, description, imageUrl, imageUrlWide, destinationUrl, scheduledAt, expiresAt },
   });
   revalidatePath("/admin/ads");
   revalidatePath("/");

@@ -340,6 +340,7 @@ model Advertisement {
   title          String
   description    String
   imageUrl       String
+  imageUrlWide   String?
   destinationUrl String
   isActive       Boolean   @default(true)
   clicks         Int       @default(0)
