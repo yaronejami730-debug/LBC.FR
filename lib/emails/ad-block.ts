@@ -61,26 +61,23 @@ export async function renderEmailAd(source: string): Promise<string> {
 
   return `
   <!-- AD BLOCK -->
-  <tr><td style="padding:8px 8px 32px;">
-    <p style="font-size:10px;color:#9ea4a9;text-transform:uppercase;letter-spacing:0.12em;margin:0 0 8px;text-align:center;font-weight:600;">
+  <tr><td style="padding:4px 8px 20px;">
+    <p style="font-size:9px;color:#b5b9bd;text-transform:uppercase;letter-spacing:0.1em;margin:0 0 4px;text-align:left;font-weight:500;">
       Publicité
     </p>
-    <a href="${esc(target)}" style="display:block;text-decoration:none;border:1px solid #eceef0;border-radius:14px;overflow:hidden;background:#fafbfc;">
+    <a href="${esc(target)}" style="display:block;text-decoration:none;border-top:1px solid #f0f1f3;border-bottom:1px solid #f0f1f3;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="padding:14px;width:96px;vertical-align:middle;">
-            <img src="${esc(img)}" alt="${esc(ad.title)}" width="96" height="96"
-              style="display:block;width:96px;height:96px;object-fit:cover;border-radius:10px;"/>
+          <td style="padding:8px 8px 8px 0;width:48px;vertical-align:middle;">
+            <img src="${esc(img)}" alt="${esc(ad.title)}" width="48" height="48"
+              style="display:block;width:48px;height:48px;object-fit:cover;border-radius:6px;"/>
           </td>
-          <td style="padding:14px 16px 14px 0;vertical-align:middle;">
-            <div style="font-family:Manrope,sans-serif;font-size:15px;font-weight:700;color:#1a1b25;line-height:1.3;margin-bottom:4px;">
+          <td style="padding:8px 0;vertical-align:middle;">
+            <div style="font-family:Manrope,sans-serif;font-size:12px;font-weight:600;color:#4a4f57;line-height:1.3;">
               ${esc(ad.title)}
             </div>
-            <div style="font-size:13px;color:#727782;line-height:1.5;">
+            <div style="font-size:11px;color:#9ea4a9;line-height:1.4;margin-top:2px;">
               ${esc(ad.description)}
-            </div>
-            <div style="margin-top:8px;font-size:12px;color:#2f6fb8;font-weight:600;">
-              En savoir plus →
             </div>
           </td>
         </tr>
