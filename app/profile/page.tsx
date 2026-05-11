@@ -35,10 +35,7 @@ export default async function ProfilePage() {
         select: { keyPrefix: true, createdAt: true },
       },
     },
-  }) as (Awaited<ReturnType<typeof prisma.user.findUnique>> & {
-    marketingConsent?: boolean;
-    consentGivenAt?: Date | null;
-  }) | null;
+  });
 
   if (!user) redirect("/login");
 
