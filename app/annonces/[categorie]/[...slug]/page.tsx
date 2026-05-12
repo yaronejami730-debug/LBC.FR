@@ -12,6 +12,7 @@ import {
   subcategoryToSlug,
   slugToSubcategoryLabel,
 } from "@/lib/seo-content";
+import { getRelatedBlogPostsForCity } from "@/lib/blog/category-links";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -224,6 +225,7 @@ export default async function AnnoncesGeoPage({
       ? TOP_CITIES.slice(0, 8)
       : TOP_CITIES.filter((c) => c.slug !== shape.citySlug).slice(0, 8);
 
+  const relatedPosts = getRelatedBlogPostsForCity(cat.id, cityLabel, 4);
   const otherCategories = CATEGORIES.filter((c) => c.id !== cat.id).slice(0, 8);
   const siblingSubs =
     shape.kind === "sub-city" || shape.kind === "sub"
@@ -539,6 +541,36 @@ export default async function AnnoncesGeoPage({
                 >
                   <span className="material-symbols-outlined text-sm">{c.icon}</span>
                   {c.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+        {relatedPosts.length > 0 && (
+          <section className="mt-12 border-t border-surface-container pt-10">
+            <h2 className="text-xl font-bold text-on-surface mb-1">
+              Guides pratiques {subLabel ? subLabel.toLowerCase() : cat.label.toLowerCase()}
+              {cityLabel ? ` à ${cityLabel}` : ""}
+            </h2>
+            <p className="text-outline text-sm mb-5">
+              Conseils concrets pour acheter et vendre en sécurité.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {relatedPosts.map((p) => (
+                <Link
+                  key={p.slug}
+                  href={`/blog/${p.slug}`}
+                  className="group block bg-white rounded-xl border border-surface-container p-5 hover:shadow-md transition-all"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                    {p.category}
+                  </span>
+                  <h3 className="text-base font-bold text-on-surface mt-1 leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                    {p.title}
+                  </h3>
+                  <p className="text-outline text-xs mt-2 leading-relaxed line-clamp-2">
+                    {p.description}
+                  </p>
                 </Link>
               ))}
             </div>

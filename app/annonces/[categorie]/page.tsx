@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
-import { subcategoryToSlug } from "@/lib/seo-content";
+import { TOP_CITIES } from "@/lib/cities";
+import { subcategoryToSlug, fallbackContent } from "@/lib/seo-content";
+import { getRelatedBlogPosts } from "@/lib/blog/category-links";
 import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -112,6 +114,10 @@ export default async function CategoryPage({
   // 404 for empty categories — cleaner signal than noindex (stops crawl budget waste)
   if (total === 0 && page === 1) notFound();
 
+  const seo = fallbackContent({ categoryId: cat.id });
+  const relatedPosts = getRelatedBlogPosts(cat.id, 4);
+  const topCities = TOP_CITIES.slice(0, 15);
+
   const BASE = "https://www.dealandcompany.fr";
 
   const breadcrumbLd = {
@@ -130,6 +136,19 @@ export default async function CategoryPage({
     description: `Petites annonces ${cat.label} entre particuliers en France sur Deal&Co`,
     url: `${BASE}/annonces/${cat.id}`,
   };
+
+  const faqLd =
+    seo.faq.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: seo.faq.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }
+      : null;
 
   const itemListLd = listings.length > 0 ? {
     "@context": "https://schema.org",
@@ -159,6 +178,7 @@ export default async function CategoryPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }} />
       {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">
@@ -242,6 +262,13 @@ export default async function CategoryPage({
           )}
         </div>
 
+        {/* SEO intro */}
+        {page === 1 && (
+          <section className="mt-10 bg-white rounded-2xl p-6 border border-surface-container">
+            <p className="text-on-surface leading-relaxed">{seo.intro}</p>
+          </section>
+        )}
+
         {/* Pagination */}
         {totalPages > 1 && (
           <nav aria-label="Pagination" className="mt-10 flex justify-center items-center gap-3">
@@ -269,6 +296,74 @@ export default async function CategoryPage({
               </Link>
             )}
           </nav>
+        )}
+        {/* Top cities */}
+        {page === 1 && (
+          <section className="mt-12">
+            <h2 className="text-lg font-bold text-on-surface mb-3">
+              {cat.label} par ville
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {topCities.map((city) => (
+                <Link
+                  key={city.slug}
+                  href={`/annonces/${cat.id}/${city.slug}`}
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                >
+                  {cat.label} à {city.name}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* FAQ */}
+        {page === 1 && seo.faq.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-xl font-bold text-on-surface mb-4">Questions fréquentes</h2>
+            <div className="space-y-3">
+              {seo.faq.map((item, i) => (
+                <details key={i} className="bg-white rounded-xl border border-surface-container p-4 group">
+                  <summary className="cursor-pointer font-semibold text-on-surface flex justify-between items-center list-none">
+                    {item.q}
+                    <span className="material-symbols-outlined text-outline group-open:rotate-180 transition-transform">expand_more</span>
+                  </summary>
+                  <p className="mt-3 text-on-surface-variant leading-relaxed">{item.a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Related blog */}
+        {page === 1 && relatedPosts.length > 0 && (
+          <section className="mt-12 border-t border-surface-container pt-10">
+            <h2 className="text-xl font-bold text-on-surface mb-1">
+              Guides pratiques {cat.label.toLowerCase()}
+            </h2>
+            <p className="text-outline text-sm mb-5">
+              Conseils pour acheter et vendre {cat.label.toLowerCase()} en sécurité.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {relatedPosts.map((p) => (
+                <Link
+                  key={p.slug}
+                  href={`/blog/${p.slug}`}
+                  className="group block bg-white rounded-xl border border-surface-container p-5 hover:shadow-md transition-all"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                    {p.category}
+                  </span>
+                  <h3 className="text-base font-bold text-on-surface mt-1 leading-snug group-hover:text-primary transition-colors line-clamp-2">
+                    {p.title}
+                  </h3>
+                  <p className="text-outline text-xs mt-2 leading-relaxed line-clamp-2">
+                    {p.description}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
       </main>
 

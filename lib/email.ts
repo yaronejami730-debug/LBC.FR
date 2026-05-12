@@ -1,4 +1,5 @@
 import { renderEmailAd } from "@/lib/emails/ad-block";
+import { emailPrefUrl } from "@/lib/email-token";
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY!;
 const FROM_EMAIL = "notif@dealandcompany.fr";
@@ -25,6 +26,7 @@ export async function sendEmail({
   subject,
   html,
   adSource,
+  userId,
 }: {
   to: string;
   toName?: string;
@@ -32,8 +34,17 @@ export async function sendEmail({
   html: string;
   /** Identifies the email type for ad UTM tracking. Pass "admin*" to skip ads. */
   adSource?: string;
+  /** When provided, attaches a personal List-Unsubscribe link for one-click unsub. */
+  userId?: string;
 }) {
   const finalHtml = await withAd(html, adSource ?? "transactional");
+
+  const headers: Record<string, string> = {};
+  if (userId) {
+    const unsubUrl = emailPrefUrl(userId);
+    headers["List-Unsubscribe"] = `<${unsubUrl}>`;
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  }
 
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -46,6 +57,7 @@ export async function sendEmail({
       to: [{ email: to, name: toName ?? to }],
       subject,
       htmlContent: finalHtml,
+      ...(Object.keys(headers).length ? { headers } : {}),
     }),
   });
 

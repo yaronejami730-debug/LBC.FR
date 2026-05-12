@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import { getAllArticles, getArticleBySlug, getRelatedArticles } from "@/lib/blog";
+import { getArticleInternalLinks } from "@/lib/blog/internal-links";
 import { CATEGORIES } from "@/lib/categories";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -62,6 +63,7 @@ export default async function BlogArticlePage({
   const relatedCategory = article.relatedCategoryId
     ? CATEGORIES.find((c) => c.id === article.relatedCategoryId)
     : null;
+  const internalLinks = getArticleInternalLinks(article);
 
   const url = `${BASE}/blog/${article.slug}`;
 
@@ -215,6 +217,30 @@ export default async function BlogArticlePage({
                   </details>
                 ))}
               </div>
+            </section>
+          )}
+
+          {internalLinks.length > 0 && (
+            <section className="mt-12 bg-white rounded-2xl border border-surface-container p-6">
+              <h2 className="text-xl font-bold tracking-tight text-on-surface mb-4">
+                Annonces et pages utiles
+              </h2>
+              <p className="text-outline text-sm mb-4 leading-relaxed">
+                Parcourez les annonces correspondant à cet article :
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {internalLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold bg-primary/5 text-primary border border-primary/15 hover:bg-primary/10 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-base">arrow_outward</span>
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 
