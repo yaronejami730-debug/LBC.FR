@@ -206,7 +206,7 @@ export default async function VillePage({
         {/* Hero */}
         <header className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-on-surface font-['Manrope'] leading-tight">
-            Annonces à {city.name}{" "}
+            Petites annonces à {city.name} entre particuliers{" "}
             <span className="text-outline font-bold text-xl">({city.departmentCode})</span>
           </h1>
           <p className="mt-2 text-sm sm:text-base text-on-surface-variant max-w-3xl">

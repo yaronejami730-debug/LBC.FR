@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "SIRET invalide (14 chiffres requis)" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, isPro: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, isPro: true, consentGivenAt: true } });
   if (!user || !user.isPro) {
     return NextResponse.json({ error: "Utilisateur introuvable ou non professionnel" }, { status: 404 });
   }
@@ -32,5 +32,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true });
+  const needsTerms = !user.consentGivenAt;
+  return NextResponse.json({ ok: true, needsTerms });
 }

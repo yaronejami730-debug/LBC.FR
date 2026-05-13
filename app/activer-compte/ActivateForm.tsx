@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type Step = "password" | "siret";
+type Step = "password" | "siret" | "terms";
 type SuggestionResult = { siren: string; siret: string; nom_raison_sociale?: string; nom_complet?: string };
 
 export default function ActivateForm({
@@ -34,6 +35,26 @@ export default function ActivateForm({
   const [siretError, setSiretError] = useState("");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Step 3 : CGU + politique de confidentialité ──────────────────────────
+  const [acceptCGU, setAcceptCGU] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [termsError, setTermsError] = useState("");
+
+  function nextAfterPasswordOrSiret(data: { needsSiret?: boolean; needsTerms?: boolean; userId?: string }) {
+    if (data.userId) setUserId(data.userId);
+    if (needsSiret && data.needsSiret) {
+      setStep("siret");
+      return;
+    }
+    if (data.needsTerms) {
+      setStep("terms");
+      return;
+    }
+    router.push("/login?activated=1");
+  }
+
   // ── Step 1 handler ────────────────────────────────────────────────────────
   async function handlePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -51,12 +72,7 @@ export default function ActivateForm({
       const data = await res.json();
       if (!res.ok) return setPwError(data.error ?? "Une erreur est survenue.");
 
-      if (needsSiret && data.needsSiret && data.userId) {
-        setUserId(data.userId);
-        setStep("siret");
-      } else {
-        router.push("/login?activated=1");
-      }
+      nextAfterPasswordOrSiret(data);
     } catch {
       setPwError("Une erreur est survenue. Réessayez.");
     } finally {
@@ -120,11 +136,40 @@ export default function ActivateForm({
       });
       const data = await res.json();
       if (!res.ok) return setSiretError(data.error ?? "Une erreur est survenue.");
-      router.push("/login?activated=1");
+
+      if (data.needsTerms) {
+        setStep("terms");
+      } else {
+        router.push("/login?activated=1");
+      }
     } catch {
       setSiretError("Une erreur est survenue. Réessayez.");
     } finally {
       setSiretLoading(false);
+    }
+  }
+
+  // ── Step 3 handler ────────────────────────────────────────────────────────
+  async function handleTerms(e: React.FormEvent) {
+    e.preventDefault();
+    setTermsError("");
+    if (!acceptCGU || !acceptPrivacy) {
+      return setTermsError("Vous devez accepter les conditions générales et la politique de confidentialité pour continuer.");
+    }
+    setTermsLoading(true);
+    try {
+      const res = await fetch("/api/auth/accept-terms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, marketingConsent }),
+      });
+      const data = await res.json();
+      if (!res.ok) return setTermsError(data.error ?? "Une erreur est survenue.");
+      router.push("/login?activated=1");
+    } catch {
+      setTermsError("Une erreur est survenue. Réessayez.");
+    } finally {
+      setTermsLoading(false);
     }
   }
 
@@ -161,7 +206,7 @@ export default function ActivateForm({
         {needsSiret && (
           <p className="text-xs text-outline bg-primary/5 px-3 py-2 rounded-xl flex items-center gap-2">
             <span className="material-symbols-outlined text-[14px] text-primary">info</span>
-            Étape suivante : renseigner votre numéro SIRET
+            Étapes suivantes : numéro SIRET, puis acceptation des conditions
           </p>
         )}
         <button
@@ -176,77 +221,149 @@ export default function ActivateForm({
   }
 
   // ── Render step 2 (SIRET) ────────────────────────────────────────────────
-  return (
-    <form onSubmit={handleSiret} className="space-y-4">
-      <div className="flex items-center gap-2 bg-primary/5 px-4 py-3 rounded-xl mb-2">
-        <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>business_center</span>
-        <p className="text-sm text-on-surface">
-          En tant que <strong>professionnel</strong>, votre numéro SIRET est requis pour valider votre compte.
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-on-surface mb-1.5">
-          Recherchez votre entreprise <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder="Nom de société ou numéro SIRET…"
-            className="w-full px-4 py-3 rounded-2xl border border-outline-variant/30 bg-white text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all pr-10"
-            autoComplete="off"
-          />
-          {siretStatus === "loading" && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          )}
-          {siretStatus === "ok" && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-emerald-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-          )}
-
-          {/* Dropdown suggestions */}
-          {suggestions.length > 0 && (
-            <ul className="absolute z-50 w-full mt-1 bg-white border border-[#eceef0] rounded-2xl shadow-lg overflow-hidden">
-              {suggestions.map((s) => (
-                <li key={s.siret || s.siren}>
-                  <button
-                    type="button"
-                    onClick={() => selectSuggestion(s)}
-                    className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-[#f2f4f6] last:border-0"
-                  >
-                    <p className="text-sm font-semibold text-on-surface truncate">
-                      {s.nom_raison_sociale || s.nom_complet}
-                    </p>
-                    {s.siret && (
-                      <p className="text-xs text-outline font-mono mt-0.5">SIRET {s.siret}</p>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {siretMsg && (
-          <p className={`text-xs mt-1.5 font-medium ${siretStatus === "ok" ? "text-emerald-600" : "text-red-500"}`}>
-            {siretMsg}
+  if (step === "siret") {
+    return (
+      <form onSubmit={handleSiret} className="space-y-4">
+        <div className="flex items-center gap-2 bg-primary/5 px-4 py-3 rounded-xl mb-2">
+          <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>business_center</span>
+          <p className="text-sm text-on-surface">
+            En tant que <strong>professionnel</strong>, votre numéro SIRET est requis pour valider votre compte.
           </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-on-surface mb-1.5">
+            Recherchez votre entreprise <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder="Nom de société ou numéro SIRET…"
+              className="w-full px-4 py-3 rounded-2xl border border-outline-variant/30 bg-white text-on-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all pr-10"
+              autoComplete="off"
+            />
+            {siretStatus === "loading" && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            )}
+            {siretStatus === "ok" && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-emerald-500 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            )}
+
+            {/* Dropdown suggestions */}
+            {suggestions.length > 0 && (
+              <ul className="absolute z-50 w-full mt-1 bg-white border border-[#eceef0] rounded-2xl shadow-lg overflow-hidden">
+                {suggestions.map((s) => (
+                  <li key={s.siret || s.siren}>
+                    <button
+                      type="button"
+                      onClick={() => selectSuggestion(s)}
+                      className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-[#f2f4f6] last:border-0"
+                    >
+                      <p className="text-sm font-semibold text-on-surface truncate">
+                        {s.nom_raison_sociale || s.nom_complet}
+                      </p>
+                      {s.siret && (
+                        <p className="text-xs text-outline font-mono mt-0.5">SIRET {s.siret}</p>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {siretMsg && (
+            <p className={`text-xs mt-1.5 font-medium ${siretStatus === "ok" ? "text-emerald-600" : "text-red-500"}`}>
+              {siretMsg}
+            </p>
+          )}
+          <p className="text-[10px] text-outline mt-1.5">
+            Tapez le nom de votre société ou votre numéro SIRET (14 chiffres)
+          </p>
+        </div>
+
+        {siretError && (
+          <p className="text-red-600 text-sm font-medium bg-red-50 px-4 py-3 rounded-xl">{siretError}</p>
         )}
-        <p className="text-[10px] text-outline mt-1.5">
-          Tapez le nom de votre société ou votre numéro SIRET (14 chiffres)
+
+        <button
+          type="submit"
+          disabled={siretLoading || !siret}
+          className="w-full py-3.5 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-all disabled:opacity-60 shadow-md shadow-primary/20 active:scale-95"
+        >
+          {siretLoading ? "Enregistrement…" : "Valider et continuer →"}
+        </button>
+      </form>
+    );
+  }
+
+  // ── Render step 3 (CGU + privacy) ────────────────────────────────────────
+  return (
+    <form onSubmit={handleTerms} className="space-y-4">
+      <div className="flex items-start gap-2 bg-primary/5 px-4 py-3 rounded-xl mb-1">
+        <span className="material-symbols-outlined text-primary text-[18px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+        <p className="text-sm text-on-surface">
+          Dernière étape : acceptez nos conditions pour finaliser la création de votre compte.
         </p>
       </div>
 
-      {siretError && (
-        <p className="text-red-600 text-sm font-medium bg-red-50 px-4 py-3 rounded-xl">{siretError}</p>
+      <label className="flex items-start gap-3 px-4 py-3 rounded-2xl border border-outline-variant/30 bg-white cursor-pointer hover:bg-primary/[0.02] transition-colors">
+        <input
+          type="checkbox"
+          checked={acceptCGU}
+          onChange={(e) => setAcceptCGU(e.target.checked)}
+          className="mt-1 w-4 h-4 accent-primary"
+          required
+        />
+        <span className="text-sm text-on-surface leading-relaxed">
+          J'accepte les{" "}
+          <Link href="/cgu" target="_blank" rel="noopener" className="text-primary font-semibold underline underline-offset-2">
+            conditions générales d'utilisation
+          </Link>{" "}
+          de Deal & Co.
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 px-4 py-3 rounded-2xl border border-outline-variant/30 bg-white cursor-pointer hover:bg-primary/[0.02] transition-colors">
+        <input
+          type="checkbox"
+          checked={acceptPrivacy}
+          onChange={(e) => setAcceptPrivacy(e.target.checked)}
+          className="mt-1 w-4 h-4 accent-primary"
+          required
+        />
+        <span className="text-sm text-on-surface leading-relaxed">
+          J'ai pris connaissance de la{" "}
+          <Link href="/confidentialite" target="_blank" rel="noopener" className="text-primary font-semibold underline underline-offset-2">
+            politique de confidentialité
+          </Link>{" "}
+          et accepte le traitement de mes données personnelles.
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 px-4 py-3 rounded-2xl border border-outline-variant/20 bg-surface-container/40 cursor-pointer hover:bg-primary/[0.02] transition-colors">
+        <input
+          type="checkbox"
+          checked={marketingConsent}
+          onChange={(e) => setMarketingConsent(e.target.checked)}
+          className="mt-1 w-4 h-4 accent-primary"
+        />
+        <span className="text-sm text-on-surface-variant leading-relaxed">
+          (Facultatif) J'accepte de recevoir des communications commerciales de Deal & Co. Désabonnement possible à tout moment depuis mon compte.
+        </span>
+      </label>
+
+      {termsError && (
+        <p className="text-red-600 text-sm font-medium bg-red-50 px-4 py-3 rounded-xl">{termsError}</p>
       )}
 
       <button
         type="submit"
-        disabled={siretLoading || !siret}
+        disabled={termsLoading || !acceptCGU || !acceptPrivacy}
         className="w-full py-3.5 bg-primary text-white rounded-2xl font-bold text-sm hover:bg-primary/90 transition-all disabled:opacity-60 shadow-md shadow-primary/20 active:scale-95"
       >
-        {siretLoading ? "Enregistrement…" : "Valider et accéder à mon compte"}
+        {termsLoading ? "Validation…" : "Accepter et accéder à mon compte"}
       </button>
     </form>
   );

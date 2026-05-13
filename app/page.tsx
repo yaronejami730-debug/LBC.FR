@@ -189,7 +189,7 @@ export default async function Home() {
           )}
           <div className="relative z-10 max-w-2xl">
             <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
-              {activeBanner?.title ?? "Petites annonces gratuites près de chez vous."}
+              {activeBanner?.title ?? "Petites annonces gratuites entre particuliers en France"}
             </h1>
             {activeBanner?.subtitle && (
               <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow">{activeBanner.subtitle}</p>

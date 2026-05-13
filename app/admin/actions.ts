@@ -283,7 +283,8 @@ export async function resendInvitation(userId: string) {
   });
 
   const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
-  const activationUrl = `${baseUrl}/reset-password?token=${token}`;
+  // Use /activer-compte so the user goes through SIRET (if pro) and terms acceptance.
+  const activationUrl = `${baseUrl}/activer-compte?token=${token}`;
 
   await sendEmail({
     to: user.email,

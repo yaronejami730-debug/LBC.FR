@@ -194,7 +194,7 @@ export default async function CategoryPage({
           <div className="flex items-center gap-3 mb-2">
             <span className="material-symbols-outlined text-primary text-3xl">{cat.icon}</span>
             <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">
-              Annonces {cat.label}
+              Annonces {cat.label} d&apos;occasion entre particuliers en France
             </h1>
           </div>
           <p className="text-outline text-sm">

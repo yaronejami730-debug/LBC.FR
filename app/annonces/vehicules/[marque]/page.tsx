@@ -233,7 +233,7 @@ export default async function MarquePage({
           )}
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-on-surface font-['Manrope']">
-              {brand.name} d&apos;occasion entre particuliers
+              Voiture {brand.name} d&apos;occasion entre particuliers
             </h1>
             <p className="text-outline mt-1">
               {total.toLocaleString("fr-FR")} annonce{total !== 1 ? "s" : ""} · Sans commission · Contact direct
