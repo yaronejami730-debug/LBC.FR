@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
+import ShareArticle from "@/components/ShareArticle";
 import { getAllArticles, getArticleBySlug, getRelatedArticles } from "@/lib/blog";
 import { getArticleInternalLinks } from "@/lib/blog/internal-links";
 import { CATEGORIES } from "@/lib/categories";
@@ -219,6 +220,8 @@ export default async function BlogArticlePage({
               </div>
             </section>
           )}
+
+          <ShareArticle url={url} title={article.title} description={article.description} />
 
           {internalLinks.length > 0 && (
             <section className="mt-12 bg-white rounded-2xl border border-surface-container p-6">

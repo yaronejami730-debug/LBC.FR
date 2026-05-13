@@ -42,6 +42,11 @@ import { article as louerParisBudget } from "./posts/louer-paris-budget-reel";
 import { article as meilleureMotoDebutant } from "./posts/meilleure-moto-debutant-2026";
 import { article as permisA2Motos } from "./posts/permis-a2-meilleures-motos";
 import { article as yamahaMt07Avis } from "./posts/yamaha-mt07-occasion-avis";
+import { article as estimerPrixVoiture } from "./posts/estimer-prix-voiture-occasion";
+import { article as voitureSansCT } from "./posts/voiture-sans-controle-technique-2026";
+import { article as combienTempsVendreVoiture } from "./posts/combien-de-temps-vendre-voiture";
+import { article as ouInvestirImmo2026 } from "./posts/ou-investir-immobilier-locatif-2026";
+import { article as trottinetteDebridee } from "./posts/trottinette-electrique-debridee-loi-2026";
 
 const articles: BlogArticle[] = [
   vendreVoiture,
@@ -87,6 +92,11 @@ const articles: BlogArticle[] = [
   meilleureMotoDebutant,
   permisA2Motos,
   yamahaMt07Avis,
+  estimerPrixVoiture,
+  voitureSansCT,
+  combienTempsVendreVoiture,
+  ouInvestirImmo2026,
+  trottinetteDebridee,
 ].sort(
   (a, b) => (a.publishedAt < b.publishedAt ? 1 : -1),
 );
