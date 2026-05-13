@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Petites annonces et marketplace en France d'Outre-Mer : guide complet 2026",
   description:
     "Martinique, Guadeloupe, Réunion, Guyane, Mayotte : comment acheter et vendre en local dans les DOM-TOM grâce aux petites annonces. Spécificités, conseils et meilleures pratiques.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-17",
+  updatedAt: "2026-04-17",
   category: "Conseils",
   keywords: [
     "marketplace DOM-TOM",

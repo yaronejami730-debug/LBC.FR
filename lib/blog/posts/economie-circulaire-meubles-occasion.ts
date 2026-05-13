@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Pourquoi acheter ses meubles en seconde main ? Guide économie circulaire 2026",
   description:
     "Meubles d'occasion : économies réelles, impact environnemental réduit et pièces uniques introuvables en grande surface. Tout ce qu'il faut savoir avant d'acheter.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-13",
+  updatedAt: "2026-04-13",
   category: "Maison",
   keywords: [
     "économie circulaire meubles",

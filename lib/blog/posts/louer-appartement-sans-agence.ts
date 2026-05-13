@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Louer un appartement sans agence entre particuliers : guide complet",
   description:
     "Comment louer un appartement directement auprès d'un propriétaire en France : recherche, dossier de location, bail, caution et état des lieux.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-16",
+  updatedAt: "2026-04-16",
   category: "Immobilier",
   keywords: [
     "louer appartement sans agence",

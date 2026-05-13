@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Comment trouver un job d'appoint dans sa ville facilement en 2026",
   description:
     "Missions ponctuelles, CDD, services à domicile, auto-entrepreneuriat : méthodes concrètes pour trouver un revenu complémentaire près de chez vous rapidement.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-05-18",
+  updatedAt: "2026-05-18",
   category: "Emploi",
   keywords: [
     "job appoint local",

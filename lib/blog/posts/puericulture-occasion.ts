@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Comment économiser sur la puériculture en achetant en seconde main",
   description:
     "Poussettes, lits, vêtements, jouets bébé : lesquels acheter en occasion, comment vérifier la sécurité et où trouver les meilleures affaires pour équiper bébé à petit prix.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-05-14",
+  updatedAt: "2026-05-14",
   category: "Bébé & Enfant",
   keywords: [
     "puériculture occasion",

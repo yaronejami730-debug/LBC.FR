@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Acheter un appartement à Paris entre particuliers : ce qu'il faut savoir",
   description:
     "Guide pour acheter un appartement à Paris directement auprès d'un particulier : estimation du prix au m², diagnostics, compromis et pièges à éviter.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-10",
+  updatedAt: "2026-04-10",
   category: "Immobilier",
   keywords: [
     "acheter appartement Paris particulier",

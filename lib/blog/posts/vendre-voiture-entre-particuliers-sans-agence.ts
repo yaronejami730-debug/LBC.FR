@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Vendre sa voiture entre particuliers sans agence : le guide complet 2026",
   description:
     "Comment vendre sa voiture d'occasion entre particuliers en France : estimation du prix, annonce efficace, documents obligatoires, négociation et transfert de carte grise.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-05-20",
+  updatedAt: "2026-05-20",
   category: "Véhicules",
   keywords: [
     "vendre voiture entre particuliers",

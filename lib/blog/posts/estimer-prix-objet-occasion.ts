@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Comment estimer le prix de vente d'un objet d'occasion en 2026",
   description:
     "Méthodes concrètes pour fixer le bon prix sur vos annonces d'occasion : comparaison marché, état, âge et catégorie. Évitez les erreurs qui font traîner vos ventes.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-14",
+  updatedAt: "2026-04-14",
   category: "Conseils",
   keywords: [
     "estimer prix objet occasion",

@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Voiture d'occasion à moins de 5 000 € entre particuliers : les meilleures options",
   description:
     "Quelles voitures d'occasion fiables acheter à moins de 5 000 € entre particuliers en France ? Les modèles recommandés, les pièges à éviter et où trouver les meilleures annonces.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-05-24",
+  updatedAt: "2026-05-24",
   category: "Véhicules",
   keywords: [
     "voiture occasion moins 5000 euros",

@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Comment publier une annonce immobilière gratuitement entre particuliers",
   description:
     "Vendre ou louer son bien sans agence ni frais : étapes pour publier une annonce immobilière efficace, photos qui convertissent et mention légales à ne pas oublier.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-11",
+  updatedAt: "2026-04-11",
   category: "Immobilier",
   keywords: [
     "annonce immobilière gratuite",

@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Comment vider sa maison et en tirer profit : guide complet 2026",
   description:
     "Déménagement, succession, désencombrement : méthode pour trier, valoriser et vendre vos affaires rapidement. Gagnez jusqu'à plusieurs milliers d'euros en quelques semaines.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-05-22",
+  updatedAt: "2026-05-22",
   category: "Conseils",
   keywords: [
     "vider maison profit",

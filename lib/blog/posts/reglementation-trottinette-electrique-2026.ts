@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Réglementation trottinette électrique 2026 : ce qui change",
   description:
     "Tout savoir sur la réglementation trottinette électrique en 2026 : vitesse, assurance, casque, âge, sanctions. Guide complet et à jour.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-05-16",
+  updatedAt: "2026-05-16",
   category: "Véhicules",
   keywords: [
     "réglementation trottinette électrique 2026",

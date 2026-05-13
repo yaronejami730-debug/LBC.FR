@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Comment vendre ses objets rapidement sur Deal & Co en 2026",
   description:
     "Guide pratique pour vendre vite et bien sur Deal & Co : titre accrocheur, prix juste, photos qui convertissent et astuces de mise en avant.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-12",
+  updatedAt: "2026-04-12",
   category: "Conseils",
   keywords: [
     "vendre objets rapidement",

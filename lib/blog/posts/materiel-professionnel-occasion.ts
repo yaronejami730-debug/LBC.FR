@@ -5,8 +5,8 @@ export const article: BlogArticle = {
   title: "Matériel professionnel d'occasion : avantages, où acheter et pièges à éviter",
   description:
     "Outillage, équipements BTP, restauration, informatique pro : pourquoi acheter du matériel professionnel d'occasion et comment trouver des pièces fiables à prix réduit.",
-  publishedAt: "2026-05-10",
-  updatedAt: "2026-05-10",
+  publishedAt: "2026-04-19",
+  updatedAt: "2026-04-19",
   category: "Matériel professionnel",
   keywords: [
     "matériel professionnel occasion",
