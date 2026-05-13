@@ -94,7 +94,7 @@ const VEHICLE_OPTION_GROUPS: { label: string; icon: string; items: string[] }[] 
     ],
   },
 ];
-const MAX_PHOTOS = 15;
+const MAX_PHOTOS = 100;
 
 const IMMO_TYPES = ["Appartement", "Maison", "Villa", "Studio", "Loft", "Terrain", "Local commercial", "Bureau", "Garage", "Autre"];
 const IMMO_FEATURES = ["Ascenseur", "Balcon", "Terrasse", "Jardin", "Piscine", "Cave", "Parking", "Digicode", "Gardien", "Interphone", "Double vitrage", "Cuisine équipée", "Dressing", "Cheminée", "Lumineux", "Calme", "Meublé", "Accessible PMR"];

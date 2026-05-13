@@ -239,8 +239,8 @@ const pillCls = (active: boolean) =>
 
 // ── Step labels ───────────────────────────────────────────────────────────────
 
-// 0=Titre  1=Photos  2=Prix(+catégorie)  3=Description  4=Coordonnées  5=Récap
-const STEP_LABELS = ["Titre", "Photos", "Prix", "Description", "Coordonnées", "Récap"];
+// 0=Titre  1=Prix(+catégorie)  2=Photos  3=Description  4=Coordonnées  5=Récap
+const STEP_LABELS = ["Titre", "Prix", "Photos", "Description", "Coordonnées", "Récap"];
 
 // ── Tips per step ─────────────────────────────────────────────────────────────
 
@@ -250,6 +250,8 @@ const STEP_LABELS = ["Titre", "Photos", "Prix", "Description", "Coordonnées", "
 export default function PostForm() {
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
+  const isPro = Boolean((session?.user as { isPro?: boolean } | undefined)?.isPro);
+  const MAX_PHOTOS = isPro ? MAX_PHOTOS_PRO : MAX_PHOTOS_DEFAULT;
 
   // Auth gate state
   const [showAuthGate, setShowAuthGate] = useState(false);
@@ -617,8 +619,8 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
 
   function canAdvance(step: FormStep): boolean {
     if (step === 0) return title.trim().length > 0; // titre obligatoire
-    if (step === 1) return true;                    // photos optionnelles
-    if (step === 2) return price.trim().length > 0; // prix obligatoire
+    if (step === 1) return price.trim().length > 0; // prix obligatoire
+    if (step === 2) return true;                    // photos optionnelles
     if (step === 3) return description.trim().length > 0;
     return true;
   }
@@ -762,8 +764,8 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
       {/* ── Content ────────────────────────────────────────────────────────── */}
       <main className="max-w-2xl mx-auto pt-32 px-4 space-y-6">
 
-        {/* ══ STEP 1 : PHOTOS ═══════════════════════════════════════════════ */}
-        {formStep === 1 && (
+        {/* ══ STEP 2 : PHOTOS ═══════════════════════════════════════════════ */}
+        {formStep === 2 && (
           <div className="space-y-5">
             <div>
               <h2 className="text-2xl font-extrabold text-on-surface">Photos</h2>
@@ -1099,7 +1101,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Catégorie détectée</label>
                       <button type="button"
-                        onClick={() => { setAutoDetected(false); setUserPickedCategory(false); setFormStep(2); }}
+                        onClick={() => { setAutoDetected(false); setUserPickedCategory(false); setFormStep(1); }}
                         className="text-[10px] text-outline underline underline-offset-2">Modifier</button>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1137,7 +1139,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                       </button>
                     ))}
                   </div>
-                  <button type="button" onClick={() => setFormStep(2)}
+                  <button type="button" onClick={() => setFormStep(1)}
                     className="text-xs text-primary font-semibold flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">expand_more</span>
                     Voir toutes les catégories
@@ -1149,8 +1151,8 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           </div>
         )}
 
-        {/* ══ STEP 2 : PRIX + CATÉGORIE (si non détectée) ═════════════════ */}
-        {formStep === 2 && (
+        {/* ══ STEP 1 : PRIX + CATÉGORIE (si non détectée) ═════════════════ */}
+        {formStep === 1 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-extrabold">Prix</h2>
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
@@ -1573,7 +1575,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
                   <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Photos</span>
-                  <button type="button" onClick={() => setFormStep(1)}
+                  <button type="button" onClick={() => setFormStep(2)}
                     className="flex items-center gap-1 text-xs font-bold text-primary">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -1610,7 +1612,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Prix</p>
                     <p className="text-2xl font-extrabold text-on-surface">{price ? `${price} €` : <span className="text-outline italic text-base">Non renseigné</span>}</p>
                   </div>
-                  <button type="button" onClick={() => setFormStep(2)}
+                  <button type="button" onClick={() => setFormStep(1)}
                     className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -1623,7 +1625,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                       <p className="font-semibold text-sm text-on-surface">{cat?.label}{subcategory ? ` › ${subcategory}` : ""}</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setFormStep(2)}
+                  <button type="button" onClick={() => setFormStep(1)}
                     className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -1763,7 +1765,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-40">
               {formStep === 4 ? (
                 <><span className="material-symbols-outlined text-base">checklist</span>Vérifier l&apos;annonce</>
-              ) : formStep === 1 && photoMode === "choose" ? "Passer les photos →" : (
+              ) : formStep === 2 && photoMode === "choose" ? "Passer les photos →" : (
                 <>Suivant{formStep !== 0 && <span className="material-symbols-outlined text-base">arrow_forward</span>}</>
               )}
             </button>

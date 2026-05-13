@@ -8,7 +8,7 @@ import ListingPreviewModal from "@/components/admin/ListingPreviewModal";
 import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
-const MAX_PHOTOS = 15;
+const MAX_PHOTOS = 100;
 
 type Listing = {
   id: string;
