@@ -32,7 +32,8 @@ const VEHICLE_EQUIPMENTS = [
   "Avertisseur d'angle mort", "Sélection du mode de conduite",
   "Contrôle pression pneus (RDC)", "Buses lave-glace chauffantes",
 ];
-const MAX_PHOTOS = 15;
+const MAX_PHOTOS_DEFAULT = 15;
+const MAX_PHOTOS_PRO = 30;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

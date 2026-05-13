@@ -687,15 +687,20 @@ export default async function ListingPage({
             )}
 
             {listing.category === "Véhicules" && vehicleMeta.options && vehicleMeta.options.length > 0 && (
-              <div className="space-y-3">
-                <h2 className="text-xl font-bold tracking-tight">Équipements &amp; options</h2>
-                <div className="flex flex-wrap gap-2">
-                  {vehicleMeta.options.map((opt) => (
-                    <span key={opt} className="bg-primary/8 text-primary text-sm font-semibold px-3 py-1.5 rounded-full border border-primary/15">
-                      {opt}
-                    </span>
-                  ))}
+              <div className="space-y-6">
+                <div className="flex flex-col items-center gap-3">
+                  <h2 className="text-2xl font-bold tracking-tight text-center">Équipements &amp; options</h2>
+                  <span className="block w-14 h-0.5 bg-primary rounded-full" />
                 </div>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                  {[...vehicleMeta.options].sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" })).map((opt) => (
+                    <li key={opt} className="flex items-center gap-2.5 text-on-surface text-[15px]">
+                      <span className="material-symbols-outlined text-primary text-[20px] leading-none">check_box</span>
+                      <span>{opt}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-outline italic">Listing d&apos;options sous réserve d&apos;erreurs</p>
               </div>
             )}
 
@@ -780,15 +785,20 @@ export default async function ListingPage({
                   </div>
                 )}
                 {Array.isArray(immoMeta.caracteristiques) && (immoMeta.caracteristiques as string[]).length > 0 && (
-                  <div>
-                    <h2 className="text-xl font-bold tracking-tight mb-3">Équipements</h2>
-                    <div className="flex flex-wrap gap-2">
-                      {(immoMeta.caracteristiques as string[]).map((c) => (
-                        <span key={c} className="bg-primary/8 text-primary text-sm font-semibold px-3 py-1.5 rounded-full border border-primary/15">
-                          {c}
-                        </span>
-                      ))}
+                  <div className="space-y-6">
+                    <div className="flex flex-col items-center gap-3">
+                      <h2 className="text-2xl font-bold tracking-tight text-center">Équipements</h2>
+                      <span className="block w-14 h-0.5 bg-primary rounded-full" />
                     </div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                      {[...(immoMeta.caracteristiques as string[])].sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" })).map((c) => (
+                        <li key={c} className="flex items-center gap-2.5 text-on-surface text-[15px]">
+                          <span className="material-symbols-outlined text-primary text-[20px] leading-none">check_box</span>
+                          <span>{c}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-outline italic">Listing d&apos;options sous réserve d&apos;erreurs</p>
                   </div>
                 )}
               </div>
