@@ -22,6 +22,8 @@ export default function CreateClientForm({
   const [accountType, setAccountType] = useState<"particulier" | "pro">("particulier");
   const [companyName, setCompanyName] = useState("");
   const [siret, setSiret] = useState("");
+  const [manualMode, setManualMode] = useState(false);
+  const [manualSiret, setManualSiret] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -73,6 +75,16 @@ export default function CreateClientForm({
     setSiret("");
     setQuery("");
     setSuggestions([]);
+    setManualMode(false);
+    setManualSiret("");
+  }
+
+  function enableManualMode() {
+    setSelected(null);
+    setSuggestions([]);
+    setManualMode(true);
+    // Reuse what the user already typed as a likely display name.
+    if (query.trim() && !companyName) setCompanyName(query.trim());
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -82,18 +94,23 @@ export default function CreateClientForm({
     setLoading(true);
     try {
       const fullName = `${prenom.trim()} ${nom.trim()}`.trim();
+      const finalSiret = (manualMode ? manualSiret : siret).trim().replace(/\s/g, "");
+      if (accountType === "pro" && finalSiret && !/^\d{14}$/.test(finalSiret)) {
+        throw new Error("SIRET invalide (14 chiffres requis)");
+      }
       const result = await createClientAccount(
         email.trim(),
         fullName,
         accountType === "pro",
         companyName.trim() || null,
-        siret.trim() || null,
+        finalSiret || null,
       );
       setSuccess(`Compte créé — invitation envoyée à ${result.email}`);
       onCreated(result);
       setPrenom(""); setNom(""); setEmail("");
       setAccountType("particulier"); setCompanyName(""); setSiret("");
       setQuery(""); setSelected(null); setSuggestions([]);
+      setManualMode(false); setManualSiret("");
     } catch (err: any) {
       setError(err.message ?? "Une erreur est survenue.");
     } finally {
@@ -199,7 +216,7 @@ export default function CreateClientForm({
         <div className="bg-[#f8f9fb] rounded-2xl border border-[#eceef0] p-4 space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#777683]">Informations professionnelles</p>
 
-          {/* Société sélectionnée */}
+          {/* Société sélectionnée OU mode manuel OU recherche */}
           {selected ? (
             <div className="flex items-start justify-between gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
               <div className="flex items-start gap-2 min-w-0">
@@ -216,6 +233,36 @@ export default function CreateClientForm({
                 className="shrink-0 text-[10px] font-bold text-[#777683] hover:text-red-500 transition-colors underline underline-offset-2 mt-1"
               >
                 Changer
+              </button>
+            </div>
+          ) : manualMode ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">info</span>
+                <div className="text-xs text-[#191c1e]">
+                  <p className="font-semibold">Saisie manuelle</p>
+                  <p className="text-[#777683] mt-0.5">
+                    Utile lorsque l'entreprise est marquée non diffusible dans le registre public (entrepreneurs individuels qui ont demandé la non-diffusion).
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Numéro SIRET <span className="text-[#9ca3af] normal-case font-normal ml-1">(14 chiffres)</span></label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={manualSiret}
+                  onChange={(e) => setManualSiret(e.target.value.replace(/[^\d]/g, "").slice(0, 14))}
+                  placeholder="12345678901234"
+                  className={fieldCls}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="text-[11px] font-bold text-[#777683] hover:text-[#2f6fb8] transition-colors underline underline-offset-2"
+              >
+                ← Revenir à la recherche par nom
               </button>
             </div>
           ) : (
@@ -275,19 +322,56 @@ export default function CreateClientForm({
 
                 {/* Aucun résultat */}
                 {!searching && query.length >= 2 && suggestions.length === 0 && (
-                  <p className="text-xs text-[#9ca3af] mt-1.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[12px]">info</span>
-                    Aucune entreprise trouvée — vous pouvez continuer sans société.
-                  </p>
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                    <span className="material-symbols-outlined text-amber-600 text-[16px] shrink-0 mt-0.5">info</span>
+                    <div className="flex-1 text-xs">
+                      <p className="text-[#191c1e] font-semibold">Entreprise introuvable ou non diffusible</p>
+                      <p className="text-[#777683] mt-0.5">
+                        Certains entrepreneurs individuels ont demandé la non-diffusion publique de leurs informations.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={enableManualMode}
+                        className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[#2f6fb8] hover:underline"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">edit</span>
+                        Saisir le SIRET et le nom manuellement
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
-              <p className="text-[10px] text-[#9ca3af] mt-1.5 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]">info</span>
-                Si non renseigné, le SIRET sera demandé au client lors de l'activation.
-              </p>
+              <button
+                type="button"
+                onClick={enableManualMode}
+                className="mt-3 text-[11px] font-bold text-[#777683] hover:text-[#2f6fb8] transition-colors underline underline-offset-2"
+              >
+                Saisir manuellement (SIRET non diffusible) →
+              </button>
             </div>
           )}
+
+          {/* Nom affiché sur les annonces — toujours éditable en mode pro */}
+          <div>
+            <label className={labelCls}>
+              Nom affiché sur les annonces <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Garage Mechel, Sylvie Mechel Auto, etc."
+              required
+              className={fieldCls}
+            />
+            <p className="text-[10px] text-[#9ca3af] mt-1.5 flex items-start gap-1">
+              <span className="material-symbols-outlined text-[12px] mt-px">info</span>
+              <span>
+                Ce nom remplacera le prénom et le nom personnel sur la fiche de l'annonce et dans les résultats de recherche. Modifiable plus tard.
+              </span>
+            </p>
+          </div>
         </div>
       )}
 

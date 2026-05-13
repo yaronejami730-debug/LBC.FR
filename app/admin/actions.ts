@@ -402,6 +402,25 @@ export async function createListingForClient(
   return { listingId: listing.id };
 }
 
+export async function updateClientDisplayName(userId: string, companyName: string) {
+  await requireAdmin();
+  const trimmed = companyName.trim();
+  if (!trimmed) throw new Error("Nom requis");
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, isPro: true } });
+  if (!user) throw new Error("Utilisateur introuvable");
+  if (!user.isPro) throw new Error("Modification disponible uniquement pour les comptes professionnels");
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { companyName: trimmed },
+  });
+
+  revalidatePath("/admin/create-client");
+  revalidatePath(`/admin/clients/${userId}`);
+  return { ok: true };
+}
+
 // ── Client listings management ────────────────────────────────────────────────
 
 export async function getClientListings(userId: string) {
