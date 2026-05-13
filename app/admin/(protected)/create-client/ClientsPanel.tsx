@@ -10,6 +10,8 @@ type Client = {
   name: string;
   email: string;
   createdAt: Date;
+  isPro: boolean;
+  companyName: string | null;
   _count: { listings: number };
 };
 
@@ -66,16 +68,14 @@ export default function ClientsPanel({ clients }: { clients: Client[] }) {
 
               {/* Actions */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                {client._count.listings > 0 && (
-                  <Link
-                    href={`/admin/clients/${client.id}`}
-                    title="Voir et modifier les annonces"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-[#777683] bg-[#f7f9fb] hover:text-[#2f6fb8] hover:bg-[#e8f0fb] transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                    <span className="hidden sm:inline">Voir annonces</span>
-                  </Link>
-                )}
+                <Link
+                  href={`/admin/clients/${client.id}`}
+                  title="Voir le détail et les annonces"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-[#777683] bg-[#f7f9fb] hover:text-[#2f6fb8] hover:bg-[#e8f0fb] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                  <span className="hidden sm:inline">Détail</span>
+                </Link>
                 <button
                   onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
@@ -135,6 +135,8 @@ export default function ClientsPanel({ clients }: { clients: Client[] }) {
                     <AdminListingForm
                       userId={client.id}
                       userName={client.name}
+                      isPro={client.isPro}
+                      proCompanyName={client.companyName}
                       onDone={(listingId) => {
                         setCreatedListings((prev) => ({ ...prev, [client.id]: listingId }));
                       }}

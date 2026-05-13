@@ -75,47 +75,78 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 401 });
   }
 
-  const { url } = await req.json();
-  if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "URL manquante" }, { status: 400 });
+  const body = await req.json();
+  const url = typeof body?.url === "string" ? body.url.trim() : "";
+  const pastedText = typeof body?.text === "string" ? body.text.trim() : "";
+
+  if (!url && !pastedText) {
+    return NextResponse.json({ error: "URL ou texte requis" }, { status: 400 });
   }
 
-  // ── 1. Fetch main page ────────────────────────────────────────────────────────
-  let mainHtml = "";
-  try {
-    mainHtml = await fetchPage(url);
-  } catch (err: any) {
-    return NextResponse.json({ error: `Impossible de charger la page : ${err.message}` }, { status: 422 });
+  let fullContent = "";
+  let tabUrls: string[] = [];
+
+  if (pastedText) {
+    // ── Paste mode ──────────────────────────────────────────────────────────────
+    // The admin has copy-pasted the listing content directly. Skip the fetch and
+    // run the AI directly on the cleaned text.
+    fullContent = pastedText.slice(0, 80_000);
+  } else {
+    // ── 1. Fetch main page ──────────────────────────────────────────────────────
+    let mainHtml = "";
+    try {
+      mainHtml = await fetchPage(url);
+    } catch (err: any) {
+      return NextResponse.json({ error: `Impossible de charger la page : ${err.message}` }, { status: 422 });
+    }
+
+    // ── 2. Detect & fetch tabs ──────────────────────────────────────────────────
+    tabUrls = extractTabUrls(mainHtml, url);
+    const tabTexts: string[] = [];
+
+    await Promise.allSettled(
+      tabUrls.map(async (tabUrl) => {
+        try {
+          const html = await fetchPage(tabUrl);
+          const text = stripHtml(html).slice(0, 15_000);
+          tabTexts.push(`\n\n--- Onglet : ${tabUrl} ---\n${text}`);
+        } catch { /* ignore failing tabs */ }
+      })
+    );
+
+    // ── 3. Combine content ──────────────────────────────────────────────────────
+    // 80k pour capturer toutes les sections/onglets cachés dans le même HTML
+    const mainText = stripHtml(mainHtml).slice(0, 80_000);
+    fullContent = mainText + tabTexts.join("");
   }
-
-  // ── 2. Detect & fetch tabs ────────────────────────────────────────────────────
-  const tabUrls = extractTabUrls(mainHtml, url);
-  const tabTexts: string[] = [];
-
-  await Promise.allSettled(
-    tabUrls.map(async (tabUrl) => {
-      try {
-        const html = await fetchPage(tabUrl);
-        const text = stripHtml(html).slice(0, 15_000);
-        tabTexts.push(`\n\n--- Onglet : ${tabUrl} ---\n${text}`);
-      } catch { /* ignore failing tabs */ }
-    })
-  );
-
-  // ── 3. Combine content ────────────────────────────────────────────────────────
-  // 80k pour capturer toutes les sections/onglets cachés dans le même HTML
-  const mainText = stripHtml(mainHtml).slice(0, 80_000);
-  const fullContent = mainText + tabTexts.join("");
 
   // ── 4. Ask Claude ─────────────────────────────────────────────────────────────
-  const SYSTEM = `Tu es un extracteur d'annonces immobilières et automobiles expert. Tu analyses le texte brut d'une page web qui contient PLUSIEURS SECTIONS/ONGLETS dans le même HTML (Général, Détails, Financier, DPE/Énergie, Quartier, Carte…). TOUTES ces sections sont présentes dans le texte, même si elles semblent désordonnées ou répétées. Tu dois tout extraire.
+  const SYSTEM = `Tu es un extracteur d'annonces immobilières et automobiles expert. Tu analyses le texte brut d'une page web ou d'un copier-coller qui contient PLUSIEURS SECTIONS/ONGLETS dans le même bloc (Général, Détails, Équipements, Historique d'entretien, Financier, DPE/Énergie, Quartier, Carte…). TOUTES ces sections sont présentes dans le texte, même si elles semblent désordonnées ou répétées. Tu dois tout extraire.
 
-RÈGLES STRICTES :
+RÈGLES ABSOLUES — NE JAMAIS RÉSUMER, NE JAMAIS INVENTER :
+- Tu reproduis EXACTEMENT ce qui est écrit dans le texte source. Mot pour mot pour les éléments structurés (équipements, options, caractéristiques, historique).
+- Tu n'inventes JAMAIS un équipement, une option, une caractéristique ou une information qui n'apparaît pas dans le texte source.
+- Tu ne résumes JAMAIS une liste d'équipements. Tu reprends TOUS les items, un par un, exactement comme écrit.
+- Tu ne paraphrases pas les textes libres (description, historique, informations complémentaires) : tu les reprends quasi mot pour mot, en corrigeant uniquement la ponctuation, les sauts de ligne et les fautes manifestes.
+- Si une donnée n'est pas présente dans le texte source → null (ou tableau vide pour les listes). Ne jamais inventer pour combler.
+
+RÈGLES STRICTES DE FORMAT :
 - Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans texte autour.
 - "price" est toujours un nombre (jamais une chaîne). Si tu vois "250 000 €" → 250000.
 - Si c'est un véhicule → remplis "vehicle", laisse "immo" à null.
 - Si c'est de l'immobilier → remplis "immo", laisse "vehicle" à null.
 - Si une valeur est absente → null (jamais une chaîne vide "").
+
+CHAMP "description" — STRUCTURÉ ET COMPLET :
+La description doit contenir TOUTES les informations textuelles libres présentes dans la source, structurées en sections claires séparées par des sauts de ligne doubles. Utilise les en-têtes suivants si l'information correspondante existe :
+
+"Informations générales :" — la description principale du vendeur, l'état, la raison de la vente, le contexte d'utilisation. Reprends mot pour mot ce qui est écrit.
+
+"Historique d'entretien :" — TOUTES les interventions mentionnées (vidanges, changements de pièces, révisions, courroies, freins, distribution, embrayage, pneus, contrôles techniques, factures…). Reprends date par date, intervention par intervention, mot pour mot. Si rien n'est explicitement annoncé comme historique d'entretien mais que des interventions sont mentionnées dans le texte libre, regroupe-les sous cet en-tête. Si aucun historique n'apparaît, ajoute la ligne "Historique d'entretien : non précisé par le vendeur."
+
+"Informations complémentaires :" — tout autre texte du vendeur n'entrant pas dans les deux catégories précédentes (modalités de visite, transport, livraison, conditions, négociation, raison de la vente s'il n'y est pas déjà, etc.). Si rien à dire, omet la section.
+
+Ne supprime AUCUN paragraphe libre du vendeur. Si tu hésites entre supprimer ou inclure, tu inclus.
 
 IMMOBILIER — EXTRACTION OBLIGATOIRE :
 
@@ -131,13 +162,21 @@ IMMOBILIER — EXTRACTION OBLIGATOIRE :
 
 4. QUARTIER / PROXIMITÉ : cherche les sections "quartier", "à proximité", "commerces", "services", "transports", "écoles", "santé". Liste TOUT ce qui est mentionné dans "servicesProximite" : bar, presse, tabac, cinéma, bibliothèque, supermarché, école, médecin, pharmacie, gare, bus, etc.
 
-5. CARACTÉRISTIQUES : liste TOUS les équipements et points notables : cave, garage, parking, terrasse, balcon, jardin, piscine, dépendance, sous-sol, grenier, double vitrage, volets roulants, digicode, interphone, gardien, ascenseur, cuisine équipée, plain-pied, vue dégagée, vue mer, lumineux, calme…
+5. CARACTÉRISTIQUES : liste TOUS les équipements et points notables MENTIONNÉS DANS LE TEXTE. Reprends-les mot pour mot tels qu'ils apparaissent (ex : si le vendeur écrit "double vitrage performant", garde "double vitrage performant", pas juste "double vitrage"). N'invente jamais d'équipement absent du texte. Exemples typiques quand mentionnés : cave, garage, parking, terrasse, balcon, jardin, piscine, dépendance, sous-sol, grenier, double vitrage, volets roulants, digicode, interphone, gardien, ascenseur, cuisine équipée, plain-pied, vue dégagée, vue mer, lumineux, calme.
 
-VÉHICULES :
-- Extrais TOUS les équipements dans "vehicle.options".
-- critAir : chiffre 0→5.
+VÉHICULES — RÈGLES SPÉCIFIQUES POUR LES ÉQUIPEMENTS :
+
+- "vehicle.options" doit contenir TOUS les équipements explicitement listés dans le texte source, un par item, exactement comme écrit.
+- Si le texte liste 47 équipements, tu mets les 47, sans en omettre un seul, sans en regrouper plusieurs en un. Pas de raccourci, pas de "et plus encore".
+- Si le texte ne liste explicitement aucun équipement (cas rare) → tableau vide []. NE PAS INVENTER une liste plausible.
+- Reprends la formulation exacte : "Régulateur de vitesse adaptatif" ne devient pas "Régulateur de vitesse" et inversement.
+- Si plusieurs équipements sont sur une même ligne séparés par des virgules ou des points-virgules, sépare-les en items distincts.
+
+Autres règles véhicule :
+- critAir : chiffre 0→5 uniquement si présent.
 - emissionCO2 : g/km (nombre).
 - consoUrbaine/consoExtraU/consoMixte : L/100km (nombre).
+- L'historique d'entretien d'un véhicule (révisions, courroies, vidanges, factures) doit aller dans la "description" sous l'en-tête "Historique d'entretien :", PAS dans "options".
 
 SCHÉMA DE SORTIE :
 {
@@ -191,7 +230,13 @@ SCHÉMA DE SORTIE :
 
   // (fin du SYSTEM prompt)
 
-  const userContent = `Source : ${url}
+  const userContent = pastedText
+    ? `Source : texte collé manuellement par l'administrateur.
+
+---
+${fullContent}
+---`
+    : `Source : ${url}
 ${tabUrls.length > 0 ? `Onglets supplémentaires analysés : ${tabUrls.join(", ")}` : ""}
 
 ---
@@ -201,7 +246,7 @@ ${fullContent}
   try {
     const message = await client.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: [
         {
           type: "text",

@@ -4,6 +4,8 @@ import { useState, useRef } from "react";
 import { createListingForClient } from "@/app/admin/actions";
 import { CATEGORIES } from "@/lib/categories";
 import BrandPicker from "@/components/BrandPicker";
+import ListingPreviewModal from "@/components/admin/ListingPreviewModal";
+import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
@@ -146,10 +148,14 @@ export default function AdminListingForm({
   userId,
   userName,
   onDone,
+  proCompanyName,
+  isPro,
 }: {
   userId: string;
   userName: string;
   onDone: (listingId: string) => void;
+  proCompanyName?: string | null;
+  isPro?: boolean;
 }) {
   // ── Basic fields ─────────────────────────────────────────────────────────────
   const [title, setTitle] = useState("");
@@ -195,8 +201,9 @@ export default function AdminListingForm({
   });
 
   // ── AI import state ──────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<"choose" | "ai" | "manual">("choose");
+  const [mode, setMode] = useState<"choose" | "ai" | "paste" | "manual">("choose");
   const [importUrl, setImportUrl] = useState("");
+  const [importText, setImportText] = useState("");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   const [tabsFound, setTabsFound] = useState(0);
@@ -204,6 +211,9 @@ export default function AdminListingForm({
   // ── Submit state ─────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ── Preview state ────────────────────────────────────────────────────────────
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const cat = CATEGORIES.find((c) => c.id === categoryId);
   const subcategories = cat?.subcategories ?? [];
@@ -218,14 +228,16 @@ export default function AdminListingForm({
   }
   // ── AI import handler ────────────────────────────────────────────────────────
   async function handleImport() {
-    if (!importUrl.trim()) return;
+    const url = importUrl.trim();
+    const text = importText.trim();
+    if (!url && !text) return;
     setImporting(true);
     setImportError("");
     try {
       const res = await fetch("/api/admin/import-listing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: importUrl.trim() }),
+        body: JSON.stringify(text ? { text } : { url }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Erreur inconnue");
@@ -353,10 +365,6 @@ export default function AdminListingForm({
     }
   }
 
-  function removeImage(index: number) {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  }
-
   // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -423,20 +431,36 @@ export default function AdminListingForm({
         </p>
 
         <div className="grid grid-cols-1 gap-3">
-          {/* AI import */}
+          {/* AI import via URL */}
           <button
             type="button"
             onClick={() => setMode("ai")}
             className="flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-br from-[#2f6fb8]/5 to-[#2f6fb8]/10 border-2 border-[#2f6fb8]/20 hover:border-[#2f6fb8]/50 transition-all text-left group"
           >
             <div className="w-12 h-12 rounded-xl bg-[#2f6fb8] flex items-center justify-center shrink-0 shadow-md shadow-[#2f6fb8]/30 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-white text-2xl">auto_awesome</span>
+              <span className="material-symbols-outlined text-white text-2xl">link</span>
             </div>
             <div className="flex-1">
-              <p className="font-bold text-[#191c1e] text-base">Importer avec l&apos;IA</p>
+              <p className="font-bold text-[#191c1e] text-base">Importer depuis un lien</p>
               <p className="text-[#777683] text-sm mt-0.5">Collez un lien d&apos;annonce — Claude analyse la page et remplit tout automatiquement</p>
             </div>
             <span className="material-symbols-outlined text-[#2f6fb8] text-xl shrink-0">chevron_right</span>
+          </button>
+
+          {/* AI import via pasted text */}
+          <button
+            type="button"
+            onClick={() => setMode("paste")}
+            className="flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 border-2 border-emerald-200 hover:border-emerald-400 transition-all text-left group"
+          >
+            <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/30 group-hover:scale-105 transition-transform">
+              <span className="material-symbols-outlined text-white text-2xl">content_paste</span>
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-[#191c1e] text-base">Coller le texte de l&apos;annonce</p>
+              <p className="text-[#777683] text-sm mt-0.5">Quand le lien ne fonctionne pas — collez tout le contenu et l&apos;IA range tout dans le formulaire</p>
+            </div>
+            <span className="material-symbols-outlined text-emerald-700 text-xl shrink-0">chevron_right</span>
           </button>
 
           {/* Manual */}
@@ -536,6 +560,81 @@ export default function AdminListingForm({
     );
   }
 
+  // ── Paste-text screen ────────────────────────────────────────────────────────
+  if (mode === "paste") {
+    const charCount = importText.length;
+    const maxChars = 80_000;
+    return (
+      <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => { setMode("choose"); setImportError(""); }}
+          className="flex items-center gap-1.5 text-sm text-[#2f6fb8] font-semibold hover:underline"
+        >
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+          Retour
+        </button>
+
+        <div className="bg-white rounded-2xl border border-[#eceef0] p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-xl">content_paste</span>
+            </div>
+            <div>
+              <p className="font-bold text-[#191c1e]">Coller le texte de l&apos;annonce</p>
+              <p className="text-xs text-[#777683]">L&apos;IA extraira automatiquement titre, prix, description, photos, options, etc.</p>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={labelCls}>Contenu copié-collé</label>
+              <span className={`text-[10px] font-mono ${charCount > maxChars ? "text-red-600" : "text-[#9ca3af]"}`}>
+                {charCount.toLocaleString("fr-FR")} / {maxChars.toLocaleString("fr-FR")}
+              </span>
+            </div>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder={`Collez ici tout le texte de l'annonce :\n\n— titre\n— prix\n— description complète\n— caractéristiques (kilométrage, année, surface, DPE…)\n— localisation\n— numéro de téléphone si mentionné\n\nL'IA fera le tri.`}
+              rows={14}
+              className={`${fieldCls} resize-y font-mono text-xs leading-relaxed`}
+            />
+            <p className="text-xs text-[#9ca3af] mt-1.5">
+              Astuce : sur la page de l&apos;annonce, faites <kbd className="px-1.5 py-0.5 rounded bg-[#f2f4f6] text-[10px] font-bold">Ctrl/⌘ + A</kbd> puis <kbd className="px-1.5 py-0.5 rounded bg-[#f2f4f6] text-[10px] font-bold">Ctrl/⌘ + C</kbd> pour tout copier, et collez ici. Les photos s&apos;ajoutent ensuite manuellement dans le formulaire.
+            </p>
+          </div>
+
+          {importError && (
+            <p className="text-red-600 text-sm bg-red-50 px-4 py-3 rounded-xl border border-red-100 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px]">error</span>
+              {importError}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleImport}
+            disabled={importing || !importText.trim() || charCount > maxChars}
+            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all disabled:opacity-60 shadow-md shadow-emerald-600/20 active:scale-[0.99]"
+          >
+            {importing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                <span>Analyse en cours…</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+                Analyser le texte et remplir le formulaire
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* Info banner */}
@@ -556,29 +655,19 @@ export default function AdminListingForm({
 
       {/* ── Photos ─────────────────────────────────────────────────────────── */}
       <Section title="Photos" icon="photo_camera">
-        {/* Grid */}
+        {/* Grid (drag-drop reorder) */}
         {images.length > 0 && (
-          <div className="grid grid-cols-4 gap-2">
-            {images.map((img, i) => (
-              <div key={i} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-100">
-                <img src={img} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                {i === 0 && (
-                  <span className="absolute bottom-1 left-1 text-[8px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">
-                    Principale
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => removeImage(i)}
-                  className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"
-                >
-                  <span className="w-8 h-8 rounded-full bg-red-500/80 text-white flex items-center justify-center">
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                  </span>
-                </button>
-              </div>
-            ))}
-          </div>
+          <>
+            <PhotoSortableGrid
+              images={images}
+              onChange={setImages}
+              maxPhotos={MAX_PHOTOS}
+              size="comfortable"
+            />
+            <p className="text-[10px] text-[#777683] -mt-1">
+              Glissez-déposez pour réordonner. La première photo sert de vignette dans les résultats de recherche.
+            </p>
+          </>
         )}
 
         {/* Upload button */}
@@ -1034,14 +1123,62 @@ export default function AdminListingForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={loading || uploading}
-        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-[#2f6fb8] text-white rounded-xl font-bold text-sm hover:bg-[#1a5a9e] transition-all disabled:opacity-60 shadow-md shadow-[#2f6fb8]/20 active:scale-[0.99]"
-      >
-        <span className="material-symbols-outlined text-[18px]">publish</span>
-        {loading ? "Publication en cours…" : "Publier l'annonce"}
-      </button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="sm:w-auto flex items-center justify-center gap-2 px-5 py-4 bg-white text-[#2f6fb8] rounded-xl font-bold text-sm border border-[#2f6fb8]/30 hover:bg-[#e8f0fb] transition-all active:scale-[0.99]"
+        >
+          <span className="material-symbols-outlined text-[18px]">visibility</span>
+          Aperçu
+        </button>
+        <button
+          type="submit"
+          disabled={loading || uploading}
+          className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-[#2f6fb8] text-white rounded-xl font-bold text-sm hover:bg-[#1a5a9e] transition-all disabled:opacity-60 shadow-md shadow-[#2f6fb8]/20 active:scale-[0.99]"
+        >
+          <span className="material-symbols-outlined text-[18px]">publish</span>
+          {loading ? "Publication en cours…" : "Publier l'annonce"}
+        </button>
+      </div>
+
+      <ListingPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        data={{
+          title,
+          price,
+          description,
+          location,
+          condition,
+          category: cat?.label ?? "",
+          subcategory,
+          images,
+          phone,
+          hidePhone,
+          authorName: userName,
+          isPro,
+          companyName: proCompanyName,
+          vehicle: isVehicle
+            ? { ...vehicle, options: vehicleOptions }
+            : undefined,
+          immo: isImmo
+            ? {
+                typeBien: immo.typeBien,
+                surface: immo.surface,
+                nombrePieces: immo.nombrePieces,
+                nombreChambres: immo.nombreChambres,
+                nombreSallesEau: immo.nombreSallesEau,
+                etage: immo.etage,
+                exposition: immo.exposition,
+                classeEnergie: immo.classeEnergie,
+                ges: immo.ges,
+                anneeConstruction: immo.anneeConstruction,
+                caracteristiques: immo.caracteristiques,
+              }
+            : undefined,
+        }}
+      />
     </form>
   );
 }

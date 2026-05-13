@@ -19,6 +19,8 @@ export default async function CreateClientPage() {
       name: true,
       email: true,
       createdAt: true,
+      isPro: true,
+      companyName: true,
       _count: { select: { listings: true } },
     },
   });

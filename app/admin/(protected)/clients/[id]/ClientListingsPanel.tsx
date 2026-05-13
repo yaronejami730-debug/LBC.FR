@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { updateListingByAdmin } from "@/app/admin/actions";
+import ListingPreviewModal from "@/components/admin/ListingPreviewModal";
+import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const MAX_PHOTOS = 15;
@@ -24,8 +26,17 @@ type Listing = {
   createdAt: string;
 };
 
-export default function ClientListingsPanel({ listings }: { listings: Listing[] }) {
+export default function ClientListingsPanel({
+  listings,
+  user,
+}: {
+  listings: Listing[];
+  user?: { name: string; isPro: boolean; companyName: string | null };
+}) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  const previewListing = previewId ? listings.find((l) => l.id === previewId) : null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -35,10 +46,34 @@ export default function ClientListingsPanel({ listings }: { listings: Listing[] 
           listing={l}
           isEditing={editingId === l.id}
           onEdit={() => setEditingId(l.id)}
+          onPreview={() => setPreviewId(l.id)}
           onCancel={() => setEditingId(null)}
           onSaved={() => setEditingId(null)}
+          user={user}
         />
       ))}
+
+      {previewListing && (
+        <ListingPreviewModal
+          open
+          onClose={() => setPreviewId(null)}
+          data={{
+            title: previewListing.title,
+            price: previewListing.price,
+            description: previewListing.description,
+            location: previewListing.location,
+            condition: previewListing.condition,
+            category: previewListing.category,
+            subcategory: previewListing.subcategory ?? undefined,
+            images: previewListing.images,
+            phone: previewListing.phone ?? undefined,
+            hidePhone: previewListing.hidePhone,
+            authorName: user?.name ?? "Vendeur",
+            isPro: user?.isPro,
+            companyName: user?.companyName ?? null,
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -47,17 +82,21 @@ function ListingCard({
   listing,
   isEditing,
   onEdit,
+  onPreview,
   onCancel,
   onSaved,
+  user,
 }: {
   listing: Listing;
   isEditing: boolean;
   onEdit: () => void;
+  onPreview: () => void;
   onCancel: () => void;
   onSaved: () => void;
+  user?: { name: string; isPro: boolean; companyName: string | null };
 }) {
   if (isEditing) {
-    return <EditForm listing={listing} onCancel={onCancel} onSaved={onSaved} />;
+    return <EditForm listing={listing} onCancel={onCancel} onSaved={onSaved} user={user} />;
   }
 
   const cover = listing.images[0];
@@ -119,14 +158,24 @@ function ListingCard({
             <span className="material-symbols-outlined text-[16px]">edit</span>
             Modifier
           </button>
+          <button
+            type="button"
+            onClick={onPreview}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-[#777683] hover:text-[#2f6fb8] hover:bg-[#f7f9fb] transition-colors"
+            title="Voir l'aperçu sans publier"
+          >
+            <span className="material-symbols-outlined text-[16px]">visibility</span>
+            Aperçu
+          </button>
           <a
             href={`/annonce/${listing.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-[#777683] hover:text-[#2f6fb8] hover:bg-[#f7f9fb] transition-colors"
+            title="Voir l'annonce publiée"
           >
             <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-            Voir
+            En ligne
           </a>
         </div>
       </div>
@@ -138,10 +187,12 @@ function EditForm({
   listing,
   onCancel,
   onSaved,
+  user,
 }: {
   listing: Listing;
   onCancel: () => void;
   onSaved: () => void;
+  user?: { name: string; isPro: boolean; companyName: string | null };
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(listing.title);
@@ -156,6 +207,7 @@ function EditForm({
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -183,20 +235,6 @@ function EditForm({
     } finally {
       setUploading(false);
     }
-  }
-
-  function removeImage(idx: number) {
-    setImages((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  function moveImage(idx: number, dir: -1 | 1) {
-    setImages((prev) => {
-      const next = [...prev];
-      const target = idx + dir;
-      if (target < 0 || target >= next.length) return prev;
-      [next[idx], next[target]] = [next[target], next[idx]];
-      return next;
-    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -251,63 +289,33 @@ function EditForm({
           <label className="block text-xs font-bold uppercase tracking-widest text-[#777683] mb-2">
             Photos ({images.length}/{MAX_PHOTOS})
           </label>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {images.map((src, idx) => (
-              <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-[#eceef0] group">
-                <Image src={src} alt={`Photo ${idx + 1}`} fill sizes="120px" className="object-cover" />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={() => removeImage(idx)}
-                    className="px-2 py-1 rounded text-[10px] font-bold bg-red-500 text-white hover:bg-red-600"
-                  >
-                    Supprimer
-                  </button>
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => moveImage(idx, -1)}
-                      disabled={idx === 0}
-                      className="px-1.5 py-0.5 rounded text-[10px] bg-white/90 text-[#191c1e] disabled:opacity-40"
-                    >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveImage(idx, 1)}
-                      disabled={idx === images.length - 1}
-                      className="px-1.5 py-0.5 rounded text-[10px] bg-white/90 text-[#191c1e] disabled:opacity-40"
-                    >
-                      →
-                    </button>
-                  </div>
-                </div>
-                {idx === 0 && (
-                  <span className="absolute top-1 left-1 text-[9px] font-bold bg-[#2f6fb8] text-white px-1.5 py-0.5 rounded">
-                    1ère
-                  </span>
-                )}
-              </div>
-            ))}
-            {images.length < MAX_PHOTOS && (
-              <label className="aspect-square rounded-lg border-2 border-dashed border-[#c7c5d4] flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-[#2f6fb8] hover:bg-[#e8f0fb]/30 transition-colors">
-                <span className="material-symbols-outlined text-2xl text-[#777683]">
-                  {uploading ? "hourglass_empty" : "add_a_photo"}
-                </span>
-                <span className="text-[10px] text-[#777683] font-semibold">
-                  {uploading ? "Envoi…" : "Ajouter"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => handleUpload(e.target.files)}
-                />
-              </label>
-            )}
-          </div>
+          <PhotoSortableGrid
+            images={images}
+            onChange={setImages}
+            maxPhotos={MAX_PHOTOS}
+            size="compact"
+          />
+          {images.length < MAX_PHOTOS && (
+            <label className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-[#c7c5d4] cursor-pointer hover:border-[#2f6fb8] hover:bg-[#e8f0fb]/30 transition-colors text-[#777683] hover:text-[#2f6fb8]">
+              <span className="material-symbols-outlined text-[18px]">
+                {uploading ? "hourglass_empty" : "add_a_photo"}
+              </span>
+              <span className="text-xs font-semibold">
+                {uploading ? "Envoi en cours…" : "Ajouter des photos"}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                disabled={uploading}
+                onChange={(e) => handleUpload(e.target.files)}
+              />
+            </label>
+          )}
+          <p className="text-[10px] text-[#777683] mt-1">
+            Glissez-déposez pour réordonner. La première photo sert de vignette dans les résultats de recherche.
+          </p>
         </div>
 
         {/* Title */}
@@ -425,6 +433,14 @@ function EditForm({
           </button>
           <button
             type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="px-4 py-2.5 rounded-lg bg-white text-[#2f6fb8] text-sm font-bold border border-[#2f6fb8]/30 hover:bg-[#e8f0fb] transition-colors flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-[16px]">visibility</span>
+            Aperçu
+          </button>
+          <button
+            type="button"
             onClick={onCancel}
             className="px-6 py-2.5 rounded-lg bg-white text-[#191c1e] text-sm font-bold border border-[#eceef0] hover:bg-[#f7f9fb] transition-colors"
           >
@@ -432,6 +448,26 @@ function EditForm({
           </button>
         </div>
       </div>
+
+      <ListingPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        data={{
+          title,
+          price,
+          description,
+          location,
+          condition,
+          category: listing.category,
+          subcategory: listing.subcategory ?? undefined,
+          images,
+          phone,
+          hidePhone,
+          authorName: user?.name ?? "Vendeur",
+          isPro: user?.isPro,
+          companyName: user?.companyName ?? null,
+        }}
+      />
     </form>
   );
 }

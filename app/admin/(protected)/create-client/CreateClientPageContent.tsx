@@ -9,6 +9,8 @@ type Client = {
   name: string;
   email: string;
   createdAt: Date;
+  isPro: boolean;
+  companyName: string | null;
   _count: { listings: number };
 };
 
@@ -26,6 +28,8 @@ export default function CreateClientPageContent({
         name: client.name,
         email: client.email,
         createdAt: new Date(),
+        isPro: false,
+        companyName: null,
         _count: { listings: 0 },
       },
       ...prev,

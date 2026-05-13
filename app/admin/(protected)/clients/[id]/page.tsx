@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getClientListings } from "@/app/admin/actions";
 import ClientListingsPanel from "./ClientListingsPanel";
+import DisplayNameEditor from "./DisplayNameEditor";
 
 export default async function ClientDetailPage({
   params,
@@ -85,6 +86,9 @@ export default async function ClientDetailPage({
                 {user._count.listings} annonce{user._count.listings !== 1 ? "s" : ""}
               </span>
             </div>
+            {user.isPro && (
+              <DisplayNameEditor userId={user.id} initialName={user.companyName} />
+            )}
           </div>
         </div>
       </div>
@@ -102,7 +106,14 @@ export default async function ClientDetailPage({
             </p>
           </div>
         ) : (
-          <ClientListingsPanel listings={listings} />
+          <ClientListingsPanel
+            listings={listings}
+            user={{
+              name: user.name,
+              isPro: user.isPro,
+              companyName: user.companyName,
+            }}
+          />
         )}
       </div>
     </div>
