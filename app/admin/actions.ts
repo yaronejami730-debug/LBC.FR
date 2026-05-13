@@ -401,3 +401,84 @@ export async function createListingForClient(
   revalidatePath("/admin/create-client");
   return { listingId: listing.id };
 }
+
+// ── Client listings management ────────────────────────────────────────────────
+
+export async function getClientListings(userId: string) {
+  await requireAdmin();
+  const listings = await prisma.listing.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      price: true,
+      category: true,
+      subcategory: true,
+      description: true,
+      location: true,
+      condition: true,
+      images: true,
+      phone: true,
+      hidePhone: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+  return listings.map((l) => ({
+    ...l,
+    images: (() => {
+      try {
+        const arr = JSON.parse(l.images);
+        return Array.isArray(arr) ? (arr as string[]) : [];
+      } catch {
+        return [] as string[];
+      }
+    })(),
+    createdAt: l.createdAt.toISOString(),
+  }));
+}
+
+export async function updateListingByAdmin(
+  listingId: string,
+  data: {
+    title?: string;
+    price?: number;
+    description?: string;
+    location?: string;
+    condition?: string;
+    images?: string[];
+    phone?: string | null;
+    hidePhone?: boolean;
+  },
+) {
+  await requireAdmin();
+
+  const listing = await prisma.listing.findUnique({ where: { id: listingId } });
+  if (!listing) throw new Error("Annonce introuvable");
+
+  const updates: Record<string, unknown> = {};
+  if (typeof data.title === "string" && data.title.trim()) updates.title = data.title.trim();
+  if (typeof data.price === "number" && !Number.isNaN(data.price) && data.price >= 0) updates.price = data.price;
+  if (typeof data.description === "string") updates.description = data.description;
+  if (typeof data.location === "string") updates.location = data.location;
+  if (typeof data.condition === "string") updates.condition = data.condition;
+  if (Array.isArray(data.images)) updates.images = JSON.stringify(data.images.slice(0, 15));
+  if (data.phone !== undefined) updates.phone = data.phone;
+  if (typeof data.hidePhone === "boolean") updates.hidePhone = data.hidePhone;
+
+  if (Object.keys(updates).length === 0) {
+    return { listingId };
+  }
+
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: updates,
+  });
+
+  revalidatePath("/admin/create-client");
+  revalidatePath(`/admin/clients/${listing.userId}`);
+  revalidatePath(`/annonce/${listingId}`);
+
+  return { listingId };
+}

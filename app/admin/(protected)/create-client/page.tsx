@@ -2,17 +2,18 @@ import { prisma } from "@/lib/prisma";
 import CreateClientPageContent from "./CreateClientPageContent";
 
 export default async function CreateClientPage() {
-  // Load recently created users (last 90 days) who don't have a password set (haven't activated yet)
-  // We show all non-admin users created via admin, identified by adminNote or just recent ones
+  // Show non-activated clients AND clients with at least one listing (likely admin-created).
+  // Lets the admin reopen any client they previously created to edit their listings.
   const clients = await prisma.user.findMany({
     where: {
       role: "USER",
-      // Show users who haven't logged in yet (never activated their account)
-      // i.e., lastLoginAt is null — created but not yet activated
-      lastLoginAt: null,
+      OR: [
+        { lastLoginAt: null },
+        { listings: { some: {} } },
+      ],
     },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: 200,
     select: {
       id: true,
       name: true,
