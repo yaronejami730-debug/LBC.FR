@@ -51,6 +51,14 @@ export const article: BlogArticle = {
         "Renseignez-vous sur la disponibilité des pièces de rechange. Un équipement sans pièces détachées disponibles est difficile à maintenir. Pour les marques européennes (Hollandia, Fagor, Rational, Liebherr), les pièces sont généralement disponibles jusqu'à 10 à 15 ans après la fin de production. Pour les marques asiatiques moins connues, vérifiez avant d'acheter.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles relatives à la cession et à la sécurité du matériel professionnel : Code du travail consultable sur legifrance.gouv.fr (notamment les obligations en matière d'équipements de travail), fiches de l'Institut national de recherche et de sécurité INRS (inrs.fr), et documentation publique des constructeurs.",
+        "Les éléments fiscaux et comptables relatifs à la cession de matériel professionnel reposent sur la documentation de la Direction générale des Finances publiques (impots.gouv.fr) et sur les fiches de l'URSSAF pour les indépendants.",
+        "Les ordres de grandeur de prix et de durée de vie cités correspondent aux fourchettes observées sur les principales plateformes de revente professionnelle à la date de rédaction.",
+      ],
+    },
   ],
   faq: [
     {

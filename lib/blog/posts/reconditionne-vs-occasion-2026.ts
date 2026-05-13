@@ -81,6 +81,14 @@ export const article: BlogArticle = {
         "Sur les deux : vérifier la compatibilité technique avant achat (génération de processeur, capacité de RAM, état de la batterie sur smartphone). Beaucoup d'acheteurs reviennent déçus parce que le modèle est techniquement obsolète pour leur usage.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur la documentation publique des constructeurs officiels (Apple, Samsung, Sony, Microsoft, Google), sur les fiches techniques accessibles via leurs sites support et les bases de données IMEI publiques, ainsi que sur les guides de l'Institut national de la consommation (INC / 60 Millions de consommateurs) consacrés à l'électronique reconditionnée.",
+        "Le cadre réglementaire applicable au reconditionné et à la garantie légale repose sur le Code de la consommation (legifrance.gouv.fr) et sur les fiches de la DGCCRF. Les normes de référence pour le reconditionnement sont Afnor NF S97-130 et NF EN 50614.",
+        "Les ordres de grandeur de prix et de fiabilité cités correspondent aux tendances observées dans les baromètres publics des principaux comparateurs et reconditionneurs français à la date de rédaction.",
+      ],
+    },
   ],
   faq: [
     {

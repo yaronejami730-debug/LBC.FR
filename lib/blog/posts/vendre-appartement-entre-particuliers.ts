@@ -51,6 +51,14 @@ export const article: BlogArticle = {
         "Une fois l'offre acceptée, la promesse ou le compromis de vente est généralement signé chez un notaire. Il est légalement possible de le rédiger soi-même mais fortement déconseillé pour un particulier non initié.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les données publiques de l'Insee (insee.fr) pour la démographie, les revenus et les projections par commune, sur les indices et baromètres immobiliers du réseau des notaires de France (immobilier-notaires.fr) et de l'Observatoire des loyers piloté par l'ANIL (anil.org), ainsi que sur les baromètres publics de SeLoger (seloger.com) et Meilleurs Agents (meilleursagents.com).",
+        "Le cadre réglementaire (encadrement des loyers, calendrier passoires thermiques, loi Climat et Résilience, diagnostics obligatoires) est issu des textes officiels disponibles sur legifrance.gouv.fr et des fiches pratiques de service-public.fr. Les modalités fiscales reposent sur la documentation publique de la Direction générale des Finances publiques (impots.gouv.fr) et de l'ADEME pour les aides à la rénovation énergétique.",
+        "Les rendements et prix cités sont des fourchettes observées et publiées par les sources précitées. Ils varient selon le quartier, l'état du bien et le type de location et doivent toujours être recoupés avec une étude détaillée avant tout projet.",
+      ],
+    },
   ],
   faq: [
     {

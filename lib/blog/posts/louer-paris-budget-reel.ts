@@ -79,6 +79,14 @@ export const article: BlogArticle = {
         "Le calcul économique : un T2 de 45 m² à Levallois-Perret coûte environ 1 400 € charges comprises, contre 1 900 € pour un T2 équivalent dans le 17e parisien. L'économie de 500 € par mois (6 000 € par an) compense largement le surcoût de transport éventuel.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les données publiques de l'Insee (insee.fr) pour la démographie, les revenus et les projections par commune, sur les indices et baromètres immobiliers du réseau des notaires de France (immobilier-notaires.fr) et de l'Observatoire des loyers piloté par l'ANIL (anil.org), ainsi que sur les baromètres publics de SeLoger (seloger.com) et Meilleurs Agents (meilleursagents.com).",
+        "Le cadre réglementaire (encadrement des loyers, calendrier passoires thermiques, loi Climat et Résilience, diagnostics obligatoires) est issu des textes officiels disponibles sur legifrance.gouv.fr et des fiches pratiques de service-public.fr. Les modalités fiscales reposent sur la documentation publique de la Direction générale des Finances publiques (impots.gouv.fr) et de l'ADEME pour les aides à la rénovation énergétique.",
+        "Les rendements et prix cités sont des fourchettes observées et publiées par les sources précitées. Ils varient selon le quartier, l'état du bien et le type de location et doivent toujours être recoupés avec une étude détaillée avant tout projet.",
+      ],
+    },
   ],
   faq: [
     {

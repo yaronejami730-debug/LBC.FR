@@ -63,6 +63,14 @@ export const article: BlogArticle = {
         "Les axes à éviter : la rue de Rivoli aux heures de pointe (saturation de cyclistes), les abords des gares Saint-Lazare et Montparnasse (densité piétonne et trafic chaotique), l'avenue des Champs-Élysées (chaussée dégradée, trafic dense). La rue Saint-Antoine et la rue de Vaugirard sont également connues pour leurs pavés particulièrement durs.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles françaises relatives à l'automobile et aux deux-roues : service-public.fr (rubriques véhicules, contrôle technique, immatriculation), Code de la route consultable sur legifrance.gouv.fr, site de l'Agence nationale des titres sécurisés ANTS (ants.gouv.fr), et la documentation du contrôle technique central UTAC OTC (utac-otc.com).",
+        "Les éléments économiques et de marché reposent sur les rapports annuels de l'Observatoire Cetelem de l'Automobile (cetelem.fr/observatoire-auto), les statistiques de transactions et d'immatriculations diffusées par AAA-Data (aaa-data.fr), les baromètres publics d'Argus (largus.fr) et La Centrale (lacentrale.fr), ainsi que les bilans annuels de l'Observatoire national interministériel de la sécurité routière (onisr.securite-routiere.gouv.fr).",
+        "Les ordres de grandeur cités correspondent aux convergences observées entre ces différentes sources publiques à la date de rédaction. Les prix, performances et chiffres précis peuvent évoluer selon la conjoncture, l'état du véhicule et le marché local.",
+      ],
+    },
   ],
   faq: [
     {

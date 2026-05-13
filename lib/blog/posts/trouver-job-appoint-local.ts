@@ -51,6 +51,14 @@ export const article: BlogArticle = {
         "L'animation événementielle et le tourisme emploient massivement en été. Guides touristiques locaux, animateurs de camps de vacances, personnel d'accueil pour les festivals et événements : ces missions courtes sont accessibles aux débutants et offrent souvent un cadre de travail stimulant.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles relatives à l'emploi et aux services aux particuliers : service-public.fr (rubriques emploi, autoentrepreneur, services à la personne), Code du travail consultable sur legifrance.gouv.fr, France Travail (anciennement Pôle emploi, francetravail.fr) et la documentation publique de l'URSSAF (urssaf.fr).",
+        "Les modalités du Chèque emploi service universel (CESU) et des services à la personne reposent sur les fiches officielles de cesu.urssaf.fr et de la Direction générale des Entreprises (entreprises.gouv.fr).",
+        "Les ordres de grandeur de rémunération cités correspondent aux tendances observées dans les statistiques publiques (Dares, Insee). Les tarifs réels varient selon la région, l'expérience et le type de mission.",
+      ],
+    },
   ],
   faq: [
     {

@@ -51,6 +51,14 @@ export const article: BlogArticle = {
         "Publiez vos annonces de revente sur Deal & Co avec des photos nettes et une description honnête de l'état. Les acheteurs de matériel bébé d'occasion sont nombreux et les ventes sont rapides pour les articles en bon état à prix raisonnable.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles relatives à la sécurité des produits pour enfants : DGCCRF (economie.gouv.fr/dgccrf), Direction générale de la Santé pour les normes sanitaires, et les normes européennes applicables aux jouets (EN 71), aux sièges auto (R44/R129) et aux articles de puériculture.",
+        "Les recommandations sanitaires et de sécurité s'appuient sur la documentation publique de l'ANSES (Agence nationale de sécurité sanitaire de l'alimentation, de l'environnement et du travail), de l'INPES et des associations spécialisées en sécurité infantile.",
+        "Les éléments relatifs au rappel de produits sont consultables sur rappel.conso.gouv.fr, à vérifier systématiquement avant tout achat d'occasion.",
+      ],
+    },
   ],
   faq: [
     {

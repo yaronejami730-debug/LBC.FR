@@ -50,6 +50,14 @@ export const article: BlogArticle = {
         "Demandez une facture manuscrite signée indiquant : date, IMEI, prix, nom et coordonnées du vendeur. Cela vous protège en cas de litige.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur la documentation publique des constructeurs officiels (Apple, Samsung, Sony, Microsoft, etc.), sur les fiches techniques accessibles sur leurs sites support, et sur les guides de l'Institut national de la consommation (INC / 60 Millions de consommateurs) consacrés à l'électronique d'occasion.",
+        "Les modalités relatives au reconditionné et à la garantie légale reposent sur le Code de la consommation consultable sur legifrance.gouv.fr et sur les fiches de la DGCCRF. La labellisation des reconditionneurs s'appuie sur les normes Afnor NF S97-130 et NF EN 50614.",
+        "Les ordres de grandeur de prix et de fiabilité cités correspondent aux tendances observées dans les baromètres publics des comparateurs spécialisés et des médias techniques de référence.",
+      ],
+    },
   ],
   faq: [
     {

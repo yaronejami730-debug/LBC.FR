@@ -50,6 +50,14 @@ export const article: BlogArticle = {
         "Pour l'électroménager, ajoutez la classe énergétique, la capacité et l'année. Un réfrigérateur avec classe A++ se vend mieux qu'un D, même si l'aspect est identique.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur la documentation publique de l'ADEME (ademe.fr) consacrée au réemploi, à la seconde main et à la prolongation de durée de vie des biens, sur les guides de l'Institut national de la consommation (INC / 60 Millions de consommateurs) et sur les fiches pratiques de service-public.fr.",
+        "Les éléments économiques (prix du marché de l'occasion, prix moyens du neuf) s'appuient sur les baromètres publics des principaux distributeurs et sur les études sectorielles régulièrement publiées par la presse spécialisée (Que Choisir, LSA Conso).",
+        "Les ordres de grandeur cités reflètent les fourchettes observées sur le marché français à la date de rédaction. Les prix exacts varient selon l'état, la marque et la demande locale.",
+      ],
+    },
   ],
   faq: [
     {

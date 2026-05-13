@@ -58,6 +58,14 @@ export const article: BlogArticle = {
         "Pour les articles de luxe, le paiement en espèces en main propre ou virement bancaire vérifié est recommandé. Méfiez-vous des paiements par chèque ou PayPal Amis & Famille qui ne protègent pas le vendeur.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les rapports publics de l'ADEME relatifs au textile et à l'économie circulaire (ademe.fr), sur les baromètres de l'Institut français de la mode (IFM) consacrés à la seconde main, et sur les fiches pratiques de service-public.fr pour la vente entre particuliers.",
+        "Les éléments relatifs à la traçabilité et à l'authenticité s'appuient sur la documentation des marques officielles et sur les recommandations de la DGCCRF pour les achats à distance.",
+        "Les ordres de grandeur de prix et de cote des articles d'occasion cités reflètent les fourchettes observées sur les principales plateformes de revente à la date de rédaction et peuvent évoluer rapidement selon les tendances.",
+      ],
+    },
   ],
   faq: [
     {

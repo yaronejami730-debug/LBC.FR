@@ -65,6 +65,14 @@ export const article: BlogArticle = {
         "Erreur n°4 : penser qu'une trottinette d'occasion n'a pas besoin d'assurance. La règle est identique au neuf : assurance obligatoire dès le premier mètre sur voie publique. La date d'achat et le mode d'acquisition n'ont aucune incidence sur l'obligation.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles françaises relatives à l'automobile et aux deux-roues : service-public.fr (rubriques véhicules, contrôle technique, immatriculation), Code de la route consultable sur legifrance.gouv.fr, site de l'Agence nationale des titres sécurisés ANTS (ants.gouv.fr), et la documentation du contrôle technique central UTAC OTC (utac-otc.com).",
+        "Les éléments économiques et de marché reposent sur les rapports annuels de l'Observatoire Cetelem de l'Automobile (cetelem.fr/observatoire-auto), les statistiques de transactions et d'immatriculations diffusées par AAA-Data (aaa-data.fr), les baromètres publics d'Argus (largus.fr) et La Centrale (lacentrale.fr), ainsi que les bilans annuels de l'Observatoire national interministériel de la sécurité routière (onisr.securite-routiere.gouv.fr).",
+        "Les ordres de grandeur cités correspondent aux convergences observées entre ces différentes sources publiques à la date de rédaction. Les prix, performances et chiffres précis peuvent évoluer selon la conjoncture, l'état du véhicule et le marché local.",
+      ],
+    },
   ],
   faq: [
     {

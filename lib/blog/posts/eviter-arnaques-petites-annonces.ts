@@ -58,6 +58,14 @@ export const article: BlogArticle = {
         "Contactez votre banque dans les meilleurs délais pour demander le rappel d'un virement, le rejet d'un chèque ou la contestation d'une opération. Selon le type de fraude et votre réactivité, un remboursement total ou partiel reste possible. Signalez aussi le profil frauduleux au site sur lequel vous l'avez rencontré pour qu'il soit suspendu.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles en matière de protection des consommateurs : service-public.fr, DGCCRF (economie.gouv.fr/dgccrf), Plateforme cybermalveillance.gouv.fr pour les arnaques en ligne, et l'Agence nationale de la sécurité des systèmes d'information ANSSI (ssi.gouv.fr).",
+        "Les recommandations de prudence convergent avec celles publiées par l'Institut national de la consommation (INC / 60 Millions de consommateurs) et les principales associations de consommateurs (UFC-Que Choisir, CLCV).",
+        "Les modalités juridiques de recours (vices cachés, non-conformité, escroquerie) reposent sur les articles applicables du Code civil et du Code pénal consultables sur legifrance.gouv.fr.",
+      ],
+    },
   ],
   faq: [
     {

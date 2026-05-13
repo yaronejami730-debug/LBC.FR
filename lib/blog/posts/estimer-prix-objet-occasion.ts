@@ -51,6 +51,14 @@ export const article: BlogArticle = {
         "Pour les objets rares ou de collection : publiez le prix que vous souhaitez obtenir et soyez patient. Les acheteurs spécialisés savent reconnaître une bonne affaire et contactent rapidement. Ne soldez pas un objet rare par impatience — l'acheteur qui cherche exactement votre objet finira par trouver votre annonce.",
       ],
     },
+    {
+      h2: "Sources et méthodologie",
+      paragraphs: [
+        "Cet article s'appuie sur les ressources officielles applicables aux échanges entre particuliers : service-public.fr (rubriques consommation, vente entre particuliers, cession), Direction générale de la Concurrence, de la Consommation et de la Répression des fraudes DGCCRF (economie.gouv.fr/dgccrf), Commission nationale de l'informatique et des libertés CNIL (cnil.fr) pour les obligations relatives aux données personnelles.",
+        "Les éléments relatifs à l'économie circulaire et au réemploi s'appuient sur la documentation de l'ADEME (ademe.fr) et sur les rapports publics de la Cour des comptes et de l'Institut national de la consommation (INC / 60 Millions de consommateurs).",
+        "Les ordres de grandeur cités reflètent les tendances convergentes observées entre ces sources publiques. Les bonnes pratiques évoluent avec la réglementation et les outils proposés par les plateformes ; vérifier les éléments réglementaires sur les sources officielles avant toute décision importante.",
+      ],
+    },
   ],
   faq: [
     {
