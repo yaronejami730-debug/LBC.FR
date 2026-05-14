@@ -49,7 +49,12 @@ export async function generateMetadata({
     },
   }).catch(() => 0);
 
-  if (count === 0) return { title: `Prix ${title} occasion` };
+  if (count < 3) {
+    return {
+      title: `Prix ${title} occasion`,
+      robots: { index: false, follow: true },
+    };
+  }
 
   return {
     title: `Prix ${title} occasion en France — Combien ça vaut ? — Deal&Co`,

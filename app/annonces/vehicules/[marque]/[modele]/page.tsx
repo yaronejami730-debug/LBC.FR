@@ -66,10 +66,14 @@ const getListings = cache(
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ marque: string; modele: string }>;
+  searchParams: Promise<{ page?: string }>;
 }): Promise<Metadata> {
   const { marque, modele } = await params;
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const marqueLabel = slugToMarqueLabel(marque);
   if (!marqueLabel) return {};
 
@@ -95,6 +99,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical },
+    robots: page > 1 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,

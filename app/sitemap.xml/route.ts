@@ -14,6 +14,9 @@ const STATIC_SEGMENTS = [
   "longtail",
   "brands",
   "prix",
+  "voiture",
+  "comparatif",
+  "voiture-budget",
   "blog",
 ];
 
@@ -28,15 +31,31 @@ const getListingsTotal = unstable_cache(
   { revalidate: 1800, tags: ["listings"] },
 );
 
+const getGlobalLastMod = unstable_cache(
+  async () =>
+    prisma.listing
+      .aggregate({
+        where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
+        _max: { updatedAt: true },
+      })
+      .then((r) => r._max.updatedAt)
+      .catch(() => null),
+  ["sitemap-index-global-lastmod"],
+  { revalidate: 1800, tags: ["listings"] },
+);
+
 export async function GET() {
-  const total = await getListingsTotal();
+  const [total, maxUpdatedAt] = await Promise.all([
+    getListingsTotal(),
+    getGlobalLastMod(),
+  ]);
   const chunks = Math.min(
     MAX_LISTING_CHUNKS,
     Math.max(1, Math.ceil(total / LISTINGS_PER_CHUNK)),
   );
   const listingIds = Array.from({ length: chunks }, (_, i) => `listings-${i}`);
   const allIds = [...STATIC_SEGMENTS, ...listingIds];
-  const lastModified = new Date().toISOString();
+  const lastModified = (maxUpdatedAt ?? new Date()).toISOString();
 
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +

@@ -33,10 +33,14 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ marque: string }>;
+  searchParams: Promise<{ page?: string }>;
 }): Promise<Metadata> {
   const { marque: marqueSlug } = await params;
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const marque = slugToMarque(marqueSlug);
   const brand = CAR_BRANDS.find((b) => b.name.toLowerCase() === marque.toLowerCase());
   if (!brand) return {};
@@ -54,6 +58,7 @@ export async function generateMetadata({
     title: `${brand.name} occasion entre particuliers — ${count} annonce${count !== 1 ? "s" : ""} — Deal&Co`,
     description: `Achetez une ${brand.name} d'occasion entre particuliers en France. ${count} annonce${count !== 1 ? "s" : ""} de particuliers sans commission. Toutes les ${brand.name} disponibles sur Deal&Co.`,
     alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
+    robots: page > 1 ? { index: false, follow: true } : undefined,
     openGraph: {
       title: `${brand.name} occasion — Petites annonces particuliers`,
       description: `${count} ${brand.name} d'occasion entre particuliers en France. Sans frais d'agence, contact direct avec le vendeur.`,

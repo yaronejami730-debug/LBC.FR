@@ -15,9 +15,23 @@ const getGroupedCounts = unstable_cache(
         by: ["category", "subcategory", "location"],
         where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
         _count: { _all: true },
+        _max: { updatedAt: true },
       })
       .catch(() => [] as any[]),
   ["sitemap-grouped-counts"],
+  { revalidate: 1800, tags: ["listings"] },
+);
+
+const getGlobalLastMod = unstable_cache(
+  async () =>
+    prisma.listing
+      .aggregate({
+        where: { status: "APPROVED", shadowBanned: false, deletedAt: null } as any,
+        _max: { updatedAt: true },
+      })
+      .then((r) => r._max.updatedAt)
+      .catch(() => null),
+  ["sitemap-global-lastmod"],
   { revalidate: 1800, tags: ["listings"] },
 );
 
@@ -73,6 +87,9 @@ export async function generateSitemaps() {
     { id: "longtail" },
     { id: "brands" },
     { id: "prix" },
+    { id: "voiture" },
+    { id: "comparatif" },
+    { id: "voiture-budget" },
     { id: "blog" },
     ...listingIds,
   ];
@@ -86,11 +103,12 @@ export default async function sitemap({
   const now = new Date();
 
   if (id === "main") {
+    const globalLastMod = (await getGlobalLastMod()) ?? now;
     return [
-      { url: BASE, lastModified: now, changeFrequency: "daily", priority: 1 },
-      { url: `${BASE}/a-propos`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
-      { url: `${BASE}/nouveautes`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
-      { url: `${BASE}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+      { url: BASE, lastModified: globalLastMod, changeFrequency: "daily", priority: 1 },
+      { url: `${BASE}/a-propos`, lastModified: globalLastMod, changeFrequency: "monthly", priority: 0.7 },
+      { url: `${BASE}/nouveautes`, lastModified: globalLastMod, changeFrequency: "hourly", priority: 0.8 },
+      { url: `${BASE}/blog`, lastModified: globalLastMod, changeFrequency: "weekly", priority: 0.7 },
       { url: `${BASE}/mentions-legales`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
       { url: `${BASE}/cgu`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
       { url: `${BASE}/confidentialite`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
@@ -111,9 +129,10 @@ export default async function sitemap({
     function marqueToSlug(name: string) {
       return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
+    const globalLastMod = (await getGlobalLastMod()) ?? now;
     const out: MetadataRoute.Sitemap = CAR_BRANDS.map((b) => ({
       url: `${BASE}/annonces/vehicules/${marqueToSlug(b.name)}`,
-      lastModified: now,
+      lastModified: globalLastMod,
       changeFrequency: "daily" as const,
       priority: 0.8,
     }));
@@ -137,7 +156,7 @@ export default async function sitemap({
         if (count < 1) continue;
         out.push({
           url: `${BASE}/annonces/vehicules/${combo}`,
-          lastModified: now,
+          lastModified: globalLastMod,
           changeFrequency: "daily",
           priority: 0.7,
         });
@@ -147,22 +166,109 @@ export default async function sitemap({
     return out;
   }
 
+  if (id === "voiture") {
+    const VOITURE_SLUGS = [
+      "electrique-occasion", "hybride-occasion", "diesel-occasion", "essence-occasion",
+      "suv-occasion", "berline-occasion", "citadine-occasion", "break-occasion",
+    ];
+    const globalLastMod = (await getGlobalLastMod()) ?? now;
+    return VOITURE_SLUGS.map((slug) => ({
+      url: `${BASE}/voiture/${slug}`,
+      lastModified: globalLastMod,
+      changeFrequency: "daily" as const,
+      priority: 0.75,
+    }));
+  }
+
+  if (id === "comparatif") {
+    const PAIRS = [
+      "peugeot-208-vs-renault-clio", "citroen-c3-vs-renault-clio",
+      "peugeot-308-vs-renault-megane", "volkswagen-golf-vs-peugeot-308",
+      "dacia-sandero-vs-renault-clio", "toyota-yaris-vs-renault-clio",
+      "peugeot-3008-vs-renault-kadjar", "bmw-serie-3-vs-audi-a4",
+      "mercedes-classe-a-vs-bmw-serie-1", "audi-a3-vs-bmw-serie-1",
+      "tesla-model-3-vs-peugeot-e-208",
+    ];
+    const globalLastMod = (await getGlobalLastMod()) ?? now;
+    const out: MetadataRoute.Sitemap = [
+      { url: `${BASE}/comparatif`, lastModified: globalLastMod, changeFrequency: "weekly" as const, priority: 0.6 },
+    ];
+    for (const slug of PAIRS) {
+      out.push({
+        url: `${BASE}/comparatif/${slug}`,
+        lastModified: globalLastMod,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
+    return out;
+  }
+
+  if (id === "voiture-budget") {
+    const BUDGETS = [
+      "moins-de-3000-euros", "moins-de-5000-euros", "moins-de-8000-euros",
+      "moins-de-12000-euros", "moins-de-20000-euros",
+    ];
+    const globalLastMod = (await getGlobalLastMod()) ?? now;
+    const out: MetadataRoute.Sitemap = [
+      { url: `${BASE}/voiture-budget`, lastModified: globalLastMod, changeFrequency: "weekly" as const, priority: 0.6 },
+    ];
+    for (const slug of BUDGETS) {
+      out.push({
+        url: `${BASE}/voiture-budget/${slug}`,
+        lastModified: globalLastMod,
+        changeFrequency: "daily",
+        priority: 0.75,
+      });
+    }
+    return out;
+  }
+
   if (id === "prix") {
-    const POPULAR_MODELS = [
-      "renault-clio-occasion", "peugeot-208-occasion", "citroen-c3-occasion",
-      "volkswagen-golf-occasion", "renault-megane-occasion", "peugeot-308-occasion",
-      "dacia-sandero-occasion", "toyota-yaris-occasion", "ford-fiesta-occasion",
-      "bmw-serie-3-occasion", "mercedes-classe-a-occasion", "audi-a3-occasion",
-      "renault-scenic-occasion", "opel-corsa-occasion", "nissan-qashqai-occasion",
+    const HARDCODED = [
       "iphone-14-occasion", "iphone-13-occasion", "samsung-galaxy-s23-occasion",
       "canape-ikea-occasion", "table-occasion", "velo-occasion",
     ];
-    return POPULAR_MODELS.map((slug) => ({
+    const globalLastMod = (await getGlobalLastMod()) ?? now;
+    const slugify = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    const seen = new Set<string>(HARDCODED);
+    const out: MetadataRoute.Sitemap = HARDCODED.map((slug) => ({
       url: `${BASE}/prix/${slug}`,
-      lastModified: now,
+      lastModified: globalLastMod,
       changeFrequency: "daily" as const,
       priority: 0.7,
     }));
+
+    try {
+      const rows = await getVehicleBrandModelMeta();
+      const combos = new Map<string, number>();
+      for (const r of rows) {
+        try {
+          const m = JSON.parse(r.metadata) as { marque?: string; modele?: string };
+          if (!m.marque || !m.modele) continue;
+          const marqueS = slugify(m.marque);
+          const modeleS = slugify(m.modele);
+          if (!marqueS || !modeleS) continue;
+          const slug = `${marqueS}-${modeleS}-occasion`;
+          combos.set(slug, (combos.get(slug) ?? 0) + 1);
+        } catch {}
+      }
+      for (const [slug, count] of combos.entries()) {
+        if (count < 3) continue;
+        if (seen.has(slug)) continue;
+        seen.add(slug);
+        out.push({
+          url: `${BASE}/prix/${slug}`,
+          lastModified: globalLastMod,
+          changeFrequency: "daily",
+          priority: 0.7,
+        });
+      }
+    } catch {}
+
+    return out;
   }
 
   // For categories/cities/longtail we need the grouped counts to gate empty combos.
@@ -171,6 +277,18 @@ export default async function sitemap({
   let countsByCategory = new Map<string, number>();
   let countsByCity = new Map<string, number>();
   let countsByCatSub = new Map<string, number>();
+  // Last-modified maps — track most recent listing per scope.
+  const lmByCategory = new Map<string, Date>();
+  const lmByCity = new Map<string, Date>();
+  const lmByCatCity = new Map<string, Date>();
+  const lmByCatSub = new Map<string, Date>();
+  const lmByCatSubCity = new Map<string, Date>();
+
+  const bumpMax = (m: Map<string, Date>, key: string, d: Date | null | undefined) => {
+    if (!d) return;
+    const prev = m.get(key);
+    if (!prev || d > prev) m.set(key, d);
+  };
 
   if (id === "categories" || id === "cities" || id === "longtail") {
     try {
@@ -178,15 +296,18 @@ export default async function sitemap({
 
       for (const row of grouped) {
         const count = row._count._all;
+        const lm = row._max?.updatedAt ?? null;
         const cat = CATEGORIES.find((c) => c.label === row.category);
         if (!cat) continue;
 
         countsByCategory.set(cat.id, (countsByCategory.get(cat.id) ?? 0) + count);
+        bumpMax(lmByCategory, cat.id, lm);
 
         if (row.subcategory) {
           const subSlug = subcategoryToSlug(row.subcategory);
           const catSubKey = `${cat.id}:${subSlug}`;
           countsByCatSub.set(catSubKey, (countsByCatSub.get(catSubKey) ?? 0) + count);
+          bumpMax(lmByCatSub, catSubKey, lm);
         }
 
         if (!row.location) continue;
@@ -194,14 +315,17 @@ export default async function sitemap({
         if (!slug) continue;
 
         countsByCity.set(slug, (countsByCity.get(slug) ?? 0) + count);
+        bumpMax(lmByCity, slug, lm);
 
         const catCityKey = `${cat.id}:${slug}`;
         countsByCatLocation.set(catCityKey, (countsByCatLocation.get(catCityKey) ?? 0) + count);
+        bumpMax(lmByCatCity, catCityKey, lm);
 
         if (row.subcategory) {
           const subSlug = subcategoryToSlug(row.subcategory);
           const key = `${cat.id}:${subSlug}:${slug}`;
           countsByCatSubLocation.set(key, (countsByCatSubLocation.get(key) ?? 0) + count);
+          bumpMax(lmByCatSubCity, key, lm);
         }
       }
     } catch {
@@ -215,7 +339,7 @@ export default async function sitemap({
       if ((countsByCategory.get(cat.id) ?? 0) === 0) continue;
       out.push({
         url: `${BASE}/annonces/${cat.id}`,
-        lastModified: now,
+        lastModified: lmByCategory.get(cat.id) ?? now,
         changeFrequency: "daily",
         priority: 0.8,
       });
@@ -230,7 +354,7 @@ export default async function sitemap({
       if (count === 0) continue;
       out.push({
         url: `${BASE}/ville/${slug}`,
-        lastModified: now,
+        lastModified: lmByCity.get(slug) ?? now,
         changeFrequency: "daily",
         priority: 0.75,
       });
@@ -242,7 +366,7 @@ export default async function sitemap({
         if ((countsByCatLocation.get(key) ?? 0) === 0) continue;
         out.push({
           url: `${BASE}/annonces/${cat.id}/${city.slug}`,
-          lastModified: now,
+          lastModified: lmByCatCity.get(key) ?? now,
           changeFrequency: "daily",
           priority: 0.75,
         });
@@ -261,7 +385,7 @@ export default async function sitemap({
         if ((countsByCatSub.get(key) ?? 0) === 0) continue;
         out.push({
           url: `${BASE}/annonces/${cat.id}/${subSlug}`,
-          lastModified: now,
+          lastModified: lmByCatSub.get(key) ?? now,
           changeFrequency: "daily",
           priority: 0.75,
         });
@@ -277,7 +401,7 @@ export default async function sitemap({
           if ((countsByCatSubLocation.get(key) ?? 0) === 0) continue;
           out.push({
             url: `${BASE}/annonces/${cat.id}/${subSlug}/${city.slug}`,
-            lastModified: now,
+            lastModified: lmByCatSubCity.get(key) ?? now,
             changeFrequency: "daily",
             priority: 0.7,
           });
@@ -290,23 +414,45 @@ export default async function sitemap({
   if (id.startsWith("listings-")) {
     const chunk = parseInt(id.replace("listings-", ""), 10) || 0;
     try {
-      // Only listings that pass quality bar are included — thin / reported
-      // / shadow listings are excluded to avoid wasting crawl budget on
-      // pages Google would flag as "Discovered, currently not indexed".
+      // Quality bar mirrors generateMetadata in app/annonce/[id]/[slug]/page.tsx.
+      // Pro: desc>=180, images>=2, qualityScore>=40.
+      // Non-pro: desc>=250, images>=3, qualityScore>=50.
       const rows = await prisma.listing.findMany({
         where: {
           status: "APPROVED",
           shadowBanned: false,
           deletedAt: null,
-          qualityScore: { gte: 40 },
           reportCount: { lt: 3 },
+          OR: [
+            {
+              user: { is: { isPro: true } },
+              qualityScore: { gte: 40 },
+            },
+            {
+              user: { is: { isPro: false } },
+              qualityScore: { gte: 50 },
+            },
+          ],
         } as any,
-        select: { id: true, title: true, updatedAt: true },
+        select: { id: true, title: true, updatedAt: true, description: true, images: true, user: { select: { isPro: true } } },
         orderBy: { createdAt: "desc" },
         skip: chunk * LISTINGS_PER_CHUNK,
         take: LISTINGS_PER_CHUNK,
       });
-      return rows.map((l) => ({
+      const filtered = rows.filter((l) => {
+        const isPro = !!l.user?.isPro;
+        const minDesc = isPro ? 180 : 250;
+        const minImgs = isPro ? 2 : 3;
+        if (!l.description || l.description.length < minDesc) return false;
+        try {
+          const imgs = JSON.parse(l.images) as string[];
+          if (imgs.length < minImgs) return false;
+        } catch {
+          return false;
+        }
+        return true;
+      });
+      return filtered.map((l) => ({
         url: `${BASE}/annonce/${l.id}/${listingSlug(l.title)}`,
         lastModified: l.updatedAt,
         changeFrequency: "weekly" as const,

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { pingIndexNow } from "@/lib/indexnow";
+import { listingSlug } from "@/lib/listing-slug";
 
 export async function GET(
   _req: NextRequest,
@@ -69,5 +71,9 @@ export async function DELETE(
     where: { id },
     data: { deletedAt: new Date() },
   });
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+  pingIndexNow([`${baseUrl}/annonce/${id}/${listingSlug(listing.title)}`]).catch(() => {});
+
   return NextResponse.json({ success: true });
 }

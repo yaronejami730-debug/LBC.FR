@@ -13,6 +13,7 @@ import SellerActions from "../SellerActions";
 import ReportButton from "../ReportButton";
 import OwnerActions from "../OwnerActions";
 import PhotoGallery from "../PhotoGallery";
+import MarketEstimate from "@/components/listing/MarketEstimate";
 import HistoryTracker from "@/components/HistoryTracker";
 import ProBadge from "@/components/ProBadge";
 import ListingInfoTip from "../ListingInfoTip";
@@ -48,13 +49,20 @@ export async function generateMetadata({
   if (ld.shadowBanned) {
     return { robots: { index: false, follow: false } };
   }
-  // Thin/low-quality/reported listings → noindex but still followable so
-  // Google can discover internal links from the page.
+  // Quality bar — stricter for non-pro to avoid soft-duplicate / thin pages.
+  const imgsCount = (() => {
+    try { return (JSON.parse(ld.images) as string[]).length; } catch { return 0; }
+  })();
+  const isPro = !!ld.user?.isPro;
+  const minDesc = isPro ? 180 : 250;
+  const minImgs = isPro ? 2 : 3;
+  const minQuality = isPro ? 40 : 50;
   if (
-    (ld.qualityScore != null && ld.qualityScore < 40) ||
+    (ld.qualityScore != null && ld.qualityScore < minQuality) ||
     (ld.reportCount != null && ld.reportCount >= 3) ||
     !ld.description ||
-    ld.description.length < 80
+    ld.description.length < minDesc ||
+    imgsCount < minImgs
   ) {
     return { robots: { index: false, follow: true } };
   }
@@ -333,10 +341,70 @@ export default async function ListingPage({
     itemListElement: breadcrumbItems,
   };
 
+  const vehicleLabel = isVehicle && vehicleMeta.marque && vehicleMeta.modele
+    ? `${vehicleMeta.marque} ${vehicleMeta.modele}${vehicleMeta.annee ? ` ${vehicleMeta.annee}` : ""}`
+    : null;
+
+  const faqLd = vehicleLabel
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: `Quel est le prix de cette ${vehicleLabel} d'occasion ?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Cette ${vehicleLabel} est proposée à ${listing.price.toLocaleString("fr-FR")} € entre particuliers${cityShort ? ` à ${cityShort}` : ""}, sans commission ni frais d'agence sur Deal&Co.`,
+            },
+          },
+          {
+            "@type": "Question",
+            name: `Comment vérifier l'historique de cette ${vehicleLabel} ?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Demandez au vendeur le rapport HistoVec (service gratuit du gouvernement français sur histovec.interieur.gouv.fr), le carnet d'entretien complet et le contrôle technique de moins de 6 mois. Vérifiez aussi la cohérence du kilométrage avec les factures.`,
+            },
+          },
+          ...(vehicleMeta.kilometrage
+            ? [{
+                "@type": "Question",
+                name: `${Number(vehicleMeta.kilometrage).toLocaleString("fr-FR")} km, est-ce raisonnable pour cette ${vehicleLabel} ?`,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: `Un véhicule à ${Number(vehicleMeta.kilometrage).toLocaleString("fr-FR")} km reste correct si l'entretien a été suivi. La moyenne française est d'environ 13 000 km par an. Privilégiez un essai routier complet et un contrôle par un mécanicien indépendant avant achat.`,
+                },
+              }]
+            : []),
+          ...(vehicleMeta.carburant
+            ? [{
+                "@type": "Question",
+                name: `Cette ${vehicleLabel} ${vehicleMeta.carburant.toLowerCase()} est-elle éligible Crit'Air ?`,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: `${vehicleMeta.critAir ? `Cette ${vehicleLabel} est classée Crit'Air ${vehicleMeta.critAir}${vehicleMeta.critAir === "0" ? " (véhicule électrique)" : ""}.` : `La classification Crit'Air dépend du carburant (${vehicleMeta.carburant}) et de la date de première immatriculation.`} Les ZFE-m (Paris, Lyon, Grenoble, Marseille, Strasbourg, Rouen, Reims, Toulouse, Nice, Montpellier) restreignent les véhicules les plus polluants.`,
+                },
+              }]
+            : []),
+          {
+            "@type": "Question",
+            name: `Comment contacter le vendeur de cette ${vehicleLabel} ?`,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: `Contactez directement le vendeur depuis cette annonce via la messagerie Deal&Co${(listing as any).phone && !(listing as any).hidePhone ? " ou par téléphone" : ""}. Aucune commission n'est prélevée sur Deal&Co — la transaction se fait entre particuliers.`,
+            },
+          },
+        ],
+      }
+    : null;
+
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      {faqLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      )}
       <ListingHeader
         title={listing.title}
         listingId={listing.id}
@@ -804,6 +872,21 @@ export default async function ListingPage({
               </div>
             )}
 
+            {isVehicle && vehicleMeta.marque && vehicleMeta.modele && (
+              <Suspense
+                fallback={
+                  <div className="h-40 rounded-2xl bg-slate-50 animate-pulse" />
+                }
+              >
+                <MarketEstimate
+                  listingId={listing.id}
+                  marque={vehicleMeta.marque}
+                  modele={vehicleMeta.modele}
+                  currentPrice={listing.price}
+                />
+              </Suspense>
+            )}
+
             <div className="space-y-4">
               <h2 className="text-xl font-bold tracking-tight">Description</h2>
               <div className="bg-slate-50 p-6 rounded-2xl">
@@ -812,6 +895,25 @@ export default async function ListingPage({
                 </p>
               </div>
             </div>
+
+            {faqLd && Array.isArray(faqLd.mainEntity) && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold tracking-tight">Questions fréquentes</h2>
+                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white">
+                  {(faqLd.mainEntity as Array<{ name: string; acceptedAnswer: { text: string } }>).map((q, i) => (
+                    <details key={i} className="group p-5 open:bg-slate-50/40">
+                      <summary className="flex items-center justify-between gap-3 cursor-pointer list-none">
+                        <h3 className="font-bold text-on-surface text-[15px] leading-snug">{q.name}</h3>
+                        <span className="material-symbols-outlined text-slate-400 text-xl transition-transform group-open:rotate-180 shrink-0">
+                          expand_more
+                        </span>
+                      </summary>
+                      <p className="mt-3 text-sm text-slate-600 leading-relaxed">{q.acceptedAnswer.text}</p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">

@@ -140,7 +140,8 @@ export async function generateMetadata({
     title,
     description: content.metaDescription,
     keywords: content.keywords,
-    alternates: { canonical },
+    alternates: { canonical: baseUrl },
+    robots: page > 1 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description: content.metaDescription,

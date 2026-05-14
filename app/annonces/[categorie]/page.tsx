@@ -57,7 +57,8 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: { canonical: `${BASE}/annonces/${cat.id}` },
+    robots: page > 1 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description,
