@@ -715,25 +715,61 @@ export async function sendCampaignEmail({
 
 // ── Sources externes ───────────────────────────────────────────────────────────
 
-/** Crée une source externe — propriétaire désigné par email. */
+/** Recherche d'utilisateurs pour le picker de source externe. */
+export async function searchUsersForSourcePicker(q: string) {
+  await requireAdmin();
+  const query = q.trim();
+  if (!query) return [];
+  const rows = await prisma.user.findMany({
+    where: {
+      bannedAt: null,
+      OR: [
+        { email: { contains: query, mode: "insensitive" } },
+        { name: { contains: query, mode: "insensitive" } },
+        { companyName: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    take: 10,
+    orderBy: { createdAt: "desc" },
+    select: { id: true, email: true, name: true, isPro: true, companyName: true },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    name: r.name,
+    isPro: r.isPro,
+    companyName: r.companyName,
+  }));
+}
+
+/**
+ * Crée une source externe.
+ * Le propriétaire est désigné par `ownerId` (depuis le picker), ou en repli
+ * par `ownerEmail` (saisie libre — utile en CLI/import).
+ */
 export async function addExternalSource(formData: FormData) {
   await requireAdmin();
+  const ownerId = (formData.get("ownerId") as string)?.trim() ?? "";
   const ownerEmail = (formData.get("ownerEmail") as string)?.trim().toLowerCase() ?? "";
   const label = (formData.get("label") as string)?.trim() ?? "";
   const url = (formData.get("url") as string)?.trim() ?? "";
   const kind = ((formData.get("kind") as string) || "bsk").trim();
 
-  if (!ownerEmail || !label || !url) {
-    throw new Error("ownerEmail, label et url sont requis.");
-  }
+  if (!label || !url) throw new Error("Libellé et URL requis.");
+  if (!ownerId && !ownerEmail) throw new Error("Sélectionne un compte propriétaire.");
   try {
     new URL(url);
   } catch {
     throw new Error("URL invalide.");
   }
 
-  const owner = await prisma.user.findUnique({ where: { email: ownerEmail }, select: { id: true } });
-  if (!owner) throw new Error(`Aucun compte trouvé pour ${ownerEmail}.`);
+  let owner;
+  if (ownerId) {
+    owner = await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true } });
+  } else {
+    owner = await prisma.user.findUnique({ where: { email: ownerEmail }, select: { id: true } });
+  }
+  if (!owner) throw new Error("Compte propriétaire introuvable.");
 
   await prisma.externalSource.create({
     data: { ownerId: owner.id, label, url, kind } as any,
