@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   if (!email) return NextResponse.json({ ok: true }); // réponse silencieuse
 
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || user.verified) return NextResponse.json({ ok: true });
+  if (!user || user.emailVerified) return NextResponse.json({ ok: true });
 
   await prisma.emailVerificationToken.deleteMany({ where: { userId: user.id } });
 

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Code invalide ou expiré." }, { status: 400 });
   }
 
-  if (user.verified) {
+  if (user.emailVerified) {
     return NextResponse.json({ ok: true });
   }
 
@@ -38,7 +38,9 @@ export async function POST(req: NextRequest) {
   }
 
   await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { verified: true } }),
+    // Confirmation email = `emailVerified` (« vrai mail »).
+    // Le badge « Vendeur vérifié » (`verified`) reste réservé à une validation admin.
+    prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } }),
     prisma.emailVerificationToken.delete({ where: { id: record.id } }),
   ]);
 

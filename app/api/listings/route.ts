@@ -79,9 +79,10 @@ export async function POST(req: NextRequest) {
 
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { restrictedAt: true, verified: true },
+      select: { restrictedAt: true, emailVerified: true },
     });
-    if (!currentUser?.verified) {
+    // Le gate « confirmer son email » regarde l'email lui-même, pas le badge admin.
+    if (!currentUser?.emailVerified) {
       return NextResponse.json(
         { error: "Veuillez confirmer votre adresse email avant de publier une annonce." },
         { status: 403 }
