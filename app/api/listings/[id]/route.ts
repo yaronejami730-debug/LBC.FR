@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
+import { indexListing, deleteListingFromIndex } from "@/lib/opensearch-sync";
 
 export async function GET(
   _req: NextRequest,
@@ -48,6 +49,11 @@ export async function PATCH(
     },
   });
 
+  // Resynchronise l'index OpenSearch — fire-and-forget.
+  indexListing(updated).catch((err) =>
+    console.error("[OpenSearch] indexListing (PATCH) échec:", err),
+  );
+
   return NextResponse.json(updated);
 }
 
@@ -71,6 +77,11 @@ export async function DELETE(
     where: { id },
     data: { deletedAt: new Date() },
   });
+
+  // Retire l'annonce de l'index OpenSearch — fire-and-forget.
+  deleteListingFromIndex(id).catch((err) =>
+    console.error("[OpenSearch] deleteListingFromIndex échec:", err),
+  );
 
   const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
   pingIndexNow([`${baseUrl}/annonce/${id}/${listingSlug(listing.title)}`]).catch(() => {});

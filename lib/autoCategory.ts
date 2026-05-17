@@ -5,6 +5,7 @@
 
 import { AdClassifier } from "./classifier";
 import categoriesData from "./categories-classifier.json";
+import { expandAbbreviations } from "./normalize-fr";
 
 // ─────────────────────────────────────────────────────────────
 // Mapping JSON → IDs de l'application
@@ -135,7 +136,11 @@ export type DetectResult = { categoryId: string; subcategory: string; confidence
 export function detectCategory(title: string, description = ""): DetectResult | null {
   if (!title || title.trim().length < 3) return null;
 
-  const result = classifier.classify(title, description);
+  // Expansion des abréviations FR avant classification ("pc av" → "pare-chocs avant")
+  const result = classifier.classify(
+    expandAbbreviations(title),
+    expandAbbreviations(description),
+  );
   if (!result.success || !result.category || !result.subcategory) return null;
 
   const catMap = CATEGORY_MAP[result.category];

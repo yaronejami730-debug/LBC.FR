@@ -117,6 +117,7 @@ model Listing {
   immoSurface         Float?
   immoRooms           Int?
   phone               String?
+  phoneHash           String?
   hidePhone           Boolean   @default(false)
   status              String    @default("APPROVED")
   rejectionReason     String?
@@ -137,6 +138,15 @@ model Listing {
   uaAtCreate            String?
   flagsJson             String   @default("[]")
 
+  // Risk engine — empreinte SimHash (hex 16 car.) + bandes LSH + score de risque
+  simhash       String?
+  lshBand0      Int?
+  lshBand1      Int?
+  lshBand2      Int?
+  lshBand3      Int?
+  riskScore     Int     @default(0)
+  riskDecision  String?
+
   conversations    Conversation[]
   user             User              @relation(fields: [userId], references: [id])
   favorites        Favorite[]
@@ -146,6 +156,11 @@ model Listing {
 
   @@index([status, deletedAt, shadowBanned])
   @@index([qualityScore])
+  @@index([lshBand0])
+  @@index([lshBand1])
+  @@index([lshBand2])
+  @@index([lshBand3])
+  @@index([phoneHash])
 }
 
 model ListingImage {
@@ -274,8 +289,13 @@ model Message {
   conversationId String
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
+  riskScore      Int          @default(0)
+  flagged        Boolean      @default(false)
+  flagReason     String?
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([flagged, createdAt])
 }
 
 model SavedSearch {

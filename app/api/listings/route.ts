@@ -14,6 +14,17 @@ import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
 import { citySlug } from "@/lib/cities";
 import { computeQualityScore } from "@/lib/quality-score";
+import { detectCategory } from "@/lib/autoCategory";
+import { extractAttributes } from "@/lib/extract-attributes";
+import { scanText } from "@/lib/moderation/url-scanner";
+import { scanScam } from "@/lib/moderation/scam-patterns";
+import { fingerprintFields, findDuplicates, dedupSignal } from "@/lib/moderation/dedup";
+import { aggregateRisk, signal, explainRisk } from "@/lib/moderation/risk-engine";
+import { checkPhone, phoneStaticSignal, phoneReuseSignal } from "@/lib/moderation/phone";
+import { computeTrustScore } from "@/lib/trust-score";
+import { isOpenSearchEnabled } from "@/lib/opensearch";
+import { searchListings } from "@/lib/opensearch-search";
+import { indexListing } from "@/lib/opensearch-sync";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
@@ -23,6 +34,24 @@ export async function GET(req: NextRequest) {
 
   const params: Record<string, string> = {};
   searchParams.forEach((v, k) => { params[k] = v; });
+
+  // Recherche OpenSearch si configurée — repli PostgreSQL en cas d'échec.
+  if (isOpenSearchEnabled()) {
+    try {
+      const { ids, total } = await searchListings(params, page, perPage);
+      const rows = ids.length
+        ? await prisma.listing.findMany({
+            where: { id: { in: ids } },
+            include: { user: { select: { name: true, verified: true } } },
+          })
+        : [];
+      const byId = new Map(rows.map((r) => [r.id, r]));
+      const listings = ids.map((id) => byId.get(id)).filter(Boolean);
+      return NextResponse.json({ listings, total, page, perPage });
+    } catch (err) {
+      console.error("[GET /api/listings] OpenSearch KO, repli PostgreSQL:", err);
+    }
+  }
 
   const where = buildSearchWhere(params);
 
@@ -109,6 +138,7 @@ export async function POST(req: NextRequest) {
     let adminNote: string | null = null;
     let rejectedForProActivity = false;
     let reviewPriority = 0;
+    let shadowBanned = false;
     let moderationFlags: { code: string; severity: string; message: string }[] = [];
 
     if (categorySetting?.approvalMode === "MANUAL") {
@@ -210,6 +240,87 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Vérification catégorie server-side (classifier sans IA générative) ──
+    const detected = detectCategory(title, description);
+    const attributes = extractAttributes(`${title} ${description}`);
+    if (detected && detected.confidence >= 0.6 && detected.categoryId !== categoryId) {
+      if (listingStatus === "APPROVED") {
+        listingStatus = "PENDING";
+        reviewPriority += 2;
+      }
+      adminNote =
+        `[WRONG_CATEGORY] choisi=${categoryId} détecté=${detected.categoryId}/${detected.subcategory} (conf ${detected.confidence.toFixed(2)})\n` +
+        (adminNote ?? "");
+      moderationFlags = [
+        ...moderationFlags,
+        {
+          code: "wrong_category",
+          severity: "medium",
+          message: `Catégorie probable : ${detected.categoryId} > ${detected.subcategory}`,
+        },
+      ];
+    }
+    // Attributs extraits → persistés dans metadata pour filtrage/recherche
+    if (attributes.brand) metaObj.detectedBrand = attributes.brand;
+    if (attributes.model) metaObj.detectedModel = attributes.model;
+    if (attributes.year) metaObj.detectedYear = attributes.year;
+
+    // ── Moteur de risque unifié — phishing URL + scam + duplication ──
+    // Empreinte SimHash persistée (dedup futur) + agrégation des signaux.
+    const fullText = `${title}\n${description}`;
+    const dedupText = `${title} ${description}`.toLowerCase();
+    const fingerprint = fingerprintFields(dedupText);
+
+    const urlReport = scanText(fullText);
+    const scamReport = scanScam(fullText);
+    const dedup = await findDuplicates(prisma, dedupText, session.user.id as string);
+
+    const severityWeight = (s: string) =>
+      s === "critical" ? 60 : s === "major" ? 30 : 10;
+    const riskHits = [
+      ...moderationFlags.map((f) =>
+        signal(f.code, "quality", severityWeight(f.severity), { message: f.message })),
+      ...scamReport.hits.map((h) =>
+        signal(h.patternId, h.category === "phishing" ? "phishing" : "scam", h.score, {
+          match: h.match,
+        })),
+    ];
+    if (urlReport.worst) {
+      riskHits.push(
+        signal("url.suspect", "phishing", urlReport.totalScore, {
+          host: urlReport.worst.host,
+          reasons: urlReport.worst.reasons,
+        }),
+      );
+    }
+    const dupHit = dedupSignal(dedup);
+    if (dupHit) riskHits.push(dupHit);
+
+    // Téléphone — validité, préfixe, réutilisation multi-comptes.
+    const phoneCheck = checkPhone(typeof phone === "string" ? phone : "");
+    const phoneStatic = phoneStaticSignal(phoneCheck, Boolean(phone));
+    if (phoneStatic) riskHits.push(phoneStatic);
+    if (phoneCheck.hash) {
+      const reuse = await phoneReuseSignal(prisma, phoneCheck.hash, session.user.id as string);
+      if (reuse) riskHits.push(reuse);
+    }
+
+    const trust = await computeTrustScore({ userId: session.user.id as string });
+    const risk = aggregateRisk(riskHits, trust.score);
+
+    // La décision du moteur ne peut que durcir le statut, jamais l'adoucir.
+    if (risk.decision === "block" && listingStatus === "APPROVED") {
+      listingStatus = "REJECTED";
+      rejectionReason =
+        rejectionReason ?? "Votre annonce a été bloquée par notre système de sécurité.";
+    } else if (risk.decision === "review" && listingStatus === "APPROVED") {
+      listingStatus = "PENDING";
+      reviewPriority += 4;
+    } else if (risk.decision === "shadow" && listingStatus === "APPROVED") {
+      shadowBanned = true;
+    }
+    adminNote = `${explainRisk(risk)}\n` + (adminNote ?? "");
+
     // Quality score
     const quality = computeQualityScore({
       title,
@@ -247,24 +358,38 @@ export async function POST(req: NextRequest) {
         location,
         condition: condition || "Bon état",
         images: JSON.stringify(imagesArr),
-        metadata: typeof metadata === "string" ? metadata : JSON.stringify(metadata || {}),
+        metadata: JSON.stringify(metaObj),
         vehicleKm,
         vehicleYear,
         immoSurface,
         immoRooms,
         phone: phone || null,
+        phoneHash: phoneCheck.hash,
         hidePhone: hidePhone === true,
         userId: session.user.id,
         status: listingStatus,
         rejectionReason,
         adminNote,
         reviewPriority,
+        shadowBanned,
         qualityScore: quality.score,
         ipAtCreate: ipHash,
         uaAtCreate: uaHash,
         flagsJson: JSON.stringify(moderationFlags ?? []),
+        simhash: fingerprint.simhash,
+        lshBand0: fingerprint.lshBand0,
+        lshBand1: fingerprint.lshBand1,
+        lshBand2: fingerprint.lshBand2,
+        lshBand3: fingerprint.lshBand3,
+        riskScore: risk.riskScore,
+        riskDecision: risk.decision,
       } as any,
     });
+
+    // Indexation OpenSearch — fire-and-forget, ne bloque jamais la réponse.
+    indexListing(listing).catch((err) =>
+      console.error("[OpenSearch] indexListing échec:", err),
+    );
 
     // Audit log
     prisma.moderationEvent.create({
@@ -278,7 +403,7 @@ export async function POST(req: NextRequest) {
             : listingStatus === "REJECTED"
               ? "auto_reject"
               : "auto_pending",
-        reason: `quality=${quality.score} status=${listingStatus}`,
+        reason: `quality=${quality.score} risk=${risk.riskScore}(${risk.decision}) status=${listingStatus}`,
         flagsJson: JSON.stringify(moderationFlags ?? []),
         scoreAfter: quality.score,
       } as any,

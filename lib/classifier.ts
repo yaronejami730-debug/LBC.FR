@@ -85,7 +85,7 @@ function normalizeText(text: string): string {
   let result = text.toLowerCase().trim();
   result = result.replace(/[àâäáãèêëéìîïíòôöóõùûüúýÿñçœæšžð]/g, (ch) => ACCENT_MAP[ch] ?? ch);
   result = result.replace(/[''""«»„…·•●]/g, " ");
-  result = result.replace(/[,;:!?\(\)\[\]\{\}\/\\@#\$%\^&\*\+=<>|~`"]/g, " ");
+  result = result.replace(/[-,;:!?\(\)\[\]\{\}\/\\@#\$%\^&\*\+=<>|~`"]/g, " ");
   result = result.replace(/[']/g, " ");
   result = result.replace(/\s+/g, " ").trim();
   return result;

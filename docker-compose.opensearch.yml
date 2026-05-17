@@ -1,0 +1,35 @@
+# OpenSearch local pour le développement.
+#   docker compose -f docker-compose.opensearch.yml up -d
+# Puis dans .env.local :  OPENSEARCH_URL=http://localhost:9200
+#
+# Sécurité désactivée — DÉVELOPPEMENT UNIQUEMENT. En production, utiliser
+# un cluster managé (AWS OpenSearch, Aiven, Bonsai) avec auth + TLS.
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.18.0
+    container_name: lbc-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  opensearch-data:

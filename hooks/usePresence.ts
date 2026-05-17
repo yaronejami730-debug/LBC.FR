@@ -4,10 +4,28 @@ import { supabaseClient } from "@/lib/supabase-presence";
 
 const HEARTBEAT_INTERVAL = 5_000; // 5s — stable et suffisamment réactif
 
+/**
+ * UUID v4 avec repli : crypto.randomUUID n'existe que dans les contextes
+ * sécurisés (HTTPS/localhost) et les navigateurs récents. En HTTP ou sur
+ * vieux Safari, on retombe sur getRandomValues, puis sur Math.random.
+ */
+function uuid(): string {
+  const c = globalThis.crypto;
+  if (c?.randomUUID) return c.randomUUID();
+  if (c?.getRandomValues) {
+    const b = c.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map((x) => x.toString(16).padStart(2, "0"));
+    return `${h[0]}${h[1]}${h[2]}${h[3]}-${h[4]}${h[5]}-${h[6]}${h[7]}-${h[8]}${h[9]}-${h[10]}${h[11]}${h[12]}${h[13]}${h[14]}${h[15]}`;
+  }
+  return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
 function getSessionId(): string {
   let uid = sessionStorage.getItem("dealco_uid");
   if (!uid) {
-    uid = crypto.randomUUID();
+    uid = uuid();
     sessionStorage.setItem("dealco_uid", uid);
   }
   return uid;
@@ -59,7 +77,7 @@ export function usePresence(channel: string, role: "user" | "admin" = "user"): n
 
     // Realtime Supabase : écoute les changements sur presence_sessions
     const sub = client
-      .channel(`presence_realtime_${channel}_${crypto.randomUUID()}`)
+      .channel(`presence_realtime_${channel}_${uuid()}`)
       .on(
         "postgres_changes",
         {
