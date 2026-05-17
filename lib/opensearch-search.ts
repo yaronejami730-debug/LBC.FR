@@ -180,3 +180,80 @@ export async function searchListings(
     total,
   };
 }
+
+// ─────────────────────────────────────────────────────────────
+// SUGGESTIONS — autocomplétion pour la barre de recherche
+// ─────────────────────────────────────────────────────────────
+
+export type SuggestionResult = {
+  ids: string[];
+  categories: { name: string; count: number }[];
+};
+
+/**
+ * Suggestions de recherche : top annonces par pertinence + top catégories.
+ *
+ * Combine `match_phrase_prefix` (préfixe avant frappe complète) et
+ * `multi_match` fuzzy (tolérance fautes) — la frappe partielle « sech li »
+ * remonte « Sèche-linge », « bosh » remonte « Bosch ».
+ *
+ * Un seul aller-retour OpenSearch (résultats + agrégation catégories).
+ * Lève une erreur si le cluster n'est pas configuré.
+ */
+export async function suggestListings(
+  q: string,
+  opts: { listingLimit?: number; categoryLimit?: number } = {},
+): Promise<SuggestionResult> {
+  const client = getClient();
+  if (!client) throw new Error("OpenSearch non configuré");
+
+  const listingLimit = opts.listingLimit ?? 6;
+  const categoryLimit = opts.categoryLimit ?? 3;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res: any = await client.search({
+    index: LISTINGS_INDEX,
+    body: {
+      size: listingLimit,
+      _source: false,
+      track_total_hits: false,
+      query: {
+        bool: {
+          filter: [
+            { term: { status: "APPROVED" } },
+            { term: { shadowBanned: false } },
+          ],
+          should: [
+            // Préfixe — réagit à mi-frappe (« sech li » → « sèche-linge »)
+            { match_phrase_prefix: { title: { query: q, boost: 4 } } },
+            { match_phrase_prefix: { brand: { query: q, boost: 3 } } },
+            { match_phrase_prefix: { subcategory: { query: q, boost: 2 } } },
+            // Fuzzy — tolère les fautes (« bosh » → « bosch »)
+            {
+              multi_match: {
+                query: q,
+                fields: ["title^3", "brand^2", "subcategory", "description"],
+                fuzziness: "AUTO",
+                prefix_length: 1,
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      },
+      aggs: {
+        top_categories: {
+          terms: { field: "category", size: categoryLimit },
+        },
+      },
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+
+  const ids = (res.body.hits?.hits ?? []).map((h: { _id: string }) => h._id);
+  const buckets =
+    (res.body.aggregations?.top_categories?.buckets ?? []) as { key: string; doc_count: number }[];
+  const categories = buckets.map((b) => ({ name: b.key, count: b.doc_count }));
+
+  return { ids, categories };
+}
