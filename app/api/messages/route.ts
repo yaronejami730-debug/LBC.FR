@@ -7,6 +7,7 @@ import { newMessageEmail } from "@/lib/emails/new-message";
 import { rateLimit } from "@/lib/rate-limit";
 import { scanScam } from "@/lib/moderation/scam-patterns";
 import { scanText } from "@/lib/moderation/url-scanner";
+import { ensureBlacklistPrimed } from "@/lib/moderation/blacklist";
 import { aggregateRisk, signal } from "@/lib/moderation/risk-engine";
 import { computeTrustScore } from "@/lib/trust-score";
 
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
   // ── Modération du message — scam + phishing ──
   // Seuils abaissés vs annonces : le scam vit dans la messagerie.
   const text = content.trim();
+  await ensureBlacklistPrimed(prisma);
   const scamReport = scanScam(text);
   const urlReport = scanText(text);
   const riskHits = scamReport.hits.map((h) =>

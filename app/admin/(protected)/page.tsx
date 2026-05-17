@@ -28,8 +28,10 @@ async function getStats() {
 }
 
 async function getRecentPending() {
+  // `deletedAt: null` — sinon une annonce en attente puis supprimée reste
+  // affichée ici alors que le compteur (qui filtre deletedAt) ne la compte pas.
   return prisma.listing.findMany({
-    where: { status: "PENDING" },
+    where: { status: "PENDING", deletedAt: null },
     orderBy: { createdAt: "desc" },
     take: 5,
     include: { user: { select: { name: true } } },

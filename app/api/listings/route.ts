@@ -21,6 +21,7 @@ import { scanScam } from "@/lib/moderation/scam-patterns";
 import { fingerprintFields, findDuplicates, dedupSignal } from "@/lib/moderation/dedup";
 import { aggregateRisk, signal, explainRisk } from "@/lib/moderation/risk-engine";
 import { checkPhone, phoneStaticSignal, phoneReuseSignal } from "@/lib/moderation/phone";
+import { ensureBlacklistPrimed } from "@/lib/moderation/blacklist";
 import { computeTrustScore } from "@/lib/trust-score";
 import { isOpenSearchEnabled } from "@/lib/opensearch";
 import { searchListings } from "@/lib/opensearch-search";
@@ -271,6 +272,7 @@ export async function POST(req: NextRequest) {
     const dedupText = `${title} ${description}`.toLowerCase();
     const fingerprint = fingerprintFields(dedupText);
 
+    await ensureBlacklistPrimed(prisma);
     const urlReport = scanText(fullText);
     const scamReport = scanScam(fullText);
     const dedup = await findDuplicates(prisma, dedupText, session.user.id as string);

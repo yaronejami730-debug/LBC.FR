@@ -298,6 +298,17 @@ model Message {
   @@index([flagged, createdAt])
 }
 
+model Blacklist {
+  kind    String // domain | email_domain | phone | ip
+  value   String
+  reason  String?
+  source  String? // ex. "discord-antiscam", "manual"
+  addedAt DateTime @default(now())
+
+  @@id([kind, value])
+  @@index([kind])
+}
+
 model SavedSearch {
   id             String   @id @default(cuid())
   userId         String

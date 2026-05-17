@@ -19,10 +19,20 @@ export const URL_WHITELIST = new Set<string>([
   "www.dealandcompany.fr",
 ]);
 
-/** Domaines bannis — match exact, score maximal. À alimenter depuis la DB. */
-export const URL_BLACKLIST = new Set<string>([
-  // exemples ; remplis par le cron d'import des flux scam-links
-]);
+/** Domaines bannis — match exact, score maximal. Alimentés depuis la DB. */
+export const URL_BLACKLIST = new Set<string>();
+
+/**
+ * Remplace la blacklist en mémoire (appelé par `lib/moderation/blacklist.ts`
+ * après chargement depuis la table `Blacklist`). Garde `scanUrl` synchrone.
+ */
+export function primeUrlBlacklist(domains: Iterable<string>): void {
+  URL_BLACKLIST.clear();
+  for (const d of domains) {
+    const host = d.trim().toLowerCase();
+    if (host) URL_BLACKLIST.add(host);
+  }
+}
 
 /** Raccourcisseurs d'URL — masquent la destination réelle. */
 const SHORTENERS = new Set<string>([

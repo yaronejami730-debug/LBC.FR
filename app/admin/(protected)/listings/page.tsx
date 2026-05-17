@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ListingActions from "@/components/admin/ListingActions";
+import PendingReasonButton from "@/components/admin/PendingReasonButton";
 import { formatDistanceToNow } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
@@ -118,10 +119,15 @@ export default async function ListingsPage({
                               <span className="material-symbols-outlined text-[11px]">open_in_new</span>
                               Voir
                             </Link>
-                            {listing.adminNote && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 uppercase tracking-wide whitespace-nowrap">
-                                {listing.adminNote}
-                              </span>
+                            {(listing.adminNote || listing.flagsJson !== "[]") && (
+                              <PendingReasonButton
+                                title={listing.title}
+                                adminNote={listing.adminNote}
+                                flagsJson={listing.flagsJson}
+                                riskScore={listing.riskScore}
+                                riskDecision={listing.riskDecision}
+                                reviewPriority={listing.reviewPriority}
+                              />
                             )}
                           </div>
                         </div>

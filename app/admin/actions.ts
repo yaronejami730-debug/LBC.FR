@@ -8,6 +8,7 @@ import { accountInvitationEmail } from "@/lib/emails/account-invitation";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
+import { baseEmail } from "@/lib/emails/base";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
@@ -500,4 +501,113 @@ export async function updateListingByAdmin(
   revalidatePath(`/annonce/${listingId}`);
 
   return { listingId };
+}
+
+// ── Campagnes email ─────────────────────────────────────────────────────────────
+
+export type CampaignAudience = "all" | "pro" | "particulier";
+
+/**
+ * Filtre des destinataires d'une campagne.
+ * `marketingConsent: true` imposé — campagnes marketing, conformité RGPD.
+ * Comptes bannis exclus.
+ */
+function audienceWhere(audience: CampaignAudience) {
+  const base = { marketingConsent: true, bannedAt: null };
+  if (audience === "pro") return { ...base, isPro: true };
+  if (audience === "particulier") return { ...base, isPro: false };
+  return base;
+}
+
+/** Nombre de destinataires consentants par segment (pour l'aperçu admin). */
+export async function getCampaignCounts() {
+  await requireAdmin();
+  const [all, pro, particulier] = await Promise.all([
+    prisma.user.count({ where: audienceWhere("all") }),
+    prisma.user.count({ where: audienceWhere("pro") }),
+    prisma.user.count({ where: audienceWhere("particulier") }),
+  ]);
+  return { all, pro, particulier };
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c,
+  );
+}
+
+/**
+ * Envoie une campagne email manuelle à un segment d'utilisateurs consentants.
+ * Le message est saisi en texte brut (échappé puis converti en paragraphes).
+ */
+export async function sendCampaignEmail({
+  subject,
+  message,
+  audience,
+}: {
+  subject: string;
+  message: string;
+  audience: CampaignAudience;
+}) {
+  await requireAdmin();
+
+  const cleanSubject = subject.trim();
+  const cleanMessage = message.trim();
+  if (cleanSubject.length < 3) throw new Error("Sujet trop court (3 caractères min).");
+  if (cleanMessage.length < 10) throw new Error("Message trop court (10 caractères min).");
+
+  const recipients = await prisma.user.findMany({
+    where: audienceWhere(audience),
+    select: { id: true, email: true, name: true, isPro: true, companyName: true },
+  });
+  if (recipients.length === 0) return { sent: 0, failed: 0, total: 0 };
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+  const bodyHtml = escapeHtml(cleanMessage)
+    .split(/\n{2,}/)
+    .map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+
+  let sent = 0;
+  let failed = 0;
+  const CHUNK = 20; // limite la charge Brevo / le temps de fonction
+
+  for (let i = 0; i < recipients.length; i += CHUNK) {
+    const chunk = recipients.slice(i, i + CHUNK);
+    const results = await Promise.allSettled(
+      chunk.map((u) => {
+        const displayName = u.isPro && u.companyName ? u.companyName : u.name;
+        return sendEmail({
+          to: u.email,
+          toName: displayName,
+          subject: cleanSubject,
+          adSource: "admin-campaign", // préfixe "admin" → pas de pub injectée
+          userId: u.id, // en-tête List-Unsubscribe (RGPD)
+          html: baseEmail({
+            title: cleanSubject,
+            heading: cleanSubject,
+            body: bodyHtml,
+            ctaLabel: "Aller sur Deal & Co",
+            ctaUrl: baseUrl,
+          }),
+        });
+      }),
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled") sent++;
+      else failed++;
+    }
+  }
+
+  await prisma.moderationEvent
+    .create({
+      data: {
+        actor: "admin",
+        action: "email_campaign",
+        reason: `audience=${audience} sujet="${cleanSubject}" envoyés=${sent} échecs=${failed}`,
+      } as any,
+    })
+    .catch(() => {});
+
+  return { sent, failed, total: recipients.length };
 }
