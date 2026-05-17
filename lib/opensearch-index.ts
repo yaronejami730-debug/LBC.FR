@@ -68,6 +68,10 @@ const INDEX_MAPPINGS = {
     detectedBrand: { type: "keyword" },
     detectedModel: { type: "keyword" },
 
+    // Modération — risque filtrable/triable pour les dashboards admin.
+    riskScore: { type: "short" },
+    riskDecision: { type: "keyword" },
+
     price: { type: "float" },
     vehicleKm: { type: "integer" },
     vehicleYear: { type: "integer" },
@@ -135,6 +139,8 @@ export type IndexableListing = {
   immoSurface: number | null;
   immoRooms: number | null;
   createdAt: Date | string;
+  riskScore?: number;
+  riskDecision?: string | null;
 };
 
 /** Aplatit le JSON `metadata` en texte cherchable + extrait les attributs détectés. */
@@ -174,6 +180,8 @@ export function listingToDocument(listing: IndexableListing) {
     vehicleYear: listing.vehicleYear,
     immoSurface: listing.immoSurface,
     immoRooms: listing.immoRooms,
+    riskScore: listing.riskScore ?? 0,
+    riskDecision: listing.riskDecision ?? null,
     createdAt:
       listing.createdAt instanceof Date
         ? listing.createdAt.toISOString()

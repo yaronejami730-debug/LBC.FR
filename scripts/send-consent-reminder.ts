@@ -8,9 +8,7 @@
  * Cible :
  *   - consentGivenAt = null   → CGU/confidentialité non acceptées
  *   - bannedAt = null         → exclut les comptes bannis
- *   - possède un passwordResetToken utilisé → compte réellement activé
- *     (mot de passe créé). Exclut les invitations jamais activées.
- *     Les inscrits directs ont déjà consentGivenAt renseigné à l'inscription.
+ *   - hors comptes de test / internes (yaronejami*, test@, admin*)
  */
 import "./load-env";
 import { prisma } from "../lib/prisma";
@@ -22,17 +20,26 @@ const SEND = process.argv.includes("--send");
 const BASE_URL = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
 const SUBJECT = "Action requise : acceptez nos CGU et notre politique de confidentialité";
 
+// Comptes de test / internes exclus de la relance.
+const TEST_PATTERNS = [/yaronejami/i, /^test@/i, /^admin[@+]/i];
+const isTestAccount = (email: string) => TEST_PATTERNS.some((re) => re.test(email));
+
 async function main() {
-  const users = await prisma.user.findMany({
+  const all = await prisma.user.findMany({
     where: {
       consentGivenAt: null,
       bannedAt: null,
-      passwordResetTokens: { some: { used: true } },
     },
     select: { id: true, name: true, email: true },
   });
 
-  console.log(`${users.length} utilisateur(s) ciblé(s) — compte activé, CGU non acceptées, non banni.`);
+  const users = all.filter((u) => !isTestAccount(u.email));
+  const excluded = all.length - users.length;
+
+  console.log(
+    `${users.length} utilisateur(s) ciblé(s) — CGU non acceptées, non banni ` +
+      `(${excluded} compte(s) de test exclu(s)).`,
+  );
 
   if (!SEND) {
     console.log("\n— DRY-RUN — aucun email envoyé. Ajouter « -- --send » pour envoyer.\n");
