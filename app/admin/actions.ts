@@ -9,6 +9,7 @@ import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import { baseEmail } from "@/lib/emails/base";
+import { syncSource } from "@/lib/external-sync";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
@@ -293,6 +294,65 @@ export async function resendInvitation(userId: string) {
     subject: "Votre invitation Deal & Co — Créez votre mot de passe",
     html: accountInvitationEmail({ name: user.name, activationUrl }),
   });
+}
+
+/**
+ * Relance un utilisateur n'ayant pas accepté les CGU et la politique de
+ * confidentialité — déclenchée manuellement par un admin depuis la fiche client.
+ *
+ * Garde-fous :
+ *   - utilisateur introuvable, banni, ou ayant déjà consenti → refus.
+ *   - rate-limit côté utilisateur : 1 relance / 24h max.
+ */
+export async function sendConsentReminderToUser(userId: string) {
+  await requireAdmin();
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, consentGivenAt: true, bannedAt: true },
+  });
+  if (!user) throw new Error("Utilisateur introuvable");
+  if (user.bannedAt) throw new Error("Utilisateur banni — relance impossible");
+  if (user.consentGivenAt) {
+    throw new Error("Les CGU sont déjà acceptées par cet utilisateur");
+  }
+
+  // Anti-double-clic : si la dernière relance pour ce user date de moins de 24h, refus.
+  const lastReminder = await prisma.moderationEvent.findFirst({
+    where: { userId, action: "admin_consent_reminder" },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  if (lastReminder && lastReminder.createdAt > new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+    throw new Error("Une relance a déjà été envoyée à cet utilisateur dans les dernières 24 heures");
+  }
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+  const { createEmailPrefToken } = await import("@/lib/email-token");
+  const { consentReminderEmail } = await import("@/lib/emails/consent-reminder");
+  const acceptUrl = `${baseUrl}/accepter-cgu?token=${createEmailPrefToken(user.id)}`;
+
+  await sendEmail({
+    to: user.email,
+    toName: user.name,
+    subject: "Action requise : acceptez nos CGU et notre politique de confidentialité",
+    html: consentReminderEmail({ name: user.name, acceptUrl }),
+    adSource: "admin-consent-reminder",
+    userId: user.id,
+  });
+
+  // Trace pour audit + rate-limit.
+  const admin = await auth();
+  await prisma.moderationEvent.create({
+    data: {
+      userId: user.id,
+      actor: `admin:${admin?.user?.id ?? "unknown"}`,
+      action: "admin_consent_reminder",
+      reason: "Relance CGU/confidentialité depuis la fiche admin",
+    },
+  });
+
+  revalidatePath(`/admin/clients/${userId}`);
 }
 
 // ── Category Settings ─────────────────────────────────────────────────────────
@@ -610,4 +670,64 @@ export async function sendCampaignEmail({
     .catch(() => {});
 
   return { sent, failed, total: recipients.length };
+}
+
+// ── Sources externes ───────────────────────────────────────────────────────────
+
+/** Crée une source externe — propriétaire désigné par email. */
+export async function addExternalSource(formData: FormData) {
+  await requireAdmin();
+  const ownerEmail = (formData.get("ownerEmail") as string)?.trim().toLowerCase() ?? "";
+  const label = (formData.get("label") as string)?.trim() ?? "";
+  const url = (formData.get("url") as string)?.trim() ?? "";
+  const kind = ((formData.get("kind") as string) || "bsk").trim();
+
+  if (!ownerEmail || !label || !url) {
+    throw new Error("ownerEmail, label et url sont requis.");
+  }
+  try {
+    new URL(url);
+  } catch {
+    throw new Error("URL invalide.");
+  }
+
+  const owner = await prisma.user.findUnique({ where: { email: ownerEmail }, select: { id: true } });
+  if (!owner) throw new Error(`Aucun compte trouvé pour ${ownerEmail}.`);
+
+  await prisma.externalSource.create({
+    data: { ownerId: owner.id, label, url, kind } as any,
+  });
+  revalidatePath("/admin/sources-externes");
+}
+
+/** Lance une synchronisation immédiate d'une source. Met à jour `lastSyncedAt` + `lastResult`. */
+export async function runExternalSourceSync(id: string) {
+  await requireAdmin();
+  const source = await prisma.externalSource.findUnique({
+    where: { id },
+    select: { id: true, ownerId: true, url: true, kind: true, active: true },
+  });
+  if (!source) throw new Error("Source introuvable.");
+  if (!source.active) throw new Error("Source désactivée.");
+
+  const result = await syncSource(prisma, source);
+
+  await prisma.externalSource.update({
+    where: { id },
+    data: { lastSyncedAt: new Date(), lastResult: JSON.stringify(result) } as any,
+  });
+  revalidatePath("/admin/sources-externes");
+  return result;
+}
+
+export async function toggleExternalSource(id: string, active: boolean) {
+  await requireAdmin();
+  await prisma.externalSource.update({ where: { id }, data: { active } });
+  revalidatePath("/admin/sources-externes");
+}
+
+export async function deleteExternalSource(id: string) {
+  await requireAdmin();
+  await prisma.externalSource.delete({ where: { id } });
+  revalidatePath("/admin/sources-externes");
 }

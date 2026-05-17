@@ -9,16 +9,17 @@ import CookieBanner from "@/components/CookieBanner";
 const GA_ID = "G-31WRQ5YXX6";
 const ADSENSE_CLIENT = "ca-pub-1774647148412256";
 
+// Weights réduits au strict nécessaire : -200 KB sur le critical path.
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "600"],
   variable: "--font-inter",
   display: "swap",
 });
 
 const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800"],
+  weight: ["700", "800"], // utilisé uniquement pour les titres/headlines
   variable: "--font-manrope",
   display: "swap",
 });
@@ -100,14 +101,18 @@ export default function RootLayout({
           href="/rss.xml"
         />
         <link rel="apple-touch-icon" href="/logo.png" />
+        {/* Material Symbols — range réduit (400 + FILL 0..1) → fichier ~5× plus
+            petit. Le preload accélère le téléchargement ; le stylesheet est
+            chargé normalement (le truc print+onLoad ne fonctionne pas en JSX :
+            React ne propage pas un onLoad sous forme de chaîne au DOM). */}
         <link
           rel="preload"
           as="style"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
         />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
         />
       </head>
       <body className={`${inter.variable} ${manrope.variable}`}>
@@ -134,11 +139,13 @@ if (m && decodeURIComponent(m[1]) === 'granted') {
   });
 }`}
         </Script>
+        {/* GA + AdSense : lazyOnload → exécution après `window.onload`,
+            le main thread reste libre pour LCP/TBT. */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="ga-init" strategy="afterInteractive">
+        <Script id="ga-init" strategy="lazyOnload">
           {`gtag('js', new Date());
 gtag('config', '${GA_ID}');`}
         </Script>
@@ -146,7 +153,7 @@ gtag('config', '${GA_ID}');`}
           id="adsense"
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <VisitorTracker />
         <Providers>{children}</Providers>

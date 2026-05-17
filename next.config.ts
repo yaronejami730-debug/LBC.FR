@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -13,10 +16,28 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["sharp", "@opensearch-project/opensearch", "tesseract.js"],
+  // Tree-shake agressif sur les gros packages avec barrel files.
+  experimental: {
+    optimizePackageImports: [
+      "next-auth",
+      "@supabase/supabase-js",
+      "lucide-react",
+      "date-fns",
+    ],
+  },
   images: {
+    // AVIF en 1er → -30% de poids vs WebP/JPEG sur navigateurs modernes,
+    // fallback automatique pour les anciens.
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      // Sources externes importées (BSK et autres) — photos hébergées sur CloudFront
+      // et sur les domaines des sites sources.
+      { protocol: "https", hostname: "*.cloudfront.net" },
+      { protocol: "https", hostname: "bskimmobilier.com" },
+      { protocol: "https", hostname: "*.bskimmobilier.com" },
     ],
   },
   async headers() {
@@ -115,4 +136,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

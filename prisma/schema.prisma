@@ -52,6 +52,7 @@ model User {
   moderationEvents ModerationEvent[]
   deviceSessions   DeviceSession[]
   rateLimitBuckets RateLimitBucket[]
+  externalSources  ExternalSource[]
 }
 
 model ApiKey {
@@ -296,6 +297,21 @@ model Message {
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 
   @@index([flagged, createdAt])
+}
+
+model ExternalSource {
+  id           String    @id @default(cuid())
+  ownerId      String
+  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  label        String
+  kind         String    @default("bsk") // bsk | (futurs connecteurs)
+  url          String
+  active       Boolean   @default(true)
+  lastSyncedAt DateTime?
+  lastResult   String? // JSON: { created, deduped, failed, total, details[] }
+  createdAt    DateTime  @default(now())
+
+  @@index([ownerId])
 }
 
 model Blacklist {

@@ -16,6 +16,7 @@ const navItems = [
   { href: "/admin/banniere", icon: "wallpaper", label: "Bannière", exact: false },
   { href: "/admin/envoyer-email", icon: "forward_to_inbox", label: "Email découverte", exact: false },
   { href: "/admin/notifications-mail", icon: "mark_email_unread", label: "Notifications par mail", exact: false },
+  { href: "/admin/sources-externes", icon: "import_export", label: "Sources externes", exact: false },
   { href: "/admin/early-adopters", icon: "star", label: "Early Adopters", exact: false },
 ];
 

@@ -241,7 +241,13 @@ export default async function Home() {
             { id: "services", label: "Services", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR" },
           ].map(({ id, label, src }) => (
             <Link key={id} href={`/annonces/${id}`} title={`Annonces ${label}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
-              <img className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={label} src={src} />
+              <Image
+                src={src}
+                alt={label}
+                fill
+                sizes="(max-width:768px) 50vw, 33vw"
+                className="object-cover group-hover:scale-110 transition-transform duration-500"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               <div className="relative z-10">
                 <p className="text-white font-bold text-lg">{label}</p>
@@ -283,7 +289,13 @@ export default async function Home() {
                     className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-[#c7c5d4] hover:shadow-md transition-all duration-200"
                   >
                     <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                      <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={ad.title} src={ad.imageUrl} />
+                      <Image
+                        src={ad.imageUrl}
+                        alt={ad.title}
+                        fill
+                        sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                       <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                         Publicité
                       </span>
@@ -305,6 +317,8 @@ export default async function Home() {
                         src={img}
                         alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
                         fill
+                        // Première carte = LCP probable → priority pour pré-charger.
+                        priority={i === 0}
                         sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />

@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ConsentModal from "./ConsentModal";
+import dynamic from "next/dynamic";
+
+// Modale lourde (~720 L) chargée à la demande seulement quand l'utilisateur
+// soumet le formulaire — évite ~70 KB JS sur le bundle initial /register.
+const ConsentModal = dynamic(() => import("./ConsentModal"), { ssr: false });
 
 type AccountType = "particulier" | "pro";
 

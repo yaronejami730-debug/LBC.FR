@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getClientListings } from "@/app/admin/actions";
 import ClientListingsPanel from "./ClientListingsPanel";
 import DisplayNameEditor from "./DisplayNameEditor";
+import ConsentReminderButton from "./ConsentReminderButton";
 
 export default async function ClientDetailPage({
   params,
@@ -25,6 +26,7 @@ export default async function ClientDetailPage({
       lastLoginAt: true,
       createdAt: true,
       consentGivenAt: true,
+      bannedAt: true,
       _count: { select: { listings: true } },
     },
   });
@@ -89,6 +91,14 @@ export default async function ClientDetailPage({
             {user.isPro && (
               <DisplayNameEditor userId={user.id} initialName={user.companyName} />
             )}
+
+            <div className="mt-3">
+              <ConsentReminderButton
+                userId={user.id}
+                consentGiven={Boolean(user.consentGivenAt)}
+                banned={Boolean(user.bannedAt)}
+              />
+            </div>
           </div>
         </div>
       </div>
