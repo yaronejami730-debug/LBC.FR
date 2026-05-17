@@ -145,11 +145,45 @@ function UserPicker({
   );
 }
 
+/** Connecteurs disponibles. Étendre ici quand un nouveau site source est ajouté. */
+const CONNECTORS: { value: string; label: string; matchHost: RegExp }[] = [
+  { value: "bsk", label: "BSK Immobilier", matchHost: /(^|\.)bskimmobilier\.com$/i },
+];
+
+/** Devine le connecteur depuis l'URL — renvoie `null` si rien ne matche. */
+function detectConnector(url: string): string | null {
+  try {
+    const host = new URL(url).hostname;
+    return CONNECTORS.find((c) => c.matchHost.test(host))?.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default function ExternalSourceForm() {
   const [selectedOwner, setSelectedOwner] = useState<UserOption | null>(null);
+  const [label, setLabel] = useState("");
+  const [url, setUrl] = useState("");
+  const [kind, setKind] = useState<string>(CONNECTORS[0].value);
+  const [labelTouched, setLabelTouched] = useState(false);
+  const [kindTouched, setKindTouched] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
+
+  // Préremplit le libellé avec le nom du compte sélectionné (modifiable).
+  useEffect(() => {
+    if (selectedOwner && !labelTouched) {
+      setLabel(displayName(selectedOwner));
+    }
+  }, [selectedOwner, labelTouched]);
+
+  // Détecte automatiquement le connecteur depuis l'URL.
+  useEffect(() => {
+    if (kindTouched) return;
+    const detected = detectConnector(url);
+    if (detected) setKind(detected);
+  }, [url, kindTouched]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -167,6 +201,11 @@ export default function ExternalSourceForm() {
         setOk(true);
         form.reset();
         setSelectedOwner(null);
+        setLabel("");
+        setUrl("");
+        setKind(CONNECTORS[0].value);
+        setLabelTouched(false);
+        setKindTouched(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur");
       }
@@ -196,7 +235,12 @@ export default function ExternalSourceForm() {
             type="text"
             name="label"
             required
-            placeholder="Sylvie Mekil — BSK"
+            value={label}
+            onChange={(e) => {
+              setLabel(e.target.value);
+              setLabelTouched(true);
+            }}
+            placeholder="Pré-rempli avec le nom du compte"
             className="w-full mt-1.5 px-4 py-2.5 rounded-xl border border-[#eceef0] text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30"
           />
         </label>
@@ -207,11 +251,22 @@ export default function ExternalSourceForm() {
           </span>
           <select
             name="kind"
-            defaultValue="bsk"
+            value={kind}
+            onChange={(e) => {
+              setKind(e.target.value);
+              setKindTouched(true);
+            }}
             className="w-full mt-1.5 px-4 py-2.5 rounded-xl border border-[#eceef0] text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30"
           >
-            <option value="bsk">BSK Immobilier</option>
+            {CONNECTORS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
           </select>
+          {!kindTouched && detectConnector(url) && (
+            <p className="text-[10px] text-emerald-700 mt-1">Détecté automatiquement depuis l&apos;URL.</p>
+          )}
         </label>
 
         <label className="block md:col-span-2">
@@ -222,6 +277,8 @@ export default function ExternalSourceForm() {
             type="url"
             name="url"
             required
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
             placeholder="https://bskimmobilier.com/sylvie-mekil-8374"
             className="w-full mt-1.5 px-4 py-2.5 rounded-xl border border-[#eceef0] text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30"
           />
