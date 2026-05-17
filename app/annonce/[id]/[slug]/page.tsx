@@ -49,6 +49,17 @@ export async function generateMetadata({
   if (ld.shadowBanned) {
     return { robots: { index: false, follow: false } };
   }
+  // Annonces importées depuis une source externe — `noindex` pour éviter la
+  // pénalité « duplicate content » côté Google / AdSense (l'original existe
+  // ailleurs). L'annonce reste visible aux visiteurs.
+  try {
+    const meta = JSON.parse(ld.metadata ?? "{}");
+    if (meta?.importedVia === "external_api" || meta?.externalId) {
+      return { robots: { index: false, follow: true } };
+    }
+  } catch {
+    /* metadata JSON malformé — ignoré */
+  }
   // Quality bar — stricter for non-pro to avoid soft-duplicate / thin pages.
   const imgsCount = (() => {
     try { return (JSON.parse(ld.images) as string[]).length; } catch { return 0; }

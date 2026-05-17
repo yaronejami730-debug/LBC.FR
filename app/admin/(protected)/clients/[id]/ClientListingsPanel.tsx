@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { updateListingByAdmin } from "@/app/admin/actions";
+import { updateListingByAdmin, deleteListingByAdmin } from "@/app/admin/actions";
 import ListingPreviewModal from "@/components/admin/ListingPreviewModal";
 import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
 
@@ -177,9 +177,49 @@ function ListingCard({
             <span className="material-symbols-outlined text-[16px]">open_in_new</span>
             En ligne
           </a>
+          <DeleteListingButton id={listing.id} title={listing.title} />
         </div>
       </div>
     </article>
+  );
+}
+
+function DeleteListingButton({ id, title }: { id: string; title: string }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  const handleDelete = () => {
+    if (!confirm(`Supprimer l'annonce "${title}" ?\nCette action est irréversible.`)) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        await deleteListingByAdmin(id);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur");
+      }
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={isPending}
+        title="Supprimer l'annonce"
+        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-[#ba1a1a] hover:bg-[#ffdad6] transition-colors disabled:opacity-50"
+      >
+        <span className="material-symbols-outlined text-[16px]">delete</span>
+        {isPending ? "…" : "Supprimer"}
+      </button>
+      {error && (
+        <span className="text-[10px] text-[#ba1a1a]" role="alert">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 

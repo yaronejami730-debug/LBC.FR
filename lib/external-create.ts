@@ -103,13 +103,52 @@ export async function createExternalListing(
     return { ok: true, deduplicated: true, listingId: existing.id, status: existing.status };
   }
 
+  const incomingMeta = (p.metadata && typeof p.metadata === "object" ? p.metadata : {}) as Record<string, unknown>;
+  const rawImmo = (incomingMeta.immo ?? null) as Record<string, any> | null;
+  const rawVehicle = (incomingMeta.vehicle ?? null) as Record<string, any> | null;
+
+  // Aplatissement immo : la page détail (`app/annonce/[id]/[slug]`) lit
+  // `metadata.typeBien`, `metadata.surface`, `metadata.rooms`… en flat,
+  // pas sous `metadata.immo.*`. Renomme nombrePieces → rooms etc.
+  const flatImmo: Record<string, unknown> = {};
+  if (rawImmo) {
+    const map: Record<string, string> = {
+      nombrePieces: "rooms",
+      nombreChambres: "chambres",
+      nombreSallesEau: "sallesEau",
+    };
+    for (const [k, v] of Object.entries(rawImmo)) {
+      if (v === null || v === undefined) continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      flatImmo[map[k] ?? k] = v;
+    }
+  }
+
+  const flatVehicle: Record<string, unknown> = {};
+  if (rawVehicle) {
+    for (const [k, v] of Object.entries(rawVehicle)) {
+      if (v === null || v === undefined) continue;
+      if (Array.isArray(v) && v.length === 0) continue;
+      flatVehicle[k] = v;
+    }
+  }
+
   const baseMetadata: Record<string, unknown> = {
-    ...(p.metadata && typeof p.metadata === "object" ? p.metadata : {}),
+    ...incomingMeta,
+    ...flatImmo,
+    ...flatVehicle,
     externalId: p.externalId,
     sourceUrl: p.sourceUrl ?? null,
     importedAt: new Date().toISOString(),
     importedVia: "external_api",
   };
+
+  // Colonnes scalaires extraites pour la recherche / les filtres.
+  const immoSurface = typeof rawImmo?.surface === "number" ? rawImmo.surface : null;
+  const immoRoomsRaw = rawImmo?.nombrePieces ?? rawImmo?.rooms;
+  const immoRooms = typeof immoRoomsRaw === "number" ? immoRoomsRaw : null;
+  const vehicleKm = typeof rawVehicle?.kilometrage === "number" ? rawVehicle.kilometrage : null;
+  const vehicleYear = typeof rawVehicle?.annee === "number" ? rawVehicle.annee : null;
 
   // ── Contexte utilisateur ───────────────────────────────────────────────────
   const userRow = await prisma.user.findUnique({
@@ -135,10 +174,10 @@ export async function createExternalListing(
     condition: p.condition || "Bon état",
     images: imagesArr,
     metadata: baseMetadata,
-    vehicleKm: null,
-    vehicleYear: null,
-    immoSurface: null,
-    immoRooms: null,
+    vehicleKm,
+    vehicleYear,
+    immoSurface,
+    immoRooms,
     userContext: {
       accountAgeHours,
       recentListingsCount24h,
@@ -234,8 +273,8 @@ export async function createExternalListing(
     location: p.location,
     images: imagesArr,
     metadata: baseMetadata,
-    immoSurface: null,
-    immoRooms: null,
+    immoSurface,
+    immoRooms,
   });
 
   const adminNote = `[EXTERNAL_IMPORT] source=${p.sourceUrl ?? "?"} externalId=${p.externalId}\n${explainRisk(risk)}`;
@@ -255,6 +294,10 @@ export async function createExternalListing(
       phone: p.phone || null,
       phoneHash: phoneCheck.hash,
       hidePhone: false,
+      vehicleKm,
+      vehicleYear,
+      immoSurface,
+      immoRooms,
       userId,
       status: listingStatus,
       rejectionReason,

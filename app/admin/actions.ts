@@ -487,7 +487,7 @@ export async function updateClientDisplayName(userId: string, companyName: strin
 export async function getClientListings(userId: string) {
   await requireAdmin();
   const listings = await prisma.listing.findMany({
-    where: { userId },
+    where: { userId, deletedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -517,6 +517,47 @@ export async function getClientListings(userId: string) {
     })(),
     createdAt: l.createdAt.toISOString(),
   }));
+}
+
+/**
+ * Suppression d'une annonce par un admin (soft delete via `deletedAt`).
+ * Désindexe également d'OpenSearch si configuré.
+ */
+export async function deleteListingByAdmin(listingId: string) {
+  await requireAdmin();
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: { id: true, userId: true },
+  });
+  if (!listing) throw new Error("Annonce introuvable");
+
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: { deletedAt: new Date(), shadowBanned: true } as any,
+  });
+
+  // Désindexation OpenSearch — fire and forget.
+  import("@/lib/opensearch-sync")
+    .then((m) => m.deleteListingFromIndex(listingId))
+    .catch(() => {});
+
+  prisma.moderationEvent
+    .create({
+      data: {
+        listingId,
+        userId: listing.userId,
+        actor: "admin",
+        action: "admin_delete",
+        reason: "Suppression manuelle depuis l'admin",
+      } as any,
+    })
+    .catch(() => {});
+
+  revalidatePath("/admin/listings");
+  revalidatePath("/admin");
+  revalidatePath(`/admin/clients/${listing.userId}`);
+  revalidatePath(`/annonce/${listingId}`);
+  revalidatePath("/", "layout");
 }
 
 export async function updateListingByAdmin(

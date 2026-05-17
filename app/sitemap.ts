@@ -109,6 +109,7 @@ export default async function sitemap({
       { url: `${BASE}/a-propos`, lastModified: globalLastMod, changeFrequency: "monthly", priority: 0.7 },
       { url: `${BASE}/nouveautes`, lastModified: globalLastMod, changeFrequency: "hourly", priority: 0.8 },
       { url: `${BASE}/blog`, lastModified: globalLastMod, changeFrequency: "weekly", priority: 0.7 },
+      { url: `${BASE}/contact`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
       { url: `${BASE}/mentions-legales`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
       { url: `${BASE}/cgu`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
       { url: `${BASE}/confidentialite`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
