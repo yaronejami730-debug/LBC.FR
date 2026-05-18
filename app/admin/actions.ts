@@ -862,6 +862,58 @@ export async function runExternalSourceSync(id: string) {
   return result;
 }
 
+/**
+ * Import unitaire — importe UNE annonce depuis son URL exacte.
+ * Idempotent par URL : ré-importer le même lien met l'annonce à jour.
+ */
+export async function importListingByUrl(ownerId: string, url: string) {
+  await requireAdmin();
+  const cleanUrl = url.trim();
+  if (!ownerId) throw new Error("Sélectionne un compte propriétaire.");
+  try {
+    new URL(cleanUrl);
+  } catch {
+    throw new Error("URL invalide.");
+  }
+
+  const { extractListingFromUrl } = await import("@/lib/external-extract");
+  const { extractImages } = await import("@/lib/external-images");
+  const { createExternalListing } = await import("@/lib/external-create");
+
+  const ext = await extractListingFromUrl(cleanUrl);
+  if (!ext.ok) throw new Error(`Extraction impossible : ${ext.error}`);
+
+  const images = extractImages(ext.html, cleanUrl);
+  const result = await createExternalListing(
+    prisma,
+    ownerId,
+    {
+      externalId: `link:${cleanUrl}`,
+      sourceUrl: cleanUrl,
+      title: ext.data.title,
+      description: ext.data.description,
+      price: ext.data.price,
+      category: ext.data.category,
+      subcategory: ext.data.subcategory,
+      location: ext.data.location,
+      condition: ext.data.condition,
+      images,
+      phone: ext.data.phone,
+      metadata: { vehicle: ext.data.vehicle, immo: ext.data.immo },
+    },
+    "admin-link-import",
+  );
+  if (!result.ok) throw new Error(result.error);
+
+  revalidatePath(`/admin/clients/${ownerId}`);
+  return {
+    listingId: result.listingId,
+    status: result.status,
+    deduplicated: result.deduplicated,
+    title: ext.data.title,
+  };
+}
+
 export async function toggleExternalSource(id: string, active: boolean) {
   await requireAdmin();
   await prisma.externalSource.update({ where: { id }, data: { active } });

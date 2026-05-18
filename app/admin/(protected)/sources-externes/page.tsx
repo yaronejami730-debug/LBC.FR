@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import ExternalSourceForm from "@/components/admin/ExternalSourceForm";
 import ExternalSourceRow from "@/components/admin/ExternalSourceRow";
+import SingleListingImport from "@/components/admin/SingleListingImport";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export default async function SourcesExternesPage() {
           « Synchroniser » pour déclencher manuellement un import.
         </p>
       </div>
+
+      <SingleListingImport />
 
       <ExternalSourceForm />
 
