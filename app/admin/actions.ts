@@ -395,6 +395,62 @@ export async function sendDiscoveryEmail(
   });
 }
 
+/**
+ * Démarchage en masse — envoie un email de pitch à plusieurs destinataires.
+ * `rawEmails` : texte libre (adresses séparées par espace, virgule, point-virgule
+ * ou retour ligne). `kind` : "agency" (B2B) ou "particulier" (B2C).
+ * Le pitch particulier n'utilise pas de prénom (prospects non inscrits → « Bonjour, »).
+ */
+export async function sendPitchBulk(
+  rawEmails: string,
+  kind: "agency" | "particulier",
+  agencyName: string,
+) {
+  await requireAdmin();
+
+  const emails = [
+    ...new Set(
+      (rawEmails ?? "")
+        .split(/[\s,;]+/)
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  const valid = emails.filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  const invalid = emails.filter((e) => !valid.includes(e));
+  if (valid.length === 0) throw new Error("Aucune adresse email valide.");
+
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+  const { agencyPitchEmail } = await import("@/lib/emails/agency-pitch");
+  const { particulierPitchEmail } = await import("@/lib/emails/particulier-pitch");
+  const name = agencyName.trim();
+
+  const built =
+    kind === "agency"
+      ? agencyPitchEmail({ agencyName: name || undefined, baseUrl })
+      : particulierPitchEmail({ baseUrl }); // pas de prénom → « Bonjour, »
+  const adSource = kind === "agency" ? "admin-agency-pitch" : "admin-particulier-pitch";
+
+  let sent = 0;
+  let failed = 0;
+  const CHUNK = 20; // limite la charge Brevo
+
+  for (let i = 0; i < valid.length; i += CHUNK) {
+    const chunk = valid.slice(i, i + CHUNK);
+    const results = await Promise.allSettled(
+      chunk.map((to) =>
+        sendEmail({ to, subject: built.subject, html: built.html, adSource }),
+      ),
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled") sent++;
+      else failed++;
+    }
+  }
+
+  return { sent, failed, total: valid.length, invalid };
+}
+
 export async function createListingForClient(
   userId: string,
   data: {

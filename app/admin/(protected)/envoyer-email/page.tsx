@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic";
 
 const DiscoveryEmailForm = dynamic(() => import("./DiscoveryEmailForm"));
+const AgencyPitchForm = dynamic(() => import("@/components/admin/AgencyPitchForm"));
 
 export default function EnvoyerEmailPage() {
   return (
@@ -56,6 +57,8 @@ export default function EnvoyerEmailPage() {
           </div>
         ))}
       </div>
+
+      <AgencyPitchForm />
 
       <DiscoveryEmailForm />
     </div>

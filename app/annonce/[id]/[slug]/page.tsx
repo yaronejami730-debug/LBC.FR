@@ -25,6 +25,7 @@ import { getBrandLogo } from "@/lib/carBrands";
 import BrandBadge from "../BrandBadge";
 import { CATEGORIES } from "@/lib/categories";
 import { listingSlug, listingUrl } from "@/lib/listing-slug";
+import ShareListing from "@/components/ShareListing";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -513,6 +514,7 @@ export default async function ListingPage({
                   Réf. {listing.id}
                 </p>
               )}
+              <ShareListing url={pageUrl} title={listing.title} />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-outline-variant/15">
