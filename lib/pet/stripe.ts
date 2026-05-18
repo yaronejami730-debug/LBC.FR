@@ -1,12 +1,9 @@
 import Stripe from "stripe";
 
-const key = process.env.STRIPE_SECRET_KEY;
-
-if (!key && process.env.NODE_ENV === "production") {
-  throw new Error("STRIPE_SECRET_KEY is required in production");
-}
-
-export const stripe = new Stripe(key ?? "sk_test_placeholder", {
+// Constructed with whatever key is present so module import never throws
+// (a throw here would break `next build`). Stripe API calls fail with a clear
+// auth error at request time if STRIPE_SECRET_KEY is missing or invalid.
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "sk_test_placeholder", {
   typescript: true,
 });
 
