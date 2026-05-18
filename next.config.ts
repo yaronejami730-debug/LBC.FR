@@ -30,15 +30,11 @@ const nextConfig: NextConfig = {
     // fallback automatique pour les anciens.
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
-    remotePatterns: [
-      { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
-      // Sources externes importées (BSK et autres) — photos hébergées sur CloudFront
-      // et sur les domaines des sites sources.
-      { protocol: "https", hostname: "*.cloudfront.net" },
-      { protocol: "https", hostname: "bskimmobilier.com" },
-      { protocol: "https", hostname: "*.bskimmobilier.com" },
-    ],
+    // Annonces importées de sources externes (agences) → photos hébergées sur
+    // des CDN/domaines arbitraires et imprévisibles. On autorise donc tout host
+    // HTTPS plutôt que d'énumérer chaque agence. next/image ne charge que des
+    // images et les ré-encode — surface limitée.
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   async headers() {
     return [

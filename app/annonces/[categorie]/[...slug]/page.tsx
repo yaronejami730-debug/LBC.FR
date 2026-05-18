@@ -141,7 +141,8 @@ export async function generateMetadata({
     description: content.metaDescription,
     keywords: content.keywords,
     alternates: { canonical: baseUrl },
-    robots: page > 1 ? { index: false, follow: true } : undefined,
+    // noindex si page > 1 (pagination) ou page vide (aucune annonce).
+    robots: page > 1 || total === 0 ? { index: false, follow: true } : undefined,
     openGraph: {
       title,
       description: content.metaDescription,
@@ -207,8 +208,9 @@ export default async function AnnoncesGeoPage({
   const baseUrl = `/annonces/${cat.id}/${slug.join("/")}`;
 
   const total = await prisma.listing.count({ where: whereClause });
-  // 404 for empty geo pages — cleaner signal than noindex (stops crawl budget waste)
-  if (total === 0 && page === 1) notFound();
+  // Page vide : on NE 404 PAS — l'utilisateur voit l'état « aucune annonce »
+  // (rendu plus bas). Le `noindex` est posé dans generateMetadata pour ne pas
+  // gaspiller le budget de crawl Google sur des pages sans contenu.
 
   const listings = await prisma.listing.findMany({
     where: whereClause,
