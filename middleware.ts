@@ -30,11 +30,22 @@ export default auth((req: any) => {
   const userAgent = req.headers.get("user-agent") || "";
   const host = req.headers.get("host") || "";
 
+  // Deal&Co Pet is deployed but kept hidden until launch. While PET_PUBLIC is
+  // not "true", every pet route and the pet. subdomain render a 404.
+  const petEnabled = process.env.PET_PUBLIC === "true";
+  const isPetSubdomain = host.startsWith("pet.");
+  const isPetPath = pathname === "/pet" || pathname.startsWith("/pet/");
+  if (!petEnabled && (isPetSubdomain || isPetPath)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/_pet-disabled";
+    return NextResponse.rewrite(url);
+  }
+
   // Deal&Co Pet runs on the `pet.` subdomain. Rewrite root requests onto the
   // /pet/* segment so the same Next.js app serves both universes from one
   // deployment. Skips assets, API routes, and paths that already start with
   // /pet to avoid recursive rewrites.
-  if (host.startsWith("pet.") && !pathname.startsWith("/pet") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
+  if (isPetSubdomain && !pathname.startsWith("/pet") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
     const url = req.nextUrl.clone();
     url.pathname = `/pet${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
