@@ -4,7 +4,7 @@ import UserDropdown from "@/components/UserDropdown";
 
 const NAV = [
   { label: "Trouver un pet-sitter", href: "/pet/recherche?service=garde" },
-  { label: "Devenir prestataire", href: "/pet/compte-pro" },
+  { label: "Devenir pet-sitter", href: "/pet/compte-pro" },
   { label: "Comment ça marche", href: "/pet/comment-ca-marche" },
 ];
 
@@ -47,7 +47,7 @@ export default async function PetNavbar() {
 
           <Link
             href="/pet/compte-pro"
-            title="Proposer mes services"
+            title="Proposer mes services de pet-sitting"
             className="hidden lg:flex items-center gap-2 bg-[#2f6fb8] hover:bg-[#2560a0] text-white px-4 py-2 rounded-full font-bold text-sm transition-colors flex-shrink-0 whitespace-nowrap"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>

@@ -24,9 +24,9 @@ export const metadata: Metadata = {
 
 export default function PetLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-emerald-50/40 text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900">
       <PetNavbar />
-      <main className="pt-[88px]">{children}</main>
+      <main className="pt-[80px] lg:pt-[128px]">{children}</main>
       <PetFooter />
     </div>
   );

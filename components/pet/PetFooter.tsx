@@ -15,8 +15,8 @@ const SERVICES = [
 ];
 
 const PRO_LINKS = [
-  { label: "Devenir prestataire", href: "/pet/compte-pro" },
-  { label: "Mon espace pro", href: "/pet/compte-pro" },
+  { label: "Devenir pet-sitter", href: "/pet/compte-pro" },
+  { label: "Mon espace pet-sitter", href: "/pet/compte-pro" },
   { label: "Comment ça marche", href: "/pet/comment-ca-marche" },
 ];
 
@@ -33,7 +33,7 @@ export default function PetFooter() {
               </span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Mise en relation 100% animaux. Pet-sitters, éleveurs, toiletteurs et vétérinaires vérifiés. Paiement sécurisé, commission transparente 10%.
+              Mise en relation 100% animaux. Particuliers et professionnels du pet-sitting, identité vérifiée. Paiement sécurisé, commission plateforme 10%.
             </p>
           </div>
 
@@ -54,7 +54,7 @@ export default function PetFooter() {
 
           <div>
             <h3 className="text-xs font-extrabold text-on-surface uppercase tracking-wider mb-3 font-['Manrope']">
-              Professionnels
+              Pet-sitters
             </h3>
             <ul className="space-y-1.5">
               {PRO_LINKS.map((p) => (
