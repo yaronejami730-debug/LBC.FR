@@ -26,10 +26,18 @@ const nextConfig: NextConfig = {
     ],
   },
   images: {
-    // AVIF en 1er → -30% de poids vs WebP/JPEG sur navigateurs modernes,
-    // fallback automatique pour les anciens.
-    formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60 * 60 * 24 * 30,
+    // WebP uniquement : l'encodage AVIF est 5-10x plus lent côté serveur.
+    // Pour des photos d'agences externes (CDN arbitraires, cache froid), le
+    // ré-encodage AVIF à la volée domine la latence du 1er chargement.
+    // WebP donne ~95% des gains de poids pour une fraction du coût CPU.
+    formats: ["image/webp"],
+    // Cache CDN long → après le 1er encodage, plus aucune ré-optimisation.
+    minimumCacheTTL: 60 * 60 * 24 * 365,
+    // Moins de points de rupture = moins de variantes à encoder/cacher.
+    deviceSizes: [640, 750, 1080, 1920],
+    imageSizes: [128, 256, 384],
+    // Qualité 70 : invisible sur des photos d'annonces, ~25% plus léger.
+    qualities: [70, 75],
     // Annonces importées de sources externes (agences) → photos hébergées sur
     // des CDN/domaines arbitraires et imprévisibles. On autorise donc tout host
     // HTTPS plutôt que d'énumérer chaque agence. next/image ne charge que des
