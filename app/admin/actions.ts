@@ -555,6 +555,7 @@ export async function deleteListingByAdmin(listingId: string) {
 
   revalidatePath("/admin/listings");
   revalidatePath("/admin");
+  revalidatePath("/admin/create-client");
   revalidatePath(`/admin/clients/${listing.userId}`);
   revalidatePath(`/annonce/${listingId}`);
   revalidatePath("/", "layout");

@@ -21,7 +21,8 @@ export default async function CreateClientPage() {
       createdAt: true,
       isPro: true,
       companyName: true,
-      _count: { select: { listings: true } },
+      // Annonces non supprimées uniquement — total exact après suppression.
+      _count: { select: { listings: { where: { deletedAt: null } } } },
     },
   });
 

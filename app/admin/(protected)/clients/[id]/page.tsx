@@ -27,7 +27,9 @@ export default async function ClientDetailPage({
       createdAt: true,
       consentGivenAt: true,
       bannedAt: true,
-      _count: { select: { listings: true } },
+      // Compte uniquement les annonces non supprimées — sinon le total reste
+      // figé après une suppression depuis le CRM.
+      _count: { select: { listings: { where: { deletedAt: null } } } },
     },
   });
   if (!user) notFound();

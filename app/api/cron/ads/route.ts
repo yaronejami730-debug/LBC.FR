@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 // Vérifie les scheduledAt (activation) et expiresAt (désactivation)
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
