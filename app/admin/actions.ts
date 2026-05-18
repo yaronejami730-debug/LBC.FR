@@ -818,11 +818,8 @@ export async function addExternalSource(formData: FormData) {
 
   const parsed = parseSourceUrl(rawUrl);
   if (!parsed) throw new Error("URL invalide.");
-  if (parsed.kind === "auto") {
-    throw new Error(
-      `Aucun connecteur disponible pour le domaine ${parsed.domain}. Demandez l'ajout d'un connecteur.`,
-    );
-  }
+  // Pas de connecteur dédié → connecteur générique (heuristiques). Aucune
+  // erreur : toute URL d'agence est acceptée.
 
   let owner;
   if (ownerId) {
