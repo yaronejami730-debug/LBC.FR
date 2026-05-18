@@ -781,7 +781,6 @@ export default async function ListingPage({
                     </li>
                   ))}
                 </ul>
-                <p className="text-xs text-outline italic">Listing d&apos;options sous réserve d&apos;erreurs</p>
               </div>
             )}
 
@@ -879,7 +878,6 @@ export default async function ListingPage({
                         </li>
                       ))}
                     </ul>
-                    <p className="text-xs text-outline italic">Listing d&apos;options sous réserve d&apos;erreurs</p>
                   </div>
                 )}
               </div>
