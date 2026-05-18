@@ -53,6 +53,11 @@ model User {
   deviceSessions   DeviceSession[]
   rateLimitBuckets RateLimitBucket[]
   externalSources  ExternalSource[]
+
+  // Deal&Co Pet
+  petProService PetProService?
+  petBookings   PetBooking[]   @relation("PetBookingClient")
+  petReviews    PetReview[]    @relation("PetReviewAuthor")
 }
 
 model ApiKey {
@@ -303,15 +308,18 @@ model ExternalSource {
   id           String    @id @default(cuid())
   ownerId      String
   owner        User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  label        String
-  kind         String    @default("bsk") // bsk | (futurs connecteurs)
-  url          String
+  label        String // nom public affiché sur les annonces importées
+  kind         String    @default("auto") // bsk | auto | (futurs connecteurs)
+  url          String // URL complète saisie (= base_url scrapée)
+  domain       String? // hostname extrait (sans www) — ex. bskimmobilier.com
+  agencySlug   String? // premier segment de path — ex. paris-17 ou sylvie-mekil-8374
   active       Boolean   @default(true)
   lastSyncedAt DateTime?
   lastResult   String? // JSON: { created, deduped, failed, total, details[] }
   createdAt    DateTime  @default(now())
 
   @@index([ownerId])
+  @@index([domain, agencySlug])
 }
 
 model Blacklist {
@@ -421,4 +429,147 @@ model SeoPageContent {
   @@index([categoryId])
   @@index([citySlug])
   @@index([categoryId, citySlug])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Deal&Co Pet — paid pet-services matching (separate universe, 10% commission)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PetProService {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName String
+  slug        String  @unique
+  bio         String
+  city        String
+  postalCode  String?
+  photos      String  @default("[]")
+
+  stripeAccountId      String?  @unique
+  stripeChargesEnabled Boolean  @default(false)
+  stripePayoutsEnabled Boolean  @default(false)
+  kycCompletedAt       DateTime?
+
+  isPublished Boolean @default(false)
+  isVerified  Boolean @default(false)
+  avgRating   Float?
+  reviewCount Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offerings PetServiceOffering[]
+  bookings  PetBooking[]
+  reviews   PetReview[]
+
+  @@index([city])
+  @@index([isPublished, kycCompletedAt])
+}
+
+model PetServiceOffering {
+  id           String        @id @default(cuid())
+  proServiceId String
+  proService   PetProService @relation(fields: [proServiceId], references: [id], onDelete: Cascade)
+
+  serviceType String // GARDE_DOMICILE | GARDE_CHEZ_PRO | PROMENADE
+  title       String
+  description String
+  priceCents  Int
+  unit        String  @default("DAY") // DAY | HOUR
+  petTypes    String  @default("[\"DOG\"]")
+  maxPets     Int     @default(1)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings PetBooking[]
+
+  @@index([proServiceId, isActive])
+  @@index([serviceType])
+}
+
+model PetBooking {
+  id String @id @default(cuid())
+
+  proServiceId String
+  proService   PetProService @relation(fields: [proServiceId], references: [id])
+
+  offeringId String
+  offering   PetServiceOffering @relation(fields: [offeringId], references: [id])
+
+  clientId String
+  client   User   @relation("PetBookingClient", fields: [clientId], references: [id])
+
+  startDate DateTime
+  endDate   DateTime
+  petCount  Int      @default(1)
+  petInfo   String?
+
+  totalCents       Int
+  platformFeeCents Int
+  proPayoutCents   Int
+
+  // PENDING | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED | REFUNDED
+  status String @default("PENDING")
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  payment PetPayment?
+  review  PetReview?
+
+  @@index([clientId])
+  @@index([proServiceId, status])
+  @@index([status, endDate])
+}
+
+model PetPayment {
+  id        String     @id @default(cuid())
+  bookingId String     @unique
+  booking   PetBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  stripePaymentIntentId String  @unique
+  stripeChargeId        String?
+  stripeTransferId      String?
+  stripeRefundId        String?
+
+  amountCents      Int
+  platformFeeCents Int
+  currency         String @default("eur")
+
+  // REQUIRES_PAYMENT | SUCCEEDED | HELD | RELEASED | REFUNDED | FAILED
+  status String @default("REQUIRES_PAYMENT")
+
+  capturedAt DateTime?
+  releasedAt DateTime?
+  refundedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model PetReview {
+  id        String     @id @default(cuid())
+  bookingId String     @unique
+  booking   PetBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  proServiceId String
+  proService   PetProService @relation(fields: [proServiceId], references: [id])
+
+  authorId String
+  author   User   @relation("PetReviewAuthor", fields: [authorId], references: [id])
+
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now())
+
+  @@index([proServiceId])
 }

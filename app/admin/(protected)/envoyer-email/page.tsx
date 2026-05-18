@@ -1,4 +1,6 @@
-import DiscoveryEmailForm from "./DiscoveryEmailForm";
+import dynamic from "next/dynamic";
+
+const DiscoveryEmailForm = dynamic(() => import("./DiscoveryEmailForm"));
 
 export default function EnvoyerEmailPage() {
   return (

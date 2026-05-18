@@ -3,9 +3,15 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { updateListingByAdmin, deleteListingByAdmin } from "@/app/admin/actions";
-import ListingPreviewModal from "@/components/admin/ListingPreviewModal";
 import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
+
+// Modale d'aperçu (450 L) chargée à la demande — utile seulement au clic.
+const ListingPreviewModal = dynamic(
+  () => import("@/components/admin/ListingPreviewModal"),
+  { ssr: false },
+);
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const MAX_PHOTOS = 100;

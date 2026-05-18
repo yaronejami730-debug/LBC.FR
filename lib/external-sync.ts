@@ -21,6 +21,48 @@ export type SyncResult = {
 
 const BSK_LISTING_RE = /https?:\/\/bskimmobilier\.com\/bien\/[^"'\s?#]+\/(\d+)/g;
 
+/** Registre des connecteurs : domaine → kind. */
+const CONNECTOR_RULES: { kind: string; matchHost: RegExp }[] = [
+  { kind: "bsk", matchHost: /(^|\.)bskimmobilier\.com$/i },
+];
+
+/**
+ * Détecte le connecteur à partir du hostname (sans www).
+ * Renvoie `"auto"` si aucun match — le sync renverra alors une erreur.
+ */
+export function detectKind(hostname: string): string {
+  const host = hostname.toLowerCase().replace(/^www\./, "");
+  return CONNECTOR_RULES.find((c) => c.matchHost.test(host))?.kind ?? "auto";
+}
+
+/**
+ * Parse une URL en composants exploitables par le scraper.
+ *   domain = hostname sans www
+ *   agencySlug = 1er segment de path (ex. `paris-17`, `sylvie-mekil-8374`)
+ *   baseUrl = URL complète originale (le scraper ne crawle QUE cette page,
+ *             jamais le reste du domaine).
+ */
+export function parseSourceUrl(rawUrl: string): {
+  domain: string;
+  agencySlug: string | null;
+  baseUrl: string;
+  kind: string;
+} | null {
+  try {
+    const u = new URL(rawUrl);
+    const domain = u.hostname.replace(/^www\./, "").toLowerCase();
+    const segs = u.pathname.split("/").filter(Boolean);
+    return {
+      domain,
+      agencySlug: segs[0] ?? null,
+      baseUrl: rawUrl,
+      kind: detectKind(domain),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Connecteur BSK Immobilier — pages agent. */
 async function syncBsk(
   prisma: PrismaClient,

@@ -14,6 +14,8 @@ type Source = {
   label: string;
   kind: string;
   url: string;
+  domain: string | null;
+  agencySlug: string | null;
   active: boolean;
   lastSyncedAt: Date | null;
   lastResult: string | null;
@@ -95,6 +97,14 @@ export default function ExternalSourceRow({ source }: { source: Source }) {
             <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#e1e0ff] text-[#2f6fb8]">
               {source.kind}
             </span>
+            {source.agencySlug && (
+              <span
+                className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#f7f9fb] text-[#515f74] border border-[#eceef0]"
+                title="Slug d'agence — scope unique du scraper"
+              >
+                /{source.agencySlug}
+              </span>
+            )}
           </div>
           <a
             href={source.url}
@@ -106,6 +116,7 @@ export default function ExternalSourceRow({ source }: { source: Source }) {
           </a>
           <p className="text-[11px] text-[#777683] mt-1">
             Propriétaire : <strong>{source.ownerName}</strong> · {source.ownerEmail}
+            {source.domain && <> · domaine <strong>{source.domain}</strong></>}
           </p>
         </div>
 

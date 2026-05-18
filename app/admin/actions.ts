@@ -9,7 +9,7 @@ import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import { baseEmail } from "@/lib/emails/base";
-import { syncSource } from "@/lib/external-sync";
+import { syncSource, parseSourceUrl } from "@/lib/external-sync";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
@@ -744,23 +744,27 @@ export async function searchUsersForSourcePicker(q: string) {
 
 /**
  * Crée une source externe.
- * Le propriétaire est désigné par `ownerId` (depuis le picker), ou en repli
- * par `ownerEmail` (saisie libre — utile en CLI/import).
+ * - Propriétaire : `ownerId` (depuis le picker) ou `ownerEmail` (repli CLI).
+ * - URL : parsée serveur → `domain`, `agencySlug`, `kind` auto-détecté.
+ *   Le scraper ne crawle QUE l'URL fournie (scope agence/franchisé),
+ *   jamais le reste du domaine.
  */
 export async function addExternalSource(formData: FormData) {
   await requireAdmin();
   const ownerId = (formData.get("ownerId") as string)?.trim() ?? "";
   const ownerEmail = (formData.get("ownerEmail") as string)?.trim().toLowerCase() ?? "";
   const label = (formData.get("label") as string)?.trim() ?? "";
-  const url = (formData.get("url") as string)?.trim() ?? "";
-  const kind = ((formData.get("kind") as string) || "bsk").trim();
+  const rawUrl = (formData.get("url") as string)?.trim() ?? "";
 
-  if (!label || !url) throw new Error("Libellé et URL requis.");
+  if (!label || !rawUrl) throw new Error("Libellé et URL requis.");
   if (!ownerId && !ownerEmail) throw new Error("Sélectionne un compte propriétaire.");
-  try {
-    new URL(url);
-  } catch {
-    throw new Error("URL invalide.");
+
+  const parsed = parseSourceUrl(rawUrl);
+  if (!parsed) throw new Error("URL invalide.");
+  if (parsed.kind === "auto") {
+    throw new Error(
+      `Aucun connecteur disponible pour le domaine ${parsed.domain}. Demandez l'ajout d'un connecteur.`,
+    );
   }
 
   let owner;
@@ -772,7 +776,14 @@ export async function addExternalSource(formData: FormData) {
   if (!owner) throw new Error("Compte propriétaire introuvable.");
 
   await prisma.externalSource.create({
-    data: { ownerId: owner.id, label, url, kind } as any,
+    data: {
+      ownerId: owner.id,
+      label,
+      url: parsed.baseUrl,
+      kind: parsed.kind,
+      domain: parsed.domain,
+      agencySlug: parsed.agencySlug,
+    } as any,
   });
   revalidatePath("/admin/sources-externes");
 }

@@ -1,7 +1,10 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
-import EditForm from "./EditForm";
+import dynamic from "next/dynamic";
+
+// EditForm = 313 L client, page peu fréquentée → code-split dédié.
+const EditForm = dynamic(() => import("./EditForm"));
 
 export default async function EditListingPage({
   params,

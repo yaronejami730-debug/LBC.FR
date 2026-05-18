@@ -15,6 +15,8 @@ export default async function SourcesExternesPage() {
     label: r.label,
     kind: r.kind,
     url: r.url,
+    domain: (r as any).domain ?? null,
+    agencySlug: (r as any).agencySlug ?? null,
     active: r.active,
     lastSyncedAt: r.lastSyncedAt,
     lastResult: r.lastResult,

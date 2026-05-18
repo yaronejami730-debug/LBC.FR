@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import AdForm from "@/components/admin/AdForm";
+import dynamic from "next/dynamic";
+
+// AdForm = 900 L client, code-splitté pour alléger le shell admin.
+const AdForm = dynamic(() => import("@/components/admin/AdForm"));
 
 type Ad = {
   id: string;

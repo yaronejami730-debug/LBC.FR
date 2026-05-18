@@ -28,6 +28,17 @@ function isScraperBot(userAgent: string): boolean {
 export default auth((req: any) => {
   const { pathname } = req.nextUrl;
   const userAgent = req.headers.get("user-agent") || "";
+  const host = req.headers.get("host") || "";
+
+  // Deal&Co Pet runs on the `pet.` subdomain. Rewrite root requests onto the
+  // /pet/* segment so the same Next.js app serves both universes from one
+  // deployment. Skips assets, API routes, and paths that already start with
+  // /pet to avoid recursive rewrites.
+  if (host.startsWith("pet.") && !pathname.startsWith("/pet") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/pet${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(url);
+  }
 
   // Skip auth entirely for OG image routes — prevents AuthJS cookies
   if (pathname.includes("/opengraph-image")) {

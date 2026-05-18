@@ -93,13 +93,57 @@ export async function createExternalListing(
     ? p.images.filter((u): u is string => typeof u === "string")
     : [];
 
-  // ── Idempotence ────────────────────────────────────────────────────────────
+  // ── Déduplication multi-niveaux ────────────────────────────────────────────
+  // P1 : URL source exacte ; P2 : externalId ; (P3+ géré en amont par
+  // `findDuplicates` SimHash plus bas).
   const externalIdMarker = `"externalId":"${p.externalId.replace(/"/g, '\\"')}"`;
+  const sourceUrlMarker = p.sourceUrl
+    ? `"sourceUrl":"${p.sourceUrl.replace(/"/g, '\\"')}"`
+    : null;
+
   const existing = await prisma.listing.findFirst({
-    where: { userId, metadata: { contains: externalIdMarker }, deletedAt: null },
-    select: { id: true, status: true },
+    where: {
+      userId,
+      deletedAt: null,
+      OR: [
+        { metadata: { contains: externalIdMarker } },
+        ...(sourceUrlMarker ? [{ metadata: { contains: sourceUrlMarker } }] : []),
+      ],
+    },
+    select: { id: true, status: true, metadata: true },
   });
+
   if (existing) {
+    // Mise à jour : prix, images, état, métadonnées. Pas de re-modération
+    // (les signaux comportementaux ne changent pas pour le même bien).
+    const imagesArrUpdate = Array.isArray(p.images)
+      ? p.images.filter((u): u is string => typeof u === "string")
+      : [];
+    let prevMeta: Record<string, unknown> = {};
+    try {
+      prevMeta = JSON.parse(existing.metadata ?? "{}");
+    } catch {
+      /* ignore */
+    }
+    const mergedMeta = {
+      ...prevMeta,
+      ...(p.metadata && typeof p.metadata === "object" ? p.metadata : {}),
+      externalId: p.externalId,
+      sourceUrl: p.sourceUrl ?? prevMeta.sourceUrl ?? null,
+      lastRefreshedAt: new Date().toISOString(),
+      importedVia: "external_api",
+    };
+    await prisma.listing.update({
+      where: { id: existing.id },
+      data: {
+        title: p.title,
+        price: p.price,
+        description: p.description,
+        location: p.location,
+        ...(imagesArrUpdate.length > 0 ? { images: JSON.stringify(imagesArrUpdate) } : {}),
+        metadata: JSON.stringify(mergedMeta),
+      },
+    });
     return { ok: true, deduplicated: true, listingId: existing.id, status: existing.status };
   }
 

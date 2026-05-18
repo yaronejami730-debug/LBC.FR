@@ -1,11 +1,17 @@
 "use client";
 
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import { createListingForClient } from "@/app/admin/actions";
 import { CATEGORIES } from "@/lib/categories";
 import BrandPicker from "@/components/BrandPicker";
-import ListingPreviewModal from "@/components/admin/ListingPreviewModal";
 import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
+
+// Idem : modale d'aperçu lazy-loadée.
+const ListingPreviewModal = dynamic(
+  () => import("@/components/admin/ListingPreviewModal"),
+  { ssr: false },
+);
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
 const FUELS = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];

@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { resendInvitation } from "@/app/admin/actions";
-import AdminListingForm from "./AdminListingForm";
+
+// AdminListingForm = 1180 L client. Lazy-loadé pour ne pas alourdir le
+// panel à l'ouverture — seulement chargé quand un admin créée une annonce.
+const AdminListingForm = dynamic(() => import("./AdminListingForm"), { ssr: false });
 
 type Client = {
   id: string;
