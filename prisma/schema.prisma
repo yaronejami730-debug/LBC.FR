@@ -58,6 +58,9 @@ model User {
   petProService PetProService?
   petBookings   PetBooking[]   @relation("PetBookingClient")
   petReviews    PetReview[]    @relation("PetReviewAuthor")
+
+  // Moteur comportemental
+  draft Draft?
 }
 
 model ApiKey {
@@ -175,6 +178,10 @@ model ListingImage {
   listing      Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   url          String
   phash        BigInt?
+  lshBand0     Int?
+  lshBand1     Int?
+  lshBand2     Int?
+  lshBand3     Int?
   width        Int?
   height       Int?
   sizeBytes    Int?
@@ -183,6 +190,10 @@ model ListingImage {
   createdAt    DateTime @default(now())
 
   @@index([phash])
+  @@index([lshBand0])
+  @@index([lshBand1])
+  @@index([lshBand2])
+  @@index([lshBand3])
   @@index([listingId])
 }
 
@@ -572,4 +583,81 @@ model PetReview {
   createdAt DateTime @default(now())
 
   @@index([proServiceId])
+}
+
+// Instantané SEO — capture quotidienne des données Google Search Console.
+// Sert de mémoire à l'IA SEO : comparer les snapshots dans le temps fait
+// ressortir les tendances de recherche, les mots-clés émergents et la
+// dérive de position. Les détails (requêtes, pages, mots-clés) sont stockés
+// en JSON sérialisé, comme `ModerationEvent.flagsJson`.
+model SeoSnapshot {
+  id         String   @id @default(cuid())
+  // Fenêtre d'analyse réellement interrogée (latence Search Console ~3 j).
+  startDate  String
+  endDate    String
+  // Agrégats globaux sur la fenêtre.
+  clicks      Int   @default(0)
+  impressions Int   @default(0)
+  ctr         Float @default(0)
+  position    Float @default(0)
+  // Données détaillées sérialisées (tableaux JSON).
+  topQueriesJson String @default("[]")
+  topPagesJson   String @default("[]")
+  emergingJson   String @default("[]")
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Brouillon de publication — alimente le moteur anti-friction.
+/// Un brouillon dont `updatedAt` traîne sans annonce publiée derrière =
+/// formulaire abandonné = signal de friction le plus fort. Un seul brouillon
+/// actif par utilisateur (upsert sur `userId`).
+model Draft {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  payload      String                 // instantané JSON du formulaire
+  category     String?
+  step         Int      @default(0)   // étape de l'assistant atteinte
+  completeness Int      @default(0)    // 0–100 — % de champs requis remplis
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+}
+
+/// Événement d'email — envoi / ouverture / clic. Alimente le moteur
+/// comportemental : choix du canal et du timing (heures d'ouverture réelles).
+/// Pas de FK vers User (userId simple colonne) : les events survivent à la
+/// suppression du compte pour l'analyse agrégée.
+model EmailEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  emailType String   @default("transactional")
+  kind      String   // "sent" | "open" | "click"
+  url       String?  // destination, pour kind = "click"
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind])
+  @@index([emailType, kind])
+  @@index([createdAt])
+}
+
+/// Journal d'événements utilisateur — base de l'analyse intention/hésitation
+/// du moteur comportemental (page_view, form_step, listing_view, search…).
+/// `meta` est un objet JSON sérialisé, le schéma reste libre par kind.
+model UserEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  sessionId String?
+  kind      String
+  path      String?
+  meta      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, kind, createdAt])
+  @@index([kind, createdAt])
+  @@index([sessionId, createdAt])
 }

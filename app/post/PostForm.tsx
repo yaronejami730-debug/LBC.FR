@@ -249,7 +249,7 @@ const STEP_LABELS = ["Titre", "Prix", "Photos", "Description", "Coordonnées", "
 
 export default function PostForm() {
   const router = useRouter();
-  const { data: session, update: updateSession } = useSession();
+  const { data: session, update: updateSession, status } = useSession();
   const isPro = Boolean((session?.user as { isPro?: boolean } | undefined)?.isPro);
   const MAX_PHOTOS = isPro ? MAX_PHOTOS_PRO : MAX_PHOTOS_DEFAULT;
 
@@ -323,6 +323,83 @@ export default function PostForm() {
   useEffect(() => {
     setPhotoMode(getAutoMode());
   }, []);
+
+  // ── Brouillon : restauration + sauvegarde automatique ───────────────────────
+  // Reprise d'une publication interrompue + alimente le moteur anti-friction
+  // (un brouillon dont `updatedAt` traîne sans annonce derrière = abandon).
+  const draftRestored = useRef(false);
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restauration au montage — utilisateur connecté uniquement.
+  useEffect(() => {
+    if (draftRestored.current) return;
+    if (status === "loading") return;   // session pas encore connue
+    if (!session?.user) return;         // anonyme → pas de brouillon serveur
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/drafts");
+        if (!res.ok) return;
+        const { draft } = (await res.json()) as { draft: { payload: string } | null };
+        if (cancelled || !draft) return;
+        // N'écrase rien si l'utilisateur a déjà commencé à saisir.
+        if (title || description || price || images.length) return;
+        const d = JSON.parse(draft.payload) as Record<string, unknown>;
+        if (typeof d.title === "string") setTitle(d.title);
+        if (typeof d.price === "string") setPrice(d.price);
+        if (typeof d.categoryId === "string") setCategoryId(d.categoryId);
+        if (typeof d.subcategory === "string") setSubcategory(d.subcategory);
+        if (typeof d.description === "string") setDescription(d.description);
+        if (typeof d.location === "string") setLocation(d.location);
+        if (typeof d.condition === "string") setCondition(d.condition);
+        if (typeof d.phone === "string") setPhone(d.phone);
+        if (typeof d.hidePhone === "boolean") setHidePhone(d.hidePhone);
+        if (d.vehicle && typeof d.vehicle === "object") setVehicle((v) => ({ ...v, ...(d.vehicle as object) }));
+        if (d.immo && typeof d.immo === "object") setImmo((v) => ({ ...v, ...(d.immo as object) }));
+        if (Array.isArray(d.images)) setImages((d.images as unknown[]).filter((x): x is string => typeof x === "string"));
+        if (typeof d.formStep === "number") setFormStep(d.formStep as FormStep);
+      } catch {
+        /* brouillon illisible — ignoré */
+      } finally {
+        if (!cancelled) draftRestored.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user, status]);
+
+  // Sauvegarde automatique débattue — 2,5 s après la dernière modification.
+  useEffect(() => {
+    if (!draftRestored.current || !session?.user) return;
+    const filledRequired =
+      (title.trim() ? 1 : 0) +
+      (description.trim() ? 1 : 0) +
+      (location.trim() ? 1 : 0) +
+      (price.trim() ? 1 : 0) +
+      (images.length ? 1 : 0);
+    if (filledRequired === 0) return; // formulaire vide → aucun brouillon créé
+    const completeness = Math.round((filledRequired / 5) * 100);
+    const payload = JSON.stringify({
+      title, price, categoryId, subcategory, description, location,
+      condition, phone, hidePhone, vehicle, immo, images, formStep,
+    });
+
+    if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+    draftSaveTimer.current = setTimeout(() => {
+      fetch("/api/drafts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payload, category: categoryId, step: formStep, completeness }),
+      }).catch(() => {});
+    }, 2500);
+    return () => {
+      if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, price, categoryId, subcategory, description, location, condition,
+      phone, hidePhone, vehicle, immo, images, formStep, session?.user]);
 
   function setI<K extends keyof ImmobilierFields>(field: K, value: ImmobilierFields[K]) {
     setImmo((v) => ({ ...v, [field]: value }));
@@ -565,6 +642,8 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
       try { data = JSON.parse(text); } catch { /* html error page */ }
       if (!res.ok) { setPublishError(data.error || `Erreur ${res.status}`); return; }
       if (!data.id) { setPublishError("Réponse inattendue. Réessayez."); return; }
+      // Annonce créée — le brouillon n'a plus lieu d'être.
+      fetch("/api/drafts", { method: "DELETE" }).catch(() => {});
       if (data.status === "REJECTED") {
         setRejection({
           id: data.id,

@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
 import VisitorTracker from "@/components/VisitorTracker";
+import EventTracker from "@/components/EventTracker";
 import CookieBanner from "@/components/CookieBanner";
 
 const GA_ID = "G-31WRQ5YXX6";
@@ -156,6 +157,7 @@ gtag('config', '${GA_ID}');`}
           strategy="lazyOnload"
         />
         <VisitorTracker />
+        <EventTracker />
         <Providers>{children}</Providers>
         <CookieBanner />
       </body>

@@ -1,9 +1,11 @@
 import { renderEmailAd } from "@/lib/emails/ad-block";
-import { emailPrefUrl } from "@/lib/email-token";
+import { emailPrefUrl, createEmailTrackToken } from "@/lib/email-token";
+import { injectEmailTracking, recordEmailEvent } from "@/lib/email-tracking";
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY!;
 const FROM_EMAIL = "notif@dealandcompany.fr";
 const FROM_NAME = "Deal & Co";
+const TRACK_BASE = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
 
 /**
  * Inject an active ad block into rendered email HTML right before the footer
@@ -37,7 +39,18 @@ export async function sendEmail({
   /** When provided, attaches a personal List-Unsubscribe link for one-click unsub. */
   userId?: string;
 }) {
-  const finalHtml = await withAd(html, adSource ?? "transactional");
+  const emailType = adSource ?? "transactional";
+  const adultHtml = await withAd(html, emailType);
+
+  // Tracking : pixel d'ouverture + redirecteur de clic. Désactivé pour les
+  // emails admin (mêmes critères que pour le bloc pub).
+  const finalHtml = emailType.startsWith("admin")
+    ? adultHtml
+    : (() => {
+        const token = createEmailTrackToken({ userId, email: to, emailType });
+        recordEmailEvent({ userId, email: to, emailType, kind: "sent" });
+        return injectEmailTracking(adultHtml, token, TRACK_BASE);
+      })();
 
   const headers: Record<string, string> = {};
   if (userId) {

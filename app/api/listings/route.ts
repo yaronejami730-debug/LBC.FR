@@ -21,6 +21,9 @@ import { scanScam } from "@/lib/moderation/scam-patterns";
 import { fingerprintFields, findDuplicates, dedupSignal } from "@/lib/moderation/dedup";
 import { aggregateRisk, signal, explainRisk } from "@/lib/moderation/risk-engine";
 import { checkPhone, phoneStaticSignal, phoneReuseSignal } from "@/lib/moderation/phone";
+import { hashImageUrls } from "@/lib/moderation/image-hash";
+import { findImageDuplicates, imageDedupSignal } from "@/lib/moderation/image-dedup";
+import { toSignedI64, pHashBands } from "@/lib/moderation/phash-bits";
 import { ensureBlacklistPrimed } from "@/lib/moderation/blacklist";
 import { computeTrustScore } from "@/lib/trust-score";
 import { isOpenSearchEnabled } from "@/lib/opensearch";
@@ -299,6 +302,20 @@ export async function POST(req: NextRequest) {
     const dupHit = dedupSignal(dedup);
     if (dupHit) riskHits.push(dupHit);
 
+    // ── Empreinte perceptuelle des images — détection de photos recyclées ──
+    // Un fraudeur change d'IP/email/téléphone mais réutilise les mêmes photos.
+    // Même photo sur un autre compte → signal d'arnaque fort.
+    const hashedImages = await hashImageUrls(imagesArr);
+    if (hashedImages.length > 0) {
+      const imageDedup = await findImageDuplicates(
+        prisma,
+        hashedImages.map((h) => h.phash),
+        session.user.id as string,
+      );
+      const imageHit = imageDedupSignal(imageDedup);
+      if (imageHit) riskHits.push(imageHit);
+    }
+
     // Téléphone — validité, préfixe, réutilisation multi-comptes.
     const phoneCheck = checkPhone(typeof phone === "string" ? phone : "");
     const phoneStatic = phoneStaticSignal(phoneCheck, Boolean(phone));
@@ -388,6 +405,28 @@ export async function POST(req: NextRequest) {
         riskDecision: risk.decision,
       } as any,
     });
+
+    // Persistance des empreintes images — alimente la détection de doublons
+    // des futures annonces. Fire-and-forget : ne bloque pas la réponse.
+    if (hashedImages.length > 0) {
+      prisma.listingImage.createMany({
+        data: hashedImages.map((h) => {
+          const [b0, b1, b2, b3] = pHashBands(h.phash);
+          return {
+            listingId: listing.id,
+            url: h.url,
+            phash: toSignedI64(h.phash),
+            lshBand0: b0,
+            lshBand1: b1,
+            lshBand2: b2,
+            lshBand3: b3,
+            width: h.width,
+            height: h.height,
+            sizeBytes: h.sizeBytes,
+          };
+        }),
+      }).catch((err) => console.error("[ListingImage] persistance échec:", err));
+    }
 
     // Indexation OpenSearch — fire-and-forget, ne bloque jamais la réponse.
     indexListing(listing).catch((err) =>
