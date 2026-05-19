@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/seo-snapshot",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/behavioral-nudge",
+      "schedule": "0 10 * * *"
     }
   ]
 }

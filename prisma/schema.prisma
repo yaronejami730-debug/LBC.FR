@@ -60,7 +60,8 @@ model User {
   petReviews    PetReview[]    @relation("PetReviewAuthor")
 
   // Moteur comportemental
-  draft Draft?
+  draft             Draft?
+  pushSubscriptions PushSubscription[]
 }
 
 model ApiKey {
@@ -660,4 +661,23 @@ model UserEvent {
   @@index([userId, kind, createdAt])
   @@index([kind, createdAt])
   @@index([sessionId, createdAt])
+}
+
+/// Abonnement Web Push d'un appareil (un user peut en avoir plusieurs).
+/// Endpoint = identifiant unique (URL push du navigateur). p256dh + auth
+/// sont les clés cryptographiques de la souscription (RFC 8291). Disabled
+/// quand l'envoi a échoué de manière permanente (410 Gone, 404).
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime @default(now())
+  disabledAt   DateTime?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, disabledAt])
 }

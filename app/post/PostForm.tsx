@@ -330,6 +330,13 @@ export default function PostForm() {
   const draftRestored = useRef(false);
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Référence vivante des champs déclencheurs du garde anti-écrasement.
+  // Sans ce ref, le garde lirait les valeurs *capturées* dans la closure
+  // au moment où l'effet a démarré — une saisie pendant le fetch /api/drafts
+  // serait alors silencieusement écrasée par le brouillon serveur.
+  const liveDraftGuard = useRef({ title, description, price, images });
+  liveDraftGuard.current = { title, description, price, images };
+
   // Restauration au montage — utilisateur connecté uniquement.
   useEffect(() => {
     if (draftRestored.current) return;
@@ -341,9 +348,52 @@ export default function PostForm() {
         const res = await fetch("/api/drafts");
         if (!res.ok) return;
         const { draft } = (await res.json()) as { draft: { payload: string } | null };
-        if (cancelled || !draft) return;
+        if (cancelled) return;
+        // Pas de brouillon → essai de pré-remplissage à partir de l'historique
+        // (dernière annonce, waitlist, médiane catégorie). Ne s'applique que
+        // sur un formulaire encore vierge.
+        if (!draft) {
+          const liveNoDraft = liveDraftGuard.current;
+          if (liveNoDraft.title || liveNoDraft.description || liveNoDraft.price || liveNoDraft.images.length) return;
+          try {
+            const pr = await fetch("/api/behavioral/prefill");
+            if (cancelled || !pr.ok) return;
+            const { prefill } = (await pr.json()) as {
+              prefill: { category: string; fields: Record<string, unknown>; estimatedPrice?: number } | null;
+            };
+            if (!prefill) return;
+            const f = prefill.fields;
+            if (prefill.category) setCategoryId(prefill.category);
+            if (typeof f.subcategory === "string") setSubcategory(f.subcategory);
+            if (typeof f.location === "string") setLocation(f.location);
+            if (prefill.estimatedPrice) setPrice(String(prefill.estimatedPrice));
+            if (prefill.category === "vehicules") {
+              setVehicle((v) => {
+                const merged = { ...v };
+                for (const k of Object.keys(v) as (keyof typeof v)[]) {
+                  const val = f[k as string];
+                  if (typeof val === "string") (merged[k] as unknown) = val;
+                }
+                return merged;
+              });
+            } else if (prefill.category === "immobilier") {
+              setImmo((i) => {
+                const merged = { ...i };
+                for (const k of Object.keys(i) as (keyof typeof i)[]) {
+                  const val = f[k as string];
+                  if (typeof val === "string") (merged[k] as unknown) = val;
+                  else if (typeof val === "number") (merged[k] as unknown) = String(val);
+                }
+                return merged;
+              });
+            }
+          } catch { /* prefill HS — saisie vierge */ }
+          return;
+        }
         // N'écrase rien si l'utilisateur a déjà commencé à saisir.
-        if (title || description || price || images.length) return;
+        // Lecture via ref → valeurs vivantes, pas la closure d'origine.
+        const live = liveDraftGuard.current;
+        if (live.title || live.description || live.price || live.images.length) return;
         const d = JSON.parse(draft.payload) as Record<string, unknown>;
         if (typeof d.title === "string") setTitle(d.title);
         if (typeof d.price === "string") setPrice(d.price);
@@ -357,7 +407,13 @@ export default function PostForm() {
         if (d.vehicle && typeof d.vehicle === "object") setVehicle((v) => ({ ...v, ...(d.vehicle as object) }));
         if (d.immo && typeof d.immo === "object") setImmo((v) => ({ ...v, ...(d.immo as object) }));
         if (Array.isArray(d.images)) setImages((d.images as unknown[]).filter((x): x is string => typeof x === "string"));
-        if (typeof d.formStep === "number") setFormStep(d.formStep as FormStep);
+        // Clamp formStep : protège contre payload corrompu (PUT manuel sur
+        // /api/drafts, valeur hors-bornes) et contre une contraction future
+        // de STEP_LABELS qui invaliderait d'anciennes valeurs persistées.
+        if (typeof d.formStep === "number" && Number.isInteger(d.formStep)) {
+          const clamped = Math.max(0, Math.min(STEP_LABELS.length - 1, d.formStep));
+          setFormStep(clamped as FormStep);
+        }
       } catch {
         /* brouillon illisible — ignoré */
       } finally {
