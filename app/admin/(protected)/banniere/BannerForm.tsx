@@ -21,6 +21,7 @@ export default function BannerForm() {
   const [from, setFrom]         = useState("#2f6fb8");
   const [to, setTo]             = useState("#1a5a9e");
   const [bgImage, setBgImage]   = useState("");
+  const [showText, setShowText] = useState(true);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt]     = useState("");
   const [loading, setLoading]   = useState(false);
@@ -57,7 +58,7 @@ export default function BannerForm() {
       const res = await fetch("/api/admin/hero-banner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, subtitle, bgFrom: from, bgTo: to, bgImage: bgImage || null, startsAt: startsAt || null, endsAt: endsAt || null }),
+        body: JSON.stringify({ title, subtitle, bgFrom: from, bgTo: to, bgImage: bgImage || null, showText, startsAt: startsAt || null, endsAt: endsAt || null }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -93,16 +94,21 @@ export default function BannerForm() {
         <p className={labelCls}>Prévisualisation</p>
         {bgImage ? (
           // La photo dicte la hauteur — ratio natif, aucun crop.
+          // Texte superposé uniquement si `showText` activé.
           <div className="relative rounded-xl overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={bgImage} alt="" className="block w-full h-auto" />
-            <div className="absolute inset-0 bg-black/35" />
-            <div className="absolute inset-0 p-5 flex flex-col justify-end">
-              <p className="text-white font-extrabold text-lg leading-tight tracking-tight drop-shadow">
-                {title || "Titre de la bannière"}
-              </p>
-              {subtitle && <p className="text-white/80 text-sm mt-1 drop-shadow">{subtitle}</p>}
-            </div>
+            {showText && (
+              <>
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute inset-0 p-5 flex flex-col justify-end">
+                  <p className="text-white font-extrabold text-lg leading-tight tracking-tight drop-shadow">
+                    {title || "Titre de la bannière"}
+                  </p>
+                  {subtitle && <p className="text-white/80 text-sm mt-1 drop-shadow">{subtitle}</p>}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <div className="relative rounded-xl overflow-hidden p-5 min-h-[90px] flex flex-col justify-center" style={previewStyle}>
@@ -164,9 +170,25 @@ export default function BannerForm() {
             </button>
           )}
           <p className="text-[10px] text-[#777683] mt-1.5">
-            Taille recommandée : <strong>1440 × 400 px</strong> (format paysage large) — JPG ou PNG, max 5 Mo.<br/>
-            Le dégradé de couleurs se superpose à la photo pour assurer la lisibilité du texte.
+            La photo conserve son ratio natif — aucun recadrage. JPG ou PNG, max 15 Mo.
           </p>
+
+          {/* Toggle : afficher le texte par-dessus la photo (n'a d'effet que
+              si une photo est sélectionnée — sans photo le texte s'affiche
+              toujours sur le dégradé). */}
+          {bgImage && (
+            <label className="mt-3 flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showText}
+                onChange={(e) => setShowText(e.target.checked)}
+                className="w-4 h-4 accent-[#2f6fb8]"
+              />
+              <span className="text-[13px] text-[#191c1e]">
+                Afficher le titre et le sous-titre sur la photo
+              </span>
+            </label>
+          )}
         </div>
 
         {/* Couleurs */}

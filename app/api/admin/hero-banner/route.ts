@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       bgFrom: body.bgFrom || "#2f6fb8",
       bgTo: body.bgTo || "#1a5a9e",
       bgImage: body.bgImage || null,
+      showText: typeof body.showText === "boolean" ? body.showText : true,
       startsAt: body.startsAt ? new Date(body.startsAt) : null,
       endsAt: body.endsAt ? new Date(body.endsAt) : null,
     },

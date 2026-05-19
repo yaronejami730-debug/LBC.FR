@@ -171,41 +171,46 @@ export default async function Home() {
       <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
         {activeBanner?.bgImage ? (
           // Variante photo : l'image dicte la hauteur (ratio natif, jamais de
-          // crop). Le texte est superposé en absolu pour garder le CTA visible.
+          // crop). Le texte est superposé seulement si `showText` est actif
+          // (sinon : photo seule, lisible et propre).
           <div className="relative rounded-2xl overflow-hidden">
             <img
               src={activeBanner.bgImage}
               alt={activeBanner.title ?? ""}
               className="block w-full h-auto"
             />
-            <div className="absolute inset-0 bg-black/35" />
-            <div className="absolute inset-0 p-6 md:p-10 flex items-end md:items-center">
-              <div className="relative z-10 max-w-2xl">
-                <h1 className="text-white text-2xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
-                  {activeBanner.title}
-                </h1>
-                {activeBanner.subtitle && (
-                  <p className="text-white/90 text-sm md:text-lg mt-3 leading-relaxed drop-shadow">
-                    {activeBanner.subtitle}
-                  </p>
-                )}
-                <div className="mt-5 flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href="/login?callbackUrl=/post"
-                    className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-white text-primary rounded-full font-bold shadow-lg active:scale-95 transition-transform"
-                  >
-                    <span className="material-symbols-outlined text-lg">add_circle</span>
-                    Publier mon annonce
-                  </Link>
-                  <Link
-                    href="/nouveautes"
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
-                  >
-                    Parcourir les annonces
-                  </Link>
+            {activeBanner.showText && (
+              <>
+                <div className="absolute inset-0 bg-black/35" />
+                <div className="absolute inset-0 p-6 md:p-10 flex items-end md:items-center">
+                  <div className="relative z-10 max-w-2xl">
+                    <h1 className="text-white text-2xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
+                      {activeBanner.title}
+                    </h1>
+                    {activeBanner.subtitle && (
+                      <p className="text-white/90 text-sm md:text-lg mt-3 leading-relaxed drop-shadow">
+                        {activeBanner.subtitle}
+                      </p>
+                    )}
+                    <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                      <Link
+                        href="/login?callbackUrl=/post"
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-white text-primary rounded-full font-bold shadow-lg active:scale-95 transition-transform"
+                      >
+                        <span className="material-symbols-outlined text-lg">add_circle</span>
+                        Publier mon annonce
+                      </Link>
+                      <Link
+                        href="/nouveautes"
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
+                      >
+                        Parcourir les annonces
+                      </Link>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         ) : (
           // Variante dégradé : hauteur minimale + halo décoratif.

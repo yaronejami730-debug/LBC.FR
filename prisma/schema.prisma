@@ -383,6 +383,8 @@ model HeroBanner {
   bgTo      String    @default("#1a5a9e")
   bgImage   String?
   textColor String    @default("#ffffff")
+  /// Si false ET bgImage présent : photo seule, sans titre/sous-titre/CTA.
+  showText  Boolean   @default(true)
   isActive  Boolean   @default(false)
   startsAt  DateTime?
   endsAt    DateTime?
