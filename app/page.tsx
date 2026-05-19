@@ -169,56 +169,85 @@ export default async function Home() {
 
       {/* Hero */}
       <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
-        <div
-          className="relative rounded-2xl p-6 md:p-10 overflow-hidden min-h-[120px]"
-          style={activeBanner?.bgImage
-            ? {
-                backgroundImage: `url(${activeBanner.bgImage})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : {
-                background: activeBanner
-                  ? `linear-gradient(135deg, ${activeBanner.bgFrom}, ${activeBanner.bgTo})`
-                  : "linear-gradient(to bottom right, #2f6fb8, #1a5a9e)",
-              }}
-        >
-          {/* Voile sombre uniquement si photo — pour lisibilité du texte */}
-          {activeBanner?.bgImage && (
-            <div className="absolute inset-0 bg-black/35 rounded-2xl" />
-          )}
-          <div className="relative z-10 max-w-2xl">
-            <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
-              {activeBanner?.title ?? "Petites annonces gratuites entre particuliers en France"}
-            </h1>
-            {activeBanner?.subtitle && (
-              <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow">{activeBanner.subtitle}</p>
-            )}
-            {!activeBanner && (
-              <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow max-w-xl">
-                Publiez gratuitement votre annonce en 2 minutes. Sans commission, sans engagement, contact direct avec les acheteurs.
-              </p>
-            )}
-            <div className="mt-5 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/login?callbackUrl=/post"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-white text-primary rounded-full font-bold shadow-lg active:scale-95 transition-transform"
-              >
-                <span className="material-symbols-outlined text-lg">add_circle</span>
-                Publier mon annonce
-              </Link>
-              <Link
-                href="/nouveautes"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
-              >
-                Parcourir les annonces
-              </Link>
+        {activeBanner?.bgImage ? (
+          // Variante photo : l'image dicte la hauteur (ratio natif, jamais de
+          // crop). Le texte est superposé en absolu pour garder le CTA visible.
+          <div className="relative rounded-2xl overflow-hidden">
+            <img
+              src={activeBanner.bgImage}
+              alt={activeBanner.title ?? ""}
+              className="block w-full h-auto"
+            />
+            <div className="absolute inset-0 bg-black/35" />
+            <div className="absolute inset-0 p-6 md:p-10 flex items-end md:items-center">
+              <div className="relative z-10 max-w-2xl">
+                <h1 className="text-white text-2xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
+                  {activeBanner.title}
+                </h1>
+                {activeBanner.subtitle && (
+                  <p className="text-white/90 text-sm md:text-lg mt-3 leading-relaxed drop-shadow">
+                    {activeBanner.subtitle}
+                  </p>
+                )}
+                <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/login?callbackUrl=/post"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-white text-primary rounded-full font-bold shadow-lg active:scale-95 transition-transform"
+                  >
+                    <span className="material-symbols-outlined text-lg">add_circle</span>
+                    Publier mon annonce
+                  </Link>
+                  <Link
+                    href="/nouveautes"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
+                  >
+                    Parcourir les annonces
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
-          {!activeBanner?.bgImage && (
+        ) : (
+          // Variante dégradé : hauteur minimale + halo décoratif.
+          <div
+            className="relative rounded-2xl p-6 md:p-10 overflow-hidden min-h-[120px]"
+            style={{
+              background: activeBanner
+                ? `linear-gradient(135deg, ${activeBanner.bgFrom}, ${activeBanner.bgTo})`
+                : "linear-gradient(to bottom right, #2f6fb8, #1a5a9e)",
+            }}
+          >
+            <div className="relative z-10 max-w-2xl">
+              <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
+                {activeBanner?.title ?? "Petites annonces gratuites entre particuliers en France"}
+              </h1>
+              {activeBanner?.subtitle && (
+                <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow">{activeBanner.subtitle}</p>
+              )}
+              {!activeBanner && (
+                <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow max-w-xl">
+                  Publiez gratuitement votre annonce en 2 minutes. Sans commission, sans engagement, contact direct avec les acheteurs.
+                </p>
+              )}
+              <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/login?callbackUrl=/post"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3 bg-white text-primary rounded-full font-bold shadow-lg active:scale-95 transition-transform"
+                >
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  Publier mon annonce
+                </Link>
+                <Link
+                  href="/nouveautes"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 border border-white/30 text-white rounded-full font-semibold hover:bg-white/15 transition-colors backdrop-blur-sm"
+                >
+                  Parcourir les annonces
+                </Link>
+              </div>
+            </div>
             <div className="absolute top-0 right-0 w-1/2 h-full opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-tertiary-fixed to-transparent" />
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
       {/* Categories: Bento Style */}

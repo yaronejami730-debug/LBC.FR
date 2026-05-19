@@ -77,10 +77,9 @@ export default function BannerForm() {
   const inputCls = "w-full border border-[#eceef0] rounded-xl px-3 py-2.5 text-sm text-[#191c1e] outline-none focus:border-[#2f6fb8] transition-colors bg-white";
   const labelCls = "block text-[11px] font-bold text-[#777683] uppercase tracking-widest mb-1.5";
 
-  // Style de preview : image si dispo, sinon dégradé
-  const previewStyle = bgImage
-    ? { backgroundImage: `linear-gradient(135deg, ${from}99, ${to}cc), url(${bgImage})`, backgroundSize: "cover", backgroundPosition: "center", backgroundBlendMode: "multiply" }
-    : { background: `linear-gradient(135deg, ${from}, ${to})` };
+  // Style de preview (dégradé uniquement — quand une photo est sélectionnée,
+  // on rend un <img> qui dicte la hauteur, plus aucun fond).
+  const previewStyle = { background: `linear-gradient(135deg, ${from}, ${to})` };
 
   return (
     <div className="bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
@@ -89,15 +88,30 @@ export default function BannerForm() {
         <h2 className="text-[15px] font-bold text-[#191c1e]">Nouvelle bannière</h2>
       </div>
 
-      {/* Prévisualisation */}
+      {/* Prévisualisation — reproduit fidèlement le rendu public. */}
       <div className="px-6 pt-5 pb-4">
         <p className={labelCls}>Prévisualisation</p>
-        <div className="relative rounded-xl overflow-hidden p-5 min-h-[90px] flex flex-col justify-center" style={previewStyle}>
-          <p className="text-white font-extrabold text-lg leading-tight tracking-tight drop-shadow">
-            {title || "Titre de la bannière"}
-          </p>
-          {subtitle && <p className="text-white/80 text-sm mt-1 drop-shadow">{subtitle}</p>}
-        </div>
+        {bgImage ? (
+          // La photo dicte la hauteur — ratio natif, aucun crop.
+          <div className="relative rounded-xl overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bgImage} alt="" className="block w-full h-auto" />
+            <div className="absolute inset-0 bg-black/35" />
+            <div className="absolute inset-0 p-5 flex flex-col justify-end">
+              <p className="text-white font-extrabold text-lg leading-tight tracking-tight drop-shadow">
+                {title || "Titre de la bannière"}
+              </p>
+              {subtitle && <p className="text-white/80 text-sm mt-1 drop-shadow">{subtitle}</p>}
+            </div>
+          </div>
+        ) : (
+          <div className="relative rounded-xl overflow-hidden p-5 min-h-[90px] flex flex-col justify-center" style={previewStyle}>
+            <p className="text-white font-extrabold text-lg leading-tight tracking-tight drop-shadow">
+              {title || "Titre de la bannière"}
+            </p>
+            {subtitle && <p className="text-white/80 text-sm mt-1 drop-shadow">{subtitle}</p>}
+          </div>
+        )}
       </div>
 
       {/* Presets */}
