@@ -79,13 +79,23 @@ export async function generateMetadata({
     return { robots: { index: false, follow: true } };
   }
 
-  const priceStr = listing.price.toLocaleString("fr-FR") + " €";
+  const priceLabel = listing.price && listing.price > 0
+    ? listing.price.toLocaleString("fr-FR") + " €"
+    : "Prix à débattre";
+  const priceStr = priceLabel;
   const pageUrl = `${BASE}/annonce/${id}/${listingSlug(listing.title)}`;
   const cityShort = listing.location?.split(/[,(]/)[0]?.trim() ?? listing.location ?? "";
 
-  const titleSeo = cityShort
-    ? `${listing.title} à ${cityShort} — ${priceStr}`
-    : `${listing.title} — ${priceStr}`;
+  const SUFFIX = " | Deal&Co";
+  const CAP = 60;
+  const rawTitle = cityShort
+    ? `${listing.title} à ${cityShort} — ${priceLabel}`
+    : `${listing.title} — ${priceLabel}`;
+  const budget = CAP - SUFFIX.length;
+  const titleSeo =
+    rawTitle.length <= budget
+      ? rawTitle + SUFFIX
+      : rawTitle.slice(0, budget - 1).trimEnd() + "…" + SUFFIX;
 
   const descBase = `${listing.description.slice(0, 155)}${listing.description.length > 155 ? "…" : ""}`;
   const desc = `${descBase} · ${listing.location} · ${priceStr}`;

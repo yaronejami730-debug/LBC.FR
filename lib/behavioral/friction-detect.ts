@@ -1,3 +1,4 @@
+
 /**
  * Détection de friction — pourquoi l'utilisateur ne publie pas.
  *

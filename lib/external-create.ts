@@ -23,6 +23,7 @@ import { ensureBlacklistPrimed } from "@/lib/moderation/blacklist";
 import { computeTrustScore } from "@/lib/trust-score";
 import { indexListing } from "@/lib/opensearch-sync";
 import { CATEGORIES } from "@/lib/categories";
+import { enrichDescription } from "@/lib/enrichDescription";
 
 export type CreateExternalPayload = {
   externalId: string;
@@ -303,14 +304,32 @@ export async function createExternalListing(
     shadowBanned = true;
   }
 
-  const attrs = extractAttributes(`${p.title} ${p.description}`);
+  // Enrichissement SEO de la description importée (Claude Haiku) — vise 100-150
+  // mots si l'original est trop court. Sans clé API ou hors budget : on garde
+  // le texte d'origine. Exécuté APRÈS modération/dedup pour que les scanners
+  // (scam, phishing, simhash) opèrent sur le texte source.
+  const cityShortForEnrich = p.location?.split(/[,(]/)[0]?.trim() ?? p.location;
+  const enrichRes = await enrichDescription({
+    titre: p.title,
+    description: p.description,
+    categorie: p.category,
+    ville: cityShortForEnrich,
+    prix: p.price,
+  });
+  const finalDescription = enrichRes.description;
+  if (enrichRes.enriched) {
+    baseMetadata.descriptionEnriched = true;
+    baseMetadata.descriptionEnrichedAt = new Date().toISOString();
+  }
+
+  const attrs = extractAttributes(`${p.title} ${finalDescription}`);
   if (attrs.brand) baseMetadata.detectedBrand = attrs.brand;
   if (attrs.model) baseMetadata.detectedModel = attrs.model;
   if (attrs.year) baseMetadata.detectedYear = attrs.year;
 
   const quality = computeQualityScore({
     title: p.title,
-    description: p.description,
+    description: finalDescription,
     price: p.price,
     category: p.category,
     subcategory: p.subcategory ?? null,
@@ -330,7 +349,7 @@ export async function createExternalListing(
       price: p.price,
       category: p.category,
       subcategory: p.subcategory ?? null,
-      description: p.description,
+      description: finalDescription,
       location: p.location,
       condition: p.condition || "Bon état",
       images: JSON.stringify(imagesArr),
