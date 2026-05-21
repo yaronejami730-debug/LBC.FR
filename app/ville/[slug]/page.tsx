@@ -1,15 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES, slugToCity, citySlug as toCitySlug } from "@/lib/cities";
 import { listingUrl } from "@/lib/listing-slug";
-import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
+import ListingCard from "@/components/home/ListingCard";
 
 export const revalidate = 86400;
 export const dynamicParams = true;
@@ -109,6 +108,7 @@ export default async function VillePage({
           createdAt: true,
           category: true,
           location: true,
+          isPremium: true,
         },
       })
       .catch(() => []),
@@ -259,44 +259,13 @@ export default async function VillePage({
                   Voir les {totalInCat.toLocaleString("fr-FR")} →
                 </Link>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                {items.map((l) => {
-                  let img = "";
-                  try {
-                    const imgs = JSON.parse(l.images) as string[];
-                    img = imgs[0] ?? "";
-                  } catch {}
-                  return (
-                    <Link
-                      key={l.id}
-                      href={listingUrl(l.id, l.title)}
-                      className="group flex flex-col bg-white rounded-xl overflow-hidden border border-slate-200 hover:shadow-md transition-all"
-                    >
-                      <div className="relative aspect-square bg-slate-100">
-                        {img && (
-                          <Image
-                            src={img}
-                            alt={`${l.title} à ${city.name}`}
-                            fill
-                            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 16vw"
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        )}
-                      </div>
-                      <div className="p-2.5 flex flex-col gap-0.5">
-                        <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">
-                          {l.title}
-                        </p>
-                        <p className="text-primary font-bold text-base mt-1">
-                          {l.price.toLocaleString("fr-FR")} €
-                        </p>
-                        <p className="text-[10px] text-outline">
-                          {formatDistanceToNow(l.createdAt)}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {items.map((l) => (
+                  <ListingCard
+                    key={l.id}
+                    listing={{ ...l, location: l.location ?? city.name }}
+                  />
+                ))}
               </div>
             </section>
           );

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getTopCategories } from "@/lib/search-history";
-import { formatDistanceToNow } from "@/lib/utils";
 import { CATEGORIES } from "@/lib/categories";
+import ListingCard from "@/components/home/ListingCard";
 
 interface Listing {
   id: string;
@@ -99,46 +99,13 @@ export default function HomeRecommendations() {
         </div>
       )}
 
-      {/* Listings horizontal scroll */}
       <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar md:grid md:grid-cols-4 lg:grid-cols-5 md:gap-4 md:overflow-visible md:pb-0">
-        {current.listings.map((listing) => {
-          const images = JSON.parse(listing.images) as string[];
-          const img = images[0] || "";
-          return (
-            <Link
-              key={listing.id}
-              href={`/annonce/${listing.id}`}
-              title={`${listing.title} — ${listing.price.toLocaleString("fr-FR")} €`}
-              className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
-            >
-              <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                {img ? (
-                  <img
-                    src={img}
-                    alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
-                  </div>
-                )}
-                {listing.isPremium && (
-                  <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                    Premium
-                  </span>
-                )}
-              </div>
-              <div className="p-2.5 flex flex-col gap-0.5">
-                <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-                <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-                <p className="text-outline text-xs truncate">{listing.location}</p>
-                <p className="text-outline/70 text-[10px]">{formatDistanceToNow(new Date(listing.createdAt))}</p>
-              </div>
-            </Link>
-          );
-        })}
+        {current.listings.map((listing) => (
+          <ListingCard
+            key={listing.id}
+            listing={{ ...listing, createdAt: new Date(listing.createdAt) }}
+          />
+        ))}
       </div>
     </section>
   );

@@ -3,17 +3,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
-import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { CATEGORIES } from "@/lib/categories";
 import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
 import HistoryTracker from "@/components/HistoryTracker";
-import DejaVuBadge from "@/components/DejaVuBadge";
 import GridAdCard from "@/components/GridAdCard";
-import Image from "next/image";
-import { listingUrl } from "@/lib/listing-slug";
+import ListingCard from "@/components/home/ListingCard";
 import { Suspense } from "react";
 import SaveSearchButton from "./SaveSearchButton";
 
@@ -155,9 +152,6 @@ export default async function SearchPage({
             </div>
           ) : (
             listings.map((listing, i) => {
-              const images = JSON.parse(listing.images) as string[];
-              const img = images[0] || undefined;
-              // Insert an ad at positions 4, 9, 14, …
               const adIndex = Math.floor(i / 5);
               const ad = i % 5 === 4 ? ads[adIndex] ?? null : null;
               return (
@@ -171,32 +165,7 @@ export default async function SearchPage({
                       destinationUrl={ad.destinationUrl}
                     />
                   )}
-                  <Link
-                    href={listingUrl(listing.id, listing.title)}
-                    className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                      {img ? (
-                        <Image src={img} alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
-                        </div>
-                      )}
-                      {listing.isPremium && (
-                        <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          Premium
-                        </span>
-                      )}
-                      <DejaVuBadge listingId={listing.id} />
-                    </div>
-                    <div className="p-2.5 flex flex-col gap-0.5">
-                      <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-                      <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-                      <p className="text-outline text-xs truncate">{listing.location}</p>
-                      <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
-                    </div>
-                  </Link>
+                  <ListingCard listing={listing} priority={i === 0} />
                 </Fragment>
               );
             })

@@ -365,93 +365,61 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* À la une — premium / verified / pro, fond foncé pour démarquer */}
       <ListingRow
-        eyebrow="À la une"
-        title="Coups de cœur Deal&Co"
-        icon="star"
+        title="Coups de cœur"
+        subtitle="Sélection vérifiée et mise en avant"
         href="/search?sort=premium"
-        tone="dark"
-        cardSize="lg"
         listings={featuredRow}
       />
 
-      {/* Ad Carousel */}
       {ads.length > 0 && <AdCarousel ads={ads} />}
 
-      {/* Bonnes affaires — prix bas, ton chaleureux */}
       <ListingRow
-        eyebrow="Sous les 100 €"
         title="Bonnes affaires"
-        icon="local_offer"
+        subtitle="Sous les 100 €"
         href="/search?priceMax=100"
         hrefLabel="Toutes les bonnes affaires"
-        tone="warm"
-        rounded
         cardBadge={{ label: "Bonne affaire", tone: "bargain" }}
         listings={bargainsRow}
       />
 
-      {/* Voitures — bandeau plein largeur, fond surface-container */}
       <ListingRow
-        eyebrow="Sur la route"
-        title="Voitures d'occasion près de chez vous"
-        icon="directions_car"
+        title="Voitures d'occasion"
         href="/annonces/vehicules"
         hrefLabel="Tous les véhicules"
-        tone="tinted"
-        rounded
         listings={vehiculesRow}
       />
 
-      {/* Recommandations — déjà un composant client autonome */}
       <HomeRecommendations />
 
-      {/* Immobilier */}
       <ListingRow
-        eyebrow="Trouver un toit"
-        title="Immobilier coup d'œil"
-        icon="apartment"
+        title="Immobilier"
         href="/annonces/immobilier"
         hrefLabel="Tous les biens"
         listings={immobilierRow}
       />
 
-      {/* Mode */}
       <ListingRow
-        eyebrow="Style & dressing"
-        title="Tendances mode"
-        icon="checkroom"
+        title="Mode"
         href="/annonces/mode"
         hrefLabel="Toute la mode"
-        tone="tinted"
-        rounded
         listings={modeRow}
       />
 
-      {/* Annonces récentes — grille mosaïque, mise en page différente des rangées */}
-      <section className="px-6 py-10 max-w-7xl mx-auto">
-        <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <span
-              className="material-symbols-outlined text-2xl text-primary"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              new_releases
-            </span>
-            <div>
-              <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">
-                Tout juste publié
-              </span>
-              <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-on-surface">
-                Annonces récentes
-              </h2>
-            </div>
+      <section className="px-6 py-6 max-w-7xl mx-auto border-t border-surface-container mt-6">
+        <div className="flex items-end justify-between mb-4 gap-3">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight text-on-surface">
+              Annonces récentes
+            </h2>
+            <p className="text-xs md:text-sm text-outline mt-0.5">
+              Tout ce qui vient d'être publié
+            </p>
           </div>
           <Link
             href="/nouveautes"
             title="Voir toutes les annonces récentes"
-            className="text-primary text-sm font-semibold flex items-center gap-1 group"
+            className="shrink-0 text-sm font-semibold text-primary flex items-center gap-1 group"
           >
             Voir tout
             <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">
@@ -461,15 +429,9 @@ export default async function Home() {
         </div>
 
         {recentsRow.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
-            {recentsRow.slice(0, 12).map((l, i) => (
-              <div key={l.id} className={i === 0 ? "col-span-2 row-span-2" : ""}>
-                <ListingCard
-                  listing={l}
-                  size="md"
-                  badge={i === 0 ? { label: "Nouveau", tone: "fresh" } : undefined}
-                />
-              </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            {recentsRow.slice(0, 10).map((l) => (
+              <ListingCard key={l.id} listing={l} size="md" />
             ))}
           </div>
         )}
@@ -478,7 +440,7 @@ export default async function Home() {
           <Link
             href="/search"
             title="Lancer une recherche"
-            className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+            className="px-6 py-2.5 bg-primary text-white rounded-full font-semibold text-sm active:scale-95 transition-transform"
           >
             Voir plus d'annonces
           </Link>

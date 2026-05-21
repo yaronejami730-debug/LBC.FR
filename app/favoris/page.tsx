@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { formatDistanceToNow } from "@/lib/utils";
+import ListingCard from "@/components/home/ListingCard";
 
 export const metadata: Metadata = {
   title: "Mes favoris — Deal&Co",
@@ -55,41 +55,9 @@ export default async function FavoritesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {active.map(({ listing }) => {
-              const images = JSON.parse(listing.images) as string[];
-              const img = images[0] || "";
-              return (
-                <Link
-                  key={listing.id}
-                  href={`/annonce/${listing.id}`}
-                  className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
-                >
-                  <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                    {img ? (
-                      <img
-                        src={img}
-                        alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
-                      <span className="material-symbols-outlined text-red-500 text-base" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-                    </div>
-                  </div>
-                  <div className="p-2.5 flex flex-col gap-0.5">
-                    <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-                    <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-                    <p className="text-outline text-xs truncate">{listing.location}</p>
-                    <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
-                  </div>
-                </Link>
-              );
-            })}
+            {active.map(({ listing }) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
           </div>
         )}
       </main>

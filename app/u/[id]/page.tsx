@@ -3,11 +3,10 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { getUserResponseTime } from "@/lib/user-stats";
-import { listingUrl } from "@/lib/listing-slug";
+import ListingCard from "@/components/home/ListingCard";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -156,41 +155,10 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
             <p className="text-on-surface-variant font-medium">Aucune annonce en ligne pour le moment.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {user.listings.map((listing: any) => {
-              const images = JSON.parse(listing.images) as string[];
-              const img = images[0] || "";
-              return (
-                <Link
-                  key={listing.id}
-                  href={listingUrl(listing.id, listing.title)}
-                  className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100"
-                >
-                  <div className="relative aspect-square overflow-hidden">
-                    {img ? (
-                      <img
-                        src={img}
-                        alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                        <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <p className="text-[#2f6fb8] font-bold text-sm leading-tight line-clamp-2 h-10">{listing.title}</p>
-                    <p className="text-primary font-black text-lg mt-2">{listing.price.toLocaleString("fr-FR")} €</p>
-                    <div className="flex items-center gap-1.5 mt-2 text-outline text-[11px] font-medium">
-                      <span className="material-symbols-outlined text-xs">location_on</span>
-                      {listing.location}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+            {user.listings.map((listing: any) => (
+              <ListingCard key={listing.id} listing={listing} />
+            ))}
           </div>
         )}
       </main>

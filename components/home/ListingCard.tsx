@@ -33,7 +33,7 @@ export default function ListingCard({
   const img = images[0];
 
   const widthClass =
-    size === "lg" ? "w-64 md:w-auto" : size === "sm" ? "w-36 md:w-auto" : "w-44 md:w-auto";
+    size === "lg" ? "w-60 md:w-auto" : size === "sm" ? "w-40 md:w-auto" : "w-48 md:w-auto";
 
   const badgeTone =
     badge?.tone === "premium"
@@ -42,13 +42,13 @@ export default function ListingCard({
         ? "bg-emerald-600 text-white"
         : badge?.tone === "verified"
           ? "bg-[#2f6fb8] text-white"
-          : "bg-amber-500 text-white";
+          : "bg-rose-500 text-white";
 
   return (
     <Link
       href={listingUrl(listing.id, listing.title)}
       title={`${listing.title} — ${listing.price.toLocaleString("fr-FR")} €`}
-      className={`flex-shrink-0 ${widthClass} group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200`}
+      className={`flex-shrink-0 ${widthClass} group flex flex-col bg-white rounded-2xl overflow-hidden border border-[#e6e8eb] hover:border-[#c7c5d4] hover:shadow-sm transition-all duration-200`}
     >
       <div className="relative aspect-square overflow-hidden bg-surface-container-low">
         {img ? (
@@ -58,7 +58,7 @@ export default function ListingCard({
             fill
             priority={priority}
             sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -76,11 +76,15 @@ export default function ListingCard({
         ) : null}
         <DejaVuBadge listingId={listing.id} />
       </div>
-      <div className="p-2.5 flex flex-col gap-0.5">
-        <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-        <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-        <p className="text-outline text-xs truncate">{listing.location}</p>
-        <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
+      <div className="px-3 py-3 flex flex-col gap-1">
+        <p className="text-[#191c1e] font-extrabold text-[15px] leading-snug line-clamp-2 min-h-[2.5em]">
+          {listing.title}
+        </p>
+        <p className="text-[#2f6fb8] font-extrabold text-lg leading-none mt-1">
+          {listing.price.toLocaleString("fr-FR")} €
+        </p>
+        <p className="text-[#777683] text-xs truncate mt-1">{listing.location}</p>
+        <p className="text-[#9ca3af] text-[11px]">{formatDistanceToNow(listing.createdAt)}</p>
       </div>
     </Link>
   );
