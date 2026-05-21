@@ -1,13 +1,12 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { listingUrl } from "@/lib/listing-slug";
-import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
+import ListingCard from "@/components/home/ListingCard";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -163,7 +162,7 @@ export default async function VoitureBudgetPage({
       orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
       take: PER_PAGE,
       skip,
-      select: { id: true, title: true, price: true, location: true, images: true, createdAt: true },
+      select: { id: true, title: true, price: true, location: true, images: true, createdAt: true, isPremium: true },
     }),
     prisma.listing.aggregate({
       where: where as any,
@@ -263,40 +262,10 @@ export default async function VoitureBudgetPage({
 
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-4">Annonces {budget.label.toLowerCase()}</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {listings.map((l) => {
-              const images = JSON.parse(l.images) as string[];
-              const img = images[0] || undefined;
-              return (
-                <Link
-                  key={l.id}
-                  href={listingUrl(l.id, l.title)}
-                  className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all"
-                >
-                  <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                    {img ? (
-                      <Image
-                        src={img}
-                        alt={`${l.title} — ${l.price.toLocaleString("fr-FR")} €`}
-                        fill
-                        sizes="(max-width:640px) 50vw,25vw"
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-2.5 flex flex-col gap-0.5">
-                    <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{l.title}</p>
-                    <p className="text-primary font-bold">{l.price.toLocaleString("fr-FR")} €</p>
-                    <p className="text-outline text-xs truncate">{l.location}</p>
-                    <p className="text-outline/60 text-[10px]">{formatDistanceToNow(l.createdAt)}</p>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            {listings.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
           </div>
 
           {totalPages > 1 && (
