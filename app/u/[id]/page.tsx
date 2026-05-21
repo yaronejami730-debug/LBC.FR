@@ -6,6 +6,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import { getUserResponseTime } from "@/lib/user-stats";
+import { listingUrl } from "@/lib/listing-slug";
 import ListingCard from "@/components/home/ListingCard";
 
 const BASE = "https://www.dealandcompany.fr";
