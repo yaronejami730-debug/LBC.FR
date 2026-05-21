@@ -1,17 +1,15 @@
-import { Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
-import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
-import DejaVuBadge from "@/components/DejaVuBadge";
 import SiteFooter from "@/components/SiteFooter";
-import { listingUrl } from "@/lib/listing-slug";
+import ListingRow from "@/components/home/ListingRow";
+import ListingCard, { type HomeListing } from "@/components/home/ListingCard";
 
 export const metadata: Metadata = {
   title: { absolute: "Petites annonces gratuites entre particuliers — Deal&Co" },
@@ -139,14 +137,80 @@ const jsonLd = {
   ],
 };
 
+const LISTING_SELECT = {
+  id: true,
+  title: true,
+  price: true,
+  location: true,
+  images: true,
+  createdAt: true,
+  isPremium: true,
+} as const;
+
+const APPROVED = { status: "APPROVED", deletedAt: null, shadowBanned: false } as const;
+
+function dedupe(listings: HomeListing[][]): HomeListing[][] {
+  const seen = new Set<string>();
+  return listings.map((row) => {
+    const out: HomeListing[] = [];
+    for (const l of row) {
+      if (seen.has(l.id)) continue;
+      seen.add(l.id);
+      out.push(l);
+    }
+    return out;
+  });
+}
+
 export default async function Home() {
   const now = new Date();
-  const [listings, ads, activeBanner] = await Promise.all([
+  const [
+    featured,
+    bargains,
+    vehicules,
+    immobilier,
+    mode,
+    recents,
+    ads,
+    activeBanner,
+  ] = await Promise.all([
+    // À la une — premium d'abord, puis annonces de comptes pro vérifiés.
     prisma.listing.findMany({
-      where: { status: "APPROVED", deletedAt: null } as any,
+      where: { ...APPROVED, OR: [{ isPremium: true }, { isVerified: true }, { user: { isPro: true } }] },
+      orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
+      take: 10,
+      select: LISTING_SELECT,
+    }),
+    // Bonnes affaires — prix faible, encore neuf sur le site.
+    prisma.listing.findMany({
+      where: { ...APPROVED, price: { gt: 0, lte: 100 } },
       orderBy: { createdAt: "desc" },
-      take: 8,
-      include: { user: { select: { name: true, verified: true } } },
+      take: 10,
+      select: LISTING_SELECT,
+    }),
+    prisma.listing.findMany({
+      where: { ...APPROVED, category: "vehicules" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: LISTING_SELECT,
+    }),
+    prisma.listing.findMany({
+      where: { ...APPROVED, category: "immobilier" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: LISTING_SELECT,
+    }),
+    prisma.listing.findMany({
+      where: { ...APPROVED, category: "mode" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: LISTING_SELECT,
+    }),
+    prisma.listing.findMany({
+      where: APPROVED,
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: LISTING_SELECT,
     }),
     getActiveAds(5).catch(() => []),
     prisma.heroBanner.findFirst({
@@ -158,6 +222,16 @@ export default async function Home() {
       orderBy: { createdAt: "desc" },
     }).catch(() => null),
   ]);
+
+  // Évite qu'une même annonce apparaisse dans plusieurs rangées.
+  const [
+    featuredRow,
+    bargainsRow,
+    vehiculesRow,
+    immobilierRow,
+    modeRow,
+    recentsRow,
+  ] = dedupe([featured, bargains, vehicules, immobilier, mode, recents]);
 
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-0">
@@ -291,96 +365,121 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* À la une — premium / verified / pro, fond foncé pour démarquer */}
+      <ListingRow
+        eyebrow="À la une"
+        title="Coups de cœur Deal&Co"
+        icon="star"
+        href="/search?sort=premium"
+        tone="dark"
+        cardSize="lg"
+        listings={featuredRow}
+      />
+
       {/* Ad Carousel */}
       {ads.length > 0 && <AdCarousel ads={ads} />}
 
-      {/* Recommendations based on search history (client-side, only shows if history exists) */}
+      {/* Bonnes affaires — prix bas, ton chaleureux */}
+      <ListingRow
+        eyebrow="Sous les 100 €"
+        title="Bonnes affaires"
+        icon="local_offer"
+        href="/search?priceMax=100"
+        hrefLabel="Toutes les bonnes affaires"
+        tone="warm"
+        rounded
+        cardBadge={{ label: "Bonne affaire", tone: "bargain" }}
+        listings={bargainsRow}
+      />
+
+      {/* Voitures — bandeau plein largeur, fond surface-container */}
+      <ListingRow
+        eyebrow="Sur la route"
+        title="Voitures d'occasion près de chez vous"
+        icon="directions_car"
+        href="/annonces/vehicules"
+        hrefLabel="Tous les véhicules"
+        tone="tinted"
+        rounded
+        listings={vehiculesRow}
+      />
+
+      {/* Recommandations — déjà un composant client autonome */}
       <HomeRecommendations />
 
-      {/* Recent Listings Section */}
-      <section className="py-10 max-w-7xl mx-auto bg-surface-container-low rounded-t-[3rem]">
-        <div className="flex items-center justify-between mb-5 px-6">
-          <h2 className="text-xl font-extrabold text-on-surface tracking-tight">Annonces récentes</h2>
-          <Link href="/nouveautes" title="Voir toutes les annonces récentes" className="text-primary text-sm font-semibold flex items-center gap-1 group">
-            Voir tout <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+      {/* Immobilier */}
+      <ListingRow
+        eyebrow="Trouver un toit"
+        title="Immobilier coup d'œil"
+        icon="apartment"
+        href="/annonces/immobilier"
+        hrefLabel="Tous les biens"
+        listings={immobilierRow}
+      />
+
+      {/* Mode */}
+      <ListingRow
+        eyebrow="Style & dressing"
+        title="Tendances mode"
+        icon="checkroom"
+        href="/annonces/mode"
+        hrefLabel="Toute la mode"
+        tone="tinted"
+        rounded
+        listings={modeRow}
+      />
+
+      {/* Annonces récentes — grille mosaïque, mise en page différente des rangées */}
+      <section className="px-6 py-10 max-w-7xl mx-auto">
+        <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <span
+              className="material-symbols-outlined text-2xl text-primary"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              new_releases
+            </span>
+            <div>
+              <span className="text-primary font-bold uppercase tracking-[0.1em] text-[11px]">
+                Tout juste publié
+              </span>
+              <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-on-surface">
+                Annonces récentes
+              </h2>
+            </div>
+          </div>
+          <Link
+            href="/nouveautes"
+            title="Voir toutes les annonces récentes"
+            className="text-primary text-sm font-semibold flex items-center gap-1 group"
+          >
+            Voir tout
+            <span className="material-symbols-outlined text-base group-hover:translate-x-0.5 transition-transform">
+              arrow_forward
+            </span>
           </Link>
         </div>
-        {/* Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex gap-3 overflow-x-auto pb-3 px-6 no-scrollbar md:grid md:grid-cols-4 lg:grid-cols-5 md:gap-4 md:overflow-visible md:pb-0">
-          {listings.map((listing, i) => {
-            const images = JSON.parse(listing.images) as string[];
-            const img = images[0] || undefined;
-            const ad = i === 1 ? ads[0] : i === 5 ? ads[1] : null;
-            return (
-              <Fragment key={listing.id}>
-                {ad && (
-                  <a
-                    key={`ad-${ad.id}`}
-                    href={ad.destinationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={ad.title}
-                    className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-[#c7c5d4] hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                      <Image
-                        src={ad.imageUrl}
-                        alt={ad.title}
-                        fill
-                        sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <span className="absolute top-2 left-2 bg-[#2f6fb8] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                        Publicité
-                      </span>
-                    </div>
-                    <div className="p-2.5 flex flex-col gap-0.5">
-                      <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{ad.title}</p>
-                      <p className="text-outline text-xs line-clamp-2">{ad.description}</p>
-                    </div>
-                  </a>
-                )}
-                <Link
-                  href={listingUrl(listing.id, listing.title)}
-                  title={`${listing.title} — ${listing.price.toLocaleString("fr-FR")} €`}
-                  className="flex-shrink-0 w-44 md:w-auto group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
-                >
-                  <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                    {img ? (
-                      <Image
-                        src={img}
-                        alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
-                        fill
-                        // Première carte = LCP probable → priority pour pré-charger.
-                        priority={i === 0}
-                        sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-3xl text-outline/30">image</span>
-                      </div>
-                    )}
-                    {listing.isPremium && (
-                      <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                        Premium
-                      </span>
-                    )}
-                    <DejaVuBadge listingId={listing.id} />
-                  </div>
-                  <div className="p-2.5 flex flex-col gap-0.5">
-                    <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-                    <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-                    <p className="text-outline text-xs truncate">{listing.location}</p>
-                    <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
-                  </div>
-                </Link>
-              </Fragment>
-            );
-          })}
-        </div>
-        <div className="mt-8 flex justify-center px-6">
-          <Link href="/search" title="Lancer une recherche" className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform">
+
+        {recentsRow.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+            {recentsRow.slice(0, 12).map((l, i) => (
+              <div key={l.id} className={i === 0 ? "col-span-2 row-span-2" : ""}>
+                <ListingCard
+                  listing={l}
+                  size="md"
+                  badge={i === 0 ? { label: "Nouveau", tone: "fresh" } : undefined}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/search"
+            title="Lancer une recherche"
+            className="px-8 py-3 bg-primary text-white rounded-full font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+          >
             Voir plus d'annonces
           </Link>
         </div>
