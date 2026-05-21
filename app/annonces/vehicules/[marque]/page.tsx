@@ -1,15 +1,13 @@
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CAR_BRANDS } from "@/lib/carBrands";
 import { listingUrl } from "@/lib/listing-slug";
-import { formatDistanceToNow } from "@/lib/utils";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
-import DejaVuBadge from "@/components/DejaVuBadge";
+import ListingCard from "@/components/home/ListingCard";
 
 const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 3600;
@@ -263,44 +261,8 @@ export default async function MarquePage({
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {listings.map((listing) => {
-            const imgs = JSON.parse(listing.images) as string[];
-            const img = imgs[0] || undefined;
-            let meta: Record<string, string> = {};
-            try { meta = JSON.parse(listing.metadata); } catch { /* empty */ }
-
             return (
-              <Link
-                key={listing.id}
-                href={listingUrl(listing.id, listing.title)}
-                className="group flex flex-col bg-white rounded-xl overflow-hidden border border-surface-container hover:shadow-md transition-all duration-200"
-              >
-                <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                  {img ? (
-                    <Image
-                      src={img}
-                      alt={`${listing.title}${listing.location ? ` à ${listing.location.split(/[,(]/)[0]?.trim()}` : ""} — ${listing.price.toLocaleString("fr-FR")} €`}
-                      fill
-                      sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,20vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="material-symbols-outlined text-3xl text-outline/30">directions_car</span>
-                    </div>
-                  )}
-                  {listing.isPremium && (
-                    <span className="absolute top-2 left-2 bg-secondary-container text-on-secondary-container text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Premium</span>
-                  )}
-                  <DejaVuBadge listingId={listing.id} />
-                </div>
-                <div className="p-2.5 flex flex-col gap-0.5">
-                  <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">{listing.title}</p>
-                  <p className="text-primary font-bold text-base mt-1">{listing.price.toLocaleString("fr-FR")} €</p>
-                  {meta.annee && <p className="text-outline text-xs">{meta.annee}{meta.kilometrage ? ` · ${Number(String(meta.kilometrage).replace(/\D/g, "")).toLocaleString("fr-FR")} km` : ""}</p>}
-                  <p className="text-outline text-xs truncate">{listing.location}</p>
-                  <p className="text-outline/70 text-[10px]">{formatDistanceToNow(listing.createdAt)}</p>
-                </div>
-              </Link>
+              <ListingCard key={listing.id} listing={listing} />
             );
           })}
         </div>
