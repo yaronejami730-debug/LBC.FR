@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getClientListings } from "@/app/admin/actions";
 import ClientListingsPanel from "./ClientListingsPanel";
 import DisplayNameEditor from "./DisplayNameEditor";
+import NameEditor from "./NameEditor";
+import PhoneEditor from "./PhoneEditor";
 import ConsentReminderButton from "./ConsentReminderButton";
 
 export default async function ClientDetailPage({
@@ -27,6 +29,7 @@ export default async function ClientDetailPage({
       createdAt: true,
       consentGivenAt: true,
       bannedAt: true,
+      phoneNumber: true,
       // Compte uniquement les annonces non supprimées — sinon le total reste
       // figé après une suppression depuis le CRM.
       _count: { select: { listings: { where: { deletedAt: null } } } },
@@ -90,9 +93,13 @@ export default async function ClientDetailPage({
                 {user._count.listings} annonce{user._count.listings !== 1 ? "s" : ""}
               </span>
             </div>
+            <NameEditor userId={user.id} initialName={user.name} />
+
             {user.isPro && (
               <DisplayNameEditor userId={user.id} initialName={user.companyName} />
             )}
+
+            <PhoneEditor userId={user.id} initialPhone={user.phoneNumber} />
 
             <div className="mt-3">
               <ConsentReminderButton

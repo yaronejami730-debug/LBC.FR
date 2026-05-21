@@ -42,7 +42,7 @@ model User {
   trustScore           Int      @default(50)
   trustScoreUpdatedAt  DateTime @default(now())
   emailVerified        Boolean  @default(false)
-  phoneNumber          String?
+  phoneNumber          String?  @unique
   phoneVerified        Boolean  @default(false)
   totalReportsAgainst  Int      @default(0)
   rejectedListingCount Int      @default(0)

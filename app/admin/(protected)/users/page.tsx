@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import UserActions from "@/components/admin/UserActions";
 
@@ -101,11 +102,13 @@ export default async function UsersPage() {
                 <tr key={user.id} className="hover:bg-[#f7f9fb] transition-colors">
                   {/* ID */}
                   <td className="px-6 py-3">
-                    <span className="text-xs font-mono text-[#9ca3af]">#{user.id.slice(0, 8)}</span>
+                    <Link href={`/admin/clients/${user.id}`} className="text-xs font-mono text-[#9ca3af] hover:text-[#2f6fb8] hover:underline">
+                      #{user.id.slice(0, 8)}
+                    </Link>
                   </td>
                   {/* Avatar + Name */}
                   <td className="px-6 py-3">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/admin/clients/${user.id}`} className="group flex items-center gap-3 hover:opacity-90">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-[#e1e0ff] flex items-center justify-center flex-shrink-0">
                         {user.avatar ? (
                           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -115,8 +118,10 @@ export default async function UsersPage() {
                           </span>
                         )}
                       </div>
-                      <span className="text-sm font-semibold text-[#191c1e] whitespace-nowrap">{user.name}</span>
-                    </div>
+                      <span className="text-sm font-semibold text-[#191c1e] whitespace-nowrap group-hover:text-[#2f6fb8] group-hover:underline">
+                        {user.name}
+                      </span>
+                    </Link>
                   </td>
 
                   {/* Compte type */}

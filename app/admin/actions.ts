@@ -10,6 +10,7 @@ import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import { baseEmail } from "@/lib/emails/base";
 import { syncSource, parseSourceUrl } from "@/lib/external-sync";
+import { normalizePhone, hashPhone } from "@/lib/moderation/phone";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
@@ -536,6 +537,70 @@ export async function updateClientDisplayName(userId: string, companyName: strin
   revalidatePath("/admin/create-client");
   revalidatePath(`/admin/clients/${userId}`);
   return { ok: true };
+}
+
+export async function updateUserName(userId: string, name: string) {
+  await requireAdmin();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Nom requis");
+  if (trimmed.length > 120) throw new Error("Nom trop long");
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) throw new Error("Utilisateur introuvable");
+
+  await prisma.user.update({ where: { id: userId }, data: { name: trimmed } });
+
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/create-client");
+  revalidatePath(`/admin/clients/${userId}`);
+  return { ok: true };
+}
+
+/**
+ * Définit le numéro de téléphone unique d'un compte et le propage à toutes
+ * ses annonces (existantes). Refuse si le numéro est déjà attribué à un autre compte.
+ * Passer une chaîne vide ou null retire le numéro du compte (et des annonces).
+ */
+export async function updateUserPhone(userId: string, rawPhone: string | null) {
+  await requireAdmin();
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) throw new Error("Utilisateur introuvable");
+
+  const raw = (rawPhone ?? "").trim();
+  if (!raw) {
+    await prisma.user.update({ where: { id: userId }, data: { phoneNumber: null } });
+    await prisma.listing.updateMany({
+      where: { userId },
+      data: { phone: null, phoneHash: null },
+    });
+    revalidatePath(`/admin/clients/${userId}`);
+    return { ok: true, phone: null };
+  }
+
+  const normalized = normalizePhone(raw);
+  if (!normalized) throw new Error("Numéro invalide (format FR attendu, ex. 06 12 34 56 78)");
+
+  const existing = await prisma.user.findUnique({
+    where: { phoneNumber: normalized },
+    select: { id: true, email: true },
+  });
+  if (existing && existing.id !== userId) {
+    throw new Error(`Numéro déjà utilisé par un autre compte (${existing.email})`);
+  }
+
+  const hash = hashPhone(normalized);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { phoneNumber: normalized } }),
+    prisma.listing.updateMany({
+      where: { userId },
+      data: { phone: normalized, phoneHash: hash },
+    }),
+  ]);
+
+  revalidatePath(`/admin/clients/${userId}`);
+  return { ok: true, phone: normalized };
 }
 
 // ── Client listings management ────────────────────────────────────────────────
