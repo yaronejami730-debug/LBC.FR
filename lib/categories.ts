@@ -5,6 +5,17 @@ export type Category = {
   subcategories: string[];
 };
 
+/**
+ * Catégories mises en avant pour le SEO et la home (bento + sections dédiées).
+ * Les autres restent listées et accessibles pour la publication, mais reçoivent
+ * un traitement visuel plus discret.
+ */
+export const FEATURED_CATEGORY_IDS = new Set(["immobilier", "vehicules"]);
+
+export function isFeaturedCategory(id: string): boolean {
+  return FEATURED_CATEGORY_IDS.has(id);
+}
+
 export const CATEGORIES: Category[] = [
   {
     id: "immobilier",

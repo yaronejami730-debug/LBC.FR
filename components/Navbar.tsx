@@ -78,20 +78,30 @@ export default async function Navbar({
 
         {/* Bottom Row - Categories */}
         <div className="hidden lg:flex items-center justify-between py-2.5 text-[14px] text-slate-600 gap-1 overflow-x-auto hide-scrollbar w-full">
-          {CATEGORIES.map((cat, index) => (
-            <div key={cat.label} className="flex items-center flex-shrink-0">
-              <Link
-                href={cat.href}
-                title={cat.label === "Bons plans !" ? "Découvrir les nouveautés" : `Annonces ${cat.label}`}
-                className={`hover:text-[#2f6fb8] hover:underline transition-colors ${cat.label === "Bons plans !" ? "font-[800] text-slate-800" : "font-[500]"}`}
-              >
-                {cat.label}
-              </Link>
-              {index < CATEGORIES.length - 1 && (
-                <span className="mx-2 lg:mx-3 text-slate-400 font-bold opacity-60">·</span>
-              )}
-            </div>
-          ))}
+          {CATEGORIES.map((cat, index) => {
+            const isFeatured = cat.label === "Immobilier" || cat.label === "Véhicules";
+            const isDeals = cat.label === "Bons plans !";
+            return (
+              <div key={cat.label} className="flex items-center flex-shrink-0">
+                <Link
+                  href={cat.href}
+                  title={isDeals ? "Découvrir les nouveautés" : `Annonces ${cat.label}`}
+                  className={`hover:text-[#2f6fb8] hover:underline transition-colors ${
+                    isFeatured
+                      ? "font-[800] text-[#2f6fb8]"
+                      : isDeals
+                        ? "font-[800] text-slate-800"
+                        : "font-[500]"
+                  }`}
+                >
+                  {cat.label}
+                </Link>
+                {index < CATEGORIES.length - 1 && (
+                  <span className="mx-2 lg:mx-3 text-slate-400 font-bold opacity-60">·</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </nav>

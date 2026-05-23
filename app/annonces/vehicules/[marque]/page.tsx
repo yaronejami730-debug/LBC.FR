@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CAR_BRANDS } from "@/lib/carBrands";
+import { CATEGORIES } from "@/lib/categories";
+import { slugToSubcategoryLabel, subcategoryToSlug } from "@/lib/seo-content";
 import { listingUrl } from "@/lib/listing-slug";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -26,7 +28,13 @@ function marqueToSlug(name: string): string {
 }
 
 export function generateStaticParams() {
-  return CAR_BRANDS.map((b) => ({ marque: marqueToSlug(b.name) }));
+  const brandParams = CAR_BRANDS.map((b) => ({ marque: marqueToSlug(b.name) }));
+  // Sous-catégories véhicules — partagent la même route.
+  const subParams =
+    CATEGORIES.find((c) => c.id === "vehicules")?.subcategories.map((s) => ({
+      marque: subcategoryToSlug(s),
+    })) ?? [];
+  return [...brandParams, ...subParams];
 }
 
 export async function generateMetadata({
@@ -41,7 +49,21 @@ export async function generateMetadata({
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const marque = slugToMarque(marqueSlug);
   const brand = CAR_BRANDS.find((b) => b.name.toLowerCase() === marque.toLowerCase());
-  if (!brand) return {};
+
+  if (!brand) {
+    // Sous-catégorie véhicule (Motos, Caravaning, Utilitaires, Équipements auto).
+    const subLabel = slugToSubcategoryLabel("vehicules", marqueSlug);
+    if (!subLabel) return {};
+    const subCount = await prisma.listing.count({
+      where: { status: "APPROVED", deletedAt: null, category: "Véhicules", subcategory: subLabel } as any,
+    }).catch(() => 0);
+    return {
+      title: `${subLabel} d'occasion entre particuliers — ${subCount} annonce${subCount !== 1 ? "s" : ""} — Deal&Co`,
+      description: `Achetez ou vendez ${subLabel.toLowerCase()} d'occasion entre particuliers en France. ${subCount} annonce${subCount !== 1 ? "s" : ""} disponible${subCount !== 1 ? "s" : ""} sur Deal&Co, sans commission.`,
+      alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
+      robots: page > 1 ? { index: false, follow: true } : undefined,
+    };
+  }
 
   const count = await prisma.listing.count({
     where: {
@@ -82,9 +104,20 @@ export default async function MarquePage({
 
   const marque = slugToMarque(marqueSlug);
   const brand = CAR_BRANDS.find((b) => b.name.toLowerCase() === marque.toLowerCase());
-  if (!brand) notFound();
+
+  // La route /annonces/vehicules/<slug> capture aussi les sous-catégories
+  // (Motos, Caravaning, Utilitaires, Équipements auto). Si le slug n'est pas
+  // une marque mais correspond à une sous-catégorie connue, on rend la page
+  // dédiée à la sous-catégorie plutôt que de 404.
+  const subLabel = !brand ? slugToSubcategoryLabel("vehicules", marqueSlug) : null;
+  if (!brand && !subLabel) notFound();
 
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+
+  if (subLabel) {
+    return renderSubcategoryPage({ subSlug: marqueSlug, subLabel, page });
+  }
+  if (!brand) notFound();
   const skip = (page - 1) * PER_PAGE;
 
   const where = {
@@ -338,6 +371,156 @@ export default async function MarquePage({
             ))}
           </div>
         </section>
+      </main>
+
+      <SiteFooter />
+      <BottomNav />
+    </div>
+  );
+}
+
+const SUB_PER_PAGE = 24;
+
+async function renderSubcategoryPage({
+  subSlug,
+  subLabel,
+  page,
+}: {
+  subSlug: string;
+  subLabel: string;
+  page: number;
+}) {
+  const skip = (page - 1) * SUB_PER_PAGE;
+  const where = {
+    status: "APPROVED",
+    deletedAt: null,
+    category: "Véhicules",
+    subcategory: subLabel,
+  };
+
+  const [listings, total] = await Promise.all([
+    prisma.listing.findMany({
+      where: where as any,
+      orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
+      take: SUB_PER_PAGE,
+      skip,
+      select: {
+        id: true,
+        title: true,
+        price: true,
+        location: true,
+        images: true,
+        createdAt: true,
+        isPremium: true,
+      },
+    }),
+    prisma.listing.count({ where: where as any }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / SUB_PER_PAGE));
+
+  const otherSubs =
+    CATEGORIES.find((c) => c.id === "vehicules")?.subcategories.filter(
+      (s) => s !== subLabel,
+    ) ?? [];
+
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
+      { "@type": "ListItem", position: 2, name: "Véhicules", item: `${BASE}/annonces/vehicules` },
+      { "@type": "ListItem", position: 3, name: subLabel, item: `${BASE}/annonces/vehicules/${subSlug}` },
+    ],
+  };
+
+  return (
+    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <Navbar />
+
+      <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">
+        <nav aria-label="Fil d'Ariane" className="mb-6 text-sm text-outline flex items-center gap-2">
+          <Link href="/" className="hover:text-primary transition-colors">Accueil</Link>
+          <span>/</span>
+          <Link href="/annonces/vehicules" className="hover:text-primary transition-colors">Véhicules</Link>
+          <span>/</span>
+          <span className="text-on-surface font-semibold">{subLabel}</span>
+        </nav>
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">
+            {subLabel} d&apos;occasion entre particuliers
+          </h1>
+          <p className="text-outline mt-1">
+            {total} annonce{total !== 1 ? "s" : ""} disponible{total !== 1 ? "s" : ""} sur Deal&amp;Co
+          </p>
+        </div>
+
+        {listings.length === 0 ? (
+          <div className="bg-white border border-surface-container rounded-2xl p-10 text-center">
+            <span className="material-symbols-outlined text-5xl text-outline/30 block mb-3">inbox</span>
+            <p className="text-on-surface-variant font-medium">
+              Aucune annonce {subLabel.toLowerCase()} pour le moment.
+            </p>
+            <Link
+              href="/post"
+              className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold"
+            >
+              <span className="material-symbols-outlined text-base">add</span>
+              Publier la première annonce
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            {listings.map((l, i) => (
+              <ListingCard key={l.id} listing={l} priority={i === 0} />
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <nav aria-label="Pagination" className="flex items-center justify-center gap-2 mt-10">
+            {page > 1 && (
+              <Link
+                href={page === 2 ? `/annonces/vehicules/${subSlug}` : `/annonces/vehicules/${subSlug}?page=${page - 1}`}
+                rel="prev"
+                className="px-4 py-2 rounded-xl border border-surface-container bg-white text-on-surface hover:border-primary/40 text-sm font-semibold"
+              >
+                ← Précédent
+              </Link>
+            )}
+            <span className="px-3 text-sm text-outline">
+              Page {page} sur {totalPages}
+            </span>
+            {page < totalPages && (
+              <Link
+                href={`/annonces/vehicules/${subSlug}?page=${page + 1}`}
+                rel="next"
+                className="px-4 py-2 rounded-xl border border-surface-container bg-white text-on-surface hover:border-primary/40 text-sm font-semibold"
+              >
+                Suivant →
+              </Link>
+            )}
+          </nav>
+        )}
+
+        {otherSubs.length > 0 && (
+          <section className="mt-10">
+            <h2 className="text-base font-bold text-on-surface mb-3">Autres sous-catégories véhicules</h2>
+            <div className="flex flex-wrap gap-2">
+              {otherSubs.map((s) => (
+                <Link
+                  key={s}
+                  href={`/annonces/vehicules/${subcategoryToSlug(s)}`}
+                  className="px-3 py-1.5 bg-white border border-surface-container rounded-full text-xs font-semibold text-on-surface-variant hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  {s}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <SiteFooter />

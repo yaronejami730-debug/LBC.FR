@@ -340,25 +340,99 @@ export default async function Home() {
             Toutes les catégories <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Tuile Déborah — pleine largeur, visuellement dominante */}
+        <Link
+          href="/ai"
+          title="Déborah, l'assistante IA de Deal&Co"
+          className="group relative block mb-3 md:mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-[#2f6fb8] via-[#3a86d6] to-[#7b3fd6] p-5 md:p-7"
+        >
+          <div className="absolute inset-0 opacity-25 pointer-events-none bg-[radial-gradient(circle_at_top_right,_white,_transparent_60%)]" />
+          <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-sm">
+                <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                Nouveau · Assistante IA
+              </span>
+              <h3 className="text-white font-extrabold text-2xl md:text-3xl leading-tight mt-2">
+                Déborah te trouve l&apos;annonce parfaite
+              </h3>
+              <p className="text-white/90 text-sm md:text-base mt-1 max-w-xl">
+                Réponds à quelques questions — Déborah filtre les annonces et te sort celles qui collent.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-2 bg-white text-[#2f6fb8] font-bold text-sm px-5 py-2.5 rounded-full shadow-md group-hover:shadow-lg group-hover:scale-[1.02] transition-all">
+              Parler à Déborah
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
+            </span>
+          </div>
+        </Link>
+
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4 auto-rows-[10rem] md:auto-rows-[8rem]">
           {[
-            { id: "vehicules", label: "Véhicules", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuBGMEyVAsY5RW4Yei9LtUSa92B7hQ2kPt8EdekXCUM9h3j7ZcDyUJHYxwJ0mb-4-QamClSjIg8RnjpAANyCePb3fhrOjVA2L0t5k7Rl3D1zh6oYexSNqqbyLW3pygORjeicNryZ6it1mEzuPhOT9zAeXaCTu5mBWuZdsI4wF9V7YBu95kW25E51BN9CKmlsBigwQeS7x3AW_HBzZZDo3E9aFdI4Xl__Vd5xAMJ4H80ljzvlZ4am1kTbfj1f9v50sst7_ApbhRtCnY2_" },
-            { id: "immobilier", label: "Immobilier", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAt-0kv_wITShSbU9nfI_E9TtW5TdTuw5hn_DluMsuR3tQbQXBkRXA_3FBmkrVgkDc8gTKQ1a89eMsiiBKwJxpvOKkhcmV_H7p9ZpIMBiBgqmp93hWzAhg7HuozYI-hBs3Ycm7STGtp47eGoFUKE07MF0yIyk5imrhRUSZCamG0oTX8XMTGnyOmk-FzCXAyd7HtUr0xNdYhIzFbIW1IXlxk3hmdApYxJterZ5B0mTXD2XP_tLbDOOCjpOdUcAh0wwGojhYLc87qf7gA" },
-            { id: "mode", label: "Mode", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAh42sdJERo4cvL_P118M-1bQmxaifGrDge0kVugUyS1msBPe9uUPNjGiudAk-iSrL6diy7aBN4uFtaj6ea6MQFDkIo-hWfZwPERRBiCuufUuwTxxepEdU0QBfPd6-bNEoZRYOQQ2ODh0y_oonMoVOSHBjU0lK919C1te5WXVUGifu1THI8gsk3RzG3uWmsPndQWKiGiiqcQiCvef7rsybA6lB5Eapf7xHk136aU_wkfWgUQmF1zmjeUC6CSIyCqdFTy7g0efbSr6tX" },
-            { id: "maison", label: "Maison", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3" },
-            { id: "services", label: "Services", src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR" },
-          ].map(({ id, label, src }) => (
-            <Link key={id} href={`/annonces/${id}`} title={`Annonces ${label}`} className="group relative aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4">
+            {
+              id: "vehicules",
+              label: "Véhicules d'occasion",
+              tagline: "Voitures, motos, scooters",
+              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuBGMEyVAsY5RW4Yei9LtUSa92B7hQ2kPt8EdekXCUM9h3j7ZcDyUJHYxwJ0mb-4-QamClSjIg8RnjpAANyCePb3fhrOjVA2L0t5k7Rl3D1zh6oYexSNqqbyLW3pygORjeicNryZ6it1mEzuPhOT9zAeXaCTu5mBWuZdsI4wF9V7YBu95kW25E51BN9CKmlsBigwQeS7x3AW_HBzZZDo3E9aFdI4Xl__Vd5xAMJ4H80ljzvlZ4am1kTbfj1f9v50sst7_ApbhRtCnY2_",
+              span: "col-span-2 md:col-span-3 md:row-span-2",
+              featured: true,
+            },
+            {
+              id: "immobilier",
+              label: "Immobilier entre particuliers",
+              tagline: "Achat, vente, location",
+              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAt-0kv_wITShSbU9nfI_E9TtW5TdTuw5hn_DluMsuR3tQbQXBkRXA_3FBmkrVgkDc8gTKQ1a89eMsiiBKwJxpvOKkhcmV_H7p9ZpIMBiBgqmp93hWzAhg7HuozYI-hBs3Ycm7STGtp47eGoFUKE07MF0yIyk5imrhRUSZCamG0oTX8XMTGnyOmk-FzCXAyd7HtUr0xNdYhIzFbIW1IXlxk3hmdApYxJterZ5B0mTXD2XP_tLbDOOCjpOdUcAh0wwGojhYLc87qf7gA",
+              span: "col-span-2 md:col-span-3 md:row-span-2",
+              featured: true,
+            },
+            {
+              id: "mode",
+              label: "Mode",
+              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAh42sdJERo4cvL_P118M-1bQmxaifGrDge0kVugUyS1msBPe9uUPNjGiudAk-iSrL6diy7aBN4uFtaj6ea6MQFDkIo-hWfZwPERRBiCuufUuwTxxepEdU0QBfPd6-bNEoZRYOQQ2ODh0y_oonMoVOSHBjU0lK919C1te5WXVUGifu1THI8gsk3RzG3uWmsPndQWKiGiiqcQiCvef7rsybA6lB5Eapf7xHk136aU_wkfWgUQmF1zmjeUC6CSIyCqdFTy7g0efbSr6tX",
+              span: "col-span-1 md:col-span-2",
+              featured: false,
+            },
+            {
+              id: "maison",
+              label: "Maison",
+              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3",
+              span: "col-span-1 md:col-span-2",
+              featured: false,
+            },
+            {
+              id: "services",
+              label: "Services",
+              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR",
+              span: "col-span-2 md:col-span-2",
+              featured: false,
+            },
+          ].map(({ id, label, tagline, src, span, featured }) => (
+            <Link
+              key={id}
+              href={`/annonces/${id}`}
+              title={`Annonces ${label}`}
+              className={`group relative ${span} rounded-xl overflow-hidden bg-surface-container-low flex flex-col justify-end p-4 md:p-5`}
+            >
               <Image
                 src={src}
                 alt={label}
                 fill
-                sizes="(max-width:768px) 50vw, 33vw"
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
+                sizes={featured ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 50vw, 33vw"}
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
               <div className="relative z-10">
-                <p className="text-white font-bold text-lg">{label}</p>
+                {featured && (
+                  <span className="inline-block bg-white text-primary text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2">
+                    Mis en avant
+                  </span>
+                )}
+                <p className={`text-white font-extrabold leading-tight ${featured ? "text-xl md:text-2xl" : "text-base md:text-lg"}`}>
+                  {label}
+                </p>
+                {tagline && (
+                  <p className="text-white/90 text-xs md:text-sm mt-0.5">{tagline}</p>
+                )}
               </div>
             </Link>
           ))}
