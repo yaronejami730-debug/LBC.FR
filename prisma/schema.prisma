@@ -62,6 +62,7 @@ model User {
   // Moteur comportemental
   draft             Draft?
   pushSubscriptions PushSubscription[]
+  expoPushTokens    ExpoPushToken[]
 }
 
 model ApiKey {
@@ -680,6 +681,24 @@ model PushSubscription {
   lastUsedAt   DateTime @default(now())
   disabledAt   DateTime?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, disabledAt])
+}
+
+/// Jeton Expo Push pour les apps mobiles (iOS/Android via Expo).
+/// Le token est l'identifiant unique délivré par Expo (ExponentPushToken[…]).
+/// Désactivé quand Expo renvoie DeviceNotRegistered ou InvalidCredentials.
+model ExpoPushToken {
+  id          String    @id @default(cuid())
+  userId      String
+  token       String    @unique
+  platform    String?
+  deviceName  String?
+  appVersion  String?
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime  @default(now())
+  disabledAt  DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, disabledAt])
 }

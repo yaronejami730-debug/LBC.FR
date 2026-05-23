@@ -44,7 +44,7 @@ export async function getMobileUser(req: NextRequest) {
     const payload = await verifyMobileToken(token);
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, name: true, role: true, isPro: true, emailVerified: true, bannedAt: true, companyName: true, verified: true, image: true },
+      select: { id: true, email: true, name: true, role: true, isPro: true, emailVerified: true, bannedAt: true, companyName: true, verified: true, avatar: true },
     });
     if (!user || user.bannedAt) return null;
     return user;

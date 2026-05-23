@@ -1,9 +1,18 @@
-import { useEffect, useState } from "react";
-import { ScrollView, View, Text, ActivityIndicator, Pressable, Dimensions } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ScrollView,
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable,
+  Dimensions,
+  Alert,
+} from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
-import { formatPrice, timeAgo, firstImage } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { formatPrice, timeAgo } from "@/lib/format";
 
 type Listing = {
   id: string;
@@ -18,23 +27,45 @@ type Listing = {
   createdAt: string;
   phone?: string | null;
   hidePhone?: boolean;
+  userId: string;
   user?: { id: string; name: string; verified?: boolean; isPro?: boolean; companyName?: string | null };
 };
+
+type Favorite = { id: string; listing: { id: string } };
 
 const SCREEN_W = Dimensions.get("window").width;
 
 function parseImages(raw: string | string[] | null): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw;
-  try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; } catch { return []; }
+  try {
+    const a = JSON.parse(raw);
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function AnnonceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isFav, setIsFav] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
+  const [contactBusy, setContactBusy] = useState(false);
+
+  const loadFav = useCallback(async () => {
+    if (!user || !id) return;
+    try {
+      const favs = await apiFetch<Favorite[]>("/api/favorites");
+      setIsFav(favs.some((f) => f.listing.id === id));
+    } catch {
+      // silencieux : l'état favori reste à false
+    }
+  }, [user, id]);
 
   useEffect(() => {
     if (!id) return;
@@ -48,7 +79,54 @@ export default function AnnonceScreen() {
         setLoading(false);
       }
     })();
-  }, [id]);
+    loadFav();
+  }, [id, loadFav]);
+
+  const toggleFav = async () => {
+    if (!user) {
+      router.push("/(auth)/login");
+      return;
+    }
+    if (!listing || favBusy) return;
+    setFavBusy(true);
+    const next = !isFav;
+    setIsFav(next);
+    try {
+      await apiFetch("/api/favorites", {
+        method: next ? "POST" : "DELETE",
+        body: JSON.stringify({ listingId: listing.id }),
+      });
+    } catch {
+      setIsFav(!next);
+      Alert.alert("Erreur", "Impossible de mettre à jour le favori.");
+    } finally {
+      setFavBusy(false);
+    }
+  };
+
+  const contact = async () => {
+    if (!user) {
+      router.push("/(auth)/login");
+      return;
+    }
+    if (!listing) return;
+    if (listing.userId === user.id) {
+      Alert.alert("Action impossible", "Vous ne pouvez pas vous contacter vous-même.");
+      return;
+    }
+    setContactBusy(true);
+    try {
+      const conv = await apiFetch<{ id: string }>("/api/conversations", {
+        method: "POST",
+        body: JSON.stringify({ listingId: listing.id, sellerId: listing.userId }),
+      });
+      router.push(`/messages/${conv.id}`);
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Impossible de démarrer la conversation");
+    } finally {
+      setContactBusy(false);
+    }
+  };
 
   if (loading) {
     return <View className="flex-1 bg-surface items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>;
@@ -66,15 +144,32 @@ export default function AnnonceScreen() {
 
   const images = parseImages(listing.images);
   const sellerName = listing.user?.isPro && listing.user?.companyName ? listing.user.companyName : listing.user?.name;
+  const isMine = user?.id === listing.userId;
 
   return (
     <>
-      <Stack.Screen options={{ title: listing.title, headerBackTitle: "Retour" }} />
+      <Stack.Screen
+        options={{
+          title: listing.title,
+          headerBackTitle: "Retour",
+          headerRight: () =>
+            !isMine ? (
+              <Pressable onPress={toggleFav} disabled={favBusy} className="px-2">
+                <Text className={isFav ? "text-2xl" : "text-2xl text-outline"}>{isFav ? "♥" : "♡"}</Text>
+              </Pressable>
+            ) : null,
+        }}
+      />
       <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 32 }}>
         {images.length > 0 ? (
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
             {images.map((src, i) => (
-              <Image key={i} source={{ uri: src }} style={{ width: SCREEN_W, height: SCREEN_W }} contentFit="cover" />
+              <Image
+                key={i}
+                source={{ uri: src }}
+                style={{ width: SCREEN_W, height: SCREEN_W }}
+                contentFit="cover"
+              />
             ))}
           </ScrollView>
         ) : (
@@ -93,16 +188,21 @@ export default function AnnonceScreen() {
             <Text className="text-on-surface-variant text-sm">{timeAgo(listing.createdAt)}</Text>
           </View>
 
-          {listing.condition && (
-            <View className="mt-3 flex-row gap-2">
+          <View className="mt-3 flex-row gap-2 flex-wrap">
+            <View className="bg-surface-container px-3 py-1 rounded-full">
+              <Text className="text-on-surface-variant text-xs font-semibold">{listing.category}</Text>
+            </View>
+            {listing.subcategory && (
+              <View className="bg-surface-container px-3 py-1 rounded-full">
+                <Text className="text-on-surface-variant text-xs font-semibold">{listing.subcategory}</Text>
+              </View>
+            )}
+            {listing.condition && (
               <View className="bg-surface-container px-3 py-1 rounded-full">
                 <Text className="text-on-surface-variant text-xs font-semibold">{listing.condition}</Text>
               </View>
-              <View className="bg-surface-container px-3 py-1 rounded-full">
-                <Text className="text-on-surface-variant text-xs font-semibold">{listing.category}</Text>
-              </View>
-            </View>
-          )}
+            )}
+          </View>
 
           <View className="mt-6">
             <Text className="text-on-surface text-base font-bold mb-2">Description</Text>
@@ -118,19 +218,26 @@ export default function AnnonceScreen() {
             </View>
           )}
 
-          <View className="mt-6 gap-3">
-            <Pressable
-              onPress={() => router.push({ pathname: "/(tabs)/messages" })}
-              className="bg-primary py-3.5 rounded-full items-center active:opacity-80"
-            >
-              <Text className="text-white font-bold">Envoyer un message</Text>
-            </Pressable>
-            {listing.phone && !listing.hidePhone && (
-              <Pressable className="border border-primary py-3.5 rounded-full items-center active:opacity-80">
-                <Text className="text-primary font-bold">{listing.phone}</Text>
+          {!isMine && (
+            <View className="mt-6 gap-3">
+              <Pressable
+                onPress={contact}
+                disabled={contactBusy}
+                className="bg-primary py-3.5 rounded-full items-center active:opacity-80"
+              >
+                {contactBusy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold">Envoyer un message</Text>
+                )}
               </Pressable>
-            )}
-          </View>
+              {listing.phone && !listing.hidePhone && (
+                <Pressable className="border border-primary py-3.5 rounded-full items-center active:opacity-80">
+                  <Text className="text-primary font-bold">{listing.phone}</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </>

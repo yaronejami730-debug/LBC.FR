@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { apiFetch } from "./api";
 import { setToken, clearToken, getToken } from "./tokenStore";
+import { registerExpoPushToken, unregisterExpoPushToken } from "./push";
 
 export type AuthUser = {
   id: string;
@@ -48,6 +49,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [refresh]);
 
+  // Si l'utilisateur est déjà connecté au démarrage, on enregistre quand même
+  // le token Expo — il peut avoir changé depuis la dernière session.
+  useEffect(() => {
+    if (user && !pushToken) {
+      registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
+    }
+  }, [user, pushToken]);
+
+  const [pushToken, setPushToken] = useState<string | null>(null);
+
   const login = useCallback(async (email: string, password: string) => {
     const data = await apiFetch<{ token: string; user: AuthUser }>("/api/mobile/auth/login", {
       method: "POST",
@@ -56,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     await setToken(data.token);
     setUser(data.user);
+    registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
   }, []);
 
   const register = useCallback(async (input: { name: string; email: string; password: string; marketingConsent?: boolean }) => {
@@ -66,12 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     await setToken(data.token);
     setUser(data.user);
+    registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
   }, []);
 
   const logout = useCallback(async () => {
+    if (pushToken) await unregisterExpoPushToken(pushToken);
+    setPushToken(null);
     await clearToken();
     setUser(null);
-  }, []);
+  }, [pushToken]);
 
   return <Ctx.Provider value={{ user, loading, login, register, logout, refresh }}>{children}</Ctx.Provider>;
 }

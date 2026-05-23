@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         emailVerified: !!user.emailVerified,
         companyName: user.companyName,
         verified: user.verified,
-        image: user.image,
+        image: user.avatar,
       },
     });
   } catch (err) {

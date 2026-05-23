@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { buildSearchWhere } from "@/lib/search-where";
 import { sendEmail } from "@/lib/email";
@@ -75,10 +76,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const userId = await getAuthUserId(req);
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const session = { user: { id: userId } } as { user: { id: string } };
 
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },

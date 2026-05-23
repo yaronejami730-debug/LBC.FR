@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUserId } from "@/lib/auth-unified";
 
 export async function PATCH(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
+  const session = { user: { id: userId } } as { user: { id: string } };
 
   const body = await req.json();
 

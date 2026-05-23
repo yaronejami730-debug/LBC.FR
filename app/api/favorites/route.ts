@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUserId } from "@/lib/auth-unified";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getAuthUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { listingId } = await req.json();
   if (!listingId) return NextResponse.json({ error: "Missing listingId" }, { status: 400 });
 
   await prisma.favorite.upsert({
-    where: { userId_listingId: { userId: session.user.id, listingId } },
-    create: { userId: session.user.id, listingId },
+    where: { userId_listingId: { userId, listingId } },
+    create: { userId, listingId },
     update: {},
   });
 
@@ -19,23 +19,23 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getAuthUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { listingId } = await req.json();
   await prisma.favorite.deleteMany({
-    where: { userId: session.user.id, listingId },
+    where: { userId, listingId },
   });
 
   return NextResponse.json({ ok: true });
 }
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(req: NextRequest) {
+  const userId = await getAuthUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const favorites = await prisma.favorite.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     include: {
       listing: { include: { user: { select: { name: true, verified: true } } } },
     },

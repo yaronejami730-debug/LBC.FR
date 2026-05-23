@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUserId } from "@/lib/auth-unified";
 
-export async function GET() {
-  const session = await auth();
-  const userId = session?.user?.id;
+export async function GET(req: NextRequest) {
+  const userId = await getAuthUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -63,13 +62,13 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { listingId, sellerId } = await req.json();
-  const buyerId = session.user.id;
+  const buyerId = userId;
 
   if (buyerId === sellerId) {
     return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });

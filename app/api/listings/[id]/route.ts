@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { pingIndexNow } from "@/lib/indexnow";
 import { listingSlug } from "@/lib/listing-slug";
@@ -23,12 +24,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await getAuthUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const listing = await prisma.listing.findUnique({ where: { id } });
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (listing.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (listing.userId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
   const { title, price, description, location, condition, images, category, subcategory, metadata } = body;
@@ -58,18 +59,18 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const listing = await prisma.listing.findUnique({ where: { id } });
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (listing.userId !== session.user.id) {
+  if (listing.userId !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

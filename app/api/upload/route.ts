@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-unified";
 import { put } from "@vercel/blob";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -119,8 +119,8 @@ async function compress(buffer: Buffer, mimeType: string): Promise<Buffer> {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const userId = await getAuthUserId(req);
+    if (!userId) {
       return NextResponse.json({ error: "Vous devez être connecté" }, { status: 401 });
     }
 

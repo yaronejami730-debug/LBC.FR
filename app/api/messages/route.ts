@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUserId } from "@/lib/auth-unified";
+import { notifyUser } from "@/lib/expo-push";
 import { broadcast } from "@/lib/sse";
 import { sendEmail } from "@/lib/email";
 import { newMessageEmail } from "@/lib/emails/new-message";
@@ -12,11 +13,10 @@ import { aggregateRisk, signal } from "@/lib/moderation/risk-engine";
 import { computeTrustScore } from "@/lib/trust-score";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
 
   const { searchParams } = new URL(req.url);
   const conversationId = searchParams.get("conversationId");
@@ -69,10 +69,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const session = { user: { id: userId } } as { user: { id: string } };
 
   const { conversationId, content } = await req.json();
 
@@ -183,6 +184,32 @@ export async function POST(req: NextRequest) {
       participants: { include: { user: { select: { id: true, name: true, email: true } } } },
     },
   });
+  // Push notif Expo — fire and forget. Indépendant de l'email.
+  // Sauté aussi si le message est signalé (phishing potentiel).
+  if (!flagged) {
+    prisma.conversation
+      .findUnique({
+        where: { id: conversationId },
+        include: { participants: { select: { userId: true } } },
+      })
+      .then((conv) => {
+        if (!conv) return;
+        const targets = conv.participants
+          .map((p) => p.userId)
+          .filter((id) => id !== session.user.id);
+        return Promise.all(
+          targets.map((uid) =>
+            notifyUser(uid, {
+              title: message.sender.name ?? "Nouveau message",
+              body: message.content.slice(0, 140),
+              data: { type: "message", conversationId, messageId: message.id },
+            }),
+          ),
+        );
+      })
+      .catch(() => {});
+  }
+
   if (conversation) {
     const senderId = session.user?.id;
     const recipient = conversation.participants.find(
