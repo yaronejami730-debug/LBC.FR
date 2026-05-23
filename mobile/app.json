@@ -5,14 +5,8 @@
     "scheme": "dealandco",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2f6fb8"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "fr.dealandcompany.app",
@@ -21,17 +15,12 @@
       }
     },
     "android": {
-      "package": "fr.dealandcompany.app",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#2f6fb8"
-      }
+      "package": "fr.dealandcompany.app"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      ["expo-notifications", { "icon": "./assets/icon.png", "color": "#2f6fb8" }],
-      ["expo-splash-screen", { "image": "./assets/splash.png", "backgroundColor": "#2f6fb8" }]
+      "expo-notifications"
     ],
     "extra": {
       "apiBaseUrl": "https://www.dealandcompany.fr"
