@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "f5321546-b62b-4f7a-8a58-489b90e562ab"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.yarine.lbcfr",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}
