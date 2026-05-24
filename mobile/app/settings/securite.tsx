@@ -28,7 +28,6 @@ export default function Securite() {
       </View>
 
       <NavRow icon="key-outline" label="Mot de passe" onPress={() => router.push("/settings/mot-de-passe")} />
-      <NavRow icon="scan-outline" label="Face ID" onPress={() => router.push("/settings/face-id")} />
       <NavRow icon="phone-portrait-outline" label="Appareils connectés" onPress={() => router.push("/settings/appareils")} />
     </ScrollView>
   );

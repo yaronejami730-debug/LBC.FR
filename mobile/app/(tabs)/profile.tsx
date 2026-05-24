@@ -251,7 +251,6 @@ export default function ProfileScreen() {
             <SettingsRow icon="shield-checkmark-outline" label="Sécurité du compte" onPress={() => router.push("/settings/securite")} />
             <SettingsRow icon="key-outline" label="Mot de passe" onPress={() => router.push("/settings/mot-de-passe")} />
             <SettingsRow icon="call-outline" label="Numéro de téléphone" onPress={() => router.push("/settings/telephone")} />
-            <SettingsRow icon="scan-outline" label="Face ID" onPress={() => router.push("/settings/face-id")} />
             <SettingsRow icon="phone-portrait-outline" label="Appareils connectés" onPress={() => router.push("/settings/appareils")} last />
           </SettingsSection>
 

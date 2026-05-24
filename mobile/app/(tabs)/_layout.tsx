@@ -32,6 +32,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Accueil", tabBarIcon: makeIcon("home") }} />
+      <Tabs.Screen name="alertes" options={{ title: "Alertes", tabBarIcon: makeIcon("notifications") }} />
       <Tabs.Screen name="post" options={{ title: "Publier", tabBarIcon: makeIcon("add-circle") }} />
       <Tabs.Screen
         name="messages"

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
+import { sendPushNotification } from "@/lib/notifications/send";
 
 export async function POST(req: NextRequest) {
   const userId = await getAuthUserId(req);
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
 
   const hashed = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+
+  sendPushNotification({ userId, template: "password_changed" }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

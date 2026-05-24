@@ -1,5 +1,5 @@
 import "../global.css";
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Platform } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -32,17 +32,51 @@ if (Platform.OS === "android") {
 
 function NotificationRouter() {
   const router = useRouter();
-  useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+  const handled = useRef<Set<string>>(new Set());
+
+  const route = useCallback(
+    (response: Notifications.NotificationResponse | null) => {
+      if (!response) return;
+      const id = response.notification.request.identifier;
+      if (handled.current.has(id)) return;
+      handled.current.add(id);
       const data = response.notification.request.content.data as Record<string, unknown>;
-      if (data?.type === "message" && typeof data.conversationId === "string") {
+      // Préfère le deepLink envoyé par le template ; fallback sur type+id legacy.
+      const deepLink = typeof data?.deepLink === "string" ? data.deepLink : null;
+      if (deepLink) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        router.push(deepLink as any);
+        return;
+      }
+      if (typeof data?.conversationId === "string") {
         router.push(`/messages/${data.conversationId}`);
-      } else if (data?.type === "listing" && typeof data.listingId === "string") {
+      } else if (typeof data?.listingId === "string") {
         router.push(`/annonce/${data.listingId}`);
       }
-    });
+    },
+    [router],
+  );
+
+  // Tap pendant que l'app tourne (foreground/background).
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(route);
     return () => sub.remove();
-  }, [router]);
+  }, [route]);
+
+  // Tap qui a lancé l'app depuis l'état tué (cold start) : le listener ci-dessus
+  // ne reçoit pas cette réponse, il faut la récupérer explicitement.
+  useEffect(() => {
+    let cancelled = false;
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (!cancelled) route(response);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [route]);
+
   return null;
 }
 
@@ -72,7 +106,6 @@ export default function RootLayout() {
               <Stack.Screen name="settings/securite" options={{ headerShown: true, title: "Sécurité du compte" }} />
               <Stack.Screen name="settings/mot-de-passe" options={{ headerShown: true, title: "Mot de passe" }} />
               <Stack.Screen name="settings/telephone" options={{ headerShown: true, title: "Numéro de téléphone" }} />
-              <Stack.Screen name="settings/face-id" options={{ headerShown: true, title: "Face ID" }} />
               <Stack.Screen name="settings/appareils" options={{ headerShown: true, title: "Appareils connectés" }} />
               <Stack.Screen name="settings/aide" options={{ headerShown: true, title: "Aide" }} />
             </Stack>

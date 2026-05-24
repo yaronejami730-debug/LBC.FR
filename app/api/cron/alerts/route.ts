@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildSearchWhere } from "@/lib/search-where";
 import { sendEmail } from "@/lib/email";
+import { sendPushNotification } from "@/lib/notifications/send";
 import { savedSearchAlertEmail } from "@/lib/emails/saved-search-alert";
 import { listingPhotoReminderEmail } from "@/lib/emails/listing-photo-reminder";
 import { listingSlug } from "@/lib/listing-slug";
@@ -91,6 +92,17 @@ export async function GET(req: Request) {
           manageUrl: `${BASE}/recherches`,
         }),
       });
+
+      sendPushNotification({
+        userId: search.userId,
+        template: newListings.length > 1 ? "multiple_alert_matches" : "saved_alert_match",
+        variables: {
+          count: newListings.length,
+          alertName: search.name,
+          alertId: search.id,
+          listingId: newListings[0].id,
+        },
+      }).catch(() => {});
 
       await prisma.savedSearch.update({
         where: { id: search.id },

@@ -6,6 +6,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "@/lib/api";
 import ListingRow from "@/components/home/ListingRow";
 import HeroBanner from "@/components/home/HeroBanner";
+import AdCarousel from "@/components/home/AdCarousel";
+import { type Ad } from "@/components/home/AdCard";
 import type { HomeListing } from "@/components/home/ListingCard";
 
 type FeedResponse = {
@@ -20,6 +22,7 @@ type FeedResponse = {
 export default function HomeScreen() {
   const router = useRouter();
   const [data, setData] = useState<FeedResponse | null>(null);
+  const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,11 +33,17 @@ export default function HomeScreen() {
     router.push(q ? `/recherche?q=${encodeURIComponent(q)}` : "/recherche");
   };
 
+  const adAt = (i: number): Ad | null => (ads.length ? ads[i % ads.length] : null);
+
   const load = useCallback(async () => {
     try {
       setError(null);
-      const res = await apiFetch<FeedResponse>("/api/feed/home", { auth: false });
+      const [res, adsRes] = await Promise.all([
+        apiFetch<FeedResponse>("/api/feed/home", { auth: false }),
+        apiFetch<Ad[]>("/api/ads", { auth: false }).catch(() => [] as Ad[]),
+      ]);
       setData(res);
+      setAds(adsRes);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de chargement");
     } finally {
@@ -74,6 +83,7 @@ export default function HomeScreen() {
 
         <View className="px-4">
           <HeroBanner />
+          <AdCarousel ads={ads} />
         </View>
 
         {loading ? (
@@ -87,12 +97,12 @@ export default function HomeScreen() {
           </View>
         ) : data ? (
           <>
-            <ListingRow title="Coups de cœur" subtitle="Sélection vérifiée et mise en avant" listings={data.featured} />
-            <ListingRow title="Bonnes affaires" subtitle="Sous les 100 €" listings={data.bargains} badge="Bonne affaire" />
-            <ListingRow title="Voitures d'occasion" listings={data.vehicules} />
-            <ListingRow title="Immobilier" listings={data.immobilier} />
-            <ListingRow title="Mode" listings={data.mode} />
-            <ListingRow title="Annonces récentes" subtitle="Tout ce qui vient d'être publié" listings={data.recents} />
+            <ListingRow title="Coups de cœur" subtitle="Sélection vérifiée et mise en avant" listings={data.featured} seeAllHref="/recherche" ad={adAt(0)} />
+            <ListingRow title="Bonnes affaires" subtitle="Sous les 100 €" listings={data.bargains} badge="Bonne affaire" seeAllHref="/recherche" />
+            <ListingRow title="Voitures d'occasion" listings={data.vehicules} seeAllHref="/recherche?category=Véhicules" ad={adAt(1)} />
+            <ListingRow title="Immobilier" listings={data.immobilier} seeAllHref="/recherche?category=Immobilier" />
+            <ListingRow title="Mode" listings={data.mode} seeAllHref="/recherche?category=Mode" ad={adAt(2)} />
+            <ListingRow title="Annonces récentes" subtitle="Tout ce qui vient d'être publié" listings={data.recents} seeAllHref="/recherche" ad={adAt(3)} />
           </>
         ) : null}
       </ScrollView>

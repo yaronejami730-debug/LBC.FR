@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUserId } from "@/lib/auth-unified";
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -15,7 +15,7 @@ export async function DELETE(
 
   // Ensure this search belongs to the user
   const existing = await prisma.savedSearch.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId },
   });
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -59,7 +59,7 @@ const METADATA_FILTER_KEYS = new Set([
 // Keys that are NOT passed to the filter engine (handled separately or ignored)
 const SKIP_KEYS = new Set([
   "q", "category", "minPrice", "maxPrice", "location", "condition",
-  "sort", "page", "_filters",
+  "sort", "page", "_filters", "since",
   // numeric range keys handled via dedicated columns
   "minKm", "maxKm", "minYear", "maxYear",
   "minSurface", "maxSurface", "minRooms", "maxRooms",
@@ -86,6 +86,12 @@ export function buildSearchWhere(
   const maxSurface = params.maxSurface ? parseFloat(params.maxSurface) : undefined;
   const minRooms   = params.minRooms   ? parseInt(params.minRooms)   : undefined;
   const maxRooms   = params.maxRooms   ? parseInt(params.maxRooms)   : undefined;
+
+  // Période de publication : nombre de jours.
+  const sinceDays = params.since ? parseInt(params.since) : undefined;
+  const sinceDate = sinceDays
+    ? new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000)
+    : undefined;
 
   // Subcategory-based filters (e.g. vehicleType="Voiture" → subcategory contains "Voiture")
   const subcategoryContains: string[] = [];
@@ -179,6 +185,8 @@ export function buildSearchWhere(
         ...(maxRooms !== undefined && { lte: maxRooms }),
       },
     }),
+
+    ...(sinceDate && { createdAt: { gte: sinceDate } }),
 
     ...(andConditions.length > 0 && { AND: andConditions }),
   };

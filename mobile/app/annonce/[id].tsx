@@ -18,7 +18,7 @@ import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatPrice, timeAgo } from "@/lib/format";
+import { formatPrice, timeAgo, allImages } from "@/lib/format";
 
 const SITE_URL = "https://www.dealandcompany.fr";
 
@@ -43,15 +43,10 @@ type Favorite = { id: string; listing: { id: string } };
 
 const SCREEN_W = Dimensions.get("window").width;
 
+import { allImages } from "@/lib/format";
+
 function parseImages(raw: string | string[] | null): string[] {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  try {
-    const a = JSON.parse(raw);
-    return Array.isArray(a) ? a : [];
-  } catch {
-    return [];
-  }
+  return allImages(raw);
 }
 
 export default function AnnonceScreen() {

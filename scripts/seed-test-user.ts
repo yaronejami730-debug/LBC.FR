@@ -19,6 +19,7 @@ import bcrypt from "bcryptjs";
       consentGivenAt: new Date(),
     },
     update: { password: hashed, emailVerified: true },
+
   });
   console.log("OK", u.email, u.id);
   process.exit(0);

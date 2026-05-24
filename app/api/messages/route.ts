@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
-import { notifyUser } from "@/lib/expo-push";
+import { sendPushNotification } from "@/lib/notifications/send";
 import { broadcast } from "@/lib/sse";
 import { sendEmail } from "@/lib/email";
 import { newMessageEmail } from "@/lib/emails/new-message";
@@ -203,27 +203,32 @@ export async function POST(req: NextRequest) {
     prisma.conversation
       .findUnique({
         where: { id: conversationId },
-        include: { participants: { select: { userId: true } } },
+        include: {
+          listing: { select: { id: true, title: true, userId: true } },
+          participants: { select: { userId: true } },
+        },
       })
       .then((conv) => {
         if (!conv) return;
         const targets = conv.participants
           .map((p) => p.userId)
           .filter((id) => id !== session.user.id);
+        const senderName = message.sender.name ?? "Quelqu'un";
         return Promise.all(
-          targets.map((uid) =>
-            notifyUser(uid, {
-              title: message.sender.name ?? "Nouveau message",
-              body: message.content
-                ? message.content.slice(0, 140)
-                : hasAttachment
-                  ? attachmentType === "pdf"
-                    ? "📄 Document"
-                    : "📷 Photo"
-                  : "Nouveau message",
-              data: { type: "message", conversationId, messageId: message.id },
-            }),
-          ),
+          targets.map((uid) => {
+            // Si la cible est le vendeur de l'annonce : template "intérêt sur annonce".
+            const isOwner = uid === conv.listing.userId;
+            return sendPushNotification({
+              userId: uid,
+              template: isOwner ? "listing_message" : "new_message",
+              variables: {
+                senderName,
+                listingTitle: conv.listing.title,
+                listingId: conv.listing.id,
+                conversationId,
+              },
+            });
+          }),
         );
       })
       .catch(() => {});

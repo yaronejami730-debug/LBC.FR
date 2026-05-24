@@ -12,6 +12,8 @@ import { baseEmail } from "@/lib/emails/base";
 import { syncSource, parseSourceUrl } from "@/lib/external-sync";
 import { normalizePhone, hashPhone } from "@/lib/moderation/phone";
 import { pingIndexNow } from "@/lib/indexnow";
+import { sendPushNotification } from "@/lib/notifications/send";
+import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
 import { citySlug } from "@/lib/cities";
@@ -59,6 +61,14 @@ export async function approveListing(id: string) {
     }),
   }).catch(() => {});
 
+  sendPushNotification({
+    userId: listing.userId,
+    template: "listing_approved",
+    variables: { listingTitle: listing.title, listingId: listing.id },
+  }).catch(() => {});
+
+  notifyMatchingSavedSearches(listing.id).catch(() => {});
+
   revalidatePath("/admin/listings");
   revalidatePath("/admin");
   revalidatePath("/");
@@ -79,10 +89,18 @@ export async function approveListing(id: string) {
 
 export async function rejectListing(id: string, reason: string) {
   await requireAdmin();
-  await prisma.listing.update({
+  const listing = await prisma.listing.update({
     where: { id },
     data: { status: "REJECTED", rejectionReason: reason || null },
+    select: { id: true, title: true, userId: true },
   });
+
+  sendPushNotification({
+    userId: listing.userId,
+    template: "listing_rejected",
+    variables: { listingTitle: listing.title, listingId: listing.id },
+  }).catch(() => {});
+
   revalidatePath("/admin/listings");
   revalidatePath("/admin");
 }

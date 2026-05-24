@@ -12,6 +12,8 @@ import { CATEGORIES } from "@/lib/categories";
 import { moderateListing } from "@/lib/moderation";
 import { detectSpam, applySpamRestriction } from "@/lib/spam-detector";
 import { pingIndexNow } from "@/lib/indexnow";
+import { sendPushNotification } from "@/lib/notifications/send";
+import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
 import { listingSlug } from "@/lib/listing-slug";
 import { citySlug } from "@/lib/cities";
 import { computeQualityScore } from "@/lib/quality-score";
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
       const rows = ids.length
         ? await prisma.listing.findMany({
             where: { id: { in: ids } },
-            include: { user: { select: { name: true, verified: true } } },
+            include: { user: { select: { name: true, verified: true, isPro: true, companyName: true, avatar: true } } },
           })
         : [];
       const byId = new Map(rows.map((r) => [r.id, r]));
@@ -60,13 +62,21 @@ export async function GET(req: NextRequest) {
 
   const where = buildSearchWhere(params);
 
+  const sort = params.sort;
+  const orderBy =
+    sort === "price_asc"
+      ? { price: "asc" as const }
+      : sort === "price_desc"
+        ? { price: "desc" as const }
+        : { createdAt: "desc" as const };
+
   const [listings, total] = await Promise.all([
     prisma.listing.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (page - 1) * perPage,
       take: perPage,
-      include: { user: { select: { name: true, verified: true } } },
+      include: { user: { select: { name: true, verified: true, isPro: true, companyName: true, avatar: true } } },
     }),
     prisma.listing.count({ where }),
   ]);
@@ -517,6 +527,21 @@ export async function POST(req: NextRequest) {
             imageUrl: parsedImages[0] ?? undefined,
           }),
         }).catch((err) => console.error("[SELLER EMAIL APPROVED]", err));
+      }
+
+      // Push vendeur — reflète le statut de l'annonce.
+      const tpl = wasRejected
+        ? "listing_rejected"
+        : requiresApproval
+          ? "listing_pending"
+          : "listing_approved";
+      sendPushNotification({
+        userId: listing.userId,
+        template: tpl,
+        variables: { listingTitle: title, listingId: listing.id },
+      }).catch(() => {});
+      if (!wasRejected && !requiresApproval) {
+        notifyMatchingSavedSearches(listing.id).catch(() => {});
       }
 
       // Email admin

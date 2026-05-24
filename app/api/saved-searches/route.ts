@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUserId } from "@/lib/auth-unified";
 import { buildSearchWhere } from "@/lib/search-where";
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
+export async function GET(req: NextRequest) {
+  const userId = await getAuthUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const searches = await prisma.savedSearch.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { createdAt: "desc" },
   });
 
@@ -30,8 +30,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const userId = await getAuthUserId(req);
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const saved = await prisma.savedSearch.create({
       data: {
-        userId: session.user.id,
+        userId,
         name: name.trim(),
         filters: JSON.stringify(filters || {}),
       },

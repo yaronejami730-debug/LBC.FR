@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { pingIndexNow } from "@/lib/indexnow";
+import { sendPushNotification } from "@/lib/notifications/send";
 import { listingSlug } from "@/lib/listing-slug";
 import { indexListing, deleteListingFromIndex } from "@/lib/opensearch-sync";
 
@@ -54,6 +55,12 @@ export async function PATCH(
   indexListing(updated).catch((err) =>
     console.error("[OpenSearch] indexListing (PATCH) échec:", err),
   );
+
+  sendPushNotification({
+    userId: updated.userId,
+    template: "listing_pending",
+    variables: { listingTitle: updated.title, listingId: updated.id },
+  }).catch(() => {});
 
   return NextResponse.json(updated);
 }
