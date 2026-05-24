@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingVi
 import { useRouter, Link } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/lib/auth";
+import { AppleSignInButton } from "@/components/AppleSignInButton";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -65,6 +66,20 @@ export default function LoginScreen() {
           <Pressable onPress={submit} disabled={loading} className="bg-primary py-3.5 rounded-full items-center active:opacity-80">
             {loading ? <ActivityIndicator color="#ffffff" /> : <Text className="text-white font-bold text-base">Se connecter</Text>}
           </Pressable>
+
+          {Platform.OS === "ios" && (
+            <View className="mt-6">
+              <View className="flex-row items-center mb-3">
+                <View className="flex-1 h-px bg-surface-container" />
+                <Text className="text-on-surface-variant text-xs mx-3">ou</Text>
+                <View className="flex-1 h-px bg-surface-container" />
+              </View>
+              <AppleSignInButton
+                onSuccess={() => router.replace("/(tabs)")}
+                onError={(msg) => setError(msg)}
+              />
+            </View>
+          )}
 
           <View className="flex-row justify-center mt-6">
             <Text className="text-on-surface-variant text-sm">Pas encore de compte ? </Text>

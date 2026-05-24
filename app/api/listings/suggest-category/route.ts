@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { detectCategory } from "@/lib/autoCategory";
+import { extractAttributes } from "@/lib/extract-attributes";
 import { CATEGORIES } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
@@ -7,15 +8,28 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const title = (searchParams.get("title") || "").trim();
-  if (!title) return NextResponse.json({ categoryLabel: null, subcategory: null });
+  if (!title) {
+    return NextResponse.json({
+      categoryLabel: null,
+      subcategory: null,
+      attributes: { brand: null, model: null, year: null },
+    });
+  }
 
-  const res = detectCategory(title);
-  if (!res) return NextResponse.json({ categoryLabel: null, subcategory: null, confidence: 0 });
+  const cat = detectCategory(title);
+  const attrs = extractAttributes(title);
+  const found = cat ? CATEGORIES.find((c) => c.id === cat.categoryId) : null;
 
-  const cat = CATEGORIES.find((c) => c.id === res.categoryId);
   return NextResponse.json({
-    categoryLabel: cat?.label ?? null,
-    subcategory: res.subcategory,
-    confidence: res.confidence,
+    categoryLabel: found?.label ?? null,
+    subcategory: cat?.subcategory ?? null,
+    confidence: cat?.confidence ?? 0,
+    attributes: {
+      brand: attrs.brand,
+      model: attrs.model,
+      year: attrs.year,
+      brands: attrs.brands.slice(0, 5),
+      models: attrs.models.slice(0, 5),
+    },
   });
 }

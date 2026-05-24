@@ -26,8 +26,10 @@ import { API_BASE_URL } from "@/lib/config";
 import { getToken } from "@/lib/tokenStore";
 import { apiFetch } from "@/lib/api";
 import { CATEGORIES, CONDITIONS } from "@/lib/categories";
+import { getPhotoTemplate, type PhotoSlot } from "@/lib/photoTemplates";
 
 type CategoryDef = (typeof CATEGORIES)[number];
+type SlotPhoto = { slotKey: string | null; url: string };
 
 async function uploadImageAsync(uri: string): Promise<string> {
   const token = await getToken();
@@ -66,6 +68,11 @@ export default function PostScreen() {
   const [category, setCategory] = useState<CategoryDef | null>(null);
   const [subcategory, setSubcategory] = useState<string>("");
   const [suggestedCat, setSuggestedCat] = useState<{ label: string; sub: string } | null>(null);
+  const [suggestedAttrs, setSuggestedAttrs] = useState<{ brand: string | null; model: string | null; year: number | null }>({ brand: null, model: null, year: null });
+  const [brand, setBrand] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+  const [autoFilledFromTitle, setAutoFilledFromTitle] = useState(false);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [condition, setCondition] = useState<string>("Bon état");
@@ -73,6 +80,8 @@ export default function PostScreen() {
   const [geoLoading, setGeoLoading] = useState(false);
   const [hidePhone, setHidePhone] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [slotPhotos, setSlotPhotos] = useState<SlotPhoto[]>([]);
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [uploadingImg, setUploadingImg] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,13 +124,25 @@ export default function PostScreen() {
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     if (title.trim().length < 4) { setSuggestedCat(null); return; }
     suggestTimer.current = setTimeout(() => {
-      apiFetch<{ categoryLabel: string | null; subcategory: string | null }>(
+      apiFetch<{
+        categoryLabel: string | null;
+        subcategory: string | null;
+        attributes?: { brand: string | null; model: string | null; year: number | null };
+      }>(
         `/api/listings/suggest-category?title=${encodeURIComponent(title.trim())}`,
         { auth: false },
       )
         .then((r) => {
           if (r.categoryLabel) setSuggestedCat({ label: r.categoryLabel, sub: r.subcategory ?? "" });
           else setSuggestedCat(null);
+          if (r.attributes) {
+            setSuggestedAttrs(r.attributes);
+            let touched = false;
+            if (r.attributes.brand) setBrand((cur) => { if (cur) return cur; touched = true; return r.attributes!.brand!; });
+            if (r.attributes.model) setModel((cur) => { if (cur) return cur; touched = true; return r.attributes!.model!; });
+            if (r.attributes.year) setYear((cur) => { if (cur) return cur; touched = true; return String(r.attributes!.year!); });
+            if (touched) setAutoFilledFromTitle(true);
+          }
         })
         .catch(() => setSuggestedCat(null));
     }, 350);
@@ -157,62 +178,123 @@ export default function PostScreen() {
 
   const displayUri = (u: string) => (u.startsWith("http") ? u : `${API_BASE_URL}${u}`);
 
-  const uploadAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
-    if (assets.length === 0) return;
-    setUploadingImg(true);
-    try {
-      const uploads = await Promise.all(assets.map((a) => uploadImageAsync(a.uri)));
-      setImages((prev) => [...prev, ...uploads]);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Upload échoué");
-    } finally {
-      setUploadingImg(false);
+  const photoTemplate = getPhotoTemplate(category?.id);
+  const slotPhotoFor = (slotKey: string) => slotPhotos.find((p) => p.slotKey === slotKey)?.url;
+  const extraPhotos = slotPhotos.filter((p) => p.slotKey === null);
+
+  const orderedImages = (() => {
+    const ordered: string[] = [];
+    for (const s of photoTemplate.slots) {
+      const u = slotPhotoFor(s.key);
+      if (u) ordered.push(u);
     }
-  };
+    for (const p of extraPhotos) ordered.push(p.url);
+    return ordered;
+  })();
 
-  const pickFromLibrary = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) { Alert.alert("Permission refusée", "Autorisez l'accès aux photos."); return; }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-      allowsMultipleSelection: true,
-      selectionLimit: 8 - images.length,
-    });
-    if (res.canceled) return;
-    await uploadAssets(res.assets);
-  };
+  const photoCount = slotPhotos.length;
+  const canAddMore = photoCount < photoTemplate.maxPhotos;
 
-  const takePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { Alert.alert("Permission refusée", "Autorisez l'appareil photo."); return; }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.85 });
-    if (res.canceled) return;
-    await uploadAssets(res.assets);
-  };
+  const pickSourceFor = async (
+    onPicked: (assets: ImagePicker.ImagePickerAsset[]) => Promise<void>,
+    multiple: boolean,
+  ) => {
+    const open = async (mode: "camera" | "library") => {
+      if (mode === "camera") {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) { Alert.alert("Permission refusée", "Autorisez l'appareil photo."); return; }
+        const res = await ImagePicker.launchCameraAsync({ quality: 0.85 });
+        if (res.canceled) return;
+        await onPicked(res.assets);
+      } else {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) { Alert.alert("Permission refusée", "Autorisez l'accès aux photos."); return; }
+        const remaining = photoTemplate.maxPhotos - photoCount;
+        const res = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.85,
+          allowsMultipleSelection: multiple && remaining > 1,
+          selectionLimit: multiple ? remaining : 1,
+        });
+        if (res.canceled) return;
+        await onPicked(res.assets);
+      }
+    };
 
-  const addPhoto = () => {
-    if (uploadingImg) return;
     Haptics.selectionAsync().catch(() => {});
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         { options: ["Annuler", "Prendre une photo", "Choisir dans la galerie"], cancelButtonIndex: 0 },
-        (i) => { if (i === 1) takePhoto(); else if (i === 2) pickFromLibrary(); },
+        (i) => { if (i === 1) open("camera"); else if (i === 2) open("library"); },
       );
     } else {
       Alert.alert("Ajouter une photo", undefined, [
-        { text: "Prendre une photo", onPress: takePhoto },
-        { text: "Choisir dans la galerie", onPress: pickFromLibrary },
+        { text: "Prendre une photo", onPress: () => open("camera") },
+        { text: "Choisir dans la galerie", onPress: () => open("library") },
         { text: "Annuler", style: "cancel" },
       ]);
     }
   };
 
-  const removeImage = (url: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setImages((prev) => prev.filter((u) => u !== url));
+  const addPhotoToSlot = (slotKey: string) => {
+    pickSourceFor(async (assets) => {
+      const a = assets[0];
+      if (!a) return;
+      setUploadingSlot(slotKey);
+      try {
+        const url = await uploadImageAsync(a.uri);
+        setSlotPhotos((prev) => {
+          const others = prev.filter((p) => p.slotKey !== slotKey);
+          return [...others, { slotKey, url }];
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } catch (e) {
+        Alert.alert("Erreur", e instanceof Error ? e.message : "Upload échoué");
+      } finally {
+        setUploadingSlot(null);
+      }
+    }, false);
   };
+
+  const addExtraPhotos = () => {
+    pickSourceFor(async (assets) => {
+      if (assets.length === 0) return;
+      setUploadingImg(true);
+      try {
+        const uploads = await Promise.all(assets.map((a) => uploadImageAsync(a.uri)));
+        setSlotPhotos((prev) => [...prev, ...uploads.map((url) => ({ slotKey: null, url }))]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } catch (e) {
+        Alert.alert("Erreur", e instanceof Error ? e.message : "Upload échoué");
+      } finally {
+        setUploadingImg(false);
+      }
+    }, true);
+  };
+
+  const removeSlotPhoto = (slotKey: string | null, url: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setSlotPhotos((prev) => prev.filter((p) => !(p.slotKey === slotKey && p.url === url)));
+  };
+
+  // Conservé pour la rétro-compat (autres steps qui lisent `images`)
+  useEffect(() => { setImages(orderedImages); }, [slotPhotos, category?.id]);
+
+  // Si la catégorie change, requalifie les photos affectées à des slots disparus en extras.
+  useEffect(() => {
+    const validKeys = new Set(photoTemplate.slots.map((s) => s.key));
+    setSlotPhotos((prev) => {
+      let changed = false;
+      const next = prev.map((p) => {
+        if (p.slotKey && !validKeys.has(p.slotKey)) {
+          changed = true;
+          return { ...p, slotKey: null };
+        }
+        return p;
+      });
+      return changed ? next : prev;
+    });
+  }, [category?.id]);
 
   const fillFromGPS = async () => {
     setGeoLoading(true);
@@ -237,7 +319,18 @@ export default function PostScreen() {
   const stepError = (s: number): string | null => {
     if (s === 0 && title.trim().length < 3) return "Indiquez un titre (3 caractères min).";
     if (s === 1 && !category) return "Choisissez une catégorie.";
-    if (s === 2 && images.length === 0) return "Ajoutez au moins une photo.";
+    if (s === 2) {
+      const min = photoTemplate.minPhotos;
+      if (photoCount < Math.max(1, min)) {
+        return min > 1 ? `Ajoutez au moins ${min} photos.` : "Ajoutez au moins une photo.";
+      }
+      const missingRequired = photoTemplate.slots
+        .filter((sl) => sl.required && !slotPhotoFor(sl.key))
+        .map((sl) => sl.label);
+      if (missingRequired.length > 0) {
+        return `Photo(s) manquante(s) : ${missingRequired.join(", ")}`;
+      }
+    }
     if (s === 3) {
       if (!price) return "Indiquez un prix.";
       if (!description.trim()) return "Ajoutez une description.";
@@ -311,7 +404,11 @@ export default function PostScreen() {
             location: location.trim(),
             condition,
             images,
-            metadata: {},
+            metadata: {
+              ...(brand.trim() ? { brand: brand.trim() } : {}),
+              ...(model.trim() ? { model: model.trim() } : {}),
+              ...(year.trim() ? { year: parseInt(year, 10) } : {}),
+            },
             phone: phone.trim() || null,
             hidePhone,
           }),
@@ -444,41 +541,69 @@ export default function PostScreen() {
             </>
           )}
 
-          {/* ── Étape 2 : Photos ────────────────────────────────────────── */}
+          {/* ── Étape 2 : Photos guidées par catégorie ──────────────────── */}
           {step === 2 && (
             <>
               <Text className="text-on-surface-variant text-sm mt-2 mb-4">
-                Jusqu'à 8 photos. La première sera la photo principale.
+                {photoTemplate.minPhotos > 1
+                  ? `Ajoutez au moins ${photoTemplate.minPhotos} photos. Les annonces avec photos sont 7× plus vues.`
+                  : "Suivez les vignettes pour des photos qui rassurent."}
               </Text>
+
+              {/* Indicateur progression */}
+              <View className="flex-row items-center mb-3">
+                <View className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                  <View
+                    className="h-full bg-primary"
+                    style={{ width: `${Math.min(100, (photoCount / Math.max(1, photoTemplate.minPhotos)) * 100)}%` }}
+                  />
+                </View>
+                <Text className="text-on-surface-variant text-xs ml-3 font-semibold">
+                  {photoCount}/{photoTemplate.maxPhotos}
+                </Text>
+              </View>
+
+              {/* Slots template */}
               <View className="flex-row flex-wrap gap-2">
-                {images.map((url, i) => (
-                  <View key={url} className="w-[31%] aspect-square bg-surface-container rounded-xl overflow-hidden relative">
-                    <Image source={{ uri: displayUri(url) }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-                    {i === 0 && (
-                      <View className="absolute bottom-1 left-1 bg-primary px-1.5 py-0.5 rounded">
-                        <Text className="text-white text-[10px] font-bold">Principale</Text>
-                      </View>
-                    )}
+                {photoTemplate.slots.map((slot) => (
+                  <PhotoSlotCard
+                    key={slot.key}
+                    slot={slot}
+                    url={slotPhotoFor(slot.key)}
+                    loading={uploadingSlot === slot.key}
+                    displayUri={displayUri}
+                    onAdd={() => addPhotoToSlot(slot.key)}
+                    onRemove={(u) => removeSlotPhoto(slot.key, u)}
+                  />
+                ))}
+              </View>
+
+              {/* Extras */}
+              <Text className="text-on-surface text-sm font-bold mt-6 mb-2">{photoTemplate.extraLabel}</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {extraPhotos.map((p) => (
+                  <View key={p.url} className="w-[31%] aspect-square bg-surface-container rounded-xl overflow-hidden relative">
+                    <Image source={{ uri: displayUri(p.url) }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                     <Pressable
-                      onPress={() => removeImage(url)}
+                      onPress={() => removeSlotPhoto(null, p.url)}
                       className="absolute top-1 right-1 bg-black/70 rounded-full w-6 h-6 items-center justify-center"
                     >
                       <Ionicons name="close" size={14} color="#fff" />
                     </Pressable>
                   </View>
                 ))}
-                {images.length < 8 && (
+                {canAddMore && (
                   <Pressable
-                    onPress={addPhoto}
+                    onPress={addExtraPhotos}
                     disabled={uploadingImg}
-                    className="w-[31%] aspect-square border-2 border-dashed border-primary/50 rounded-xl items-center justify-center bg-primary/5"
+                    className="w-[31%] aspect-square border-2 border-dashed border-outline/50 rounded-xl items-center justify-center bg-surface-container-low"
                   >
                     {uploadingImg ? (
-                      <ActivityIndicator color="#2f6fb8" />
+                      <ActivityIndicator color="#94a3b8" />
                     ) : (
                       <>
-                        <Ionicons name="camera" size={28} color="#2f6fb8" />
-                        <Text className="text-primary text-xs font-bold mt-1">Ajouter</Text>
+                        <Ionicons name="add" size={28} color="#94a3b8" />
+                        <Text className="text-on-surface-variant text-xs font-bold mt-1">Ajouter</Text>
                       </>
                     )}
                   </Pressable>
@@ -493,7 +618,33 @@ export default function PostScreen() {
               <Text className="text-on-surface-variant text-sm mt-2 mb-4">
                 Plus c'est précis, plus on vous fait confiance.
               </Text>
-              <Label>Prix (€)</Label>
+              {/* Bandeau auto-fill */}
+              {autoFilledFromTitle && (brand || model || year) && (
+                <View className="flex-row items-center bg-primary/10 border border-primary/30 rounded-xl px-3 py-2 mb-4">
+                  <Ionicons name="sparkles" size={16} color="#2f6fb8" />
+                  <Text className="text-primary text-xs font-semibold ml-2 flex-1">Champs pré-remplis depuis votre titre</Text>
+                </View>
+              )}
+
+              {/* Brand / Model / Year — apparaissent si pertinents (détectés OU catégorie le justifie) */}
+              {(suggestedAttrs.brand || suggestedAttrs.model || suggestedAttrs.year || brand || model || year) && (
+                <>
+                  <View className="flex-row gap-2">
+                    <View className="flex-1">
+                      <Label>Marque</Label>
+                      <Field value={brand} onChangeText={(t) => { setBrand(t); setAutoFilledFromTitle(false); }} placeholder="ex : Apple" />
+                    </View>
+                    <View className="flex-1">
+                      <Label>Modèle</Label>
+                      <Field value={model} onChangeText={(t) => { setModel(t); setAutoFilledFromTitle(false); }} placeholder="ex : iPhone 14" />
+                    </View>
+                  </View>
+                  <Label className="mt-4">Année</Label>
+                  <Field value={year} onChangeText={(t) => { setYear(t.replace(/\D/g, "").slice(0, 4)); setAutoFilledFromTitle(false); }} placeholder="ex : 2023" keyboardType="number-pad" maxLength={4} />
+                </>
+              )}
+
+              <Label className="mt-4">Prix (€)</Label>
               <Field value={price} onChangeText={setPrice} placeholder="0" keyboardType="decimal-pad" />
 
               <Label className="mt-4">État</Label>
@@ -571,16 +722,34 @@ export default function PostScreen() {
             </>
           )}
 
-          {/* ── Étape 5 : Récap ─────────────────────────────────────────── */}
+          {/* ── Étape 5 : Récap / Preview annonce ──────────────────────── */}
           {step === 5 && (
             <View className="mt-2">
-              {images[0] && (
-                <Image source={{ uri: displayUri(images[0]) }} style={{ width: "100%", height: 200, borderRadius: 16 }} contentFit="cover" />
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="eye" size={18} color="#2f6fb8" />
+                <Text className="text-primary text-xs font-bold ml-1.5 uppercase tracking-wider">Aperçu de votre annonce</Text>
+              </View>
+
+              {/* Carrousel mini */}
+              {images.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-4 px-4">
+                  {images.map((url, i) => (
+                    <Image
+                      key={url}
+                      source={{ uri: displayUri(url) }}
+                      style={{ width: 220, height: 220, borderRadius: 14, marginRight: i === images.length - 1 ? 0 : 8 }}
+                      contentFit="cover"
+                    />
+                  ))}
+                </ScrollView>
               )}
-              <Text className="text-on-surface text-2xl font-extrabold mt-4" numberOfLines={2}>{title || "Sans titre"}</Text>
+
+              <Text className="text-on-surface text-2xl font-extrabold" numberOfLines={2}>{title || "Sans titre"}</Text>
               <Text className="text-primary text-2xl font-extrabold mt-1">{price ? `${price} €` : "Prix non indiqué"}</Text>
               <View className="mt-4 bg-surface-container-low rounded-xl p-3">
                 <RecapRow icon="pricetag" label="Catégorie" value={[category?.label, subcategory].filter(Boolean).join(" · ") || "—"} />
+                {(brand || model) && <RecapRow icon="ribbon" label="Marque · Modèle" value={[brand, model].filter(Boolean).join(" ")} />}
+                {year && <RecapRow icon="calendar" label="Année" value={year} />}
                 <RecapRow icon="construct" label="État" value={condition} />
                 <RecapRow icon="location" label="Localisation" value={location || "—"} />
                 <RecapRow icon="images" label="Photos" value={`${images.length}`} />
@@ -620,6 +789,57 @@ export default function PostScreen() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function PhotoSlotCard({
+  slot, url, loading, displayUri, onAdd, onRemove,
+}: {
+  slot: PhotoSlot;
+  url: string | undefined;
+  loading: boolean;
+  displayUri: (u: string) => string;
+  onAdd: () => void;
+  onRemove: (url: string) => void;
+}) {
+  if (url) {
+    return (
+      <View className="w-[31%] mb-3">
+        <View className="w-full aspect-square bg-surface-container rounded-xl overflow-hidden relative border-2 border-primary">
+          <Image source={{ uri: displayUri(url) }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          <Pressable
+            onPress={() => onRemove(url)}
+            className="absolute top-1 right-1 bg-black/70 rounded-full w-6 h-6 items-center justify-center"
+          >
+            <Ionicons name="close" size={14} color="#fff" />
+          </Pressable>
+        </View>
+        <Text className="text-on-surface text-[11px] font-bold mt-1.5" numberOfLines={1}>{slot.label}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Pressable onPress={onAdd} disabled={loading} className="w-[31%] mb-3 active:opacity-80">
+      <View className={`w-full aspect-square rounded-xl items-center justify-center border-2 border-dashed ${slot.required ? "border-primary/60 bg-primary/5" : "border-outline/40 bg-surface-container-low"}`}>
+        {loading ? (
+          <ActivityIndicator color="#2f6fb8" />
+        ) : (
+          <>
+            <Ionicons name={slot.icon} size={26} color={slot.required ? "#2f6fb8" : "#94a3b8"} />
+            {slot.required && (
+              <View className="absolute top-1.5 right-1.5 bg-primary rounded-full w-4 h-4 items-center justify-center">
+                <Text className="text-white text-[9px] font-extrabold">*</Text>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+      <Text className={`text-[11px] font-bold mt-1.5 ${slot.required ? "text-on-surface" : "text-on-surface-variant"}`} numberOfLines={1}>{slot.label}</Text>
+      {slot.hint && (
+        <Text className="text-on-surface-variant text-[10px]" numberOfLines={1}>{slot.hint}</Text>
+      )}
+    </Pressable>
   );
 }
 

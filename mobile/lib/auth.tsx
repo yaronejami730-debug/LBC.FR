@@ -18,10 +18,17 @@ export type AuthUser = {
   marketingConsent?: boolean | null;
 };
 
+type AppleCredentialInput = {
+  identityToken: string;
+  fullName?: { givenName?: string | null; familyName?: string | null } | null;
+  email?: string | null;
+};
+
 type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithApple: (input: AppleCredentialInput) => Promise<void>;
   register: (input: { name: string; email: string; password: string; marketingConsent?: boolean }) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -73,6 +80,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
   }, []);
 
+  const loginWithApple = useCallback(async (input: AppleCredentialInput) => {
+    const data = await apiFetch<{ token: string; user: AuthUser }>("/api/mobile/auth/apple", {
+      method: "POST",
+      body: JSON.stringify(input),
+      auth: false,
+    });
+    await setToken(data.token);
+    setUser(data.user);
+    registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
+  }, []);
+
   const register = useCallback(async (input: { name: string; email: string; password: string; marketingConsent?: boolean }) => {
     const data = await apiFetch<{ token: string; user: AuthUser }>("/api/mobile/auth/register", {
       method: "POST",
@@ -91,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [pushToken]);
 
-  return <Ctx.Provider value={{ user, loading, login, register, logout, refresh }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, loading, login, loginWithApple, register, logout, refresh }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthState {
