@@ -4,6 +4,22 @@ import { getAuthUserId } from "@/lib/auth-unified";
 
 export const dynamic = "force-dynamic";
 
+type RawListing = {
+  id: string;
+  title: string;
+  price: number;
+  category: string;
+  location: string;
+  images: string;
+  status: string;
+  viewCount: number;
+  phoneClickCount?: number;
+  messageClickCount?: number;
+  expiresAt: Date | null;
+  createdAt: Date;
+  _count?: { favorites: number };
+};
+
 export async function GET(req: NextRequest) {
   const userId = await getAuthUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,30 +35,63 @@ export async function GET(req: NextRequest) {
   if (statusParam) where.status = statusParam;
   if (expiredOnly) where.expiresAt = { lt: now };
 
-  const [listings, total] = await Promise.all([
-    prisma.listing.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * perPage,
-      take: perPage,
-      select: {
-        id: true,
-        title: true,
-        price: true,
-        category: true,
-        location: true,
-        images: true,
-        status: true,
-        viewCount: true,
-        phoneClickCount: true,
-        messageClickCount: true,
-        expiresAt: true,
-        createdAt: true,
-        _count: { select: { favorites: true } },
-      },
-    }),
-    prisma.listing.count({ where }),
-  ]);
+  let listings: RawListing[] = [];
+  let total = 0;
+
+  try {
+    const [l, t] = await Promise.all([
+      prisma.listing.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * perPage,
+        take: perPage,
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          category: true,
+          location: true,
+          images: true,
+          status: true,
+          viewCount: true,
+          phoneClickCount: true,
+          messageClickCount: true,
+          expiresAt: true,
+          createdAt: true,
+          _count: { select: { favorites: true } },
+        },
+      }),
+      prisma.listing.count({ where }),
+    ]);
+    listings = l as unknown as RawListing[];
+    total = t;
+  } catch (err) {
+    // Fallback : colonnes click metrics pas encore migrées en prod
+    console.warn("[/api/listings/mine] fallback minimal select:", err instanceof Error ? err.message : err);
+    const [l, t] = await Promise.all([
+      prisma.listing.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * perPage,
+        take: perPage,
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          category: true,
+          location: true,
+          images: true,
+          status: true,
+          viewCount: true,
+          expiresAt: true,
+          createdAt: true,
+        },
+      }),
+      prisma.listing.count({ where }),
+    ]);
+    listings = l as unknown as RawListing[];
+    total = t;
+  }
 
   const result = listings.map((l) => ({
     id: l.id,
@@ -53,9 +102,9 @@ export async function GET(req: NextRequest) {
     images: l.images,
     status: l.status,
     views: l.viewCount,
-    phoneClicks: l.phoneClickCount,
-    messageClicks: l.messageClickCount,
-    favoritesCount: l._count.favorites,
+    phoneClicks: l.phoneClickCount ?? 0,
+    messageClicks: l.messageClickCount ?? 0,
+    favoritesCount: l._count?.favorites ?? 0,
     expiresAt: l.expiresAt ? l.expiresAt.toISOString() : null,
     isExpired: l.expiresAt ? l.expiresAt < now : false,
     createdAt: l.createdAt.toISOString(),
