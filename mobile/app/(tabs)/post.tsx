@@ -14,6 +14,7 @@ import {
   type AppStateStatus,
 } from "react-native";
 import * as Notifications from "expo-notifications";
+import * as SecureStore from "expo-secure-store";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,6 +31,8 @@ import { MapLocationPicker, type LocationValue } from "@/components/MapLocationP
 
 type CategoryDef = (typeof CATEGORIES)[number];
 type SlotPhoto = { slotKey: string | null; url: string };
+
+const DRAFT_REMINDER_KEY = "dealandco.draft.lastReminderAt";
 
 async function uploadImageAsync(uri: string): Promise<string> {
   const token = await getToken();
@@ -92,25 +95,30 @@ export default function PostScreen() {
   const draftNotifId = useRef<string | null>(null);
 
   // Rappel local : si l'utilisateur quitte l'app avec un brouillon non vide,
-  // planifie une notif locale 10s plus tard pour le ramener sur l'écran de publication.
+  // planifie UNE notif 3 min plus tard. Cap : 1 rappel par 24h max — pas de harcèlement.
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (next: AppStateStatus) => {
       if (next === "background" || next === "inactive") {
         const hasDraft = title.trim() || description.trim() || images.length > 0 || price;
         if (!hasDraft || submitting) return;
         try {
+          const lastReminderRaw = await SecureStore.getItemAsync(DRAFT_REMINDER_KEY);
+          const lastReminder = lastReminderRaw ? parseInt(lastReminderRaw, 10) : 0;
+          if (Date.now() - lastReminder < 24 * 60 * 60 * 1000) return;
+
           const id = await Notifications.scheduleNotificationAsync({
             content: {
-              title: "Vous n'avez pas terminé votre annonce ✏️",
+              title: "Votre annonce vous attend",
               body: title.trim()
-                ? `« ${title.trim()} » vous attend. Reprenez là où vous en étiez.`
-                : "Votre brouillon vous attend. Reprenez là où vous en étiez.",
+                ? `Reprenez « ${title.trim()} » en quelques secondes.`
+                : "Reprenez votre brouillon là où vous en étiez.",
               data: { type: "draft_reminder", deepLink: "/(tabs)/post" },
               sound: "default",
             },
-            trigger: { seconds: 10, channelId: "default" } as Notifications.TimeIntervalTriggerInput,
+            trigger: { seconds: 180, channelId: "default" } as Notifications.TimeIntervalTriggerInput,
           });
           draftNotifId.current = id;
+          await SecureStore.setItemAsync(DRAFT_REMINDER_KEY, String(Date.now()));
         } catch { /* noop */ }
       } else if (next === "active") {
         if (draftNotifId.current) {

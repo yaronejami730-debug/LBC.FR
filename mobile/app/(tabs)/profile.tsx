@@ -120,24 +120,41 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <SafeAreaView className="flex-1 bg-surface">
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-on-surface text-2xl font-extrabold mb-2">Bienvenue sur Deal&Co</Text>
-          <Text className="text-on-surface-variant text-sm mb-8 text-center">
-            Connectez-vous pour gérer vos annonces, favoris et messages.
-          </Text>
-          <Pressable
-            onPress={() => router.push("/(auth)/login")}
-            className="bg-primary px-8 py-3 rounded-full mb-3 w-full max-w-xs items-center"
-          >
-            <Text className="text-white font-bold">Se connecter</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/(auth)/register")}
-            className="border border-primary px-8 py-3 rounded-full w-full max-w-xs items-center"
-          >
-            <Text className="text-primary font-bold">Créer un compte</Text>
-          </Pressable>
-        </View>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 }}>
+          <View className="items-center pt-8 pb-4">
+            <Image source={require("@/assets/logo.png")} style={{ width: 180, height: 60 }} contentFit="contain" />
+          </View>
+
+          <View className="bg-primary/5 border border-primary/20 rounded-3xl p-6 mt-4">
+            <View className="w-14 h-14 rounded-full bg-primary items-center justify-center mb-3">
+              <Ionicons name="person" size={26} color="#fff" />
+            </View>
+            <Text className="text-on-surface text-2xl font-extrabold mb-1">Bienvenue !</Text>
+            <Text className="text-on-surface-variant text-sm mb-5 leading-relaxed">
+              Connectez-vous ou créez un compte gratuit pour publier des annonces, sauvegarder vos favoris et discuter avec les vendeurs.
+            </Text>
+            <Pressable
+              onPress={() => router.push("/(auth)/register")}
+              className="bg-primary py-3.5 rounded-full items-center mb-2 active:opacity-80"
+            >
+              <Text className="text-white font-bold text-base">Créer un compte gratuit</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(auth)/login")}
+              className="border-2 border-primary py-3.5 rounded-full items-center active:opacity-80"
+            >
+              <Text className="text-primary font-bold text-base">J'ai déjà un compte</Text>
+            </Pressable>
+          </View>
+
+          <View className="mt-6">
+            <Text className="text-on-surface font-bold text-base mb-3">Pourquoi s'inscrire ?</Text>
+            <Benefit icon="megaphone" title="Publier vos annonces" desc="Vendez en quelques secondes." />
+            <Benefit icon="heart" title="Sauvegarder vos favoris" desc="Retrouvez ce qui vous plaît." />
+            <Benefit icon="chatbubbles" title="Discuter avec les vendeurs" desc="Messagerie intégrée sécurisée." />
+            <Benefit icon="notifications" title="Alertes personnalisées" desc="Soyez le premier sur les nouveautés." />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -152,6 +169,10 @@ export default function ProfileScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />
         }
       >
+        <View className="items-center pt-3 pb-2">
+          <Image source={require("@/assets/logo.png")} style={{ width: 130, height: 40 }} contentFit="contain" />
+        </View>
+
         <View className="px-4 pt-2 pb-3">
           <View className="bg-surface-container-low rounded-2xl p-5">
             <View className="flex-row items-center gap-3">
@@ -174,9 +195,14 @@ export default function ProfileScreen() {
               </View>
             </View>
             {!user.emailVerified && (
-              <View className="mt-3 bg-amber-100 px-3 py-2 rounded-lg">
-                <Text className="text-amber-900 text-xs">Email non vérifié. Vérifiez votre boîte mail.</Text>
-              </View>
+              <Pressable
+                onPress={() => router.push("/(auth)/verify-email")}
+                className="mt-3 bg-amber-100 px-3 py-2.5 rounded-lg flex-row items-center active:opacity-80"
+              >
+                <Ionicons name="mail-unread" size={16} color="#92400e" />
+                <Text className="text-amber-900 text-xs ml-2 flex-1 font-semibold">Email non vérifié — entrer mon code</Text>
+                <Ionicons name="chevron-forward" size={16} color="#92400e" />
+              </Pressable>
             )}
           </View>
         </View>
@@ -266,6 +292,20 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function Benefit({ icon, title, desc }: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }) {
+  return (
+    <View className="flex-row items-center py-2.5">
+      <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
+        <Ionicons name={icon} size={18} color="#2f6fb8" />
+      </View>
+      <View className="ml-3 flex-1">
+        <Text className="text-on-surface font-semibold text-sm">{title}</Text>
+        <Text className="text-on-surface-variant text-xs">{desc}</Text>
+      </View>
+    </View>
   );
 }
 

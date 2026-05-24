@@ -16,6 +16,13 @@ export type AuthUser = {
   avatar?: string | null;
   phoneNumber?: string | null;
   marketingConsent?: boolean | null;
+  civility?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  birthDate?: string | null;
+  addressLine?: string | null;
+  addressCity?: string | null;
+  addressPostal?: string | null;
 };
 
 type AppleCredentialInput = {
@@ -29,7 +36,7 @@ type AuthState = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithApple: (input: AppleCredentialInput) => Promise<void>;
-  register: (input: { name: string; email: string; password: string; marketingConsent?: boolean }) => Promise<void>;
+  register: (input: { name: string; email: string; password: string; marketingConsent?: boolean; isPro?: boolean; siret?: string; companyName?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -91,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
   }, []);
 
-  const register = useCallback(async (input: { name: string; email: string; password: string; marketingConsent?: boolean }) => {
+  const register = useCallback(async (input: { name: string; email: string; password: string; marketingConsent?: boolean; isPro?: boolean; siret?: string; companyName?: string }) => {
     const data = await apiFetch<{ token: string; user: AuthUser }>("/api/mobile/auth/register", {
       method: "POST",
       body: JSON.stringify(input),

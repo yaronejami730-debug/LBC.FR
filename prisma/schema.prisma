@@ -38,6 +38,13 @@ model User {
   consentGivenAt          DateTime?
   marketingConsent        Boolean                   @default(false)
   notificationPreferences Json?
+  civility                String?
+  firstName               String?
+  lastName                String?
+  birthDate               DateTime?
+  addressLine             String?
+  addressCity             String?
+  addressPostal           String?
 
   // Trust & safety
   trustScore           Int      @default(50)

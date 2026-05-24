@@ -149,7 +149,26 @@ const DEFAULT_TEMPLATE: PhotoTemplate = {
   ],
 };
 
+const COVER_SLOT: PhotoSlot = {
+  key: "cover",
+  label: "Photo principale",
+  hint: "Affichée en premier dans l'annonce",
+  icon: "image",
+  required: true,
+};
+
+/** Garantit qu'une "Photo principale" required existe en tête, peu importe la catégorie. */
+function ensureCoverSlot(template: PhotoTemplate): PhotoTemplate {
+  const hasCover = template.slots.some((s) => s.key === COVER_SLOT.key);
+  if (hasCover) return template;
+  return {
+    ...template,
+    minPhotos: Math.max(1, template.minPhotos),
+    slots: [COVER_SLOT, ...template.slots],
+  };
+}
+
 export function getPhotoTemplate(categoryId: string | null | undefined): PhotoTemplate {
-  if (!categoryId) return DEFAULT_TEMPLATE;
-  return TEMPLATES[categoryId] ?? DEFAULT_TEMPLATE;
+  const base = categoryId ? TEMPLATES[categoryId] ?? DEFAULT_TEMPLATE : DEFAULT_TEMPLATE;
+  return ensureCoverSlot(base);
 }
