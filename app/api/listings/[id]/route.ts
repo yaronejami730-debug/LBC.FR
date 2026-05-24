@@ -21,22 +21,22 @@ export async function GET(
           isPro: true, companyName: true, createdAt: true,
         },
       },
+      _count: { select: { favorites: true } },
     },
   });
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Compteur d'annonces du vendeur (utile pour "X annonces" sur la carte vendeur).
   const sellerTotal = await prisma.listing.count({
     where: { userId: listing.userId, status: "APPROVED", deletedAt: null },
   });
 
-  // Augmente le compte de vues (fire-and-forget).
   prisma.listing
     .update({ where: { id }, data: { viewCount: { increment: 1 } } })
     .catch(() => {});
 
   return NextResponse.json({
     ...listing,
+    favoritesCount: listing._count.favorites,
     user: {
       ...listing.user,
       memberSince: listing.user.createdAt.toISOString(),

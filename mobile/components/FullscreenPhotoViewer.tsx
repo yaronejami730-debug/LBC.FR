@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal, View, Text, Pressable, Dimensions, FlatList, type ListRenderItem } from "react-native";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { ZoomableImage } from "./ZoomableImage";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const PHOTO_HEIGHT = SCREEN_W; // carré, comme l'aperçu inline
@@ -32,15 +32,7 @@ export function FullscreenPhotoViewer({ visible, images, initialIndex = 0, onClo
   }, [visible, initialIndex]);
 
   const renderItem: ListRenderItem<string> = ({ item }) => (
-    <View style={{ width: SCREEN_W, height: PHOTO_HEIGHT, backgroundColor: "#000" }}>
-      <Image
-        source={{ uri: item }}
-        style={{ width: SCREEN_W, height: PHOTO_HEIGHT }}
-        contentFit="contain"
-        transition={100}
-        cachePolicy="memory-disk"
-      />
-    </View>
+    <ZoomableImage uri={item} width={SCREEN_W} height={PHOTO_HEIGHT} />
   );
 
   return (

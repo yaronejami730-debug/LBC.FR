@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
+import MapView, { Marker, Polygon, Circle, PROVIDER_DEFAULT, type Region } from "react-native-maps";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
@@ -34,9 +34,11 @@ type Listing = {
   userId: string;
   vehicleKm?: number | null;
   vehicleYear?: number | null;
+  brand?: string | null;
   immoSurface?: number | null;
   immoRooms?: number | null;
   metadata?: string | Record<string, unknown> | null;
+  favoritesCount?: number;
   user: {
     id: string; name: string; avatar?: string | null;
     verified?: boolean; isPro?: boolean; companyName?: string | null;
@@ -76,6 +78,7 @@ export default function AnnonceScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
+  const [favCount, setFavCount] = useState(0);
   const [favBusy, setFavBusy] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
   const [phoneShown, setPhoneShown] = useState(false);
@@ -86,6 +89,9 @@ export default function AnnonceScreen() {
   const [specsExpanded, setSpecsExpanded] = useState(false);
   const [equipExpanded, setEquipExpanded] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [cityBoundary, setCityBoundary] = useState<{ latitude: number; longitude: number }[][]>([]);
+  const [cityRegion, setCityRegion] = useState<Region | null>(null);
+  const [postalLabel, setPostalLabel] = useState<string>("");
 
   const loadFav = useCallback(async () => {
     if (!user || !id) return;
@@ -105,6 +111,7 @@ export default function AnnonceScreen() {
           apiFetch<Ad[]>("/api/ads", { auth: false }).catch(() => [] as Ad[]),
         ]);
         setListing(data);
+        setFavCount(data.favoritesCount ?? 0);
         setRelated(rel);
         if (adRes.length > 0) {
           setAd(adRes[0]);
@@ -119,19 +126,49 @@ export default function AnnonceScreen() {
     loadFav();
   }, [id, loadFav]);
 
-  // Géocode la localisation via Nominatim — coords pour MapView natif.
+  // Géocode + polygon ville via Nominatim — pour la carte avec délimitation inline.
   useEffect(() => {
     if (!listing?.location) return;
     let cancelled = false;
     (async () => {
       try {
-        const geo = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(listing.location)}`,
-          { headers: { "User-Agent": "DealAndCo/1.0" } },
-        );
-        const data = (await geo.json()) as { lat: string; lon: string }[];
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&polygon_geojson=1&q=${encodeURIComponent(listing.location)}`;
+        const geo = await fetch(url, { headers: { "User-Agent": "DealAndCo/1.0" } });
+        const data = (await geo.json()) as {
+          lat: string; lon: string;
+          boundingbox?: [string, string, string, string];
+          display_name?: string;
+          address?: { postcode?: string; city?: string; town?: string; village?: string; municipality?: string };
+          geojson?: { type: string; coordinates: number[][][] | number[][][][] };
+        }[];
         if (cancelled || !data?.[0]) return;
-        setCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+        const r = data[0];
+        const lat = parseFloat(r.lat);
+        const lon = parseFloat(r.lon);
+        setCoords({ lat, lon });
+
+        if (r.boundingbox) {
+          const [minLat, maxLat, minLon, maxLon] = r.boundingbox.map(parseFloat);
+          setCityRegion({
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2,
+            latitudeDelta: Math.max(0.02, (maxLat - minLat) * 1.4),
+            longitudeDelta: Math.max(0.02, (maxLon - minLon) * 1.4),
+          });
+        }
+        if (r.geojson) {
+          const g = r.geojson;
+          if (g.type === "Polygon") {
+            const rings = g.coordinates as number[][][];
+            setCityBoundary(rings.map((ring) => ring.map(([lo, la]) => ({ latitude: la, longitude: lo }))));
+          } else if (g.type === "MultiPolygon") {
+            const polys = g.coordinates as number[][][][];
+            setCityBoundary(polys.flatMap((p) => p.map((ring) => ring.map(([lo, la]) => ({ latitude: la, longitude: lo })))));
+          }
+        }
+        const cityName = r.address?.city ?? r.address?.town ?? r.address?.village ?? r.address?.municipality ?? listing.location;
+        const postal = r.address?.postcode ? ` (${r.address.postcode})` : "";
+        setPostalLabel(`${cityName}${postal}`);
       } catch { /* noop */ }
     })();
     return () => { cancelled = true; };
@@ -143,6 +180,7 @@ export default function AnnonceScreen() {
     setFavBusy(true);
     const next = !isFav;
     setIsFav(next);
+    setFavCount((c) => c + (next ? 1 : -1));
     try {
       await apiFetch("/api/favorites", {
         method: next ? "POST" : "DELETE",
@@ -150,6 +188,7 @@ export default function AnnonceScreen() {
       });
     } catch {
       setIsFav(!next);
+      setFavCount((c) => c + (next ? -1 : 1));
       Alert.alert("Erreur", "Impossible de mettre à jour le favori.");
     } finally {
       setFavBusy(false);
@@ -163,23 +202,19 @@ export default function AnnonceScreen() {
       Alert.alert("Action impossible", "Vous ne pouvez pas vous contacter vous-même.");
       return;
     }
-    setContactBusy(true);
+    // Track click sans bloquer
     apiFetch(`/api/listings/${listing.id}/click`, {
       method: "POST",
       auth: false,
       body: JSON.stringify({ type: "message" }),
     }).catch(() => {});
-    try {
-      const conv = await apiFetch<{ id: string }>("/api/conversations", {
-        method: "POST",
-        body: JSON.stringify({ listingId: listing.id, sellerId: listing.userId }),
-      });
-      router.push(`/messages/${conv.id}`);
-    } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Impossible de démarrer la conversation");
-    } finally {
-      setContactBusy(false);
-    }
+
+    // Navigation optimiste : route immédiate vers messages avec listingId,
+    // l'écran messages crée/récupère la conversation côté serveur.
+    router.push({
+      pathname: "/messages/new",
+      params: { listingId: listing.id, sellerId: listing.userId },
+    });
   };
 
   const callSeller = () => {
@@ -298,10 +333,11 @@ export default function AnnonceScreen() {
           headerBackTitle: "Retour",
           headerRight: () => (
             <View className="flex-row items-center">
-              <Pressable onPress={openShare} className="px-2"><Ionicons name="share-outline" size={24} color="#2f6fb8" /></Pressable>
+              <Pressable onPress={openShare} className="px-2"><Ionicons name="share-outline" size={22} color="#1a1a1a" /></Pressable>
               {!isMine && (
-                <Pressable onPress={toggleFav} disabled={favBusy} className="px-2">
-                  <Ionicons name={isFav ? "heart" : "heart-outline"} size={24} color={isFav ? "#ef4444" : "#1a1a1a"} />
+                <Pressable onPress={toggleFav} disabled={favBusy} className="px-2 flex-row items-center">
+                  <Text className="text-on-surface text-sm font-bold mr-1.5">{favCount}</Text>
+                  <Ionicons name={isFav ? "heart" : "heart-outline"} size={22} color={isFav ? "#ef4444" : "#1a1a1a"} />
                 </Pressable>
               )}
             </View>
@@ -558,13 +594,15 @@ export default function AnnonceScreen() {
           </View>
 
           <SectionTitle>Localisation</SectionTitle>
+          <Text className="text-on-surface text-lg font-extrabold mb-3">{postalLabel || listing.location}</Text>
           <View className="rounded-2xl overflow-hidden bg-surface-container-low border border-surface-container">
-            <View style={{ height: 200, backgroundColor: "#e5e7eb" }}>
+            <View style={{ height: 240, backgroundColor: "#e5e7eb" }}>
               {coords ? (
                 <MapView
                   provider={PROVIDER_DEFAULT}
                   style={{ width: "100%", height: "100%" }}
-                  initialRegion={{
+                  region={cityRegion ?? undefined}
+                  initialRegion={cityRegion ?? {
                     latitude: coords.lat,
                     longitude: coords.lon,
                     latitudeDelta: 0.04,
@@ -572,29 +610,39 @@ export default function AnnonceScreen() {
                   }}
                   pointerEvents="none"
                 >
-                  <Marker coordinate={{ latitude: coords.lat, longitude: coords.lon }} />
+                  {cityBoundary.length > 0 ? (
+                    cityBoundary.map((ring, i) => (
+                      <Polygon
+                        key={i}
+                        coordinates={ring}
+                        strokeColor="#0e2742"
+                        fillColor="rgba(47,111,184,0.18)"
+                        strokeWidth={2}
+                      />
+                    ))
+                  ) : (
+                    <Circle
+                      center={{ latitude: coords.lat, longitude: coords.lon }}
+                      radius={2000}
+                      strokeColor="#0e2742"
+                      fillColor="rgba(47,111,184,0.18)"
+                      strokeWidth={2}
+                    />
+                  )}
                 </MapView>
               ) : (
                 <View className="flex-1 items-center justify-center">
-                  <ActivityIndicator color="#2f6fb8" />
+                  <Skeleton width="100%" height={240} borderRadius={0} />
                 </View>
               )}
               <Pressable
                 onPress={openMap}
-                className="absolute top-3 right-3 bg-white rounded-full w-9 h-9 items-center justify-center"
+                className="absolute top-3 right-3 bg-white rounded-full w-10 h-10 items-center justify-center"
                 style={{ shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}
               >
-                <Ionicons name="open-outline" size={18} color="#2f6fb8" />
+                <Ionicons name="expand" size={18} color="#2f6fb8" />
               </Pressable>
             </View>
-            <Pressable
-              onPress={openMap}
-              className="px-4 py-3 flex-row items-center active:bg-surface-container"
-            >
-              <Ionicons name="location" size={18} color="#2f6fb8" />
-              <Text className="text-on-surface text-sm font-semibold ml-2 flex-1">{listing.location}</Text>
-              <Text className="text-primary text-xs font-bold">Ouvrir ›</Text>
-            </Pressable>
           </View>
 
           {ad && (
@@ -643,19 +691,35 @@ export default function AnnonceScreen() {
         onClose={() => setGalleryOpen(false)}
       />
 
-      {/* CTA flottant — toujours visible (sauf pour l'auteur) */}
+      {/* CTA flottant — Voir le numéro + Message (style Leboncoin) */}
       {!isMine && (
         <View
           className="absolute bottom-0 left-0 right-0 bg-white border-t border-surface-container px-4 pt-3 pb-7 flex-row gap-2"
           style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 6 }}
         >
-          <Pressable
-            onPress={toggleFav}
-            disabled={favBusy}
-            className={`w-14 h-12 rounded-full items-center justify-center border-2 ${isFav ? "bg-red-50 border-red-200" : "bg-white border-surface-container"}`}
-          >
-            <Ionicons name={isFav ? "heart" : "heart-outline"} size={22} color={isFav ? "#ef4444" : "#1a1a1a"} />
-          </Pressable>
+          {listing.phone && !listing.hidePhone ? (
+            <Pressable
+              onPress={callSeller}
+              className="flex-1 h-12 rounded-full items-center justify-center border-2 border-primary bg-white active:opacity-70"
+            >
+              <Text className="text-primary font-bold text-base" numberOfLines={1}>
+                {phoneShown ? listing.phone : "Voir le numéro"}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={toggleFav}
+              disabled={favBusy}
+              className={`flex-1 h-12 rounded-full items-center justify-center border-2 ${isFav ? "bg-red-50 border-red-200" : "bg-white border-primary"} active:opacity-70`}
+            >
+              <View className="flex-row items-center">
+                <Ionicons name={isFav ? "heart" : "heart-outline"} size={18} color={isFav ? "#ef4444" : "#2f6fb8"} />
+                <Text className={`font-bold text-base ml-2 ${isFav ? "text-red-600" : "text-primary"}`}>
+                  {isFav ? "Sauvegardé" : "Sauvegarder"}
+                </Text>
+              </View>
+            </Pressable>
+          )}
           <Pressable
             onPress={contact}
             disabled={contactBusy}
@@ -664,20 +728,9 @@ export default function AnnonceScreen() {
             {contactBusy ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <>
-                <Ionicons name="chatbubble" size={16} color="#fff" />
-                <Text className="text-white font-bold text-base ml-2">Message</Text>
-              </>
+              <Text className="text-white font-bold text-base">Message</Text>
             )}
           </Pressable>
-          {listing.phone && !listing.hidePhone && (
-            <Pressable
-              onPress={callSeller}
-              className="w-14 h-12 rounded-full items-center justify-center border-2 border-primary active:opacity-70"
-            >
-              <Ionicons name="call" size={20} color="#2f6fb8" />
-            </Pressable>
-          )}
         </View>
       )}
     </>
