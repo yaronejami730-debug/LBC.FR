@@ -12,6 +12,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatPrice, timeAgo, allImages, firstImage } from "@/lib/format";
 import { Skeleton } from "@/components/Skeleton";
+import { FullscreenPhotoViewer } from "@/components/FullscreenPhotoViewer";
 import { buildSpecs, buildEquipment } from "@/lib/listingSpecs";
 
 const SITE_URL = "https://www.dealandcompany.fr";
@@ -81,6 +82,9 @@ export default function AnnonceScreen() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [descExpanded, setDescExpanded] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [specsExpanded, setSpecsExpanded] = useState(false);
+  const [equipExpanded, setEquipExpanded] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   const loadFav = useCallback(async () => {
@@ -230,9 +234,7 @@ export default function AnnonceScreen() {
 
   const openMap = () => {
     if (!listing?.location) return;
-    const q = encodeURIComponent(listing.location);
-    const url = Platform.OS === "ios" ? `http://maps.apple.com/?q=${q}` : `geo:0,0?q=${q}`;
-    Linking.openURL(url).catch(() => {});
+    router.push({ pathname: "/localisation", params: { location: listing.location } });
   };
 
   if (loading) {
@@ -307,29 +309,36 @@ export default function AnnonceScreen() {
         }}
       />
       <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 140 }}>
-        {/* Galerie : hero pleine largeur + miniatures (lazy load auto via expo-image) */}
+        {/* Galerie : swipe horizontal TOUTES les photos, tap = ouvre visionneuse */}
         {images.length > 0 ? (
-          <Pressable onPress={() => setGalleryOpen(true)} className="active:opacity-90">
-            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-              {images.slice(0, 3).map((src, i) => (
-                <Image
-                  key={i}
-                  source={{ uri: src }}
-                  style={{ width: SCREEN_W, height: SCREEN_W }}
-                  contentFit="cover"
-                  priority={i === 0 ? "high" : "normal"}
-                  cachePolicy="memory-disk"
-                  transition={120}
-                  placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
-                />
+          <View>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={(e) => setGalleryIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W))}
+              scrollEventThrottle={16}
+            >
+              {images.map((src, i) => (
+                <Pressable key={i} onPress={() => { setGalleryIndex(i); setGalleryOpen(true); }}>
+                  <Image
+                    source={{ uri: src }}
+                    style={{ width: SCREEN_W, height: SCREEN_W }}
+                    contentFit="cover"
+                    priority={i === 0 ? "high" : "normal"}
+                    cachePolicy="memory-disk"
+                    transition={120}
+                    placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
+                  />
+                </Pressable>
               ))}
             </ScrollView>
-            {images.length > 3 && (
-              <View className="absolute right-3 bottom-3 bg-black/70 px-3 py-1.5 rounded-full">
-                <Text className="text-white text-xs font-bold">+{images.length - 3} photos</Text>
-              </View>
-            )}
-          </Pressable>
+            {/* Compteur photo bas-droite */}
+            <View className="absolute right-3 bottom-3 bg-black/70 px-3 py-1.5 rounded-full flex-row items-center">
+              <Ionicons name="images" size={12} color="#fff" />
+              <Text className="text-white text-xs font-bold ml-1.5">{galleryIndex + 1} / {images.length}</Text>
+            </View>
+          </View>
         ) : (
           <View style={{ width: SCREEN_W, height: SCREEN_W }} className="bg-surface-container items-center justify-center">
             <Ionicons name="image-outline" size={40} color="#94a3b8" />
@@ -354,34 +363,66 @@ export default function AnnonceScreen() {
             {listing.subcategory ? <Chip>{listing.subcategory}</Chip> : null}
           </View>
 
-          {structuredSpecs.length > 0 && (
-            <>
-              <SectionTitle>Caractéristiques</SectionTitle>
-              <View className="bg-surface-container-low rounded-2xl p-4">
-                {structuredSpecs.map((sp, i) => (
-                  <View
-                    key={`${sp.label}-${i}`}
-                    className={`flex-row items-center justify-between ${i < structuredSpecs.length - 1 ? "border-b border-surface-container pb-2.5 mb-2.5" : ""}`}
+          {structuredSpecs.length > 0 && (() => {
+            const KEY_COUNT = 6;
+            const visibleSpecs = specsExpanded ? structuredSpecs : structuredSpecs.slice(0, KEY_COUNT);
+            const extra = structuredSpecs.length - KEY_COUNT;
+            return (
+              <>
+                <SectionTitle>Caractéristiques</SectionTitle>
+                <View className="bg-surface-container-low rounded-2xl p-4">
+                  {visibleSpecs.map((sp, i) => (
+                    <View
+                      key={`${sp.label}-${i}`}
+                      className={`flex-row items-center justify-between ${i < visibleSpecs.length - 1 ? "border-b border-surface-container pb-2.5 mb-2.5" : ""}`}
+                    >
+                      <Text className="text-on-surface-variant text-sm">{sp.label}</Text>
+                      <Text className="text-on-surface text-sm font-semibold">{sp.value}</Text>
+                    </View>
+                  ))}
+                </View>
+                {extra > 0 && (
+                  <Pressable
+                    onPress={() => setSpecsExpanded((v) => !v)}
+                    className="mt-3 self-start"
                   >
-                    <Text className="text-on-surface-variant text-sm">{sp.label}</Text>
-                    <Text className="text-on-surface text-sm font-semibold">{sp.value}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
+                    <Text className="text-primary text-sm font-bold">
+                      {specsExpanded ? "Réduire" : `Voir ${extra} critère${extra > 1 ? "s" : ""} supplémentaire${extra > 1 ? "s" : ""}`}
+                    </Text>
+                  </Pressable>
+                )}
+              </>
+            );
+          })()}
 
           {equipment.length > 0 && (
             <>
-              <SectionTitle>Équipements & options</SectionTitle>
-              <View className="flex-row flex-wrap gap-2">
-                {equipment.map((opt, i) => (
-                  <View key={`${opt}-${i}`} className="flex-row items-center bg-surface-container-low rounded-full px-3 py-1.5">
-                    <Ionicons name="checkmark" size={14} color="#16a34a" />
-                    <Text className="text-on-surface text-xs font-semibold ml-1.5">{opt}</Text>
-                  </View>
-                ))}
-              </View>
+              <SectionTitle>Équipements</SectionTitle>
+              {equipExpanded ? (
+                <View className="flex-row flex-wrap gap-2">
+                  {equipment.map((opt, i) => (
+                    <View key={`${opt}-${i}`} className="flex-row items-center bg-surface-container-low rounded-full px-3 py-1.5">
+                      <Ionicons name="checkmark" size={14} color="#16a34a" />
+                      <Text className="text-on-surface text-xs font-semibold ml-1.5">{opt}</Text>
+                    </View>
+                  ))}
+                  <Pressable onPress={() => setEquipExpanded(false)} className="px-3 py-1.5">
+                    <Text className="text-primary text-xs font-bold">Réduire</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={() => setEquipExpanded(true)}
+                  className="bg-surface-container-low rounded-2xl px-4 py-3 flex-row items-center active:opacity-80"
+                >
+                  <Ionicons name="options" size={18} color="#2f6fb8" />
+                  <Text className="text-on-surface text-sm font-semibold ml-3 flex-1">
+                    {equipment.length} équipement{equipment.length > 1 ? "s" : ""} et option{equipment.length > 1 ? "s" : ""}
+                  </Text>
+                  <Text className="text-primary text-sm font-bold mr-2">Voir plus</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                </Pressable>
+              )}
             </>
           )}
 
@@ -471,13 +512,18 @@ export default function AnnonceScreen() {
           </View>
 
           <SectionTitle>Description</SectionTitle>
-          <Text
-            className="text-on-surface text-[15px] leading-relaxed"
-            numberOfLines={descExpanded ? undefined : 5}
-          >
-            {listing.description}
-          </Text>
-          {!descExpanded && listing.description.length > 200 && (
+          <View>
+            <Text
+              className="text-on-surface text-[15px] leading-relaxed"
+              numberOfLines={descExpanded ? undefined : 3}
+            >
+              {listing.description}
+            </Text>
+            {!descExpanded && (
+              <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 28 }} className="bg-gradient-to-t from-surface to-transparent" />
+            )}
+          </View>
+          {!descExpanded && listing.description.length > 120 && (
             <Pressable onPress={() => setDescExpanded(true)} className="mt-2">
               <Text className="text-primary text-sm font-bold">Voir plus</Text>
             </Pressable>
@@ -588,6 +634,14 @@ export default function AnnonceScreen() {
           />
         )}
       </ScrollView>
+
+      {/* Visionneuse plein écran */}
+      <FullscreenPhotoViewer
+        visible={galleryOpen}
+        images={images}
+        initialIndex={galleryIndex}
+        onClose={() => setGalleryOpen(false)}
+      />
 
       {/* CTA flottant — toujours visible (sauf pour l'auteur) */}
       {!isMine && (
