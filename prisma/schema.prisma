@@ -37,6 +37,7 @@ model User {
   apiKeys                 ApiKey[]
   consentGivenAt          DateTime?
   marketingConsent        Boolean                   @default(false)
+  notificationPreferences Json?
 
   // Trust & safety
   trustScore           Int      @default(50)

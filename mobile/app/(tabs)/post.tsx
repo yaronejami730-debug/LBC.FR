@@ -18,7 +18,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
@@ -27,6 +26,7 @@ import { getToken } from "@/lib/tokenStore";
 import { apiFetch } from "@/lib/api";
 import { CATEGORIES, CONDITIONS } from "@/lib/categories";
 import { getPhotoTemplate, type PhotoSlot } from "@/lib/photoTemplates";
+import { MapLocationPicker, type LocationValue } from "@/components/MapLocationPicker";
 
 type CategoryDef = (typeof CATEGORIES)[number];
 type SlotPhoto = { slotKey: string | null; url: string };
@@ -73,11 +73,12 @@ export default function PostScreen() {
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
   const [autoFilledFromTitle, setAutoFilledFromTitle] = useState(false);
+  const [priceSuggestion, setPriceSuggestion] = useState<{ suggested: number; range: { low: number; high: number }; sampleSize: number } | null>(null);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [condition, setCondition] = useState<string>("Bon état");
   const [phone, setPhone] = useState("");
-  const [geoLoading, setGeoLoading] = useState(false);
   const [hidePhone, setHidePhone] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [slotPhotos, setSlotPhotos] = useState<SlotPhoto[]>([]);
@@ -87,6 +88,7 @@ export default function PostScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const priceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftNotifId = useRef<string | null>(null);
 
   // Rappel local : si l'utilisateur quitte l'app avec un brouillon non vide,
@@ -280,6 +282,28 @@ export default function PostScreen() {
   // Conservé pour la rétro-compat (autres steps qui lisent `images`)
   useEffect(() => { setImages(orderedImages); }, [slotPhotos, category?.id]);
 
+  // Prix conseillé : recalculé quand catégorie/sous-catégorie/marque/état changent.
+  useEffect(() => {
+    if (priceTimer.current) clearTimeout(priceTimer.current);
+    if (!category) { setPriceSuggestion(null); return; }
+    priceTimer.current = setTimeout(() => {
+      const params = new URLSearchParams({ category: category.label });
+      if (subcategory) params.set("subcategory", subcategory);
+      if (brand.trim()) params.set("brand", brand.trim());
+      if (condition) params.set("condition", condition);
+      apiFetch<{ suggested: number | null; range: { low: number; high: number } | null; sampleSize: number }>(
+        `/api/listings/suggest-price?${params.toString()}`,
+        { auth: false },
+      )
+        .then((r) => {
+          if (r.suggested && r.range) setPriceSuggestion({ suggested: r.suggested, range: r.range, sampleSize: r.sampleSize });
+          else setPriceSuggestion(null);
+        })
+        .catch(() => setPriceSuggestion(null));
+    }, 400);
+    return () => { if (priceTimer.current) clearTimeout(priceTimer.current); };
+  }, [category?.id, category?.label, subcategory, brand, condition]);
+
   // Si la catégorie change, requalifie les photos affectées à des slots disparus en extras.
   useEffect(() => {
     const validKeys = new Set(photoTemplate.slots.map((s) => s.key));
@@ -296,25 +320,13 @@ export default function PostScreen() {
     });
   }, [category?.id]);
 
-  const fillFromGPS = async () => {
-    setGeoLoading(true);
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status !== "granted") { Alert.alert("Permission refusée", "Autorisez la localisation."); return; }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const places = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-      const p = places[0];
-      if (!p) { Alert.alert("Erreur", "Impossible de déterminer la ville."); return; }
-      const city = p.city ?? p.subregion ?? p.region ?? "";
-      const postal = p.postalCode ? ` ${p.postalCode}` : "";
-      setLocation(`${city}${postal}`.trim());
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Géolocalisation échouée");
-    } finally {
-      setGeoLoading(false);
-    }
+  const onLocationFromMap = (v: LocationValue) => {
+    setLocation(v.label);
+    setLocationCoords({ lat: v.latitude, lng: v.longitude });
   };
+  const mapValue: LocationValue | null = locationCoords
+    ? { label: location, latitude: locationCoords.lat, longitude: locationCoords.lng }
+    : null;
 
   const stepError = (s: number): string | null => {
     if (s === 0 && title.trim().length < 3) return "Indiquez un titre (3 caractères min).";
@@ -408,6 +420,7 @@ export default function PostScreen() {
               ...(brand.trim() ? { brand: brand.trim() } : {}),
               ...(model.trim() ? { model: model.trim() } : {}),
               ...(year.trim() ? { year: parseInt(year, 10) } : {}),
+              ...(locationCoords ? { lat: locationCoords.lat, lng: locationCoords.lng } : {}),
             },
             phone: phone.trim() || null,
             hidePhone,
@@ -646,6 +659,19 @@ export default function PostScreen() {
 
               <Label className="mt-4">Prix (€)</Label>
               <Field value={price} onChangeText={setPrice} placeholder="0" keyboardType="decimal-pad" />
+              {priceSuggestion && (
+                <Pressable
+                  onPress={() => { Haptics.selectionAsync().catch(() => {}); setPrice(String(priceSuggestion.suggested)); }}
+                  className="flex-row items-center bg-primary/10 border border-primary/30 rounded-xl px-3 py-2.5 mt-2 active:opacity-80"
+                >
+                  <Ionicons name="trending-up" size={18} color="#2f6fb8" />
+                  <View className="flex-1 ml-2">
+                    <Text className="text-primary text-xs font-bold">Prix conseillé : {priceSuggestion.suggested} €</Text>
+                    <Text className="text-on-surface-variant text-[11px]">Fourchette {priceSuggestion.range.low}–{priceSuggestion.range.high} € · basé sur {priceSuggestion.sampleSize} annonces</Text>
+                  </View>
+                  <Text className="text-primary text-xs font-bold">Utiliser</Text>
+                </Pressable>
+              )}
 
               <Label className="mt-4">État</Label>
               <View className="flex-row flex-wrap gap-2">
@@ -681,30 +707,12 @@ export default function PostScreen() {
               <Text className="text-on-surface-variant text-sm mt-2 mb-4">
                 Indiquez où vous vous trouvez. Votre adresse exacte n'est pas affichée.
               </Text>
-              <Label>Ville ou code postal</Label>
-              <View className="flex-row gap-2">
-                <TextInput
-                  value={location}
-                  onChangeText={setLocation}
-                  placeholder="ex : Paris 75011"
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 bg-surface-container rounded-xl px-3 py-3 text-on-surface"
-                />
-                <Pressable
-                  onPress={fillFromGPS}
-                  disabled={geoLoading}
-                  className={`px-4 rounded-xl justify-center items-center flex-row ${geoLoading ? "bg-outline" : "bg-primary"}`}
-                >
-                  {geoLoading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="location" size={16} color="#fff" />
-                      <Text className="text-white font-bold text-xs ml-1">GPS</Text>
-                    </>
-                  )}
-                </Pressable>
-              </View>
+
+              <Label>Carte</Label>
+              <MapLocationPicker value={mapValue} onChange={onLocationFromMap} />
+
+              <Label className="mt-4">Ville ou code postal</Label>
+              <Field value={location} onChangeText={setLocation} placeholder="ex : Paris 75011" />
 
               <Label className="mt-4">Téléphone (optionnel)</Label>
               <Field value={phone} onChangeText={setPhone} placeholder="06 12 34 56 78" keyboardType="phone-pad" />
