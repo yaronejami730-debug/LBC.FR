@@ -11,6 +11,8 @@ import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatPrice, timeAgo, allImages, firstImage } from "@/lib/format";
+import { Skeleton } from "@/components/Skeleton";
+import { buildSpecs, buildEquipment } from "@/lib/listingSpecs";
 
 const SITE_URL = "https://www.dealandcompany.fr";
 const SCREEN_W = Dimensions.get("window").width;
@@ -33,6 +35,7 @@ type Listing = {
   vehicleYear?: number | null;
   immoSurface?: number | null;
   immoRooms?: number | null;
+  metadata?: string | Record<string, unknown> | null;
   user: {
     id: string; name: string; avatar?: string | null;
     verified?: boolean; isPro?: boolean; companyName?: string | null;
@@ -76,6 +79,8 @@ export default function AnnonceScreen() {
   const [contactBusy, setContactBusy] = useState(false);
   const [phoneShown, setPhoneShown] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   const loadFav = useCallback(async () => {
@@ -155,6 +160,11 @@ export default function AnnonceScreen() {
       return;
     }
     setContactBusy(true);
+    apiFetch(`/api/listings/${listing.id}/click`, {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ type: "message" }),
+    }).catch(() => {});
     try {
       const conv = await apiFetch<{ id: string }>("/api/conversations", {
         method: "POST",
@@ -171,6 +181,11 @@ export default function AnnonceScreen() {
   const callSeller = () => {
     if (!listing?.phone) return;
     setPhoneShown(true);
+    apiFetch(`/api/listings/${listing.id}/click`, {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ type: "phone" }),
+    }).catch(() => {});
     Linking.openURL(`tel:${listing.phone}`).catch(() => {});
   };
 
@@ -221,7 +236,22 @@ export default function AnnonceScreen() {
   };
 
   if (loading) {
-    return <View className="flex-1 bg-surface items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>;
+    return (
+      <View className="flex-1 bg-surface">
+        <Skeleton width={SCREEN_W} height={SCREEN_W} borderRadius={0} />
+        <View className="p-4">
+          <Skeleton width={120} height={16} />
+          <View style={{ height: 10 }} />
+          <Skeleton width="80%" height={36} />
+          <View style={{ height: 10 }} />
+          <Skeleton width="60%" height={20} />
+          <View style={{ height: 24 }} />
+          <Skeleton width="100%" height={120} borderRadius={16} />
+          <View style={{ height: 16 }} />
+          <Skeleton width="100%" height={90} borderRadius={16} />
+        </View>
+      </View>
+    );
   }
   if (error || !listing) {
     return (
@@ -244,6 +274,9 @@ export default function AnnonceScreen() {
     listing.immoRooms ? `${listing.immoRooms} pièces` : null,
     listing.condition,
   ].filter(Boolean) as string[];
+
+  const structuredSpecs = buildSpecs(listing, listing.metadata);
+  const equipment = buildEquipment(listing.metadata);
 
   const adImg = ad ? (ad.imageUrlWide ?? ad.imageUrl) : null;
   const adImgAbs = adImg ? (adImg.startsWith("http") ? adImg : `${process.env.EXPO_PUBLIC_API_URL ?? ""}${adImg}`) : null;
@@ -273,48 +306,79 @@ export default function AnnonceScreen() {
           ),
         }}
       />
-      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* Galerie */}
+      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 140 }}>
+        {/* Galerie : hero pleine largeur + miniatures (lazy load auto via expo-image) */}
         {images.length > 0 ? (
-          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
-            {images.map((src, i) => (
-              <Image key={i} source={{ uri: src }} style={{ width: SCREEN_W, height: SCREEN_W }} contentFit="cover" />
-            ))}
-          </ScrollView>
+          <Pressable onPress={() => setGalleryOpen(true)} className="active:opacity-90">
+            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+              {images.slice(0, 3).map((src, i) => (
+                <Image
+                  key={i}
+                  source={{ uri: src }}
+                  style={{ width: SCREEN_W, height: SCREEN_W }}
+                  contentFit="cover"
+                  priority={i === 0 ? "high" : "normal"}
+                  cachePolicy="memory-disk"
+                  transition={120}
+                  placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
+                />
+              ))}
+            </ScrollView>
+            {images.length > 3 && (
+              <View className="absolute right-3 bottom-3 bg-black/70 px-3 py-1.5 rounded-full">
+                <Text className="text-white text-xs font-bold">+{images.length - 3} photos</Text>
+              </View>
+            )}
+          </Pressable>
         ) : (
           <View style={{ width: SCREEN_W, height: SCREEN_W }} className="bg-surface-container items-center justify-center">
-            <Text className="text-outline">Aucune photo</Text>
+            <Ionicons name="image-outline" size={40} color="#94a3b8" />
+            <Text className="text-outline mt-2">Aucune photo</Text>
           </View>
         )}
 
-        {/* Bloc principal */}
+        {/* Bloc principal — hiérarchie : date (petit) → titre (moyen) → prix (très gros) */}
         <View className="p-4">
-          <Text className="text-primary text-3xl font-extrabold">{formatPrice(listing.price)}</Text>
-          <Text className="text-on-surface text-xl font-bold mt-2">{listing.title}</Text>
+          <Text className="text-on-surface-variant text-xs">Publié le {new Date(listing.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
+          <Text className="text-on-surface text-xl font-bold mt-1.5">{listing.title}</Text>
+          <Text className="text-primary text-4xl font-extrabold mt-2">{formatPrice(listing.price)}</Text>
 
-          <View className="flex-row items-center mt-2 gap-3 flex-wrap">
-            <View className="flex-row items-center">
-              <Ionicons name="location-outline" size={14} color="#94a3b8" />
-              <Text className="text-on-surface-variant text-sm ml-1">{listing.location}</Text>
-            </View>
-            <Text className="text-on-surface-variant text-sm">•</Text>
+          <View className="flex-row items-center mt-3">
+            <Ionicons name="location-outline" size={14} color="#94a3b8" />
+            <Text className="text-on-surface-variant text-sm ml-1 flex-1">{listing.location}</Text>
             <Text className="text-on-surface-variant text-sm">{timeAgo(listing.createdAt)}</Text>
           </View>
 
           <View className="mt-3 flex-row gap-2 flex-wrap">
             <Chip>{listing.category}</Chip>
             {listing.subcategory ? <Chip>{listing.subcategory}</Chip> : null}
-            {listing.condition ? <Chip>{listing.condition}</Chip> : null}
           </View>
 
-          {specs.length > 0 && (
+          {structuredSpecs.length > 0 && (
             <>
               <SectionTitle>Caractéristiques</SectionTitle>
               <View className="bg-surface-container-low rounded-2xl p-4">
-                {specs.map((s, i) => (
-                  <View key={i} className={`flex-row items-center ${i < specs.length - 1 ? "border-b border-surface-container pb-2.5 mb-2.5" : ""}`}>
-                    <Ionicons name="ellipse" size={5} color="#2f6fb8" />
-                    <Text className="text-on-surface text-sm ml-3">{s}</Text>
+                {structuredSpecs.map((sp, i) => (
+                  <View
+                    key={`${sp.label}-${i}`}
+                    className={`flex-row items-center justify-between ${i < structuredSpecs.length - 1 ? "border-b border-surface-container pb-2.5 mb-2.5" : ""}`}
+                  >
+                    <Text className="text-on-surface-variant text-sm">{sp.label}</Text>
+                    <Text className="text-on-surface text-sm font-semibold">{sp.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {equipment.length > 0 && (
+            <>
+              <SectionTitle>Équipements & options</SectionTitle>
+              <View className="flex-row flex-wrap gap-2">
+                {equipment.map((opt, i) => (
+                  <View key={`${opt}-${i}`} className="flex-row items-center bg-surface-container-low rounded-full px-3 py-1.5">
+                    <Ionicons name="checkmark" size={14} color="#16a34a" />
+                    <Text className="text-on-surface text-xs font-semibold ml-1.5">{opt}</Text>
                   </View>
                 ))}
               </View>
@@ -407,7 +471,22 @@ export default function AnnonceScreen() {
           </View>
 
           <SectionTitle>Description</SectionTitle>
-          <Text className="text-on-surface text-[15px] leading-relaxed">{listing.description}</Text>
+          <Text
+            className="text-on-surface text-[15px] leading-relaxed"
+            numberOfLines={descExpanded ? undefined : 5}
+          >
+            {listing.description}
+          </Text>
+          {!descExpanded && listing.description.length > 200 && (
+            <Pressable onPress={() => setDescExpanded(true)} className="mt-2">
+              <Text className="text-primary text-sm font-bold">Voir plus</Text>
+            </Pressable>
+          )}
+          {descExpanded && (
+            <Pressable onPress={() => setDescExpanded(false)} className="mt-2">
+              <Text className="text-primary text-sm font-bold">Voir moins</Text>
+            </Pressable>
+          )}
 
           <SectionTitle>Questions fréquentes</SectionTitle>
           <View className="bg-surface-container-low rounded-2xl overflow-hidden">
@@ -509,6 +588,44 @@ export default function AnnonceScreen() {
           />
         )}
       </ScrollView>
+
+      {/* CTA flottant — toujours visible (sauf pour l'auteur) */}
+      {!isMine && (
+        <View
+          className="absolute bottom-0 left-0 right-0 bg-white border-t border-surface-container px-4 pt-3 pb-7 flex-row gap-2"
+          style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 6 }}
+        >
+          <Pressable
+            onPress={toggleFav}
+            disabled={favBusy}
+            className={`w-14 h-12 rounded-full items-center justify-center border-2 ${isFav ? "bg-red-50 border-red-200" : "bg-white border-surface-container"}`}
+          >
+            <Ionicons name={isFav ? "heart" : "heart-outline"} size={22} color={isFav ? "#ef4444" : "#1a1a1a"} />
+          </Pressable>
+          <Pressable
+            onPress={contact}
+            disabled={contactBusy}
+            className="flex-1 bg-primary h-12 rounded-full flex-row items-center justify-center active:opacity-90"
+          >
+            {contactBusy ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="chatbubble" size={16} color="#fff" />
+                <Text className="text-white font-bold text-base ml-2">Message</Text>
+              </>
+            )}
+          </Pressable>
+          {listing.phone && !listing.hidePhone && (
+            <Pressable
+              onPress={callSeller}
+              className="w-14 h-12 rounded-full items-center justify-center border-2 border-primary active:opacity-70"
+            >
+              <Ionicons name="call" size={20} color="#2f6fb8" />
+            </Pressable>
+          )}
+        </View>
+      )}
     </>
   );
 }
