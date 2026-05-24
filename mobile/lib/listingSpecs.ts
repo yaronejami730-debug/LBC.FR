@@ -11,21 +11,29 @@ const ICON_MAP: Record<string, string> = {
   "Catégorie": "pricetag",
   "Sous-catégorie": "pricetags",
   "Marque": "ribbon",
-  "Modèle": "construct",
+  "Modèle": "car-sport",
   "Année": "calendar",
   "Kilométrage": "speedometer",
-  "Énergie": "flash",
   "Carburant": "flash",
-  "Boîte de vitesse": "settings",
   "Boîte": "settings",
-  "Nombre de places": "people",
-  "Puissance fiscale": "flash-outline",
   "Couleur": "color-palette",
+  "Portes": "car",
+  "Puissance": "flash-outline",
+  "Motorisation": "cog",
+  "Type": "list",
+  "Places": "people",
+  "Crit'Air": "leaf",
+  "CO₂": "cloud",
+  "Type de bien": "home",
   "Surface": "expand",
   "Pièces": "grid",
-  "Classe énergie": "leaf",
+  "Chambres": "bed",
+  "Salles d'eau": "water",
   "Étage": "trending-up",
-  "Ascenseur": "swap-vertical",
+  "Exposition": "sunny",
+  "Classe énergie": "leaf",
+  "GES": "cloud-outline",
+  "Parking": "car",
   "Année de construction": "calendar",
   "Capacité": "save",
   "Garantie": "shield-checkmark",
@@ -80,38 +88,56 @@ export function buildSpecs(listing: Listing, metadataRaw: unknown): Spec[] {
   push("Catégorie", listing.category);
   if (listing.subcategory) push("Sous-catégorie", listing.subcategory);
 
-  const brand = s(meta.brand) ?? s(listing.brand);
+  // Clés metadata réelles (cf. app/post/PostForm.tsx)
+  const brand = s(meta.marque) ?? s(meta.brand) ?? s(listing.brand);
+  const km = (() => {
+    const raw = s(meta.kilometrage) ?? (listing.vehicleKm ? String(listing.vehicleKm) : null);
+    if (!raw) return null;
+    const n = parseInt(raw.replace(/\D/g, ""), 10);
+    return isNaN(n) ? `${raw} km` : `${n.toLocaleString("fr-FR")} km`;
+  })();
+  const co2 = s(meta.emissionCO2);
 
   if (VEHICLE_CATS.has(listing.category)) {
     push("Marque", brand);
-    push("Modèle", s(meta.model));
-    push("Année", listing.vehicleYear ? String(listing.vehicleYear) : s(meta.year));
-    push("Kilométrage", listing.vehicleKm ? `${listing.vehicleKm.toLocaleString("fr-FR")} km` : null);
-    push("Énergie", s(meta.fuel) ?? s(meta.energy));
-    push("Boîte de vitesse", s(meta.gearbox));
-    push("Nombre de places", s(meta.seats));
-    push("Puissance fiscale", meta.fiscalPower ? `${meta.fiscalPower} CV` : null);
-    push("Couleur", s(meta.color));
+    push("Modèle", s(meta.modele) ?? s(meta.nomModele) ?? s(meta.model));
+    push("Année", s(meta.annee) ?? (listing.vehicleYear ? String(listing.vehicleYear) : null));
+    push("Kilométrage", km);
+    push("Carburant", s(meta.carburant) ?? s(meta.fuel) ?? s(meta.energy));
+    push("Boîte", s(meta.transmission) ?? s(meta.gearbox));
+    push("Couleur", s(meta.couleur) ?? s(meta.color));
+    push("Portes", s(meta.nombrePortes));
+    push("Puissance", meta.puissanceFiscale ? `${s(meta.puissanceFiscale)} CV` : null);
+    push("Motorisation", s(meta.motorisation));
+    push("Type", s(meta.typeVehicule));
+    push("Places", s(meta.nombrePlaces));
+    push("Crit'Air", s(meta.critAir));
+    push("CO₂", co2 ? `${co2} g/km` : null);
   } else if (IMMO_CATS.has(listing.category)) {
-    push("Surface", listing.immoSurface ? `${listing.immoSurface} m²` : null);
-    push("Pièces", listing.immoRooms ? `${listing.immoRooms}` : null);
-    push("Classe énergie", s(meta.energyClass));
-    push("Étage", s(meta.floor));
-    push("Ascenseur", typeof meta.elevator === "boolean" ? (meta.elevator ? "Oui" : "Non") : null);
-    push("Année de construction", s(meta.constructionYear));
+    push("Type de bien", s(meta.typeBien));
+    push("Surface", (s(meta.surface) ?? (listing.immoSurface ? String(listing.immoSurface) : null)) ? `${s(meta.surface) ?? listing.immoSurface} m²` : null);
+    push("Pièces", s(meta.rooms) ?? (listing.immoRooms ? String(listing.immoRooms) : null));
+    push("Chambres", s(meta.chambres));
+    push("Salles d'eau", s(meta.sallesEau));
+    push("Étage", s(meta.etage));
+    push("Exposition", s(meta.exposition));
+    push("Classe énergie", s(meta.classeEnergie));
+    push("GES", s(meta.ges));
+    push("Parking", s(meta.placesParking));
+    push("Année de construction", s(meta.anneeConstruction));
   } else if (ELEC_CATS.has(listing.category)) {
     push("Marque", brand);
-    push("Modèle", s(meta.model));
-    push("Capacité", s(meta.capacity));
-    push("Couleur", s(meta.color));
-    push("Garantie", s(meta.warranty));
+    push("Modèle", s(meta.modele) ?? s(meta.model));
+    push("Capacité", s(meta.capacity) ?? s(meta.capacite));
+    push("Couleur", s(meta.couleur) ?? s(meta.color));
+    push("Garantie", s(meta.warranty) ?? s(meta.garantie));
     push("État batterie", s(meta.batteryHealth));
   } else {
     push("Marque", brand);
-    push("Modèle", s(meta.model));
-    push("Année", s(meta.year));
-    push("Taille", s(meta.size));
-    push("Couleur", s(meta.color));
+    push("Modèle", s(meta.modele) ?? s(meta.model));
+    push("Année", s(meta.annee) ?? s(meta.year));
+    push("Taille", s(meta.taille) ?? s(meta.size));
+    push("Couleur", s(meta.couleur) ?? s(meta.color));
   }
 
   return specs;
@@ -119,7 +145,7 @@ export function buildSpecs(listing: Listing, metadataRaw: unknown): Spec[] {
 
 export function buildEquipment(metadataRaw: unknown): string[] {
   const meta = parseMeta(metadataRaw);
-  const raw = meta.equipment ?? meta.equipments ?? meta.options;
+  const raw = meta.equipements ?? meta.equipment ?? meta.equipments ?? meta.caracteristiques ?? meta.options;
   if (Array.isArray(raw)) {
     return raw.map((x) => String(x)).filter((x) => x.trim());
   }

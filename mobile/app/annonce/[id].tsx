@@ -377,7 +377,7 @@ export default function AnnonceScreen() {
           </View>
 
           {structuredSpecs.length > 0 && (() => {
-            const KEY_COUNT = 6;
+            const KEY_COUNT = 8;
             const visibleSpecs = specsExpanded ? structuredSpecs : structuredSpecs.slice(0, KEY_COUNT);
             const extra = structuredSpecs.length - KEY_COUNT;
             return (
