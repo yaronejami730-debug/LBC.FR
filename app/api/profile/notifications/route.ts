@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
+import { invalidatePreferencesCache } from "@/lib/notifications/preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,7 @@ export async function PATCH(req: NextRequest) {
     where: { id: userId },
     data: { notificationPreferences: merged },
   });
+  invalidatePreferencesCache(userId);
 
   return NextResponse.json({ preferences: withDefaults(merged) });
 }

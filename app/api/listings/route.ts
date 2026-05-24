@@ -4,6 +4,7 @@ import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { buildSearchWhere } from "@/lib/search-where";
 import { sendEmail } from "@/lib/email";
+import { isEmailAllowed } from "@/lib/notifications/preferences";
 import { newListingAdminEmail } from "@/lib/emails/new-listing-admin";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import { listingPendingEmail } from "@/lib/emails/listing-pending";
@@ -470,7 +471,7 @@ export async function POST(req: NextRequest) {
 
     const sellerUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true, companyName: true, isPro: true },
+      select: { id: true, name: true, email: true, companyName: true, isPro: true },
     });
 
     if (!sellerUser) {
@@ -482,52 +483,57 @@ export async function POST(req: NextRequest) {
       const requiresApproval = listingStatus === "PENDING";
       const wasRejected = listingStatus === "REJECTED";
 
-      // Email vendeur
-      if (wasRejected) {
-        sendEmail({
-          to: sellerUser.email,
-          toName: displayName,
-          subject: rejectedForProActivity
-            ? `Votre annonce "${title}" doit être publiée depuis un compte pro — Deal & Co`
-            : `Votre annonce "${title}" n'a pas été publiée — Deal & Co`,
-          html: listingRejectedEmail({
-            name: displayName,
-            listingTitle: title,
-            reason: rejectionReason ?? undefined,
-            postUrl: `${baseUrl}/post`,
-            isProActivity: rejectedForProActivity,
-            proUpgradeUrl: `${baseUrl}/profile?tab=pro`,
-          }),
-        }).catch((err) => console.error("[SELLER EMAIL REJECTED]", err));
-      } else if (requiresApproval) {
-        sendEmail({
-          to: sellerUser.email,
-          toName: displayName,
-          subject: `Votre annonce "${title}" est en cours de vérification — Deal & Co`,
-          html: listingPendingEmail({
-            name: displayName,
-            listingTitle: title,
-            listingUrl: `${baseUrl}/annonce/${listing.id}`,
-            price: parsedPrice,
-            location,
-            imageUrl: parsedImages[0] ?? undefined,
-          }),
-        }).catch((err) => console.error("[SELLER EMAIL PENDING]", err));
-      } else {
-        sendEmail({
-          to: sellerUser.email,
-          toName: displayName,
-          subject: `Votre annonce "${title}" est en ligne — Deal & Co`,
-          html: listingPublishedEmail({
-            name: displayName,
-            listingTitle: title,
-            listingUrl: `${baseUrl}/annonce/${listing.id}`,
-            price: parsedPrice,
-            location,
-            imageUrl: parsedImages[0] ?? undefined,
-          }),
-        }).catch((err) => console.error("[SELLER EMAIL APPROVED]", err));
-      }
+      // Email vendeur — respecte les préférences (event listingPublished)
+      isEmailAllowed(sellerUser.id, "listingPublished")
+        .then((allowed) => {
+          if (!allowed) return;
+          if (wasRejected) {
+            return sendEmail({
+              to: sellerUser.email,
+              toName: displayName,
+              subject: rejectedForProActivity
+                ? `Votre annonce "${title}" doit être publiée depuis un compte pro — Deal & Co`
+                : `Votre annonce "${title}" n'a pas été publiée — Deal & Co`,
+              html: listingRejectedEmail({
+                name: displayName,
+                listingTitle: title,
+                reason: rejectionReason ?? undefined,
+                postUrl: `${baseUrl}/post`,
+                isProActivity: rejectedForProActivity,
+                proUpgradeUrl: `${baseUrl}/profile?tab=pro`,
+              }),
+            });
+          }
+          if (requiresApproval) {
+            return sendEmail({
+              to: sellerUser.email,
+              toName: displayName,
+              subject: `Votre annonce "${title}" est en cours de vérification — Deal & Co`,
+              html: listingPendingEmail({
+                name: displayName,
+                listingTitle: title,
+                listingUrl: `${baseUrl}/annonce/${listing.id}`,
+                price: parsedPrice,
+                location,
+                imageUrl: parsedImages[0] ?? undefined,
+              }),
+            });
+          }
+          return sendEmail({
+            to: sellerUser.email,
+            toName: displayName,
+            subject: `Votre annonce "${title}" est en ligne — Deal & Co`,
+            html: listingPublishedEmail({
+              name: displayName,
+              listingTitle: title,
+              listingUrl: `${baseUrl}/annonce/${listing.id}`,
+              price: parsedPrice,
+              location,
+              imageUrl: parsedImages[0] ?? undefined,
+            }),
+          });
+        })
+        .catch((err) => console.error("[SELLER EMAIL]", err));
 
       // Push vendeur — reflète le statut de l'annonce.
       const tpl = wasRejected

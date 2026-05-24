@@ -145,6 +145,9 @@ model Listing {
   expiryNotifiedAt    DateTime?
   photoReminderSentAt DateTime?
   viewCount           Int       @default(0)
+  phoneClickCount     Int       @default(0)
+  messageClickCount   Int       @default(0)
+  interestNotifiedAt  DateTime?
   shadowBanned        Boolean   @default(false)
   reviewPriority      Int       @default(0)
 

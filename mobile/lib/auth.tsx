@@ -16,13 +16,6 @@ export type AuthUser = {
   avatar?: string | null;
   phoneNumber?: string | null;
   marketingConsent?: boolean | null;
-  civility?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  birthDate?: string | null;
-  addressLine?: string | null;
-  addressCity?: string | null;
-  addressPostal?: string | null;
 };
 
 type AppleCredentialInput = {

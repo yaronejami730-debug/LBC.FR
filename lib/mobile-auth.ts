@@ -48,13 +48,13 @@ export async function getMobileUser(req: NextRequest) {
         id: true, email: true, name: true, role: true, isPro: true, emailVerified: true,
         bannedAt: true, companyName: true, verified: true, avatar: true, phoneNumber: true,
         marketingConsent: true,
-        civility: true, firstName: true, lastName: true, birthDate: true,
-        addressLine: true, addressCity: true, addressPostal: true,
       },
     });
     if (!user || user.bannedAt) return null;
     return user;
-  } catch {
+  } catch (err) {
+    // Diagnostic clé : visible dans logs Vercel quand getMobileUser fail
+    console.error("[getMobileUser] verify/find failed", err instanceof Error ? err.message : err);
     return null;
   }
 }

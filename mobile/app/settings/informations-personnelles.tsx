@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -28,17 +28,40 @@ function parseBirth(input: string): { iso: string | null; valid: boolean } {
   return { iso: d.toISOString(), valid: true };
 }
 
+type FullProfile = {
+  civility?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  birthDate?: string | null;
+  addressLine?: string | null;
+  companyName?: string | null;
+};
+
 export default function InformationsPersonnelles() {
   const router = useRouter();
   const { user, refresh } = useAuth();
-  const [civility, setCivility] = useState(user?.civility ?? "");
-  const [lastName, setLastName] = useState(user?.lastName ?? "");
-  const [firstName, setFirstName] = useState(user?.firstName ?? "");
-  const [birthDate, setBirthDate] = useState(formatBirth(user?.birthDate));
-  const [addressLine, setAddressLine] = useState(user?.addressLine ?? "");
+  const [civility, setCivility] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [addressLine, setAddressLine] = useState("");
   const [companyName, setCompanyName] = useState(user?.companyName ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Charge les champs étendus via /api/profile/me (pas dans l'objet user du contexte)
+  useEffect(() => {
+    apiFetch<{ user: FullProfile }>("/api/profile/me")
+      .then(({ user: p }) => {
+        if (p.civility) setCivility(p.civility);
+        if (p.lastName) setLastName(p.lastName);
+        if (p.firstName) setFirstName(p.firstName);
+        if (p.birthDate) setBirthDate(formatBirth(p.birthDate));
+        if (p.addressLine) setAddressLine(p.addressLine);
+        if (p.companyName) setCompanyName(p.companyName);
+      })
+      .catch(() => {});
+  }, []);
 
   const save = async () => {
     setError(null);

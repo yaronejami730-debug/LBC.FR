@@ -4,6 +4,7 @@ import { getAuthUserId } from "@/lib/auth-unified";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { broadcast } from "@/lib/sse";
 import { sendEmail } from "@/lib/email";
+import { isEmailAllowed } from "@/lib/notifications/preferences";
 import { newMessageEmail } from "@/lib/emails/new-message";
 import { rateLimit } from "@/lib/rate-limit";
 import { scanScam } from "@/lib/moderation/scam-patterns";
@@ -240,19 +241,24 @@ export async function POST(req: NextRequest) {
       (p) => p.userId !== senderId
     );
     if (recipient) {
-      const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
-      sendEmail({
-        to: recipient.user.email,
-        toName: recipient.user.name,
-        subject: `Nouveau message de ${message.sender.name} — Deal & Co`,
-        html: newMessageEmail({
-          name: recipient.user.name,
-          senderName: message.sender.name,
-          listingTitle: conversation.listing.title,
-          messageBody: message.content || (attachmentType === "pdf" ? "Document PDF" : "Photo"),
-          conversationUrl: `${baseUrl}/messages/${conversationId}`,
-        }),
-      }).catch(() => { });
+      isEmailAllowed(recipient.userId, "messages")
+        .then((allowed) => {
+          if (!allowed) return;
+          const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+          return sendEmail({
+            to: recipient.user.email,
+            toName: recipient.user.name,
+            subject: `Nouveau message de ${message.sender.name} — Deal & Co`,
+            html: newMessageEmail({
+              name: recipient.user.name,
+              senderName: message.sender.name,
+              listingTitle: conversation.listing.title,
+              messageBody: message.content || (attachmentType === "pdf" ? "Document PDF" : "Photo"),
+              conversationUrl: `${baseUrl}/messages/${conversationId}`,
+            }),
+          });
+        })
+        .catch(() => {});
     }
   }
 

@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Listing" ADD COLUMN "phoneClickCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Listing" ADD COLUMN "messageClickCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Listing" ADD COLUMN "interestNotifiedAt" TIMESTAMP(3);
