@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-type Placement = "carousel" | "rotator" | "grid";
+type Placement = "carousel" | "rotator" | "grid" | "interstitial";
 
 // POST /api/ads/track  { id, type: "click" | "impression", placement?: Placement }
 export async function POST(req: NextRequest) {
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     if (placement === "carousel") placementIncrement.impCarousel = { increment: 1 };
     else if (placement === "rotator") placementIncrement.impRotator = { increment: 1 };
     else if (placement === "grid")    placementIncrement.impGrid    = { increment: 1 };
+    else if (placement === "interstitial") placementIncrement.impInterstitial = { increment: 1 };
   }
 
   await prisma.advertisement.updateMany({

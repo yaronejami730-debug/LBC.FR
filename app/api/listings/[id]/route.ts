@@ -14,10 +14,35 @@ export async function GET(
   const { id } = await params;
   const listing = await prisma.listing.findUnique({
     where: { id },
-    include: { user: true },
+    include: {
+      user: {
+        select: {
+          id: true, name: true, avatar: true, verified: true,
+          isPro: true, companyName: true, createdAt: true,
+        },
+      },
+    },
   });
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(listing);
+
+  // Compteur d'annonces du vendeur (utile pour "X annonces" sur la carte vendeur).
+  const sellerTotal = await prisma.listing.count({
+    where: { userId: listing.userId, status: "APPROVED", deletedAt: null },
+  });
+
+  // Augmente le compte de vues (fire-and-forget).
+  prisma.listing
+    .update({ where: { id }, data: { viewCount: { increment: 1 } } })
+    .catch(() => {});
+
+  return NextResponse.json({
+    ...listing,
+    user: {
+      ...listing.user,
+      memberSince: listing.user.createdAt.toISOString(),
+      listingsCount: sellerTotal,
+    },
+  });
 }
 
 export async function PATCH(

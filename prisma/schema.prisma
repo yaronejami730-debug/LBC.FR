@@ -422,6 +422,9 @@ model Advertisement {
   impCarousel    Int       @default(0) // Bannière accueil
   impRotator     Int       @default(0) // Encart page annonce
   impGrid        Int       @default(0) // Fil de résultats
+  impInterstitial Int      @default(0) // Plein écran modal
+  /// Si vrai : affichée en plein écran (interstitielle) à l'ouverture de l'app.
+  isInterstitial Boolean   @default(false)
   scheduledAt    DateTime?
   expiresAt      DateTime?
   createdAt      DateTime  @default(now())

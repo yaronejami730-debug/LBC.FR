@@ -11,14 +11,11 @@ const navItems = [
   { href: "/admin/users", icon: "group", label: "Utilisateurs", exact: false },
   { href: "/admin/listings", icon: "list_alt", label: "Annonces", exact: false },
   { href: "/admin/categories", icon: "tune", label: "Catégories", exact: false },
-  { href: "/admin/create-client", icon: "person_add", label: "Créer un client", exact: false },
+  { href: "/admin/crm", icon: "handshake", label: "CRM", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
-  { href: "/admin/banniere", icon: "wallpaper", label: "Bannière", exact: false },
-  { href: "/admin/envoyer-email", icon: "forward_to_inbox", label: "Email découverte", exact: false },
-  { href: "/admin/notifications-mail", icon: "mark_email_unread", label: "Notifications par mail", exact: false },
-  { href: "/admin/sources-externes", icon: "import_export", label: "Sources externes", exact: false },
+  { href: "/admin/banniere", icon: "wallpaper", label: "Bannières", exact: false },
+  { href: "/admin/notifications", icon: "notifications", label: "Notifications", exact: false },
   { href: "/admin/behavioral", icon: "psychology", label: "Moteur comportemental", exact: false },
-  { href: "/admin/early-adopters", icon: "star", label: "Early Adopters", exact: false },
 ];
 
 export default function AdminSidebar({ adminName, isMobile, onClose }: { adminName: string; isMobile?: boolean; onClose?: () => void }) {

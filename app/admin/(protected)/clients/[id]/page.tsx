@@ -43,7 +43,7 @@ export default async function ClientDetailPage({
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-[#777683]">
-        <Link href="/admin/create-client" className="hover:text-[#2f6fb8] transition-colors">
+        <Link href="/admin/crm/clients" className="hover:text-[#2f6fb8] transition-colors">
           Clients
         </Link>
         <span>/</span>

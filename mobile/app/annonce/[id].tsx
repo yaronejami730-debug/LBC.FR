@@ -1,26 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  ScrollView,
-  View,
-  Text,
-  ActivityIndicator,
-  Pressable,
-  Dimensions,
-  Alert,
-  Share,
-  Linking,
-  Platform,
-  ActionSheetIOS,
+  ScrollView, View, Text, ActivityIndicator, Pressable,
+  Dimensions, Alert, Share, Linking, Platform, ActionSheetIOS,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import MapView, { Marker, PROVIDER_DEFAULT } from "react-native-maps";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatPrice, timeAgo, allImages } from "@/lib/format";
+import { formatPrice, timeAgo, allImages, firstImage } from "@/lib/format";
 
 const SITE_URL = "https://www.dealandcompany.fr";
+const SCREEN_W = Dimensions.get("window").width;
 
 type Listing = {
   id: string;
@@ -36,46 +29,78 @@ type Listing = {
   phone?: string | null;
   hidePhone?: boolean;
   userId: string;
-  user?: { id: string; name: string; verified?: boolean; isPro?: boolean; companyName?: string | null };
+  vehicleKm?: number | null;
+  vehicleYear?: number | null;
+  immoSurface?: number | null;
+  immoRooms?: number | null;
+  user: {
+    id: string; name: string; avatar?: string | null;
+    verified?: boolean; isPro?: boolean; companyName?: string | null;
+    memberSince: string; listingsCount: number;
+  };
 };
 
-type Favorite = { id: string; listing: { id: string } };
+type RelatedListing = {
+  id: string; title: string; price: number; location: string;
+  images: string | string[] | null; createdAt: string; isPremium?: boolean;
+};
 
-const SCREEN_W = Dimensions.get("window").width;
+type Ad = {
+  id: string; title: string; description: string;
+  imageUrl: string; imageUrlWide: string | null; destinationUrl: string;
+};
 
-import { allImages } from "@/lib/format";
+function memberYear(iso: string): string {
+  return new Date(iso).getFullYear().toString();
+}
 
-function parseImages(raw: string | string[] | null): string[] {
-  return allImages(raw);
+function trackAd(id: string, type: "click" | "impression") {
+  apiFetch("/api/ads/track", {
+    method: "POST", auth: false,
+    body: JSON.stringify({ id, type, placement: "rotator" }),
+  }).catch(() => {});
 }
 
 export default function AnnonceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+
   const [listing, setListing] = useState<Listing | null>(null);
+  const [related, setRelated] = useState<{ sellerOthers: RelatedListing[]; similar: RelatedListing[] }>({ sellerOthers: [], similar: [] });
+  const [ad, setAd] = useState<Ad | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFav, setIsFav] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
   const [contactBusy, setContactBusy] = useState(false);
+  const [phoneShown, setPhoneShown] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
 
   const loadFav = useCallback(async () => {
     if (!user || !id) return;
     try {
-      const favs = await apiFetch<Favorite[]>("/api/favorites");
+      const favs = await apiFetch<{ listing: { id: string } }[]>("/api/favorites");
       setIsFav(favs.some((f) => f.listing.id === id));
-    } catch {
-      // silencieux : l'état favori reste à false
-    }
+    } catch { /* noop */ }
   }, [user, id]);
 
   useEffect(() => {
     if (!id) return;
     (async () => {
       try {
-        const data = await apiFetch<Listing>(`/api/listings/${id}`, { auth: false });
+        const [data, rel, adRes] = await Promise.all([
+          apiFetch<Listing>(`/api/listings/${id}`, { auth: false }),
+          apiFetch<typeof related>(`/api/listings/${id}/related`, { auth: false }).catch(() => ({ sellerOthers: [], similar: [] })),
+          apiFetch<Ad[]>("/api/ads", { auth: false }).catch(() => [] as Ad[]),
+        ]);
         setListing(data);
+        setRelated(rel);
+        if (adRes.length > 0) {
+          setAd(adRes[0]);
+          trackAd(adRes[0].id, "impression");
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erreur de chargement");
       } finally {
@@ -85,11 +110,26 @@ export default function AnnonceScreen() {
     loadFav();
   }, [id, loadFav]);
 
+  // Géocode la localisation via Nominatim — coords pour MapView natif.
+  useEffect(() => {
+    if (!listing?.location) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const geo = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(listing.location)}`,
+          { headers: { "User-Agent": "DealAndCo/1.0" } },
+        );
+        const data = (await geo.json()) as { lat: string; lon: string }[];
+        if (cancelled || !data?.[0]) return;
+        setCoords({ lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) });
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, [listing?.location]);
+
   const toggleFav = async () => {
-    if (!user) {
-      router.push("/(auth)/login");
-      return;
-    }
+    if (!user) { router.push("/(auth)/login"); return; }
     if (!listing || favBusy) return;
     setFavBusy(true);
     const next = !isFav;
@@ -108,10 +148,7 @@ export default function AnnonceScreen() {
   };
 
   const contact = async () => {
-    if (!user) {
-      router.push("/(auth)/login");
-      return;
-    }
+    if (!user) { router.push("/(auth)/login"); return; }
     if (!listing) return;
     if (listing.userId === user.id) {
       Alert.alert("Action impossible", "Vous ne pouvez pas vous contacter vous-même.");
@@ -131,52 +168,56 @@ export default function AnnonceScreen() {
     }
   };
 
-  const shareUrl = `${SITE_URL}/annonce/${id}`;
-  const shareMessage = listing
-    ? `${listing.title} — ${formatPrice(listing.price)}\n${shareUrl}`
-    : shareUrl;
-
-  const shareNative = async () => {
-    try {
-      await Share.share({ message: shareMessage, url: shareUrl });
-    } catch {
-      // annulé
-    }
+  const callSeller = () => {
+    if (!listing?.phone) return;
+    setPhoneShown(true);
+    Linking.openURL(`tel:${listing.phone}`).catch(() => {});
   };
 
-  const shareWhatsApp = async () => {
-    const url = `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
+  const whatsAppSeller = async () => {
+    if (!listing?.phone || !listing) return;
+    const cleaned = listing.phone.replace(/[\s\-().+]/g, "").replace(/^0/, "33");
+    const text = `Bonjour, votre annonce "${listing.title}" m'intéresse.`;
+    const url = `whatsapp://send?phone=${cleaned}&text=${encodeURIComponent(text)}`;
     const ok = await Linking.canOpenURL(url);
     if (!ok) {
-      Alert.alert("WhatsApp introuvable", "WhatsApp n'est pas installé sur cet appareil.");
+      Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`).catch(() => {});
       return;
     }
     Linking.openURL(url);
   };
 
-  const copyLink = async () => {
-    await Clipboard.setStringAsync(shareUrl);
-    Alert.alert("Lien copié", "Le lien de l'annonce a été copié.");
-  };
-
+  const shareUrl = listing ? `${SITE_URL}/annonce/${listing.id}` : SITE_URL;
   const openShare = () => {
+    if (!listing) return;
+    const message = `${listing.title} — ${formatPrice(listing.price)}\n${shareUrl}`;
     if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         { options: ["Annuler", "WhatsApp", "Copier le lien", "Plus…"], cancelButtonIndex: 0 },
-        (i) => {
-          if (i === 1) shareWhatsApp();
-          else if (i === 2) copyLink();
-          else if (i === 3) shareNative();
+        async (i) => {
+          if (i === 1) {
+            const cleaned = encodeURIComponent(message);
+            Linking.openURL(`whatsapp://send?text=${cleaned}`).catch(() => {
+              Linking.openURL(`https://wa.me/?text=${cleaned}`);
+            });
+          } else if (i === 2) {
+            await Clipboard.setStringAsync(shareUrl);
+            Alert.alert("Lien copié");
+          } else if (i === 3) {
+            Share.share({ message, url: shareUrl }).catch(() => {});
+          }
         },
       );
     } else {
-      Alert.alert("Partager l'annonce", undefined, [
-        { text: "WhatsApp", onPress: shareWhatsApp },
-        { text: "Copier le lien", onPress: copyLink },
-        { text: "Plus…", onPress: shareNative },
-        { text: "Annuler", style: "cancel" },
-      ]);
+      Share.share({ message, url: shareUrl }).catch(() => {});
     }
+  };
+
+  const openMap = () => {
+    if (!listing?.location) return;
+    const q = encodeURIComponent(listing.location);
+    const url = Platform.OS === "ios" ? `http://maps.apple.com/?q=${q}` : `geo:0,0?q=${q}`;
+    Linking.openURL(url).catch(() => {});
   };
 
   if (loading) {
@@ -193,40 +234,51 @@ export default function AnnonceScreen() {
     );
   }
 
-  const images = parseImages(listing.images);
-  const sellerName = listing.user?.isPro && listing.user?.companyName ? listing.user.companyName : listing.user?.name;
+  const images = allImages(listing.images);
+  const sellerName = listing.user.isPro && listing.user.companyName ? listing.user.companyName : listing.user.name;
   const isMine = user?.id === listing.userId;
+  const specs = [
+    listing.vehicleYear,
+    listing.vehicleKm ? `${listing.vehicleKm.toLocaleString("fr-FR")} km` : null,
+    listing.immoSurface ? `${listing.immoSurface} m²` : null,
+    listing.immoRooms ? `${listing.immoRooms} pièces` : null,
+    listing.condition,
+  ].filter(Boolean) as string[];
+
+  const adImg = ad ? (ad.imageUrlWide ?? ad.imageUrl) : null;
+  const adImgAbs = adImg ? (adImg.startsWith("http") ? adImg : `${process.env.EXPO_PUBLIC_API_URL ?? ""}${adImg}`) : null;
+
+  const faq = [
+    { q: "Comment contacter le vendeur ?", a: "Cliquez sur « Message » pour démarrer une conversation directement dans l'application." },
+    { q: "Comment se passe le paiement ?", a: "Le paiement se fait directement entre vous et le vendeur. Privilégiez les paiements sécurisés et évitez les virements à l'avance." },
+    { q: "Comment récupérer l'article ?", a: "Convenez avec le vendeur d'un lieu de remise en main propre, idéalement dans un lieu public." },
+    { q: "L'article est-il garanti ?", a: "Les annonces entre particuliers ne sont pas garanties. Inspectez l'article avant l'achat." },
+  ];
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: listing.title,
+          title: "",
           headerBackTitle: "Retour",
           headerRight: () => (
             <View className="flex-row items-center">
-              <Pressable onPress={openShare} className="px-2">
-                <Ionicons name="share-outline" size={24} color="#2f6fb8" />
-              </Pressable>
+              <Pressable onPress={openShare} className="px-2"><Ionicons name="share-outline" size={24} color="#2f6fb8" /></Pressable>
               {!isMine && (
                 <Pressable onPress={toggleFav} disabled={favBusy} className="px-2">
-                  <Text className={isFav ? "text-2xl" : "text-2xl text-outline"}>{isFav ? "♥" : "♡"}</Text>
+                  <Ionicons name={isFav ? "heart" : "heart-outline"} size={24} color={isFav ? "#ef4444" : "#1a1a1a"} />
                 </Pressable>
               )}
             </View>
           ),
         }}
       />
-      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Galerie */}
         {images.length > 0 ? (
           <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
             {images.map((src, i) => (
-              <Image
-                key={i}
-                source={{ uri: src }}
-                style={{ width: SCREEN_W, height: SCREEN_W }}
-                contentFit="cover"
-              />
+              <Image key={i} source={{ uri: src }} style={{ width: SCREEN_W, height: SCREEN_W }} contentFit="cover" />
             ))}
           </ScrollView>
         ) : (
@@ -235,68 +287,272 @@ export default function AnnonceScreen() {
           </View>
         )}
 
+        {/* Bloc principal */}
         <View className="p-4">
           <Text className="text-primary text-3xl font-extrabold">{formatPrice(listing.price)}</Text>
           <Text className="text-on-surface text-xl font-bold mt-2">{listing.title}</Text>
 
           <View className="flex-row items-center mt-2 gap-3 flex-wrap">
-            <Text className="text-on-surface-variant text-sm">{listing.location}</Text>
+            <View className="flex-row items-center">
+              <Ionicons name="location-outline" size={14} color="#94a3b8" />
+              <Text className="text-on-surface-variant text-sm ml-1">{listing.location}</Text>
+            </View>
             <Text className="text-on-surface-variant text-sm">•</Text>
             <Text className="text-on-surface-variant text-sm">{timeAgo(listing.createdAt)}</Text>
           </View>
 
           <View className="mt-3 flex-row gap-2 flex-wrap">
-            <View className="bg-surface-container px-3 py-1 rounded-full">
-              <Text className="text-on-surface-variant text-xs font-semibold">{listing.category}</Text>
-            </View>
-            {listing.subcategory && (
-              <View className="bg-surface-container px-3 py-1 rounded-full">
-                <Text className="text-on-surface-variant text-xs font-semibold">{listing.subcategory}</Text>
-              </View>
-            )}
-            {listing.condition && (
-              <View className="bg-surface-container px-3 py-1 rounded-full">
-                <Text className="text-on-surface-variant text-xs font-semibold">{listing.condition}</Text>
-              </View>
-            )}
+            <Chip>{listing.category}</Chip>
+            {listing.subcategory ? <Chip>{listing.subcategory}</Chip> : null}
+            {listing.condition ? <Chip>{listing.condition}</Chip> : null}
           </View>
 
-          <View className="mt-6">
-            <Text className="text-on-surface text-base font-bold mb-2">Description</Text>
-            <Text className="text-on-surface text-sm leading-relaxed">{listing.description}</Text>
-          </View>
-
-          {sellerName && (
-            <View className="mt-6 bg-surface-container-low rounded-2xl p-4">
-              <Text className="text-on-surface-variant text-xs uppercase tracking-wider font-semibold mb-1">Vendeur</Text>
-              <Text className="text-on-surface text-base font-bold">{sellerName}</Text>
-              {listing.user?.isPro && <Text className="text-primary text-xs font-bold mt-1">PROFESSIONNEL</Text>}
-              {listing.user?.verified && <Text className="text-green-600 text-xs font-semibold mt-1">✓ Identité vérifiée</Text>}
-            </View>
+          {specs.length > 0 && (
+            <>
+              <SectionTitle>Caractéristiques</SectionTitle>
+              <View className="bg-surface-container-low rounded-2xl p-4">
+                {specs.map((s, i) => (
+                  <View key={i} className={`flex-row items-center ${i < specs.length - 1 ? "border-b border-surface-container pb-2.5 mb-2.5" : ""}`}>
+                    <Ionicons name="ellipse" size={5} color="#2f6fb8" />
+                    <Text className="text-on-surface text-sm ml-3">{s}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
           )}
 
-          {!isMine && (
-            <View className="mt-6 gap-3">
+          {/* Vendeur */}
+          <SectionTitle>{listing.user.isPro ? "Vendeur professionnel" : "Vendeur"}</SectionTitle>
+          <View className="bg-surface-container-low rounded-2xl p-4">
+            <View className="flex-row items-center">
               <Pressable
-                onPress={contact}
-                disabled={contactBusy}
-                className="bg-primary py-3.5 rounded-full items-center active:opacity-80"
+                onPress={() => Alert.alert("Profil vendeur", "L'écran profil vendeur arrive bientôt.")}
+                className="w-14 h-14 rounded-full overflow-hidden bg-surface-container mr-3"
               >
-                {contactBusy ? (
-                  <ActivityIndicator color="#fff" />
+                {listing.user.avatar ? (
+                  <Image source={{ uri: listing.user.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                 ) : (
-                  <Text className="text-white font-bold">Envoyer un message</Text>
+                  <View className="flex-1 items-center justify-center"><Ionicons name="person" size={24} color="#94a3b8" /></View>
                 )}
               </Pressable>
-              {listing.phone && !listing.hidePhone && (
-                <Pressable className="border border-primary py-3.5 rounded-full items-center active:opacity-80">
-                  <Text className="text-primary font-bold">{listing.phone}</Text>
-                </Pressable>
-              )}
+              <View className="flex-1">
+                <View className="flex-row items-center gap-2 flex-wrap">
+                  <Text className="text-on-surface text-base font-bold">{sellerName}</Text>
+                  {listing.user.isPro && (
+                    <View className="border border-primary rounded-full px-2 py-0.5">
+                      <Text className="text-primary text-[10px] font-bold">Pro</Text>
+                    </View>
+                  )}
+                </View>
+                {listing.user.verified && (
+                  <View className="flex-row items-center mt-0.5">
+                    <Ionicons name="checkmark-circle" size={12} color="#2f6fb8" />
+                    <Text className="text-primary text-xs font-semibold ml-1">Vendeur vérifié</Text>
+                  </View>
+                )}
+                <Text className="text-on-surface-variant text-xs mt-1">
+                  Membre depuis {memberYear(listing.user.memberSince)} · {listing.user.listingsCount} annonce{listing.user.listingsCount > 1 ? "s" : ""}
+                </Text>
+              </View>
             </View>
+
+            {/* CTAs */}
+            {!isMine && (
+              <View className="mt-4 gap-2">
+                <Pressable
+                  onPress={contact}
+                  disabled={contactBusy}
+                  className="bg-primary py-3 rounded-full flex-row items-center justify-center active:opacity-80"
+                >
+                  {contactBusy ? <ActivityIndicator color="#fff" /> : (
+                    <>
+                      <Ionicons name="chatbubble" size={16} color="#fff" />
+                      <Text className="text-white font-bold ml-2">Envoyer un message</Text>
+                    </>
+                  )}
+                </Pressable>
+                {listing.phone && !listing.hidePhone && (
+                  <View className="flex-row gap-2">
+                    <Pressable onPress={callSeller} className="flex-1 border border-primary py-3 rounded-full flex-row items-center justify-center active:opacity-70">
+                      <Ionicons name="call" size={16} color="#2f6fb8" />
+                      <Text className="text-primary font-bold ml-2" numberOfLines={1}>
+                        {phoneShown ? listing.phone : "Afficher le numéro"}
+                      </Text>
+                    </Pressable>
+                    <Pressable onPress={whatsAppSeller} className="flex-1 bg-[#25D366] py-3 rounded-full flex-row items-center justify-center active:opacity-80">
+                      <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                      <Text className="text-white font-bold ml-2">WhatsApp</Text>
+                    </Pressable>
+                  </View>
+                )}
+                {listing.phone && listing.hidePhone && (
+                  <Pressable onPress={whatsAppSeller} className="bg-[#25D366] py-3 rounded-full flex-row items-center justify-center active:opacity-80">
+                    <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                    <Text className="text-white font-bold ml-2">Contacter par WhatsApp</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Conseil sécurité */}
+          <View className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex-row items-start">
+            <Ionicons name="shield-checkmark" size={22} color="#2563eb" />
+            <View className="flex-1 ml-3">
+              <Text className="text-blue-900 font-bold text-sm">Conseil de sécurité</Text>
+              <Text className="text-blue-800 text-xs mt-1 leading-relaxed">
+                Rencontrez-vous dans un lieu public et ne payez jamais avant d'avoir vu l'article.
+              </Text>
+            </View>
+          </View>
+
+          <SectionTitle>Description</SectionTitle>
+          <Text className="text-on-surface text-[15px] leading-relaxed">{listing.description}</Text>
+
+          <SectionTitle>Questions fréquentes</SectionTitle>
+          <View className="bg-surface-container-low rounded-2xl overflow-hidden">
+            {faq.map((item, i) => {
+              const open = openFaq === i;
+              return (
+                <View key={i} className={i < faq.length - 1 ? "border-b border-surface-container" : ""}>
+                  <Pressable
+                    onPress={() => setOpenFaq(open ? null : i)}
+                    className="flex-row items-center px-4 py-4 active:bg-surface-container"
+                  >
+                    <Text className="text-on-surface text-sm font-semibold flex-1 pr-3">{item.q}</Text>
+                    <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color="#94a3b8" />
+                  </Pressable>
+                  {open && (
+                    <View className="px-4 pb-4">
+                      <Text className="text-on-surface-variant text-sm leading-relaxed">{item.a}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          <SectionTitle>Localisation</SectionTitle>
+          <View className="rounded-2xl overflow-hidden bg-surface-container-low border border-surface-container">
+            <View style={{ height: 200, backgroundColor: "#e5e7eb" }}>
+              {coords ? (
+                <MapView
+                  provider={PROVIDER_DEFAULT}
+                  style={{ width: "100%", height: "100%" }}
+                  initialRegion={{
+                    latitude: coords.lat,
+                    longitude: coords.lon,
+                    latitudeDelta: 0.04,
+                    longitudeDelta: 0.04,
+                  }}
+                  pointerEvents="none"
+                >
+                  <Marker coordinate={{ latitude: coords.lat, longitude: coords.lon }} />
+                </MapView>
+              ) : (
+                <View className="flex-1 items-center justify-center">
+                  <ActivityIndicator color="#2f6fb8" />
+                </View>
+              )}
+              <Pressable
+                onPress={openMap}
+                className="absolute top-3 right-3 bg-white rounded-full w-9 h-9 items-center justify-center"
+                style={{ shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}
+              >
+                <Ionicons name="open-outline" size={18} color="#2f6fb8" />
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={openMap}
+              className="px-4 py-3 flex-row items-center active:bg-surface-container"
+            >
+              <Ionicons name="location" size={18} color="#2f6fb8" />
+              <Text className="text-on-surface text-sm font-semibold ml-2 flex-1">{listing.location}</Text>
+              <Text className="text-primary text-xs font-bold">Ouvrir ›</Text>
+            </Pressable>
+          </View>
+
+          {ad && (
+            <>
+              <SectionTitle>Publicité</SectionTitle>
+              <Pressable
+                onPress={() => { trackAd(ad.id, "click"); Linking.openURL(ad.destinationUrl).catch(() => {}); }}
+                className="bg-surface-container-low border border-surface-container rounded-2xl overflow-hidden active:opacity-90"
+              >
+                {adImgAbs && (
+                  <Image source={{ uri: adImgAbs }} style={{ width: "100%", aspectRatio: 16 / 9 }} contentFit="cover" />
+                )}
+                <View className="p-4">
+                  <Text className="text-on-surface font-bold text-base" numberOfLines={1}>{ad.title}</Text>
+                  <Text className="text-on-surface-variant text-sm mt-1" numberOfLines={2}>{ad.description}</Text>
+                </View>
+              </Pressable>
+            </>
           )}
         </View>
+
+        {/* Autres annonces du vendeur */}
+        {related.sellerOthers.length > 0 && (
+          <RelatedRow
+            title={`Autres annonces de ${sellerName}`}
+            data={related.sellerOthers}
+            onPress={(l) => router.push(`/annonce/${l.id}`)}
+          />
+        )}
+
+        {/* Annonces similaires */}
+        {related.similar.length > 0 && (
+          <RelatedRow
+            title={listing.subcategory ? `Annonces similaires — ${listing.subcategory}` : `Annonces similaires en ${listing.category}`}
+            data={related.similar}
+            onPress={(l) => router.push(`/annonce/${l.id}`)}
+          />
+        )}
       </ScrollView>
     </>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <View className="bg-surface-container px-3 py-1 rounded-full">
+      <Text className="text-on-surface-variant text-xs font-semibold">{children}</Text>
+    </View>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <Text className="text-on-surface text-base font-extrabold mt-7 mb-3">{children}</Text>;
+}
+
+function RelatedRow({
+  title, data, onPress,
+}: { title: string; data: RelatedListing[]; onPress: (l: RelatedListing) => void }) {
+  return (
+    <View className="mt-7">
+      <Text className="text-on-surface text-base font-extrabold px-4 mb-3">{title}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 10 }}>
+        {data.map((l) => {
+          const img = firstImage(l.images);
+          return (
+            <Pressable
+              key={l.id}
+              onPress={() => onPress(l)}
+              style={{ width: 160 }}
+              className="bg-surface-container-low rounded-xl overflow-hidden active:opacity-80"
+            >
+              <View style={{ width: "100%", aspectRatio: 1 }} className="bg-surface-container">
+                {img && <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" />}
+              </View>
+              <View className="px-2 pt-2 pb-3">
+                <Text numberOfLines={2} className="text-on-surface text-sm font-semibold leading-snug">{l.title}</Text>
+                <Text className="text-primary text-base font-extrabold mt-1">{formatPrice(l.price)}</Text>
+                <Text numberOfLines={1} className="text-on-surface-variant text-xs">{l.location}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }

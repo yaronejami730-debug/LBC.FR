@@ -8,6 +8,7 @@ import ListingRow from "@/components/home/ListingRow";
 import HeroBanner from "@/components/home/HeroBanner";
 import AdCarousel from "@/components/home/AdCarousel";
 import { type Ad } from "@/components/home/AdCard";
+import InterstitialAd from "@/components/InterstitialAd";
 import type { HomeListing } from "@/components/home/ListingCard";
 
 type FeedResponse = {
@@ -56,6 +57,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+      <InterstitialAd />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}

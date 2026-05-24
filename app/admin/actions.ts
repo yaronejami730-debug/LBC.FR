@@ -278,7 +278,7 @@ export async function createClientAccount(
     html: accountInvitationEmail({ name: name.trim(), activationUrl }),
   });
 
-  revalidatePath("/admin/create-client");
+  revalidatePath("/admin/crm/clients");
   return { userId: user.id, email: normalizedEmail, name: name.trim() };
 }
 
@@ -534,7 +534,7 @@ export async function createListingForClient(
     }),
   }).catch(() => {});
 
-  revalidatePath("/admin/create-client");
+  revalidatePath("/admin/crm/clients");
   return { listingId: listing.id };
 }
 
@@ -552,7 +552,7 @@ export async function updateClientDisplayName(userId: string, companyName: strin
     data: { companyName: trimmed },
   });
 
-  revalidatePath("/admin/create-client");
+  revalidatePath("/admin/crm/clients");
   revalidatePath(`/admin/clients/${userId}`);
   return { ok: true };
 }
@@ -569,7 +569,7 @@ export async function updateUserName(userId: string, name: string) {
   await prisma.user.update({ where: { id: userId }, data: { name: trimmed } });
 
   revalidatePath("/admin/users");
-  revalidatePath("/admin/create-client");
+  revalidatePath("/admin/crm/clients");
   revalidatePath(`/admin/clients/${userId}`);
   return { ok: true };
 }
@@ -694,7 +694,7 @@ export async function deleteListingByAdmin(listingId: string) {
 
   revalidatePath("/admin/listings");
   revalidatePath("/admin");
-  revalidatePath("/admin/create-client");
+  revalidatePath("/admin/crm/clients");
   revalidatePath(`/admin/clients/${listing.userId}`);
   revalidatePath(`/annonce/${listingId}`);
   revalidatePath("/", "layout");
@@ -737,7 +737,7 @@ export async function updateListingByAdmin(
     data: updates,
   });
 
-  revalidatePath("/admin/create-client");
+  revalidatePath("/admin/crm/clients");
   revalidatePath(`/admin/clients/${listing.userId}`);
   revalidatePath(`/annonce/${listingId}`);
 
@@ -922,7 +922,7 @@ export async function addExternalSource(formData: FormData) {
       agencySlug: parsed.agencySlug,
     } as any,
   });
-  revalidatePath("/admin/sources-externes");
+  revalidatePath("/admin/crm/sources");
 }
 
 /** Lance une synchronisation immédiate d'une source. Met à jour `lastSyncedAt` + `lastResult`. */
@@ -941,7 +941,7 @@ export async function runExternalSourceSync(id: string) {
     where: { id },
     data: { lastSyncedAt: new Date(), lastResult: JSON.stringify(result) } as any,
   });
-  revalidatePath("/admin/sources-externes");
+  revalidatePath("/admin/crm/sources");
   return result;
 }
 
@@ -1000,11 +1000,11 @@ export async function importListingByUrl(ownerId: string, url: string) {
 export async function toggleExternalSource(id: string, active: boolean) {
   await requireAdmin();
   await prisma.externalSource.update({ where: { id }, data: { active } });
-  revalidatePath("/admin/sources-externes");
+  revalidatePath("/admin/crm/sources");
 }
 
 export async function deleteExternalSource(id: string) {
   await requireAdmin();
   await prisma.externalSource.delete({ where: { id } });
-  revalidatePath("/admin/sources-externes");
+  revalidatePath("/admin/crm/sources");
 }
