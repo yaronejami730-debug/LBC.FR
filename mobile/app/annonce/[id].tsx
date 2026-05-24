@@ -228,19 +228,6 @@ export default function AnnonceScreen() {
     Linking.openURL(`tel:${listing.phone}`).catch(() => {});
   };
 
-  const whatsAppSeller = async () => {
-    if (!listing?.phone || !listing) return;
-    const cleaned = listing.phone.replace(/[\s\-().+]/g, "").replace(/^0/, "33");
-    const text = `Bonjour, votre annonce "${listing.title}" m'intéresse.`;
-    const url = `whatsapp://send?phone=${cleaned}&text=${encodeURIComponent(text)}`;
-    const ok = await Linking.canOpenURL(url);
-    if (!ok) {
-      Linking.openURL(`https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`).catch(() => {});
-      return;
-    }
-    Linking.openURL(url);
-  };
-
   const shareUrl = listing ? `${SITE_URL}/annonce/${listing.id}` : SITE_URL;
   const openShare = () => {
     if (!listing) return;
@@ -304,14 +291,6 @@ export default function AnnonceScreen() {
   const images = allImages(listing.images);
   const sellerName = listing.user.isPro && listing.user.companyName ? listing.user.companyName : listing.user.name;
   const isMine = user?.id === listing.userId;
-  const specs = [
-    listing.vehicleYear,
-    listing.vehicleKm ? `${listing.vehicleKm.toLocaleString("fr-FR")} km` : null,
-    listing.immoSurface ? `${listing.immoSurface} m²` : null,
-    listing.immoRooms ? `${listing.immoRooms} pièces` : null,
-    listing.condition,
-  ].filter(Boolean) as string[];
-
   const structuredSpecs = buildSpecs(listing, listing.metadata);
   const equipment = buildEquipment(listing.metadata);
 
@@ -382,17 +361,15 @@ export default function AnnonceScreen() {
           </View>
         )}
 
-        {/* Bloc principal — hiérarchie : date (petit) → titre (moyen) → prix (très gros) */}
+        {/* Bloc principal — hiérarchie : ligne 1 (gris discret) → titre fort → prix très gros */}
         <View className="p-4">
-          <Text className="text-on-surface-variant text-xs">Publié le {new Date(listing.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</Text>
-          <Text className="text-on-surface text-xl font-bold mt-1.5">{listing.title}</Text>
-          <Text className="text-primary text-4xl font-extrabold mt-2">{formatPrice(listing.price)}</Text>
-
-          <View className="flex-row items-center mt-3">
-            <Ionicons name="location-outline" size={14} color="#94a3b8" />
-            <Text className="text-on-surface-variant text-sm ml-1 flex-1">{listing.location}</Text>
-            <Text className="text-on-surface-variant text-sm">{timeAgo(listing.createdAt)}</Text>
+          <View className="flex-row items-center">
+            <Text className="text-on-surface-variant text-xs">Publié {timeAgo(listing.createdAt)}</Text>
+            <Text className="text-on-surface-variant text-xs mx-1.5">·</Text>
+            <Text className="text-on-surface-variant text-xs flex-1" numberOfLines={1}>{listing.location}</Text>
           </View>
+          <Text className="text-on-surface text-xl font-extrabold mt-1.5">{listing.title}</Text>
+          <Text className="text-primary text-4xl font-extrabold mt-2">{formatPrice(listing.price)}</Text>
 
           <View className="mt-3 flex-row gap-2 flex-wrap">
             <Chip>{listing.category}</Chip>
@@ -405,22 +382,28 @@ export default function AnnonceScreen() {
             const extra = structuredSpecs.length - KEY_COUNT;
             return (
               <>
-                <SectionTitle>Caractéristiques</SectionTitle>
-                <View className="bg-surface-container-low rounded-2xl p-4">
+                <SectionTitle>Les informations clés</SectionTitle>
+                <View className="flex-row flex-wrap -mx-1">
                   {visibleSpecs.map((sp, i) => (
-                    <View
-                      key={`${sp.label}-${i}`}
-                      className={`flex-row items-center justify-between ${i < visibleSpecs.length - 1 ? "border-b border-surface-container pb-2.5 mb-2.5" : ""}`}
-                    >
-                      <Text className="text-on-surface-variant text-sm">{sp.label}</Text>
-                      <Text className="text-on-surface text-sm font-semibold">{sp.value}</Text>
+                    <View key={`${sp.label}-${i}`} className="w-1/2 px-1 mb-2">
+                      <View className="bg-surface-container-low rounded-xl p-3 flex-row items-center h-full">
+                        <View className="w-9 h-9 rounded-full bg-white items-center justify-center">
+                          {sp.icon && (
+                            <Ionicons name={sp.icon as keyof typeof Ionicons.glyphMap} size={16} color="#2f6fb8" />
+                          )}
+                        </View>
+                        <View className="ml-2.5 flex-1">
+                          <Text className="text-on-surface-variant text-[11px] font-medium">{sp.label}</Text>
+                          <Text className="text-on-surface text-sm font-bold" numberOfLines={1}>{sp.value}</Text>
+                        </View>
+                      </View>
                     </View>
                   ))}
                 </View>
                 {extra > 0 && (
                   <Pressable
                     onPress={() => setSpecsExpanded((v) => !v)}
-                    className="mt-3 self-start"
+                    className="mt-2 self-stretch border-2 border-primary rounded-full py-2.5 items-center active:opacity-70"
                   >
                     <Text className="text-primary text-sm font-bold">
                       {specsExpanded ? "Réduire" : `Voir ${extra} critère${extra > 1 ? "s" : ""} supplémentaire${extra > 1 ? "s" : ""}`}
@@ -461,91 +444,6 @@ export default function AnnonceScreen() {
               )}
             </>
           )}
-
-          {/* Vendeur */}
-          <SectionTitle>{listing.user.isPro ? "Vendeur professionnel" : "Vendeur"}</SectionTitle>
-          <View className="bg-surface-container-low rounded-2xl p-4">
-            <View className="flex-row items-center">
-              <Pressable
-                onPress={() => Alert.alert("Profil vendeur", "L'écran profil vendeur arrive bientôt.")}
-                className="w-14 h-14 rounded-full overflow-hidden bg-surface-container mr-3"
-              >
-                {listing.user.avatar ? (
-                  <Image source={{ uri: listing.user.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-                ) : (
-                  <View className="flex-1 items-center justify-center"><Ionicons name="person" size={24} color="#94a3b8" /></View>
-                )}
-              </Pressable>
-              <View className="flex-1">
-                <View className="flex-row items-center gap-2 flex-wrap">
-                  <Text className="text-on-surface text-base font-bold">{sellerName}</Text>
-                  {listing.user.isPro && (
-                    <View className="border border-primary rounded-full px-2 py-0.5">
-                      <Text className="text-primary text-[10px] font-bold">Pro</Text>
-                    </View>
-                  )}
-                </View>
-                {listing.user.verified && (
-                  <View className="flex-row items-center mt-0.5">
-                    <Ionicons name="checkmark-circle" size={12} color="#2f6fb8" />
-                    <Text className="text-primary text-xs font-semibold ml-1">Vendeur vérifié</Text>
-                  </View>
-                )}
-                <Text className="text-on-surface-variant text-xs mt-1">
-                  Membre depuis {memberYear(listing.user.memberSince)} · {listing.user.listingsCount} annonce{listing.user.listingsCount > 1 ? "s" : ""}
-                </Text>
-              </View>
-            </View>
-
-            {/* CTAs */}
-            {!isMine && (
-              <View className="mt-4 gap-2">
-                <Pressable
-                  onPress={contact}
-                  disabled={contactBusy}
-                  className="bg-primary py-3 rounded-full flex-row items-center justify-center active:opacity-80"
-                >
-                  {contactBusy ? <ActivityIndicator color="#fff" /> : (
-                    <>
-                      <Ionicons name="chatbubble" size={16} color="#fff" />
-                      <Text className="text-white font-bold ml-2">Envoyer un message</Text>
-                    </>
-                  )}
-                </Pressable>
-                {listing.phone && !listing.hidePhone && (
-                  <View className="flex-row gap-2">
-                    <Pressable onPress={callSeller} className="flex-1 border border-primary py-3 rounded-full flex-row items-center justify-center active:opacity-70">
-                      <Ionicons name="call" size={16} color="#2f6fb8" />
-                      <Text className="text-primary font-bold ml-2" numberOfLines={1}>
-                        {phoneShown ? listing.phone : "Afficher le numéro"}
-                      </Text>
-                    </Pressable>
-                    <Pressable onPress={whatsAppSeller} className="flex-1 bg-[#25D366] py-3 rounded-full flex-row items-center justify-center active:opacity-80">
-                      <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-                      <Text className="text-white font-bold ml-2">WhatsApp</Text>
-                    </Pressable>
-                  </View>
-                )}
-                {listing.phone && listing.hidePhone && (
-                  <Pressable onPress={whatsAppSeller} className="bg-[#25D366] py-3 rounded-full flex-row items-center justify-center active:opacity-80">
-                    <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-                    <Text className="text-white font-bold ml-2">Contacter par WhatsApp</Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Conseil sécurité */}
-          <View className="mt-4 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex-row items-start">
-            <Ionicons name="shield-checkmark" size={22} color="#2563eb" />
-            <View className="flex-1 ml-3">
-              <Text className="text-blue-900 font-bold text-sm">Conseil de sécurité</Text>
-              <Text className="text-blue-800 text-xs mt-1 leading-relaxed">
-                Rencontrez-vous dans un lieu public et ne payez jamais avant d'avoir vu l'article.
-              </Text>
-            </View>
-          </View>
 
           <SectionTitle>Description</SectionTitle>
           <View>
@@ -645,22 +543,66 @@ export default function AnnonceScreen() {
             </View>
           </View>
 
-          {ad && (
-            <>
-              <SectionTitle>Publicité</SectionTitle>
-              <Pressable
-                onPress={() => { trackAd(ad.id, "click"); Linking.openURL(ad.destinationUrl).catch(() => {}); }}
-                className="bg-surface-container-low border border-surface-container rounded-2xl overflow-hidden active:opacity-90"
-              >
-                {adImgAbs && (
-                  <Image source={{ uri: adImgAbs }} style={{ width: "100%", aspectRatio: 16 / 9 }} contentFit="cover" />
+          {/* Vendeur — après localisation */}
+          <SectionTitle>{listing.user.isPro ? "Vendeur professionnel" : "Vendeur"}</SectionTitle>
+          <Pressable
+            onPress={() => Alert.alert("Profil vendeur", "L'écran profil vendeur arrive bientôt.")}
+            className="bg-surface-container-low rounded-2xl p-4 flex-row items-center active:opacity-80"
+          >
+            <View className="w-14 h-14 rounded-full overflow-hidden bg-surface-container">
+              {listing.user.avatar ? (
+                <Image source={{ uri: listing.user.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+              ) : (
+                <View className="flex-1 items-center justify-center"><Ionicons name="person" size={24} color="#94a3b8" /></View>
+              )}
+            </View>
+            <View className="flex-1 ml-3">
+              <View className="flex-row items-center gap-2 flex-wrap">
+                <Text className="text-on-surface text-base font-extrabold" numberOfLines={1}>{sellerName}</Text>
+                {listing.user.isPro && (
+                  <View className="border border-primary rounded-full px-2 py-0.5">
+                    <Text className="text-primary text-[10px] font-bold">PRO</Text>
+                  </View>
                 )}
-                <View className="p-4">
-                  <Text className="text-on-surface font-bold text-base" numberOfLines={1}>{ad.title}</Text>
-                  <Text className="text-on-surface-variant text-sm mt-1" numberOfLines={2}>{ad.description}</Text>
+              </View>
+              {listing.user.verified && (
+                <View className="flex-row items-center mt-0.5">
+                  <Ionicons name="checkmark-circle" size={12} color="#2f6fb8" />
+                  <Text className="text-primary text-xs font-semibold ml-1">Vendeur vérifié</Text>
                 </View>
-              </Pressable>
-            </>
+              )}
+              <Text className="text-on-surface-variant text-xs mt-1">
+                Membre depuis {memberYear(listing.user.memberSince)} · {listing.user.listingsCount} annonce{listing.user.listingsCount > 1 ? "s" : ""}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+          </Pressable>
+
+          {/* Conseil sécurité — compact */}
+          <View className="mt-3 bg-blue-50 border border-blue-100 rounded-xl p-3 flex-row items-start">
+            <Ionicons name="shield-checkmark" size={16} color="#2563eb" />
+            <Text className="text-blue-800 text-xs ml-2 flex-1 leading-relaxed">
+              Rencontrez-vous dans un lieu public. Ne payez jamais avant d'avoir vu l'article.
+            </Text>
+          </View>
+
+          {ad && (
+            <Pressable
+              onPress={() => { trackAd(ad.id, "click"); Linking.openURL(ad.destinationUrl).catch(() => {}); }}
+              className="mt-6 bg-surface-container-low border border-surface-container rounded-2xl overflow-hidden flex-row active:opacity-90"
+              style={{ height: 88 }}
+            >
+              {adImgAbs && (
+                <Image source={{ uri: adImgAbs }} style={{ width: 88, height: 88 }} contentFit="cover" />
+              )}
+              <View className="flex-1 p-3 justify-center">
+                <View className="flex-row items-center">
+                  <Text className="text-on-surface-variant text-[10px] font-bold uppercase tracking-wider">Sponsorisé</Text>
+                </View>
+                <Text className="text-on-surface font-bold text-sm mt-0.5" numberOfLines={1}>{ad.title}</Text>
+                <Text className="text-on-surface-variant text-xs" numberOfLines={1}>{ad.description}</Text>
+              </View>
+            </Pressable>
           )}
         </View>
 

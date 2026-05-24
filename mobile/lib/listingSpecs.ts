@@ -4,7 +4,38 @@
  * Garantit la cohérence visuelle quelle que soit la catégorie.
  */
 
-export type Spec = { label: string; value: string };
+export type Spec = { label: string; value: string; icon?: string };
+
+const ICON_MAP: Record<string, string> = {
+  "État": "checkmark-circle",
+  "Catégorie": "pricetag",
+  "Sous-catégorie": "pricetags",
+  "Marque": "ribbon",
+  "Modèle": "construct",
+  "Année": "calendar",
+  "Kilométrage": "speedometer",
+  "Énergie": "flash",
+  "Carburant": "flash",
+  "Boîte de vitesse": "settings",
+  "Boîte": "settings",
+  "Nombre de places": "people",
+  "Puissance fiscale": "flash-outline",
+  "Couleur": "color-palette",
+  "Surface": "expand",
+  "Pièces": "grid",
+  "Classe énergie": "leaf",
+  "Étage": "trending-up",
+  "Ascenseur": "swap-vertical",
+  "Année de construction": "calendar",
+  "Capacité": "save",
+  "Garantie": "shield-checkmark",
+  "État batterie": "battery-half",
+  "Taille": "resize",
+};
+
+function iconFor(label: string): string | undefined {
+  return ICON_MAP[label];
+}
 
 type Listing = {
   category: string;
@@ -41,7 +72,7 @@ export function buildSpecs(listing: Listing, metadataRaw: unknown): Spec[] {
   const meta = parseMeta(metadataRaw);
   const specs: Spec[] = [];
   const push = (label: string, value: string | null | undefined) => {
-    if (value) specs.push({ label, value });
+    if (value) specs.push({ label, value, icon: iconFor(label) });
   };
 
   // Toujours en tête
