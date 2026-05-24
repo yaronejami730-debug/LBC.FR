@@ -6,6 +6,7 @@ import Providers from "./providers";
 import VisitorTracker from "@/components/VisitorTracker";
 import EventTracker from "@/components/EventTracker";
 import CookieBanner from "@/components/CookieBanner";
+import { AppStoreBanner } from "@/components/AppStoreBanner";
 
 const GA_ID = "G-31WRQ5YXX6";
 const ADSENSE_CLIENT = "ca-pub-1774647148412256";
@@ -158,6 +159,7 @@ gtag('config', '${GA_ID}');`}
         />
         <VisitorTracker />
         <EventTracker />
+        <AppStoreBanner />
         <Providers>{children}</Providers>
         <CookieBanner />
       </body>

@@ -267,6 +267,10 @@ export default function ProfileScreen() {
         )}
 
         <View className="mt-6">
+          <SettingsSection title="Mes contenus">
+            <SettingsRow icon="document-text-outline" label="Mes annonces" onPress={() => router.push("/mes-annonces")} last />
+          </SettingsSection>
+
           <SettingsSection title="Compte">
             <SettingsRow icon="person-outline" label="Informations personnelles" onPress={() => router.push("/settings/informations-personnelles")} />
             <SettingsRow icon="mail-outline" label="Adresse email" onPress={() => router.push("/settings/email")} />
