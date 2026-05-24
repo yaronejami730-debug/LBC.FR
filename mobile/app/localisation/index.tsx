@@ -43,35 +43,53 @@ export default function LocalisationScreen() {
     if (!location) { setLoading(false); setError("Adresse manquante"); return; }
     let cancelled = false;
 
+    const parseLoc = (loc: string) => {
+      const postalMatch = loc.match(/\b(\d{5})\b/);
+      const postcode = postalMatch ? postalMatch[1] : "";
+      const city = loc.replace(/\(.*?\)/g, "").replace(/\b\d{5}\b/g, "").replace(/[,·]/g, " ").trim();
+      return { city, postcode };
+    };
+
     (async () => {
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&polygon_geojson=1&q=${encodeURIComponent(location)}`;
-        const res = await fetch(url, { headers: { "User-Agent": "DealAndCo/1.0" } });
-        const data = (await res.json()) as NominatimResp;
-        if (cancelled || !data?.[0]) {
-          setError("Localisation introuvable");
-          return;
-        }
-        const r = data[0];
-        const lat = parseFloat(r.lat);
-        const lon = parseFloat(r.lon);
-        const [minLat, maxLat, minLon, maxLon] = r.boundingbox.map(parseFloat);
-        setMarker({ latitude: lat, longitude: lon });
-        setLabel(r.display_name.split(",").slice(0, 2).join(",").trim());
-        setRegion({
-          latitude: (minLat + maxLat) / 2,
-          longitude: (minLon + maxLon) / 2,
-          latitudeDelta: Math.max(0.02, (maxLat - minLat) * 1.4),
-          longitudeDelta: Math.max(0.02, (maxLon - minLon) * 1.4),
-        });
-        if (r.geojson && (r.geojson.type === "Polygon" || r.geojson.type === "MultiPolygon")) {
-          setBoundary(polyFromGeojson(r.geojson));
-        }
-      } catch {
-        setError("Erreur de chargement de la carte");
-      } finally {
-        setLoading(false);
+      const { city, postcode } = parseLoc(location);
+      const common = "format=json&limit=1&polygon_geojson=1&polygon_threshold=0.001&addressdetails=1&countrycodes=fr";
+      const headers = { "User-Agent": "DealAndCo/1.0 (contact@dealandcompany.fr)", "Accept-Language": "fr" };
+      const structured =
+        `https://nominatim.openstreetmap.org/search?${common}` +
+        (city ? `&city=${encodeURIComponent(city)}` : "") +
+        (postcode ? `&postalcode=${postcode}` : "");
+      const freeform = `https://nominatim.openstreetmap.org/search?${common}&q=${encodeURIComponent(location)}`;
+
+      let applied = false;
+      for (const url of [structured, freeform]) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(url, { headers });
+          const data = (await res.json()) as NominatimResp;
+          if (cancelled || !data?.[0]) continue;
+          const r = data[0];
+          const lat = parseFloat(r.lat);
+          const lon = parseFloat(r.lon);
+          setMarker({ latitude: lat, longitude: lon });
+          if (r.display_name) setLabel(r.display_name.split(",").slice(0, 2).join(",").trim());
+          if (r.boundingbox) {
+            const [minLat, maxLat, minLon, maxLon] = r.boundingbox.map(parseFloat);
+            setRegion({
+              latitude: (minLat + maxLat) / 2,
+              longitude: (minLon + maxLon) / 2,
+              latitudeDelta: Math.max(0.02, (maxLat - minLat) * 1.4),
+              longitudeDelta: Math.max(0.02, (maxLon - minLon) * 1.4),
+            });
+          }
+          applied = true;
+          if (r.geojson && (r.geojson.type === "Polygon" || r.geojson.type === "MultiPolygon")) {
+            setBoundary(polyFromGeojson(r.geojson));
+            break; // polygone OK
+          }
+        } catch { /* essaie l'URL suivante */ }
       }
+      if (!applied) setError("Localisation introuvable");
+      setLoading(false);
     })();
 
     return () => { cancelled = true; };

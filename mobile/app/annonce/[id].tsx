@@ -126,51 +126,86 @@ export default function AnnonceScreen() {
     loadFav();
   }, [id, loadFav]);
 
-  // Géocode + polygon ville via Nominatim — pour la carte avec délimitation inline.
+  // Géocode + polygon ville via Nominatim — délimitation administrative inline.
   useEffect(() => {
     if (!listing?.location) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&polygon_geojson=1&q=${encodeURIComponent(listing.location)}`;
-        const geo = await fetch(url, { headers: { "User-Agent": "DealAndCo/1.0" } });
-        const data = (await geo.json()) as {
-          lat: string; lon: string;
-          boundingbox?: [string, string, string, string];
-          display_name?: string;
-          address?: { postcode?: string; city?: string; town?: string; village?: string; municipality?: string };
-          geojson?: { type: string; coordinates: number[][][] | number[][][][] };
-        }[];
-        if (cancelled || !data?.[0]) return;
-        const r = data[0];
-        const lat = parseFloat(r.lat);
-        const lon = parseFloat(r.lon);
-        setCoords({ lat, lon });
 
-        if (r.boundingbox) {
-          const [minLat, maxLat, minLon, maxLon] = r.boundingbox.map(parseFloat);
-          setCityRegion({
-            latitude: (minLat + maxLat) / 2,
-            longitude: (minLon + maxLon) / 2,
-            latitudeDelta: Math.max(0.02, (maxLat - minLat) * 1.4),
-            longitudeDelta: Math.max(0.02, (maxLon - minLon) * 1.4),
-          });
+    type NomResult = {
+      lat: string; lon: string;
+      boundingbox?: [string, string, string, string];
+      display_name?: string;
+      address?: { postcode?: string; city?: string; town?: string; village?: string; municipality?: string };
+      geojson?: { type: string; coordinates: number[][][] | number[][][][] };
+    };
+
+    const applyResult = (r: NomResult) => {
+      const lat = parseFloat(r.lat);
+      const lon = parseFloat(r.lon);
+      setCoords({ lat, lon });
+      if (r.boundingbox) {
+        const [minLat, maxLat, minLon, maxLon] = r.boundingbox.map(parseFloat);
+        setCityRegion({
+          latitude: (minLat + maxLat) / 2,
+          longitude: (minLon + maxLon) / 2,
+          latitudeDelta: Math.max(0.02, (maxLat - minLat) * 1.4),
+          longitudeDelta: Math.max(0.02, (maxLon - minLon) * 1.4),
+        });
+      }
+      let gotPoly = false;
+      if (r.geojson) {
+        const g = r.geojson;
+        if (g.type === "Polygon") {
+          const rings = g.coordinates as number[][][];
+          setCityBoundary(rings.map((ring) => ring.map(([lo, la]) => ({ latitude: la, longitude: lo }))));
+          gotPoly = true;
+        } else if (g.type === "MultiPolygon") {
+          const polys = g.coordinates as number[][][][];
+          setCityBoundary(polys.flatMap((p) => p.map((ring) => ring.map(([lo, la]) => ({ latitude: la, longitude: lo })))));
+          gotPoly = true;
         }
-        if (r.geojson) {
-          const g = r.geojson;
-          if (g.type === "Polygon") {
-            const rings = g.coordinates as number[][][];
-            setCityBoundary(rings.map((ring) => ring.map(([lo, la]) => ({ latitude: la, longitude: lo }))));
-          } else if (g.type === "MultiPolygon") {
-            const polys = g.coordinates as number[][][][];
-            setCityBoundary(polys.flatMap((p) => p.map((ring) => ring.map(([lo, la]) => ({ latitude: la, longitude: lo })))));
+      }
+      const cityName = r.address?.city ?? r.address?.town ?? r.address?.village ?? r.address?.municipality;
+      const postal = r.address?.postcode ? ` (${r.address.postcode})` : "";
+      if (cityName) setPostalLabel(`${cityName}${postal}`);
+      return gotPoly;
+    };
+
+    const parseLoc = (loc: string) => {
+      const postalMatch = loc.match(/\b(\d{5})\b/);
+      const postcode = postalMatch ? postalMatch[1] : "";
+      // Retire code postal + parenthèses pour isoler le nom de ville
+      const city = loc.replace(/\(.*?\)/g, "").replace(/\b\d{5}\b/g, "").replace(/[,·]/g, " ").trim();
+      return { city, postcode };
+    };
+
+    (async () => {
+      const { city, postcode } = parseLoc(listing.location);
+      const common = "format=json&limit=1&polygon_geojson=1&polygon_threshold=0.001&addressdetails=1&countrycodes=fr";
+      const headers = { "User-Agent": "DealAndCo/1.0 (contact@dealandcompany.fr)", "Accept-Language": "fr" };
+
+      // 1) Requête structurée city= (+ postalcode) → vise la frontière administrative
+      const structured =
+        `https://nominatim.openstreetmap.org/search?${common}` +
+        (city ? `&city=${encodeURIComponent(city)}` : "") +
+        (postcode ? `&postalcode=${postcode}` : "");
+      // 2) Repli requête texte libre
+      const freeform = `https://nominatim.openstreetmap.org/search?${common}&q=${encodeURIComponent(listing.location)}`;
+
+      for (const url of [structured, freeform]) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(url, { headers });
+          const data = (await res.json()) as NomResult[];
+          if (cancelled) return;
+          if (data?.[0]) {
+            const gotPoly = applyResult(data[0]);
+            if (gotPoly) return; // polygone trouvé, on s'arrête
           }
-        }
-        const cityName = r.address?.city ?? r.address?.town ?? r.address?.village ?? r.address?.municipality ?? listing.location;
-        const postal = r.address?.postcode ? ` (${r.address.postcode})` : "";
-        setPostalLabel(`${cityName}${postal}`);
-      } catch { /* noop */ }
+        } catch { /* essaie l'URL suivante */ }
+      }
     })();
+
     return () => { cancelled = true; };
   }, [listing?.location]);
 
