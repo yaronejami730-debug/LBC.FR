@@ -386,14 +386,12 @@ export default function AnnonceScreen() {
                 <View className="flex-row flex-wrap -mx-1">
                   {visibleSpecs.map((sp, i) => (
                     <View key={`${sp.label}-${i}`} className="w-1/2 px-1 mb-2">
-                      <View className="bg-surface-container-low rounded-xl p-3 flex-row items-center h-full">
+                      <View className="bg-surface-container-low rounded-xl p-3 flex-row items-center">
                         <View className="w-9 h-9 rounded-full bg-white items-center justify-center">
-                          {sp.icon && (
-                            <Ionicons name={sp.icon as keyof typeof Ionicons.glyphMap} size={16} color="#2f6fb8" />
-                          )}
+                          <Ionicons name={(sp.icon ?? "ellipse-outline") as keyof typeof Ionicons.glyphMap} size={16} color="#2f6fb8" />
                         </View>
                         <View className="ml-2.5 flex-1">
-                          <Text className="text-on-surface-variant text-[11px] font-medium">{sp.label}</Text>
+                          <Text className="text-on-surface-variant text-[11px] font-medium" numberOfLines={1}>{sp.label}</Text>
                           <Text className="text-on-surface text-sm font-bold" numberOfLines={1}>{sp.value}</Text>
                         </View>
                       </View>
