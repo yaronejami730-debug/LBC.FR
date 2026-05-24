@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { ScrollView, View, Text, RefreshControl, ActivityIndicator, Pressable } from "react-native";
+import { ScrollView, View, Text, TextInput, RefreshControl, ActivityIndicator, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "@/lib/api";
 import ListingRow from "@/components/home/ListingRow";
 import HeroBanner from "@/components/home/HeroBanner";
-import CategoryGrid from "@/components/home/CategoryGrid";
 import type { HomeListing } from "@/components/home/ListingCard";
 
 type FeedResponse = {
@@ -23,6 +23,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const goSearch = () => {
+    const q = query.trim();
+    router.push(q ? `/recherche?q=${encodeURIComponent(q)}` : "/recherche");
+  };
 
   const load = useCallback(async () => {
     try {
@@ -45,18 +51,30 @@ export default function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
-        <View className="px-4 pt-2 pb-3 flex-row items-center justify-between">
-          <Text className="text-primary text-2xl font-extrabold">Deal&Co</Text>
-          <Pressable onPress={() => router.push("/recherche")} className="bg-surface-container rounded-full px-4 py-2">
-            <Text className="text-on-surface-variant text-sm">Rechercher…</Text>
-          </Pressable>
+        <View className="px-4 pt-2 pb-3">
+          <Text className="text-primary text-2xl font-extrabold mb-2">Deal&Co</Text>
+          <View className="flex-row items-center bg-surface-container rounded-full px-4 py-1">
+            <Ionicons name="search" size={18} color="#94a3b8" />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={goSearch}
+              returnKeyType="search"
+              placeholder="Rechercher sur Deal&Co"
+              placeholderTextColor="#94a3b8"
+              className="flex-1 ml-2 py-1.5 text-on-surface"
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery("")} className="pl-2">
+                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              </Pressable>
+            )}
+          </View>
         </View>
 
         <View className="px-4">
           <HeroBanner />
         </View>
-
-        <CategoryGrid />
 
         {loading ? (
           <View className="py-12 items-center"><ActivityIndicator color="#2f6fb8" /></View>

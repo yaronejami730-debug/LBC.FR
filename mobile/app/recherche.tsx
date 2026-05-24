@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { formatPrice, firstImage, timeAgo } from "@/lib/format";
@@ -100,11 +101,15 @@ export default function RechercheScreen() {
     <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
       <View className="px-4 pt-2 pb-2">
         <View className="flex-row gap-2 items-center">
+          <Pressable onPress={() => router.back()} className="p-1 active:opacity-60">
+            <Ionicons name="chevron-back" size={26} color="#2f6fb8" />
+          </Pressable>
           <TextInput
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={onSubmit}
             returnKeyType="search"
+            autoFocus={!params.q}
             placeholder="Que cherchez-vous ?"
             placeholderTextColor="#94a3b8"
             className="flex-1 bg-surface-container rounded-full px-4 py-2.5 text-on-surface"

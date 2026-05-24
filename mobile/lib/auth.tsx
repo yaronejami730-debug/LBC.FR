@@ -13,6 +13,9 @@ export type AuthUser = {
   companyName?: string | null;
   verified?: boolean | null;
   image?: string | null;
+  avatar?: string | null;
+  phoneNumber?: string | null;
+  marketingConsent?: boolean | null;
 };
 
 type AuthState = {
@@ -49,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [refresh]);
 
+  const [pushToken, setPushToken] = useState<string | null>(null);
+
   // Si l'utilisateur est déjà connecté au démarrage, on enregistre quand même
   // le token Expo — il peut avoir changé depuis la dernière session.
   useEffect(() => {
@@ -56,8 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registerExpoPushToken().then((t) => setPushToken(t)).catch(() => {});
     }
   }, [user, pushToken]);
-
-  const [pushToken, setPushToken] = useState<string | null>(null);
 
   const login = useCallback(async (email: string, password: string) => {
     const data = await apiFetch<{ token: string; user: AuthUser }>("/api/mobile/auth/login", {

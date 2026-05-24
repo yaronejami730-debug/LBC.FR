@@ -311,6 +311,9 @@ model Message {
   riskScore      Int          @default(0)
   flagged        Boolean      @default(false)
   flagReason     String?
+  attachmentUrl  String?
+  attachmentType String?
+  attachmentName String?
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   sender         User         @relation("SentMessages", fields: [senderId], references: [id])
 

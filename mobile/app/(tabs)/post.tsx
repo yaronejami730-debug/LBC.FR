@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  ActionSheetIOS,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -60,6 +61,10 @@ export default function PostScreen() {
   const [uploadingImg, setUploadingImg] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
+
+  const STEPS = ["Titre", "Photos", "Catégorie", "Détails", "Récap"];
+  const TOTAL = STEPS.length;
 
   if (!user) {
     return (
@@ -88,7 +93,20 @@ export default function PostScreen() {
     );
   }
 
-  const pickImage = async () => {
+  const uploadAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
+    if (assets.length === 0) return;
+    setUploadingImg(true);
+    try {
+      const uploads = await Promise.all(assets.map((a) => uploadImageAsync(a.uri)));
+      setImages((prev) => [...prev, ...uploads]);
+    } catch (e) {
+      Alert.alert("Erreur", e instanceof Error ? e.message : "Upload échoué");
+    } finally {
+      setUploadingImg(false);
+    }
+  };
+
+  const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert("Permission refusée", "Autorisez l'accès aux photos pour ajouter des images.");
@@ -100,19 +118,44 @@ export default function PostScreen() {
       allowsMultipleSelection: true,
       selectionLimit: 8 - images.length,
     });
-    if (res.canceled || res.assets.length === 0) return;
-    setUploadingImg(true);
-    try {
-      const uploads = await Promise.all(res.assets.map((a) => uploadImageAsync(a.uri)));
-      setImages((prev) => [...prev, ...uploads]);
-    } catch (e) {
-      Alert.alert("Erreur", e instanceof Error ? e.message : "Upload échoué");
-    } finally {
-      setUploadingImg(false);
+    if (res.canceled) return;
+    await uploadAssets(res.assets);
+  };
+
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission refusée", "Autorisez l'appareil photo pour prendre une photo.");
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.85 });
+    if (res.canceled) return;
+    await uploadAssets(res.assets);
+  };
+
+  const addPhoto = () => {
+    if (uploadingImg) return;
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ["Annuler", "Prendre une photo", "Choisir dans la galerie"], cancelButtonIndex: 0 },
+        (i) => {
+          if (i === 1) takePhoto();
+          else if (i === 2) pickFromLibrary();
+        },
+      );
+    } else {
+      Alert.alert("Ajouter une photo", undefined, [
+        { text: "Prendre une photo", onPress: takePhoto },
+        { text: "Choisir dans la galerie", onPress: pickFromLibrary },
+        { text: "Annuler", style: "cancel" },
+      ]);
     }
   };
 
   const removeImage = (url: string) => setImages((prev) => prev.filter((u) => u !== url));
+
+  // L'upload local renvoie une URL relative (/uploads/..). Préfixe l'host pour l'aperçu.
+  const displayUri = (u: string) => (u.startsWith("http") ? u : `${API_BASE_URL}${u}`);
 
   const fillFromGPS = async () => {
     setGeoLoading(true);
@@ -140,6 +183,35 @@ export default function PostScreen() {
     } finally {
       setGeoLoading(false);
     }
+  };
+
+  const stepError = (s: number): string | null => {
+    if (s === 0) {
+      if (!title.trim()) return "Indiquez un titre.";
+      if (!price) return "Indiquez un prix.";
+    }
+    if (s === 1 && images.length === 0) return "Ajoutez au moins une photo.";
+    if (s === 2 && !category) return "Choisissez une catégorie.";
+    if (s === 3) {
+      if (!description.trim()) return "Ajoutez une description.";
+      if (!location.trim()) return "Indiquez la localisation.";
+    }
+    return null;
+  };
+
+  const next = () => {
+    const err = stepError(step);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep((s) => Math.min(TOTAL - 1, s + 1));
+  };
+
+  const back = () => {
+    setError(null);
+    setStep((s) => Math.max(0, s - 1));
   };
 
   const submit = async () => {
@@ -187,162 +259,229 @@ export default function PostScreen() {
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
-          <Text className="text-on-surface text-2xl font-extrabold mb-4">Publier une annonce</Text>
-
-          <Label>Photos (jusqu'à 8)</Label>
-          <View className="flex-row flex-wrap gap-2 mb-4">
-            {images.map((url) => (
-              <View key={url} className="w-20 h-20 bg-surface-container rounded-lg overflow-hidden relative">
-                <Image source={{ uri: url }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-                <Pressable
-                  onPress={() => removeImage(url)}
-                  className="absolute top-0.5 right-0.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
-                >
-                  <Text className="text-white text-xs">×</Text>
-                </Pressable>
-              </View>
+        {/* En-tête + progression */}
+        <View className="px-4 pt-2 pb-3">
+          <Text className="text-on-surface text-2xl font-extrabold">Publier une annonce</Text>
+          <Text className="text-on-surface-variant text-xs mt-0.5">
+            Étape {step + 1}/{TOTAL} · {STEPS[step]}
+          </Text>
+          <View className="flex-row gap-1 mt-2">
+            {STEPS.map((_, i) => (
+              <View
+                key={i}
+                className={`flex-1 h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-surface-container"}`}
+              />
             ))}
-            {images.length < 8 && (
-              <Pressable
-                onPress={pickImage}
-                disabled={uploadingImg}
-                className="w-20 h-20 border-2 border-dashed border-outline rounded-lg items-center justify-center"
-              >
-                {uploadingImg ? <ActivityIndicator color="#2f6fb8" /> : <Text className="text-outline text-2xl">+</Text>}
-              </Pressable>
-            )}
           </View>
+        </View>
 
-          <Label required>Titre</Label>
-          <Field value={title} onChangeText={setTitle} placeholder="ex : iPhone 14 Pro 256 Go" maxLength={200} />
-
-          <Label required>Prix (€)</Label>
-          <Field value={price} onChangeText={setPrice} placeholder="0" keyboardType="decimal-pad" />
-
-          <Label required>Catégorie</Label>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
-            {CATEGORIES.map((c) => {
-              const active = category?.id === c.id;
-              return (
-                <Pressable
-                  key={c.id}
-                  onPress={() => {
-                    setCategory(c);
-                    setSubcategory("");
-                  }}
-                  className={`px-3 py-1.5 rounded-full mr-2 ${active ? "bg-primary" : "bg-surface-container"}`}
-                >
-                  <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>
-                    {c.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {category && category.subcategories.length > 0 && (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+          {/* Étape 0 — Titre + prix */}
+          {step === 0 && (
             <>
-              <Label>Sous-catégorie</Label>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
-                {category.subcategories.map((s) => {
-                  const active = subcategory === s;
-                  return (
-                    <Pressable
-                      key={s}
-                      onPress={() => setSubcategory(s)}
-                      className={`px-3 py-1.5 rounded-full mr-2 ${active ? "bg-primary" : "bg-surface-container"}`}
-                    >
-                      <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{s}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+              <Label required>Titre</Label>
+              <Field value={title} onChangeText={setTitle} placeholder="ex : iPhone 14 Pro 256 Go" maxLength={200} />
+              <Label required>Prix (€)</Label>
+              <Field value={price} onChangeText={setPrice} placeholder="0" keyboardType="decimal-pad" />
             </>
           )}
 
-          <Label>État</Label>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
-            {CONDITIONS.map((c) => {
-              const active = condition === c;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => setCondition(c)}
-                  className={`px-3 py-1.5 rounded-full mr-2 ${active ? "bg-primary" : "bg-surface-container"}`}
-                >
-                  <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{c}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          <Label required>Description</Label>
-          <Field
-            value={description}
-            onChangeText={setDescription}
-            placeholder="Décrivez votre article (état, dimensions, etc.)"
-            multiline
-            maxLength={10000}
-            style={{ minHeight: 120, textAlignVertical: "top" }}
-          />
-
-          <Label required>Localisation</Label>
-          <View className="flex-row gap-2 mb-2">
-            <TextInput
-              value={location}
-              onChangeText={setLocation}
-              placeholder="ex : Paris 75011"
-              placeholderTextColor="#94a3b8"
-              className="flex-1 bg-surface-container rounded-lg px-3 py-2.5 text-on-surface"
-            />
-            <Pressable
-              onPress={fillFromGPS}
-              disabled={geoLoading}
-              className={`px-3 rounded-lg justify-center ${geoLoading ? "bg-outline" : "bg-primary"}`}
-            >
-              {geoLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-xs">📍 GPS</Text>
-              )}
-            </Pressable>
-          </View>
-
-          <Label>Téléphone (optionnel)</Label>
-          <Field value={phone} onChangeText={setPhone} placeholder="06 12 34 56 78" keyboardType="phone-pad" />
-          {phone.trim() && (
-            <Pressable
-              onPress={() => setHidePhone((v) => !v)}
-              className="flex-row items-center mb-3"
-            >
-              <View className={`w-5 h-5 rounded border-2 mr-2 items-center justify-center ${hidePhone ? "bg-primary border-primary" : "border-outline"}`}>
-                {hidePhone && <Text className="text-white text-xs">✓</Text>}
+          {/* Étape 1 — Photos */}
+          {step === 1 && (
+            <>
+              <Label>Photos (jusqu'à 8)</Label>
+              <View className="flex-row flex-wrap gap-2 mb-2">
+                {images.map((url) => (
+                  <View key={url} className="w-24 h-24 bg-surface-container rounded-lg overflow-hidden relative">
+                    <Image source={{ uri: displayUri(url) }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                    <Pressable
+                      onPress={() => removeImage(url)}
+                      className="absolute top-0.5 right-0.5 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
+                    >
+                      <Text className="text-white text-xs">×</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                {images.length < 8 && (
+                  <Pressable
+                    onPress={addPhoto}
+                    disabled={uploadingImg}
+                    className="w-24 h-24 border-2 border-dashed border-outline rounded-lg items-center justify-center"
+                  >
+                    {uploadingImg ? <ActivityIndicator color="#2f6fb8" /> : <Text className="text-outline text-3xl">+</Text>}
+                  </Pressable>
+                )}
               </View>
-              <Text className="text-on-surface text-sm">Masquer mon numéro publiquement</Text>
-            </Pressable>
+              <Text className="text-on-surface-variant text-xs">La première photo sera la principale.</Text>
+            </>
           )}
 
-          {error && (
-            <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-              <Text className="text-red-700 text-sm">{error}</Text>
+          {/* Étape 2 — Catégorie + sous-catégorie + état */}
+          {step === 2 && (
+            <>
+              <Label required>Catégorie</Label>
+              <View className="flex-row flex-wrap gap-2 mb-2">
+                {CATEGORIES.map((c) => {
+                  const active = category?.id === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => {
+                        setCategory(c);
+                        setSubcategory("");
+                      }}
+                      className={`px-3 py-2 rounded-full ${active ? "bg-primary" : "bg-surface-container"}`}
+                    >
+                      <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>
+                        {c.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {category && category.subcategories.length > 0 && (
+                <>
+                  <Label>Sous-catégorie</Label>
+                  <View className="flex-row flex-wrap gap-2 mb-2">
+                    {category.subcategories.map((s) => {
+                      const active = subcategory === s;
+                      return (
+                        <Pressable
+                          key={s}
+                          onPress={() => setSubcategory(s)}
+                          className={`px-3 py-2 rounded-full ${active ? "bg-primary" : "bg-surface-container"}`}
+                        >
+                          <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{s}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              <Label>État</Label>
+              <View className="flex-row flex-wrap gap-2 mb-2">
+                {CONDITIONS.map((c) => {
+                  const active = condition === c;
+                  return (
+                    <Pressable
+                      key={c}
+                      onPress={() => setCondition(c)}
+                      className={`px-3 py-2 rounded-full ${active ? "bg-primary" : "bg-surface-container"}`}
+                    >
+                      <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{c}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* Étape 3 — Description + localisation + téléphone */}
+          {step === 3 && (
+            <>
+              <Label required>Description</Label>
+              <Field
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Décrivez votre article (état, dimensions, etc.)"
+                multiline
+                maxLength={10000}
+                style={{ minHeight: 120, textAlignVertical: "top" }}
+              />
+
+              <Label required>Localisation</Label>
+              <View className="flex-row gap-2 mb-2">
+                <TextInput
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholder="ex : Paris 75011"
+                  placeholderTextColor="#94a3b8"
+                  className="flex-1 bg-surface-container rounded-lg px-3 py-2.5 text-on-surface"
+                />
+                <Pressable
+                  onPress={fillFromGPS}
+                  disabled={geoLoading}
+                  className={`px-3 rounded-lg justify-center ${geoLoading ? "bg-outline" : "bg-primary"}`}
+                >
+                  {geoLoading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-xs">📍 GPS</Text>}
+                </Pressable>
+              </View>
+
+              <Label>Téléphone (optionnel)</Label>
+              <Field value={phone} onChangeText={setPhone} placeholder="06 12 34 56 78" keyboardType="phone-pad" />
+              {phone.trim() && (
+                <Pressable onPress={() => setHidePhone((v) => !v)} className="flex-row items-center mb-3">
+                  <View className={`w-5 h-5 rounded border-2 mr-2 items-center justify-center ${hidePhone ? "bg-primary border-primary" : "border-outline"}`}>
+                    {hidePhone && <Text className="text-white text-xs">✓</Text>}
+                  </View>
+                  <Text className="text-on-surface text-sm">Masquer mon numéro publiquement</Text>
+                </Pressable>
+              )}
+            </>
+          )}
+
+          {/* Étape 4 — Récapitulatif */}
+          {step === 4 && (
+            <View>
+              {images[0] && (
+                <Image source={{ uri: displayUri(images[0]) }} style={{ width: "100%", height: 180, borderRadius: 12 }} contentFit="cover" />
+              )}
+              <Text className="text-on-surface text-xl font-extrabold mt-3">{title || "Sans titre"}</Text>
+              <Text className="text-primary text-lg font-extrabold mt-0.5">
+                {price ? `${price} €` : "Prix non indiqué"}
+              </Text>
+              <RecapRow label="Catégorie" value={[category?.label, subcategory].filter(Boolean).join(" · ") || "—"} />
+              <RecapRow label="État" value={condition} />
+              <RecapRow label="Localisation" value={location || "—"} />
+              <RecapRow label="Photos" value={`${images.length}`} />
+              {phone.trim() ? <RecapRow label="Téléphone" value={hidePhone ? `${phone} (masqué)` : phone} /> : null}
+              <Text className="text-on-surface-variant text-sm mt-3" numberOfLines={4}>
+                {description}
+              </Text>
             </View>
           )}
 
-          <Pressable
-            onPress={submit}
-            disabled={submitting}
-            className={`py-3.5 rounded-full items-center mt-2 ${submitting ? "bg-outline" : "bg-primary"}`}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white font-bold">Publier mon annonce</Text>
-            )}
-          </Pressable>
+          {error && (
+            <View className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
+              <Text className="text-red-700 text-sm">{error}</Text>
+            </View>
+          )}
         </ScrollView>
+
+        {/* Pied — navigation */}
+        <View className="flex-row gap-2 px-4 py-3 border-t border-surface-container">
+          {step > 0 && (
+            <Pressable onPress={back} disabled={submitting} className="px-5 py-3.5 rounded-full bg-surface-container items-center justify-center">
+              <Text className="text-on-surface font-bold">Précédent</Text>
+            </Pressable>
+          )}
+          {step < TOTAL - 1 ? (
+            <Pressable onPress={next} className="flex-1 py-3.5 rounded-full bg-primary items-center">
+              <Text className="text-white font-bold">Suivant</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={submit}
+              disabled={submitting}
+              className={`flex-1 py-3.5 rounded-full items-center ${submitting ? "bg-outline" : "bg-primary"}`}
+            >
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold">Publier mon annonce</Text>}
+            </Pressable>
+          )}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function RecapRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="flex-row justify-between py-1.5 border-b border-surface-container">
+      <Text className="text-on-surface-variant text-sm">{label}</Text>
+      <Text className="text-on-surface text-sm font-semibold flex-1 text-right ml-3" numberOfLines={1}>{value}</Text>
+    </View>
   );
 }
 

@@ -11,7 +11,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "fr.dealandcompany.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": ["whatsapp"],
+        "NSFaceIDUsageDescription": "Utilisez Face ID pour déverrouiller l'application en toute sécurité."
       }
     },
     "android": {
@@ -20,13 +22,26 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'application accède à vos photos pour les joindre à vos messages.",
+          "cameraPermission": "L'application accède à l'appareil photo pour envoyer une photo dans vos messages."
+        }
+      ],
+      "expo-document-picker"
     ],
     "extra": {
-      "apiBaseUrl": "https://www.dealandcompany.fr"
+      "apiBaseUrl": "https://www.dealandcompany.fr",
+      "router": {},
+      "eas": {
+        "projectId": "ca1250ec-bfaa-47e7-83fb-59a94070d337"
+      }
     },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "yarine"
   }
 }

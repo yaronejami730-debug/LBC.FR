@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnread } from "@/lib/unread";
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -12,6 +13,7 @@ function makeIcon(name: IconName) {
 
 export default function TabsLayout() {
   const { count } = useUnread();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -22,15 +24,14 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: "#ffffff",
           borderTopColor: "#eceef0",
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom - 4 : 8,
+          paddingTop: 8,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Accueil", tabBarIcon: makeIcon("home") }} />
-      <Tabs.Screen name="recherche" options={{ title: "Recherche", tabBarIcon: makeIcon("search") }} />
       <Tabs.Screen name="post" options={{ title: "Publier", tabBarIcon: makeIcon("add-circle") }} />
       <Tabs.Screen
         name="messages"

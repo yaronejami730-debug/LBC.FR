@@ -64,6 +64,9 @@ export async function GET(req: NextRequest) {
       senderAvatar: m.sender.avatar,
       createdAt: m.createdAt.toISOString(),
       flagged: (m as any).flagged ?? false,
+      attachmentUrl: (m as any).attachmentUrl ?? null,
+      attachmentType: (m as any).attachmentType ?? null,
+      attachmentName: (m as any).attachmentName ?? null,
     }))
   );
 }
@@ -75,14 +78,18 @@ export async function POST(req: NextRequest) {
   }
   const session = { user: { id: userId } } as { user: { id: string } };
 
-  const { conversationId, content } = await req.json();
+  const { conversationId, content, attachmentUrl, attachmentType, attachmentName } = await req.json();
 
-  if (!content?.trim()) {
+  const hasAttachment =
+    typeof attachmentUrl === "string" &&
+    attachmentUrl.length > 0 &&
+    (attachmentType === "image" || attachmentType === "pdf");
+
+  if (!content?.trim() && !hasAttachment) {
     return NextResponse.json({ error: "Empty message" }, { status: 400 });
   }
 
-
-  if (typeof content !== "string" || content.trim().length > 5_000) {
+  if (content && (typeof content !== "string" || content.trim().length > 5_000)) {
     return NextResponse.json({ error: "Message trop long (max 5000 caractères)" }, { status: 400 });
   }
 
@@ -110,7 +117,7 @@ export async function POST(req: NextRequest) {
 
   // ── Modération du message — scam + phishing ──
   // Seuils abaissés vs annonces : le scam vit dans la messagerie.
-  const text = content.trim();
+  const text = (content ?? "").trim();
   await ensureBlacklistPrimed(prisma);
   const scamReport = scanScam(text);
   const urlReport = scanText(text);
@@ -138,6 +145,9 @@ export async function POST(req: NextRequest) {
       riskScore: risk.riskScore,
       flagged,
       flagReason: flagged ? risk.topSignals.join(", ") : null,
+      attachmentUrl: hasAttachment ? attachmentUrl : null,
+      attachmentType: hasAttachment ? attachmentType : null,
+      attachmentName: hasAttachment ? (typeof attachmentName === "string" ? attachmentName.slice(0, 200) : null) : null,
     } as any,
     include: {
       sender: { select: { id: true, name: true, avatar: true } },
@@ -169,6 +179,9 @@ export async function POST(req: NextRequest) {
     senderAvatar: message.sender.avatar,
     createdAt: message.createdAt.toISOString(),
     flagged,
+    attachmentUrl: (message as any).attachmentUrl ?? null,
+    attachmentType: (message as any).attachmentType ?? null,
+    attachmentName: (message as any).attachmentName ?? null,
   };
 
   broadcast(conversationId, payload);
@@ -201,7 +214,13 @@ export async function POST(req: NextRequest) {
           targets.map((uid) =>
             notifyUser(uid, {
               title: message.sender.name ?? "Nouveau message",
-              body: message.content.slice(0, 140),
+              body: message.content
+                ? message.content.slice(0, 140)
+                : hasAttachment
+                  ? attachmentType === "pdf"
+                    ? "📄 Document"
+                    : "📷 Photo"
+                  : "Nouveau message",
               data: { type: "message", conversationId, messageId: message.id },
             }),
           ),
@@ -225,7 +244,7 @@ export async function POST(req: NextRequest) {
           name: recipient.user.name,
           senderName: message.sender.name,
           listingTitle: conversation.listing.title,
-          messageBody: message.content,
+          messageBody: message.content || (attachmentType === "pdf" ? "Document PDF" : "Photo"),
           conversationUrl: `${baseUrl}/messages/${conversationId}`,
         }),
       }).catch(() => { });

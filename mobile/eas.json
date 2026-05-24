@@ -14,7 +14,6 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -25,11 +24,9 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "preview"
     },
     "production": {
-      "autoIncrement": true,
-      "channel": "production"
+      "autoIncrement": true
     }
   },
   "submit": {

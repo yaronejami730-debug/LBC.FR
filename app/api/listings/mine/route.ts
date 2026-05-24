@@ -28,12 +28,14 @@ export async function GET(req: NextRequest) {
         location: true,
         images: true,
         status: true,
-        views: true,
+        viewCount: true,
         createdAt: true,
       },
     }),
     prisma.listing.count({ where }),
   ]);
 
-  return NextResponse.json({ listings, total, page, perPage });
+  const result = listings.map(({ viewCount, ...l }) => ({ ...l, views: viewCount }));
+
+  return NextResponse.json({ listings: result, total, page, perPage });
 }

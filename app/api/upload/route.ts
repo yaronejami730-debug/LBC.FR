@@ -130,11 +130,32 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: "Aucun fichier reçu" }, { status: 400 });
     }
+
+    // ── PDF : pas de traitement image, upload direct ──
+    if (file.type === "application/pdf") {
+      if (file.size > 25 * 1024 * 1024) {
+        return NextResponse.json({ error: "Le PDF est trop lourd (max 25Mo)" }, { status: 400 });
+      }
+      const pdfBuf = Buffer.from(await file.arrayBuffer());
+      const pdfName = `${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
+      if (process.env.BLOB_READ_WRITE_TOKEN) {
+        const blob = await put(`uploads/${pdfName}`, pdfBuf, {
+          access: "public",
+          contentType: "application/pdf",
+        });
+        return NextResponse.json({ url: blob.url });
+      }
+      const pdfDir = path.join(process.cwd(), "public", "uploads");
+      await mkdir(pdfDir, { recursive: true });
+      await writeFile(path.join(pdfDir, pdfName), pdfBuf);
+      return NextResponse.json({ url: `/uploads/${pdfName}` });
+    }
+
     if (file.size > 15 * 1024 * 1024) {
       return NextResponse.json({ error: "L'image est trop lourde (max 15Mo)" }, { status: 400 });
     }
     if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Seuls les fichiers images sont autorisés" }, { status: 400 });
+      return NextResponse.json({ error: "Seuls les images et PDF sont autorisés" }, { status: 400 });
     }
 
     const raw = Buffer.from(await file.arrayBuffer());

@@ -7,12 +7,20 @@ import {
   Pressable,
   Dimensions,
   Alert,
+  Share,
+  Linking,
+  Platform,
+  ActionSheetIOS,
 } from "react-native";
 import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatPrice, timeAgo } from "@/lib/format";
+
+const SITE_URL = "https://www.dealandcompany.fr";
 
 type Listing = {
   id: string;
@@ -128,6 +136,54 @@ export default function AnnonceScreen() {
     }
   };
 
+  const shareUrl = `${SITE_URL}/annonce/${id}`;
+  const shareMessage = listing
+    ? `${listing.title} — ${formatPrice(listing.price)}\n${shareUrl}`
+    : shareUrl;
+
+  const shareNative = async () => {
+    try {
+      await Share.share({ message: shareMessage, url: shareUrl });
+    } catch {
+      // annulé
+    }
+  };
+
+  const shareWhatsApp = async () => {
+    const url = `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
+    const ok = await Linking.canOpenURL(url);
+    if (!ok) {
+      Alert.alert("WhatsApp introuvable", "WhatsApp n'est pas installé sur cet appareil.");
+      return;
+    }
+    Linking.openURL(url);
+  };
+
+  const copyLink = async () => {
+    await Clipboard.setStringAsync(shareUrl);
+    Alert.alert("Lien copié", "Le lien de l'annonce a été copié.");
+  };
+
+  const openShare = () => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ["Annuler", "WhatsApp", "Copier le lien", "Plus…"], cancelButtonIndex: 0 },
+        (i) => {
+          if (i === 1) shareWhatsApp();
+          else if (i === 2) copyLink();
+          else if (i === 3) shareNative();
+        },
+      );
+    } else {
+      Alert.alert("Partager l'annonce", undefined, [
+        { text: "WhatsApp", onPress: shareWhatsApp },
+        { text: "Copier le lien", onPress: copyLink },
+        { text: "Plus…", onPress: shareNative },
+        { text: "Annuler", style: "cancel" },
+      ]);
+    }
+  };
+
   if (loading) {
     return <View className="flex-1 bg-surface items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>;
   }
@@ -152,12 +208,18 @@ export default function AnnonceScreen() {
         options={{
           title: listing.title,
           headerBackTitle: "Retour",
-          headerRight: () =>
-            !isMine ? (
-              <Pressable onPress={toggleFav} disabled={favBusy} className="px-2">
-                <Text className={isFav ? "text-2xl" : "text-2xl text-outline"}>{isFav ? "♥" : "♡"}</Text>
+          headerRight: () => (
+            <View className="flex-row items-center">
+              <Pressable onPress={openShare} className="px-2">
+                <Ionicons name="share-outline" size={24} color="#2f6fb8" />
               </Pressable>
-            ) : null,
+              {!isMine && (
+                <Pressable onPress={toggleFav} disabled={favBusy} className="px-2">
+                  <Text className={isFav ? "text-2xl" : "text-2xl text-outline"}>{isFav ? "♥" : "♡"}</Text>
+                </Pressable>
+              )}
+            </View>
+          ),
         }}
       />
       <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 32 }}>

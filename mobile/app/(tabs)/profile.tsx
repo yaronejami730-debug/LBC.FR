@@ -6,10 +6,12 @@ import {
   ScrollView,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/lib/auth";
@@ -67,23 +69,24 @@ export default function ProfileScreen() {
   const [mine, setMine] = useState<MineListing[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
     setBusy(true);
-    try {
-      const [m, f] = await Promise.all([
-        apiFetch<{ listings: MineListing[] }>("/api/listings/mine"),
-        apiFetch<Favorite[]>("/api/favorites"),
-      ]);
-      setMine(m.listings);
-      setFavorites(f);
-    } catch {
-      // silencieux : l'utilisateur peut voir une liste vide et réessayer en pull-to-refresh
-    } finally {
-      setBusy(false);
-    }
+    setError(null);
+    // Découplé : un échec sur favoris ne doit pas vider les annonces.
+    const [m, f] = await Promise.allSettled([
+      apiFetch<{ listings: MineListing[] }>("/api/listings/mine"),
+      apiFetch<Favorite[]>("/api/favorites"),
+    ]);
+    if (m.status === "fulfilled") setMine(m.value.listings);
+    else setError(m.reason instanceof Error ? m.reason.message : "Erreur chargement annonces");
+    if (f.status === "fulfilled") setFavorites(f.value);
+    setBusy(false);
+    setRefreshing(false);
   }, [user]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -143,7 +146,12 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />
+        }
+      >
         <View className="px-4 pt-2 pb-3">
           <View className="bg-surface-container-low rounded-2xl p-5">
             <View className="flex-row items-center gap-3">
@@ -177,6 +185,12 @@ export default function ProfileScreen() {
           <TabBtn label={`Mes annonces (${mine.length})`} active={tab === "annonces"} onPress={() => setTab("annonces")} />
           <TabBtn label={`Favoris (${favorites.length})`} active={tab === "favoris"} onPress={() => setTab("favoris")} />
         </View>
+
+        {error && tab === "annonces" && (
+          <View className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            <Text className="text-red-700 text-xs">{error}</Text>
+          </View>
+        )}
 
         {busy ? (
           <View className="py-8 items-center"><ActivityIndicator color="#2f6fb8" /></View>
@@ -226,6 +240,26 @@ export default function ProfileScreen() {
           />
         )}
 
+        <View className="mt-6">
+          <SettingsSection title="Compte">
+            <SettingsRow icon="person-outline" label="Informations personnelles" onPress={() => router.push("/settings/informations-personnelles")} />
+            <SettingsRow icon="mail-outline" label="Adresse email" onPress={() => router.push("/settings/email")} />
+            <SettingsRow icon="notifications-outline" label="Notifications" onPress={() => router.push("/settings/notifications")} last />
+          </SettingsSection>
+
+          <SettingsSection title="Sécurité et connexion">
+            <SettingsRow icon="shield-checkmark-outline" label="Sécurité du compte" onPress={() => router.push("/settings/securite")} />
+            <SettingsRow icon="key-outline" label="Mot de passe" onPress={() => router.push("/settings/mot-de-passe")} />
+            <SettingsRow icon="call-outline" label="Numéro de téléphone" onPress={() => router.push("/settings/telephone")} />
+            <SettingsRow icon="scan-outline" label="Face ID" onPress={() => router.push("/settings/face-id")} />
+            <SettingsRow icon="phone-portrait-outline" label="Appareils connectés" onPress={() => router.push("/settings/appareils")} last />
+          </SettingsSection>
+
+          <SettingsSection title="Aide">
+            <SettingsRow icon="help-circle-outline" label="Aide & support" onPress={() => router.push("/settings/aide")} last />
+          </SettingsSection>
+        </View>
+
         <View className="px-4 mt-6">
           <Pressable onPress={logout} className="bg-red-50 border border-red-200 rounded-xl py-3 items-center">
             <Text className="text-red-600 font-semibold">Se déconnecter</Text>
@@ -233,6 +267,38 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mb-4">
+      <Text className="text-on-surface-variant text-xs font-bold uppercase tracking-wider px-4 mb-1.5">{title}</Text>
+      <View className="bg-surface-container-low rounded-2xl mx-4 overflow-hidden">{children}</View>
+    </View>
+  );
+}
+
+function SettingsRow({
+  icon,
+  label,
+  onPress,
+  last,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-row items-center px-4 py-3.5 active:bg-surface-container ${last ? "" : "border-b border-surface-container"}`}
+    >
+      <Ionicons name={icon} size={20} color="#2f6fb8" />
+      <Text className="text-on-surface flex-1 ml-3 font-medium">{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+    </Pressable>
   );
 }
 
