@@ -19,6 +19,7 @@ const CATEGORIES = [
   { label: "Loisirs",              href: "/annonces/loisirs" },
   { label: "Animaux",              href: "/annonces/animaux" },
   { label: "Bons plans !",         href: "/nouveautes" },
+  { label: "Guides",               href: "/blog" },
 ];
 
 export default async function Navbar({
