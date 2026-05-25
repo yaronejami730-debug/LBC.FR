@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { View, type ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -11,16 +12,30 @@ type Props = {
   width: number;
   height: number;
   style?: ViewStyle;
+  /** Couleur de fond derrière l'image (letterbox). Blanc par défaut. */
+  background?: string;
 };
 
 /** Image avec pinch-to-zoom + double-tap + pan quand zoomée. */
-export function ZoomableImage({ uri, width, height, style }: Props) {
+export function ZoomableImage({ uri, width, height, style, background = "#fff" }: Props) {
+  // Le pan ne capture le geste QUE lorsqu'on est zoomé : sinon il bloquerait
+  // le scroll vertical de la liste parente.
+  const [zoomed, setZoomed] = useState(false);
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const savedX = useSharedValue(0);
   const savedY = useSharedValue(0);
+
+  const reset = () => {
+    scale.value = withSpring(1);
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+    savedScale.value = 1;
+    savedX.value = 0;
+    savedY.value = 0;
+  };
 
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
@@ -30,16 +45,15 @@ export function ZoomableImage({ uri, width, height, style }: Props) {
     .onEnd(() => {
       savedScale.value = scale.value;
       if (scale.value <= 1) {
-        scale.value = withSpring(1);
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        savedScale.value = 1;
-        savedX.value = 0;
-        savedY.value = 0;
+        reset();
+        runOnJS(setZoomed)(false);
+      } else {
+        runOnJS(setZoomed)(true);
       }
     });
 
   const pan = Gesture.Pan()
+    .enabled(zoomed)
     .averageTouches(true)
     .onUpdate((e) => {
       if (scale.value <= 1) return;
@@ -55,15 +69,12 @@ export function ZoomableImage({ uri, width, height, style }: Props) {
     .numberOfTaps(2)
     .onEnd(() => {
       if (scale.value > 1) {
-        scale.value = withSpring(1);
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
-        savedScale.value = 1;
-        savedX.value = 0;
-        savedY.value = 0;
+        reset();
+        runOnJS(setZoomed)(false);
       } else {
         scale.value = withSpring(2);
         savedScale.value = 2;
+        runOnJS(setZoomed)(true);
       }
     });
 
@@ -79,7 +90,7 @@ export function ZoomableImage({ uri, width, height, style }: Props) {
 
   return (
     <GestureDetector gesture={composed}>
-      <View style={[{ width, height, overflow: "hidden", backgroundColor: "#000" }, style]}>
+      <View style={[{ width, height, overflow: "hidden", backgroundColor: background }, style]}>
         <Animated.View style={[{ width, height }, animStyle]}>
           <Image
             source={{ uri }}

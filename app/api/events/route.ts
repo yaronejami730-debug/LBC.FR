@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 
 const MAX_EVENTS = 50;
@@ -30,8 +30,7 @@ export async function POST(req: NextRequest) {
   const events = Array.isArray(body?.events) ? body.events.slice(0, MAX_EVENTS) : [];
   if (events.length === 0) return NextResponse.json({ ok: true, count: 0 });
 
-  const session = await auth();
-  const userId = (session?.user?.id as string | undefined) ?? null;
+  const userId = await getAuthUserId(req);
 
   const rows = events
     .filter(

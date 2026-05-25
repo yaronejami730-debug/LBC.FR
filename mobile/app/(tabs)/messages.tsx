@@ -23,6 +23,10 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+
+  const unreadCount = conversations.filter((c) => c.unread).length;
+  const visibleConversations = filter === "unread" ? conversations.filter((c) => c.unread) : conversations;
 
   const load = useCallback(async () => {
     if (!user) {
@@ -59,8 +63,18 @@ export default function MessagesScreen() {
 
   return (
     <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
-      <View className="px-4 pt-2 pb-3">
-        <Text className="text-on-surface text-2xl font-extrabold">Messages</Text>
+      {/* Header */}
+      <View className="px-4 pt-2 pb-3 border-b border-surface-container">
+        <Text className="text-on-surface text-2xl font-extrabold">Mes messages</Text>
+        {/* Filtres carrés : Tout / Non lu */}
+        <View className="flex-row gap-2 mt-3">
+          <FilterBtn label="Tout" active={filter === "all"} onPress={() => setFilter("all")} />
+          <FilterBtn
+            label={`Non lu${unreadCount > 0 ? ` (${unreadCount})` : ""}`}
+            active={filter === "unread"}
+            onPress={() => setFilter("unread")}
+          />
+        </View>
       </View>
 
       {loading ? (
@@ -74,13 +88,15 @@ export default function MessagesScreen() {
         </View>
       ) : (
         <FlatList
-          data={conversations}
+          data={visibleConversations}
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
           ListEmptyComponent={
             <View className="py-16 items-center px-6">
-              <Text className="text-on-surface-variant text-center">Aucune conversation pour le moment.</Text>
+              <Text className="text-on-surface-variant text-center">
+                {filter === "unread" ? "Aucun message non lu." : "Aucune conversation pour le moment."}
+              </Text>
             </View>
           }
           ItemSeparatorComponent={() => <View className="h-px bg-surface-container mx-4" />}
@@ -92,7 +108,7 @@ export default function MessagesScreen() {
                 onPress={() => router.push(`/messages/${item.id}`)}
                 className="flex-row px-4 py-3 active:bg-surface-container-low"
               >
-                <View className="w-14 h-14 rounded-lg bg-surface-container overflow-hidden mr-3">
+                <View className="w-14 h-14 rounded-md bg-surface-container overflow-hidden mr-3">
                   {img && <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" />}
                 </View>
                 <View className="flex-1">
@@ -121,5 +137,16 @@ export default function MessagesScreen() {
         />
       )}
     </SafeAreaView>
+  );
+}
+
+function FilterBtn({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`px-4 py-2 rounded-lg border ${active ? "bg-primary border-primary" : "bg-surface border-surface-container"}`}
+    >
+      <Text className={`text-sm font-bold ${active ? "text-white" : "text-on-surface-variant"}`}>{label}</Text>
+    </Pressable>
   );
 }

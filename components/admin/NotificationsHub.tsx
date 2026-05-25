@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import CampaignForm from "./CampaignForm";
+import BroadcastPushForm from "./BroadcastPushForm";
 
 type Counts = React.ComponentProps<typeof CampaignForm>["counts"];
+type PushAudience = { devices: number; users: number };
 
 type TestResult = { ok: boolean; message: string } | null;
 
-export default function NotificationsHub({ counts }: { counts: Counts }) {
-  const [push, setPush] = useState(false);
+export default function NotificationsHub({ counts, pushAudience }: { counts: Counts; pushAudience: PushAudience }) {
+  const [push, setPush] = useState(true);
   const [email, setEmail] = useState(true);
   const [sms, setSms] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -75,6 +77,17 @@ export default function NotificationsHub({ counts }: { counts: Counts }) {
           Le push utilise les templates côté code (validation, refus, message, alerte) et s&apos;envoie automatiquement aux événements correspondants. L&apos;email passe par Brevo.
         </p>
       </div>
+
+      {/* Diffusion push libre — message personnalisé à tous les utilisateurs */}
+      {push && (
+        <div className="bg-white border border-slate-100 rounded-2xl p-5">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 mb-1">Diffusion à tous les utilisateurs</h2>
+          <p className="text-xs text-slate-400 mb-4">
+            Rédigez un message libre (titre + corps) envoyé en push à tous les appareils mobiles actifs.
+          </p>
+          <BroadcastPushForm devices={pushAudience.devices} users={pushAudience.users} />
+        </div>
+      )}
 
       {/* Test push */}
       {push && (

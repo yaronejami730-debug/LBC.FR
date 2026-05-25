@@ -15,6 +15,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { apiFetch } from "@/lib/api";
+import { track } from "@/lib/track";
 import { useAuth } from "@/lib/auth";
 import { formatPrice, firstImage, timeAgo } from "@/lib/format";
 import { CATEGORIES } from "@/lib/categories";
@@ -200,7 +201,12 @@ export default function RechercheScreen() {
             value={query}
             onChangeText={(v) => { setQuery(v); setShowSugg(true); }}
             onFocus={() => setShowSugg(true)}
-            onSubmitEditing={() => { setAppliedQuery(query); setShowSugg(false); }}
+            onSubmitEditing={() => {
+              const q = query.trim();
+              setAppliedQuery(query);
+              setShowSugg(false);
+              if (q) track("search", { q });
+            }}
             returnKeyType="search"
             autoFocus={!params.q}
             placeholder="Que cherchez-vous ?"
@@ -253,6 +259,7 @@ export default function RechercheScreen() {
                   setQuery(s.value);
                   setAppliedQuery(s.value);
                   setShowSugg(false);
+                  if (s.value.trim()) track("search", { q: s.value.trim() });
                 }
               }}
               className="flex-row items-center px-4 py-3 active:bg-surface-container-low"
@@ -305,7 +312,7 @@ export default function RechercheScreen() {
               <Pressable onPress={() => router.push(`/annonce/${item.id}`)} className="bg-surface-container-low rounded-2xl overflow-hidden active:opacity-90">
                 <View style={{ width: "100%", aspectRatio: 4 / 3 }} className="bg-surface-container">
                   {img ? (
-                    <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} />
+                    <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" recyclingKey={item.id} />
                   ) : (
                     <View className="flex-1 items-center justify-center"><Text className="text-outline text-xs">Aucune photo</Text></View>
                   )}

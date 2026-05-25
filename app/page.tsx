@@ -340,33 +340,6 @@ export default async function Home() {
             Toutes les catégories <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
           </Link>
         </div>
-        {/* Tuile Déborah — pleine largeur, visuellement dominante */}
-        <Link
-          href="/ai"
-          title="Déborah, l'assistante IA de Deal&Co"
-          className="group relative block mb-3 md:mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-[#2f6fb8] via-[#3a86d6] to-[#7b3fd6] p-5 md:p-7"
-        >
-          <div className="absolute inset-0 opacity-25 pointer-events-none bg-[radial-gradient(circle_at_top_right,_white,_transparent_60%)]" />
-          <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
-            <div className="min-w-0">
-              <span className="inline-flex items-center gap-1.5 bg-white/15 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full backdrop-blur-sm">
-                <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                Nouveau · Assistante IA
-              </span>
-              <h3 className="text-white font-extrabold text-2xl md:text-3xl leading-tight mt-2">
-                Déborah te trouve l&apos;annonce parfaite
-              </h3>
-              <p className="text-white/90 text-sm md:text-base mt-1 max-w-xl">
-                Réponds à quelques questions — Déborah filtre les annonces et te sort celles qui collent.
-              </p>
-            </div>
-            <span className="inline-flex items-center gap-2 bg-white text-[#2f6fb8] font-bold text-sm px-5 py-2.5 rounded-full shadow-md group-hover:shadow-lg group-hover:scale-[1.02] transition-all">
-              Parler à Déborah
-              <span className="material-symbols-outlined text-base">arrow_forward</span>
-            </span>
-          </div>
-        </Link>
-
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4 auto-rows-[10rem] md:auto-rows-[8rem]">
           {[
             {

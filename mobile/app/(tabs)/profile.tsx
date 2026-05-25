@@ -1,10 +1,9 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
   Pressable,
   ScrollView,
-  FlatList,
   ActivityIndicator,
   RefreshControl,
   Alert,
@@ -13,37 +12,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import { getToken } from "@/lib/tokenStore";
-import { formatPrice, firstImage } from "@/lib/format";
-
-type MineListing = {
-  id: string;
-  title: string;
-  price: number;
-  location: string;
-  images: string | string[] | null;
-  status: string;
-  views: number;
-  createdAt: string;
-};
-
-type Favorite = {
-  id: string;
-  listing: {
-    id: string;
-    title: string;
-    price: number;
-    location: string;
-    images: string | string[] | null;
-    createdAt: string;
-  };
-};
-
-type Tab = "annonces" | "favoris";
 
 async function uploadAvatarAsync(uri: string): Promise<string> {
   const token = await getToken();
@@ -65,31 +38,13 @@ async function uploadAvatarAsync(uri: string): Promise<string> {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, loading, refresh } = useAuth();
-  const [tab, setTab] = useState<Tab>("annonces");
-  const [mine, setMine] = useState<MineListing[]>([]);
-  const [favorites, setFavorites] = useState<Favorite[]>([]);
-  const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setBusy(true);
-    setError(null);
-    // Découplé : un échec sur favoris ne doit pas vider les annonces.
-    const [m, f] = await Promise.allSettled([
-      apiFetch<{ listings: MineListing[] }>("/api/listings/mine"),
-      apiFetch<Favorite[]>("/api/favorites"),
-    ]);
-    if (m.status === "fulfilled") setMine(m.value.listings);
-    else setError(m.reason instanceof Error ? m.reason.message : "Erreur chargement annonces");
-    if (f.status === "fulfilled") setFavorites(f.value);
-    setBusy(false);
-    setRefreshing(false);
-  }, [user]);
-
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try { await refresh(); } finally { setRefreshing(false); }
+  };
 
   const changeAvatar = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -166,7 +121,7 @@ export default function ProfileScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <View className="items-center pt-3 pb-2">
@@ -207,68 +162,10 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View className="flex-row px-4 gap-2 mb-3">
-          <TabBtn label={`Mes annonces (${mine.length})`} active={tab === "annonces"} onPress={() => setTab("annonces")} />
-          <TabBtn label={`Favoris (${favorites.length})`} active={tab === "favoris"} onPress={() => setTab("favoris")} />
-        </View>
-
-        {error && tab === "annonces" && (
-          <View className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-            <Text className="text-red-700 text-xs">{error}</Text>
-          </View>
-        )}
-
-        {busy ? (
-          <View className="py-8 items-center"><ActivityIndicator color="#2f6fb8" /></View>
-        ) : tab === "annonces" ? (
-          <FlatList
-            scrollEnabled={false}
-            data={mine}
-            keyExtractor={(l) => l.id}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            ListEmptyComponent={
-              <Text className="text-on-surface-variant text-center py-6">Aucune annonce publiée.</Text>
-            }
-            renderItem={({ item }) => <MineRow item={item} onPress={() => router.push(`/annonce/${item.id}`)} />}
-          />
-        ) : (
-          <FlatList
-            scrollEnabled={false}
-            data={favorites}
-            keyExtractor={(f) => f.id}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            ListEmptyComponent={
-              <Text className="text-on-surface-variant text-center py-6">Aucun favori.</Text>
-            }
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => router.push(`/annonce/${item.listing.id}`)}
-                className="flex-row bg-surface-container-low rounded-xl overflow-hidden active:opacity-80"
-              >
-                <View className="w-20 h-20 bg-surface-container">
-                  {firstImage(item.listing.images) && (
-                    <Image
-                      source={{ uri: firstImage(item.listing.images)! }}
-                      style={{ width: "100%", height: "100%" }}
-                      contentFit="cover"
-                    />
-                  )}
-                </View>
-                <View className="flex-1 p-2.5">
-                  <Text numberOfLines={2} className="text-on-surface text-sm font-semibold">{item.listing.title}</Text>
-                  <Text className="text-primary font-extrabold mt-0.5">{formatPrice(item.listing.price)}</Text>
-                  <Text numberOfLines={1} className="text-on-surface-variant text-xs">{item.listing.location}</Text>
-                </View>
-              </Pressable>
-            )}
-          />
-        )}
-
-        <View className="mt-6">
+        <View className="mt-4">
           <SettingsSection title="Mes contenus">
-            <SettingsRow icon="document-text-outline" label="Mes annonces" onPress={() => router.push("/mes-annonces")} last />
+            <SettingsRow icon="document-text-outline" label="Mes annonces" onPress={() => router.push("/mes-annonces")} />
+            <SettingsRow icon="heart-outline" label="Favoris" onPress={() => router.push("/favoris")} last />
           </SettingsSection>
 
           <SettingsSection title="Compte">
@@ -345,44 +242,3 @@ function SettingsRow({
   );
 }
 
-function TabBtn({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-1 py-2 rounded-full items-center ${active ? "bg-primary" : "bg-surface-container"}`}
-    >
-      <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function MineRow({ item, onPress }: { item: MineListing; onPress: () => void }) {
-  const img = firstImage(item.images);
-  const statusColor =
-    item.status === "APPROVED" ? "bg-green-100 text-green-800" :
-    item.status === "PENDING" ? "bg-amber-100 text-amber-900" :
-    item.status === "REJECTED" ? "bg-red-100 text-red-800" :
-    "bg-surface-container text-on-surface-variant";
-  const statusLabel =
-    item.status === "APPROVED" ? "En ligne" :
-    item.status === "PENDING" ? "En attente" :
-    item.status === "REJECTED" ? "Refusée" :
-    item.status;
-  return (
-    <Pressable onPress={onPress} className="flex-row bg-surface-container-low rounded-xl overflow-hidden active:opacity-80">
-      <View className="w-20 h-20 bg-surface-container">
-        {img && <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" />}
-      </View>
-      <View className="flex-1 p-2.5">
-        <Text numberOfLines={1} className="text-on-surface font-semibold">{item.title}</Text>
-        <Text className="text-primary font-extrabold mt-0.5">{formatPrice(item.price)}</Text>
-        <View className="flex-row items-center gap-2 mt-1">
-          <View className={`px-2 py-0.5 rounded-full ${statusColor.split(" ")[0]}`}>
-            <Text className={`text-[10px] font-bold ${statusColor.split(" ")[1]}`}>{statusLabel}</Text>
-          </View>
-          <Text className="text-on-surface-variant text-xs">· {item.views} vues</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}

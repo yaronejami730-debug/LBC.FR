@@ -13,6 +13,7 @@ import { syncSource, parseSourceUrl } from "@/lib/external-sync";
 import { normalizePhone, hashPhone } from "@/lib/moderation/phone";
 import { pingIndexNow } from "@/lib/indexnow";
 import { sendPushNotification } from "@/lib/notifications/send";
+import { sendExpoPush } from "@/lib/expo-push";
 import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
@@ -769,6 +770,68 @@ export async function getCampaignCounts() {
     prisma.user.count({ where: audienceWhere("particulier") }),
   ]);
   return { all, pro, particulier };
+}
+
+/** Audience push : nb d'appareils actifs + nb d'utilisateurs joignables. */
+export async function getPushAudienceCount() {
+  await requireAdmin();
+  const [devices, grouped] = await Promise.all([
+    prisma.expoPushToken.count({ where: { disabledAt: null } }),
+    prisma.expoPushToken.findMany({
+      where: { disabledAt: null },
+      select: { userId: true },
+      distinct: ["userId"],
+    }),
+  ]);
+  return { devices, users: grouped.length };
+}
+
+/**
+ * Diffusion push libre : envoie un message personnalisé (titre + corps) à TOUS
+ * les appareils mobiles actifs. Diffusion admin → ne filtre pas les préférences
+ * de notification individuelles. Lien optionnel = deep-link ouvert au tap.
+ */
+export async function sendBroadcastPush({
+  title,
+  body,
+  link,
+}: {
+  title: string;
+  body: string;
+  link?: string;
+}) {
+  await requireAdmin();
+
+  const cleanTitle = title.trim();
+  const cleanBody = body.trim();
+  if (cleanTitle.length < 2) throw new Error("Titre trop court (2 caractères min).");
+  if (cleanTitle.length > 100) throw new Error("Titre trop long (100 caractères max).");
+  if (cleanBody.length < 3) throw new Error("Message trop court (3 caractères min).");
+  if (cleanBody.length > 240) throw new Error("Message trop long (240 caractères max).");
+  const deepLink = link?.trim() || undefined;
+
+  const tokens = await prisma.expoPushToken.findMany({
+    where: { disabledAt: null },
+    select: { token: true },
+  });
+  if (tokens.length === 0) return { devices: 0, sent: 0 };
+
+  // Expo accepte 100 messages max par requête → on découpe en lots.
+  const CHUNK = 100;
+  for (let i = 0; i < tokens.length; i += CHUNK) {
+    const slice = tokens.slice(i, i + CHUNK);
+    await sendExpoPush(
+      slice.map((t) => ({
+        to: t.token,
+        title: cleanTitle,
+        body: cleanBody,
+        sound: "default" as const,
+        data: { type: "admin_broadcast", ...(deepLink ? { deepLink } : {}) },
+      })),
+    );
+  }
+
+  return { devices: tokens.length, sent: tokens.length };
 }
 
 function escapeHtml(s: string): string {

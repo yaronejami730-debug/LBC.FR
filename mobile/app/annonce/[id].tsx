@@ -9,6 +9,7 @@ import MapView, { Marker, Polygon, Circle, PROVIDER_DEFAULT, type Region } from 
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { apiFetch } from "@/lib/api";
+import { track } from "@/lib/track";
 import { useAuth } from "@/lib/auth";
 import { formatPrice, timeAgo, allImages, firstImage } from "@/lib/format";
 import { Skeleton } from "@/components/Skeleton";
@@ -112,6 +113,7 @@ export default function AnnonceScreen() {
         ]);
         setListing(data);
         setFavCount(data.favoritesCount ?? 0);
+        track("listing_view", { listingId: data.id, category: data.category, subcategory: data.subcategory ?? undefined });
         setRelated(rel);
         if (adRes.length > 0) {
           setAd(adRes[0]);
@@ -663,6 +665,7 @@ export default function AnnonceScreen() {
         visible={galleryOpen}
         images={images}
         initialIndex={galleryIndex}
+        title={listing.title}
         onClose={() => setGalleryOpen(false)}
       />
 

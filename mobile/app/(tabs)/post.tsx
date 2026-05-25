@@ -159,6 +159,60 @@ export default function PostScreen() {
     return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
   }, [title]);
 
+  // ⚠️ Tous les hooks AVANT les early returns (!user / !emailVerified) — sinon
+  // le nombre de hooks change entre rendus → "Rendered more hooks" (Rules of Hooks).
+
+  // Conservé pour la rétro-compat (autres steps qui lisent `images`)
+  useEffect(() => {
+    const tpl = getPhotoTemplate(category?.id);
+    const ordered: string[] = [];
+    for (const s of tpl.slots) {
+      const u = slotPhotos.find((p) => p.slotKey === s.key)?.url;
+      if (u) ordered.push(u);
+    }
+    for (const p of slotPhotos.filter((p) => p.slotKey === null)) ordered.push(p.url);
+    setImages(ordered);
+  }, [slotPhotos, category?.id]);
+
+  // Prix conseillé : recalculé quand catégorie/sous-catégorie/marque/état changent.
+  useEffect(() => {
+    if (priceTimer.current) clearTimeout(priceTimer.current);
+    if (!category) { setPriceSuggestion(null); return; }
+    const cat = category;
+    priceTimer.current = setTimeout(() => {
+      const params = new URLSearchParams({ category: cat.label });
+      if (subcategory) params.set("subcategory", subcategory);
+      if (brand.trim()) params.set("brand", brand.trim());
+      if (condition) params.set("condition", condition);
+      apiFetch<{ suggested: number | null; range: { low: number; high: number } | null; sampleSize: number }>(
+        `/api/listings/suggest-price?${params.toString()}`,
+        { auth: false },
+      )
+        .then((r) => {
+          if (r.suggested && r.range) setPriceSuggestion({ suggested: r.suggested, range: r.range, sampleSize: r.sampleSize });
+          else setPriceSuggestion(null);
+        })
+        .catch(() => setPriceSuggestion(null));
+    }, 400);
+    return () => { if (priceTimer.current) clearTimeout(priceTimer.current); };
+  }, [category?.id, category?.label, subcategory, brand, condition]);
+
+  // Si la catégorie change, requalifie les photos affectées à des slots disparus en extras.
+  useEffect(() => {
+    const validKeys = new Set(getPhotoTemplate(category?.id).slots.map((s) => s.key));
+    setSlotPhotos((prev) => {
+      let changed = false;
+      const next = prev.map((p) => {
+        if (p.slotKey && !validKeys.has(p.slotKey)) {
+          changed = true;
+          return { ...p, slotKey: null };
+        }
+        return p;
+      });
+      return changed ? next : prev;
+    });
+  }, [category?.id]);
+
   if (!user) {
     return (
       <SafeAreaView className="flex-1 bg-surface">
@@ -191,16 +245,6 @@ export default function PostScreen() {
   const photoTemplate = getPhotoTemplate(category?.id);
   const slotPhotoFor = (slotKey: string) => slotPhotos.find((p) => p.slotKey === slotKey)?.url;
   const extraPhotos = slotPhotos.filter((p) => p.slotKey === null);
-
-  const orderedImages = (() => {
-    const ordered: string[] = [];
-    for (const s of photoTemplate.slots) {
-      const u = slotPhotoFor(s.key);
-      if (u) ordered.push(u);
-    }
-    for (const p of extraPhotos) ordered.push(p.url);
-    return ordered;
-  })();
 
   const photoCount = slotPhotos.length;
   const canAddMore = photoCount < photoTemplate.maxPhotos;
@@ -286,47 +330,6 @@ export default function PostScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setSlotPhotos((prev) => prev.filter((p) => !(p.slotKey === slotKey && p.url === url)));
   };
-
-  // Conservé pour la rétro-compat (autres steps qui lisent `images`)
-  useEffect(() => { setImages(orderedImages); }, [slotPhotos, category?.id]);
-
-  // Prix conseillé : recalculé quand catégorie/sous-catégorie/marque/état changent.
-  useEffect(() => {
-    if (priceTimer.current) clearTimeout(priceTimer.current);
-    if (!category) { setPriceSuggestion(null); return; }
-    priceTimer.current = setTimeout(() => {
-      const params = new URLSearchParams({ category: category.label });
-      if (subcategory) params.set("subcategory", subcategory);
-      if (brand.trim()) params.set("brand", brand.trim());
-      if (condition) params.set("condition", condition);
-      apiFetch<{ suggested: number | null; range: { low: number; high: number } | null; sampleSize: number }>(
-        `/api/listings/suggest-price?${params.toString()}`,
-        { auth: false },
-      )
-        .then((r) => {
-          if (r.suggested && r.range) setPriceSuggestion({ suggested: r.suggested, range: r.range, sampleSize: r.sampleSize });
-          else setPriceSuggestion(null);
-        })
-        .catch(() => setPriceSuggestion(null));
-    }, 400);
-    return () => { if (priceTimer.current) clearTimeout(priceTimer.current); };
-  }, [category?.id, category?.label, subcategory, brand, condition]);
-
-  // Si la catégorie change, requalifie les photos affectées à des slots disparus en extras.
-  useEffect(() => {
-    const validKeys = new Set(photoTemplate.slots.map((s) => s.key));
-    setSlotPhotos((prev) => {
-      let changed = false;
-      const next = prev.map((p) => {
-        if (p.slotKey && !validKeys.has(p.slotKey)) {
-          changed = true;
-          return { ...p, slotKey: null };
-        }
-        return p;
-      });
-      return changed ? next : prev;
-    });
-  }, [category?.id]);
 
   const onLocationFromMap = (v: LocationValue) => {
     setLocation(v.label);

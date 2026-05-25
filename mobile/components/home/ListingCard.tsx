@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -19,7 +20,7 @@ type Props = {
   badge?: string;
 };
 
-export default function ListingCard({ listing, width = 160, badge }: Props) {
+function ListingCard({ listing, width = 160, badge }: Props) {
   const router = useRouter();
   const img = firstImage(listing.images);
 
@@ -32,7 +33,7 @@ export default function ListingCard({ listing, width = 160, badge }: Props) {
       <View className="bg-surface-container-low rounded-xl overflow-hidden">
         <View style={{ width: "100%", aspectRatio: 1 }} className="bg-surface-container">
           {img ? (
-            <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} />
+            <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" recyclingKey={listing.id} />
           ) : (
             <View className="flex-1 items-center justify-center"><Text className="text-outline text-xs">Aucune photo</Text></View>
           )}
@@ -56,3 +57,5 @@ export default function ListingCard({ listing, width = 160, badge }: Props) {
     </Pressable>
   );
 }
+
+export default memo(ListingCard);
