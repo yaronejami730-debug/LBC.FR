@@ -1,0 +1,31 @@
+# Deal & Co — dealandcompany.fr
+
+> Place de marché française de petites annonces entre particuliers et professionnels : voitures, immobilier, multimédia, mode, maison, et bien plus. Annonces vérifiées, recherche par catégorie, ville et prix.
+
+Pour les agents IA : un serveur MCP public (lecture seule) permet de chercher les annonces en temps réel et de renvoyer les utilisateurs vers les pages du site.
+
+## Serveur MCP
+
+- [Endpoint MCP (Streamable HTTP)](https://www.dealandcompany.fr/api/mcp) : serveur Model Context Protocol public. Outils : `search`, `fetch`, `search_listings`, `list_categories`, `get_listing`. Aucune authentification. Renvoie des URLs absolues vers dealandcompany.fr.
+
+## Catégories
+
+- [Véhicules](https://www.dealandcompany.fr/search?category=vehicules) : voitures, motos, caravaning, utilitaires, équipements auto
+- [Immobilier](https://www.dealandcompany.fr/search?category=immobilier) : ventes, locations, colocations, bureaux & commerces
+- [Maison](https://www.dealandcompany.fr/search?category=maison) : ameublement, électroménager, décoration, bricolage, jardinage
+- [Multimédia](https://www.dealandcompany.fr/search?category=multimedia) : informatique, consoles & jeux vidéo, image & son, téléphonie
+- [Mode](https://www.dealandcompany.fr/search?category=mode) : vêtements, chaussures, accessoires, montres & bijoux
+- [Loisirs](https://www.dealandcompany.fr/search?category=loisirs) : livres, musique, jeux & jouets, sports, vélos
+- [Animaux](https://www.dealandcompany.fr/search?category=animaux)
+- [Services](https://www.dealandcompany.fr/search?category=services)
+- [Emploi](https://www.dealandcompany.fr/search?category=emploi)
+- [Communauté](https://www.dealandcompany.fr/search?category=communaute)
+- [Matériel professionnel](https://www.dealandcompany.fr/search?category=materiel-pro)
+- [Bébé & Enfant](https://www.dealandcompany.fr/search?category=bebe-enfant)
+- [Vacances](https://www.dealandcompany.fr/search?category=vacances)
+- [Divers](https://www.dealandcompany.fr/search?category=divers)
+
+## Liens utiles
+
+- [Recherche](https://www.dealandcompany.fr/search) : recherche d'annonces par mots-clés, catégorie, ville, prix
+- [Plan du site](https://www.dealandcompany.fr/sitemap.xml)

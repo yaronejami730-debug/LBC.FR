@@ -47,6 +47,7 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.1",
     "googleapis": "^171.4.0",
+    "mcp-handler": "^1.1.0",
     "next": "^15.5.15",
     "next-auth": "^5.0.0-beta.30",
     "pg": "^8.20.0",
@@ -60,7 +61,8 @@
     "tesseract.js": "^7.0.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.6",
