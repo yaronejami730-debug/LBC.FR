@@ -19,7 +19,7 @@ const getGroupedCounts = unstable_cache(
       })
       .catch(() => [] as any[]),
   ["sitemap-grouped-counts"],
-  { revalidate: 1800, tags: ["listings"] },
+  { revalidate: 3600, tags: ["listings"] },
 );
 
 const getGlobalLastMod = unstable_cache(
@@ -32,7 +32,7 @@ const getGlobalLastMod = unstable_cache(
       .then((r) => r._max.updatedAt)
       .catch(() => null),
   ["sitemap-global-lastmod"],
-  { revalidate: 1800, tags: ["listings"] },
+  { revalidate: 3600, tags: ["listings"] },
 );
 
 const getVehicleBrandModelMeta = unstable_cache(
@@ -50,7 +50,7 @@ const getVehicleBrandModelMeta = unstable_cache(
       })
       .catch(() => [] as { metadata: string }[]),
   ["sitemap-vehicle-meta"],
-  { revalidate: 3600, tags: ["listings"] },
+  { revalidate: 7200, tags: ["listings"] },
 );
 
 const getListingsTotal = unstable_cache(
@@ -61,7 +61,7 @@ const getListingsTotal = unstable_cache(
       })
       .catch(() => 0),
   ["sitemap-listings-total"],
-  { revalidate: 1800, tags: ["listings"] },
+  { revalidate: 3600, tags: ["listings"] },
 );
 
 const BASE = "https://www.dealandcompany.fr";

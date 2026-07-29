@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
 import Navbar from "@/components/Navbar";
@@ -149,6 +150,88 @@ const LISTING_SELECT = {
 
 const APPROVED = { status: "APPROVED", deletedAt: null, shadowBanned: false } as const;
 
+const getFeatured = unstable_cache(
+  () => prisma.listing.findMany({
+    where: { ...APPROVED, OR: [{ isPremium: true }, { isVerified: true }, { user: { isPro: true } }] },
+    orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
+    take: 10,
+    select: LISTING_SELECT,
+  }),
+  ["home-featured"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
+const getBargains = unstable_cache(
+  () => prisma.listing.findMany({
+    where: { ...APPROVED, price: { gt: 0, lte: 100 } },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: LISTING_SELECT,
+  }),
+  ["home-bargains"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
+const getVehicules = unstable_cache(
+  () => prisma.listing.findMany({
+    where: { ...APPROVED, category: "vehicules" },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: LISTING_SELECT,
+  }),
+  ["home-vehicules"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
+const getImmobilier = unstable_cache(
+  () => prisma.listing.findMany({
+    where: { ...APPROVED, category: "immobilier" },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: LISTING_SELECT,
+  }),
+  ["home-immobilier"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
+const getMode = unstable_cache(
+  () => prisma.listing.findMany({
+    where: { ...APPROVED, category: "mode" },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+    select: LISTING_SELECT,
+  }),
+  ["home-mode"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
+const getRecents = unstable_cache(
+  () => prisma.listing.findMany({
+    where: APPROVED,
+    orderBy: { createdAt: "desc" },
+    take: 12,
+    select: LISTING_SELECT,
+  }),
+  ["home-recents"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
+const getActiveBanner = unstable_cache(
+  async () => {
+    const now = new Date();
+    return prisma.heroBanner.findFirst({
+      where: {
+        isActive: true,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
+      orderBy: { createdAt: "desc" },
+    }).catch(() => null);
+  },
+  ["home-banner"],
+  { revalidate: 3600, tags: ["listings"] }
+);
+
 function dedupe(listings: HomeListing[][]): HomeListing[][] {
   const seen = new Set<string>();
   return listings.map((row) => {
@@ -163,7 +246,6 @@ function dedupe(listings: HomeListing[][]): HomeListing[][] {
 }
 
 export default async function Home() {
-  const now = new Date();
   const [
     featured,
     bargains,
@@ -174,53 +256,14 @@ export default async function Home() {
     ads,
     activeBanner,
   ] = await Promise.all([
-    // À la une — premium d'abord, puis annonces de comptes pro vérifiés.
-    prisma.listing.findMany({
-      where: { ...APPROVED, OR: [{ isPremium: true }, { isVerified: true }, { user: { isPro: true } }] },
-      orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
-      take: 10,
-      select: LISTING_SELECT,
-    }),
-    // Bonnes affaires — prix faible, encore neuf sur le site.
-    prisma.listing.findMany({
-      where: { ...APPROVED, price: { gt: 0, lte: 100 } },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: LISTING_SELECT,
-    }),
-    prisma.listing.findMany({
-      where: { ...APPROVED, category: "vehicules" },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: LISTING_SELECT,
-    }),
-    prisma.listing.findMany({
-      where: { ...APPROVED, category: "immobilier" },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: LISTING_SELECT,
-    }),
-    prisma.listing.findMany({
-      where: { ...APPROVED, category: "mode" },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      select: LISTING_SELECT,
-    }),
-    prisma.listing.findMany({
-      where: APPROVED,
-      orderBy: { createdAt: "desc" },
-      take: 12,
-      select: LISTING_SELECT,
-    }),
+    getFeatured(),
+    getBargains(),
+    getVehicules(),
+    getImmobilier(),
+    getMode(),
+    getRecents(),
     getActiveAds(5).catch(() => []),
-    prisma.heroBanner.findFirst({
-      where: {
-        isActive: true,
-        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
-      },
-      orderBy: { createdAt: "desc" },
-    }).catch(() => null),
+    getActiveBanner(),
   ]);
 
   // Évite qu'une même annonce apparaisse dans plusieurs rangées.

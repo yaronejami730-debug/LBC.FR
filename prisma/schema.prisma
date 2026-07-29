@@ -177,6 +177,9 @@ model Listing {
   moderationEvents ModerationEvent[]
 
   @@index([status, deletedAt, shadowBanned])
+  @@index([status, deletedAt, shadowBanned, createdAt])
+  @@index([status, deletedAt, shadowBanned, category])
+  @@index([status, deletedAt, shadowBanned, category, subcategory, location])
   @@index([qualityScore])
   @@index([lshBand0])
   @@index([lshBand1])
