@@ -44,5 +44,15 @@
       "path": "/api/cron/listing-interest",
       "schedule": "0 */6 * * *"
     }
-  ]
+  ],
+  "experimentalServices": {
+    "frontend": {
+      "routePrefix": "/",
+      "framework": "nextjs"
+    },
+    "plate-blurrer": {
+      "entrypoint": "services/plate-blurrer",
+      "routePrefix": "/_/plate-blurrer"
+    }
+  }
 }
