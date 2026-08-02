@@ -602,12 +602,6 @@ export default async function ListingPage({
                   <span className="text-on-surface font-semibold">{vehicleMeta.puissanceFiscale} CV</span>
                 </div>
               )}
-              {vehicleMeta.immatriculation && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Immatriculation</span>
-                  <span className="text-on-surface font-semibold font-mono">{vehicleMeta.immatriculation}</span>
-                </div>
-              )}
               {vehicleMeta.motorisation && (
                 <div className="flex flex-col gap-1">
                   <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Motorisation</span>
@@ -941,7 +935,7 @@ export default async function ListingPage({
                 <h2 className="text-xl font-bold tracking-tight">Localisation</h2>
                 <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full">
                   <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
-                  <span className="text-primary font-bold text-xs">{listing.location}</span>
+                  <span className="text-primary font-bold text-xs">{cityShort}</span>
                 </div>
               </div>
 
@@ -953,7 +947,7 @@ export default async function ListingPage({
                   loading="lazy"
                   allowFullScreen
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(listing.location)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(cityShort)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                   className="absolute inset-0 z-0 group-hover:filter-none transition-all duration-700"
                 ></iframe>
                 <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/10 via-transparent to-transparent z-10"></div>

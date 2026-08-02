@@ -22,7 +22,7 @@ export default function SellerActions({
   const [phoneRevealed, setPhoneRevealed] = useState(false);
 
   const hasPhone = !!phone && !hidePhone;
-  const hasWhatsApp = !!phone;
+  const hasWhatsApp = !!phone && !hidePhone;
 
   async function startConversation() {
     setLoading(true);
