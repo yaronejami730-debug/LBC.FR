@@ -8,6 +8,9 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
+import AdvertiserLeadSection from "@/components/home/AdvertiserLeadSection";
+import { CATEGORIES } from "@/lib/categories";
+import { getSeoInventory } from "@/lib/seo/inventory";
 import SiteFooter from "@/components/SiteFooter";
 import ListingRow from "@/components/home/ListingRow";
 import ListingCard, { type HomeListing } from "@/components/home/ListingCard";
@@ -259,6 +262,7 @@ export default async function Home() {
     recents,
     ads,
     activeBanner,
+    inventory,
   ] = await Promise.all([
     getFeatured(),
     getBargains(),
@@ -268,6 +272,7 @@ export default async function Home() {
     getRecents(),
     getActiveAds(5).catch(() => []),
     getActiveBanner(),
+    getSeoInventory(),
   ]);
 
   // Évite qu'une même annonce apparaisse dans plusieurs rangées.
@@ -631,6 +636,12 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* Devenir annonceur — dernier bloc avant le pied de page */}
+      <AdvertiserLeadSection
+        listingsCount={inventory.total}
+        categoriesCount={CATEGORIES.length}
+      />
 
       {/* Footer */}
       <SiteFooter />

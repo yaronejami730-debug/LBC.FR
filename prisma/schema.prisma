@@ -161,13 +161,13 @@ model Listing {
   flagsJson             String   @default("[]")
 
   // Risk engine — empreinte SimHash (hex 16 car.) + bandes LSH + score de risque
-  simhash       String?
-  lshBand0      Int?
-  lshBand1      Int?
-  lshBand2      Int?
-  lshBand3      Int?
-  riskScore     Int     @default(0)
-  riskDecision  String?
+  simhash      String?
+  lshBand0     Int?
+  lshBand1     Int?
+  lshBand2     Int?
+  lshBand3     Int?
+  riskScore    Int     @default(0)
+  riskDecision String?
 
   conversations    Conversation[]
   user             User              @relation(fields: [userId], references: [id])
@@ -423,25 +423,25 @@ model SearchLog {
 }
 
 model Advertisement {
-  id             String    @id @default(cuid())
-  title          String
-  description    String
-  imageUrl       String
-  imageUrlWide   String?
-  destinationUrl String
-  isActive       Boolean   @default(true)
-  clicks         Int       @default(0)
-  impressions    Int       @default(0)
+  id              String    @id @default(cuid())
+  title           String
+  description     String
+  imageUrl        String
+  imageUrlWide    String?
+  destinationUrl  String
+  isActive        Boolean   @default(true)
+  clicks          Int       @default(0)
+  impressions     Int       @default(0)
   // Impressions par emplacement
-  impCarousel    Int       @default(0) // Bannière accueil
-  impRotator     Int       @default(0) // Encart page annonce
-  impGrid        Int       @default(0) // Fil de résultats
-  impInterstitial Int      @default(0) // Plein écran modal
+  impCarousel     Int       @default(0) // Bannière accueil
+  impRotator      Int       @default(0) // Encart page annonce
+  impGrid         Int       @default(0) // Fil de résultats
+  impInterstitial Int       @default(0) // Plein écran modal
   /// Si vrai : affichée en plein écran (interstitielle) à l'ouverture de l'app.
-  isInterstitial Boolean   @default(false)
-  scheduledAt    DateTime?
-  expiresAt      DateTime?
-  createdAt      DateTime  @default(now())
+  isInterstitial  Boolean   @default(false)
+  scheduledAt     DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
 }
 
 model SeoPageContent {
@@ -482,9 +482,9 @@ model PetProService {
   postalCode  String?
   photos      String  @default("[]")
 
-  stripeAccountId      String?  @unique
-  stripeChargesEnabled Boolean  @default(false)
-  stripePayoutsEnabled Boolean  @default(false)
+  stripeAccountId      String?   @unique
+  stripeChargesEnabled Boolean   @default(false)
+  stripePayoutsEnabled Boolean   @default(false)
   kycCompletedAt       DateTime?
 
   isPublished Boolean @default(false)
@@ -615,19 +615,19 @@ model PetReview {
 // dérive de position. Les détails (requêtes, pages, mots-clés) sont stockés
 // en JSON sérialisé, comme `ModerationEvent.flagsJson`.
 model SeoSnapshot {
-  id         String   @id @default(cuid())
+  id             String   @id @default(cuid())
   // Fenêtre d'analyse réellement interrogée (latence Search Console ~3 j).
-  startDate  String
-  endDate    String
+  startDate      String
+  endDate        String
   // Agrégats globaux sur la fenêtre.
-  clicks      Int   @default(0)
-  impressions Int   @default(0)
-  ctr         Float @default(0)
-  position    Float @default(0)
+  clicks         Int      @default(0)
+  impressions    Int      @default(0)
+  ctr            Float    @default(0)
+  position       Float    @default(0)
   // Données détaillées sérialisées (tableaux JSON).
-  topQueriesJson String @default("[]")
-  topPagesJson   String @default("[]")
-  emergingJson   String @default("[]")
+  topQueriesJson String   @default("[]")
+  topPagesJson   String   @default("[]")
+  emergingJson   String   @default("[]")
   createdAt      DateTime @default(now())
 
   @@index([createdAt])
@@ -640,10 +640,10 @@ model SeoSnapshot {
 model Draft {
   id           String   @id @default(cuid())
   userId       String   @unique
-  payload      String                 // instantané JSON du formulaire
+  payload      String // instantané JSON du formulaire
   category     String?
-  step         Int      @default(0)   // étape de l'assistant atteinte
-  completeness Int      @default(0)    // 0–100 — % de champs requis remplis
+  step         Int      @default(0) // étape de l'assistant atteinte
+  completeness Int      @default(0) // 0–100 — % de champs requis remplis
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -660,8 +660,8 @@ model EmailEvent {
   userId    String?
   email     String
   emailType String   @default("transactional")
-  kind      String   // "sent" | "open" | "click"
-  url       String?  // destination, pour kind = "click"
+  kind      String // "sent" | "open" | "click"
+  url       String? // destination, pour kind = "click"
   createdAt DateTime @default(now())
 
   @@index([userId, kind])
@@ -691,16 +691,16 @@ model UserEvent {
 /// sont les clés cryptographiques de la souscription (RFC 8291). Disabled
 /// quand l'envoi a échoué de manière permanente (410 Gone, 404).
 model PushSubscription {
-  id           String   @id @default(cuid())
-  userId       String
-  endpoint     String   @unique
-  p256dh       String
-  auth         String
-  userAgent    String?
-  createdAt    DateTime @default(now())
-  lastUsedAt   DateTime @default(now())
-  disabledAt   DateTime?
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  disabledAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, disabledAt])
 }
@@ -709,16 +709,46 @@ model PushSubscription {
 /// Le token est l'identifiant unique délivré par Expo (ExponentPushToken[…]).
 /// Désactivé quand Expo renvoie DeviceNotRegistered ou InvalidCredentials.
 model ExpoPushToken {
-  id          String    @id @default(cuid())
-  userId      String
-  token       String    @unique
-  platform    String?
-  deviceName  String?
-  appVersion  String?
-  createdAt   DateTime  @default(now())
-  lastUsedAt  DateTime  @default(now())
-  disabledAt  DateTime?
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  userId     String
+  token      String    @unique
+  platform   String?
+  deviceName String?
+  appVersion String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  disabledAt DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, disabledAt])
+}
+
+/// Demande de contact d'un annonceur potentiel, déposée depuis la page
+/// d'accueil. Le prospect ne crée pas de compte : on collecte le strict
+/// nécessaire pour rappeler sous 24-48 h. Le suivi commercial se fait dans
+/// l'admin (statut + notes), jamais côté public.
+model AdvertiserLead {
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String
+  phone       String
+  /// Budget publicitaire annoncé, en libellé de tranche (ex. "1000-5000").
+  budget      String
+  company     String?
+  message     String?
+  /// NEW | CONTACTED | QUALIFIED | WON | LOST
+  status      String    @default("NEW")
+  /// Page ou campagne d'origine, pour mesurer ce qui convertit.
+  source      String?
+  userAgent   String?
+  ip          String?
+  /// Notes internes de l'équipe commerciale.
+  notes       String?
+  contactedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
 }
