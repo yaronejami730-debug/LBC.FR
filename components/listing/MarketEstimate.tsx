@@ -1,31 +1,30 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import {
+  computePriceSignal,
+  MIN_VEHICLE_COMPARABLES,
+  type Comparable,
+} from "@/lib/market/price-signal";
 
 interface Props {
   listingId: string;
   marque: string;
   modele: string;
   currentPrice: number;
+  km?: number | null;
 }
 
-interface Verdict {
-  label: string;
-  tone: "good" | "neutral" | "bad";
-  icon: string;
-}
-
-function classify(current: number, avg: number): Verdict {
-  const delta = (current - avg) / avg;
-  if (delta <= -0.10) return { label: "Bonne affaire potentielle", tone: "good", icon: "trending_down" };
-  if (delta <= -0.03) return { label: "Sous le prix moyen", tone: "good", icon: "thumb_up" };
-  if (delta >= 0.15) return { label: "Au-dessus du marché", tone: "bad", icon: "trending_up" };
-  if (delta >= 0.05) return { label: "Légèrement au-dessus du marché", tone: "neutral", icon: "info" };
-  return { label: "Dans la moyenne du marché", tone: "neutral", icon: "balance" };
-}
-
-export default async function MarketEstimate({ listingId, marque, modele, currentPrice }: Props) {
-  const agg = await prisma.listing
-    .aggregate({
+/**
+ * Cote marché d'un véhicule.
+ *
+ * Le bloc ne s'affiche qu'à partir de MIN_VEHICLE_COMPARABLES annonces
+ * comparables : en dessous, « bonne affaire » n'est qu'une moyenne sur trois
+ * vendeurs. Le prix attendu suit le kilométrage quand les comparables le
+ * renseignent (cf. lib/market/price-signal).
+ */
+export default async function MarketEstimate({ listingId, marque, modele, currentPrice, km }: Props) {
+  const rows = await prisma.listing
+    .findMany({
       where: {
         id: { not: listingId },
         status: "APPROVED",
@@ -35,25 +34,32 @@ export default async function MarketEstimate({ listingId, marque, modele, curren
         price: { gt: 0 },
         metadata: { contains: modele, mode: "insensitive" },
       } as any,
-      _avg: { price: true },
-      _min: { price: true },
-      _max: { price: true },
-      _count: { _all: true },
+      select: { price: true, vehicleKm: true },
+      take: 500,
     })
     .catch(() => null);
 
-  if (!agg || agg._count._all < 3 || !agg._avg.price) return null;
+  if (!rows || rows.length < MIN_VEHICLE_COMPARABLES) return null;
 
-  const count = agg._count._all;
-  const avg = Math.round(agg._avg.price);
-  const min = Math.round(agg._min.price ?? 0);
-  const max = Math.round(agg._max.price ?? 0);
-  const verdict = classify(currentPrice, avg);
+  const comparables: Comparable[] = rows.map((r) => ({ price: r.price, km: r.vehicleKm }));
+  const signal = computePriceSignal({
+    price: currentPrice,
+    isVehicle: true,
+    km,
+    comparables,
+  });
+  if (!signal) return null;
+
+  const prices = comparables.map((c) => c.price).sort((a, b) => a - b);
+  const min = Math.round(prices[0]);
+  const max = Math.round(prices[prices.length - 1]);
+  const count = signal.count;
+  const expected = signal.expected;
 
   const toneClass =
-    verdict.tone === "good"
+    signal.tone === "great" || signal.tone === "good"
       ? "bg-emerald-50 text-emerald-800 border-emerald-100"
-      : verdict.tone === "bad"
+      : signal.tone === "high"
       ? "bg-rose-50 text-rose-800 border-rose-100"
       : "bg-slate-50 text-slate-700 border-slate-200";
 
@@ -78,12 +84,17 @@ export default async function MarketEstimate({ listingId, marque, modele, curren
         </span>
       </div>
       <p className="text-xs text-outline mb-5">
-        Basé sur {count.toLocaleString("fr-FR")} annonce{count > 1 ? "s" : ""} actives Deal&amp;Co similaires.
+        Basé sur {count.toLocaleString("fr-FR")} annonces actives Deal&amp;Co similaires
+        {signal.basis === "km" ? ", à kilométrage comparable" : ""}.
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
         <Stat label="Min" value={`${min.toLocaleString("fr-FR")} €`} />
-        <Stat label="Moyen" value={`${avg.toLocaleString("fr-FR")} €`} highlight />
+        <Stat
+          label={signal.basis === "km" ? "Attendu" : "Médian"}
+          value={`${expected.toLocaleString("fr-FR")} €`}
+          highlight
+        />
         <Stat label="Max" value={`${max.toLocaleString("fr-FR")} €`} />
       </div>
 
@@ -97,12 +108,13 @@ export default async function MarketEstimate({ listingId, marque, modele, curren
 
       <div className={`flex items-start gap-3 rounded-xl border p-3 mb-4 ${toneClass}`}>
         <span className="material-symbols-outlined text-[20px] leading-none" style={{ fontVariationSettings: "'FILL' 1" }}>
-          {verdict.icon}
+          {signal.icon}
         </span>
         <div className="text-sm leading-snug">
-          <strong className="font-bold">{verdict.label}</strong> — {currentPrice.toLocaleString("fr-FR")} € vs moyenne marché {avg.toLocaleString("fr-FR")} €
-          {currentPrice !== avg && (
-            <> ({currentPrice > avg ? "+" : ""}{Math.round(((currentPrice - avg) / avg) * 100)}%)</>
+          <strong className="font-bold">{signal.label}</strong> — {currentPrice.toLocaleString("fr-FR")} € vs{" "}
+          {signal.basis === "km" ? "prix attendu" : "prix médian"} {expected.toLocaleString("fr-FR")} €
+          {signal.deltaPct !== 0 && (
+            <> ({signal.deltaPct > 0 ? "+" : ""}{signal.deltaPct}%)</>
           )}
           .
         </div>

@@ -157,7 +157,7 @@ export default function HomeScreen() {
             {/* ── Base / fallback : jamais vide, jamais l'anarchie ────────── */}
             <ListingRow title="Annonces récentes" subtitle="Tout ce qui vient d'être publié" listings={data.recents} seeAllHref="/recherche" ad={adAt(1)} />
             <ListingRow title="Coups de cœur" subtitle="Sélection vérifiée et mise en avant" listings={data.featured} seeAllHref="/recherche" />
-            <ListingRow title="Bonnes affaires" subtitle="Sous les 100 €" listings={data.bargains} badge="Bonne affaire" seeAllHref="/recherche" ad={adAt(2)} />
+            <ListingRow title="Bonnes affaires" subtitle="Sous les 100 €" listings={data.bargains} badge="Moins de 100 €" seeAllHref="/recherche" ad={adAt(2)} />
             <ListingRow title="Voitures d'occasion" listings={data.vehicules} seeAllHref="/recherche?category=Véhicules" />
             <ListingRow title="Immobilier" listings={data.immobilier} seeAllHref="/recherche?category=Immobilier" ad={adAt(3)} />
             <ListingRow title="Mode" listings={data.mode} seeAllHref="/recherche?category=Mode" />

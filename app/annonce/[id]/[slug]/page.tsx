@@ -14,6 +14,7 @@ import ReportButton from "../ReportButton";
 import OwnerActions from "../OwnerActions";
 import PhotoGallery from "../PhotoGallery";
 import MarketEstimate from "@/components/listing/MarketEstimate";
+import PriceSignalNote from "@/components/listing/PriceSignalNote";
 import HistoryTracker from "@/components/HistoryTracker";
 import ProBadge from "@/components/ProBadge";
 import ListingInfoTip from "../ListingInfoTip";
@@ -897,6 +898,24 @@ export default async function ListingPage({
                   listingId={listing.id}
                   marque={vehicleMeta.marque}
                   modele={vehicleMeta.modele}
+                  currentPrice={listing.price}
+                  km={
+                    listing.vehicleKm ??
+                    (vehicleMeta.kilometrage
+                      ? parseInt(String(vehicleMeta.kilometrage).replace(/\D/g, ""), 10) || null
+                      : null)
+                  }
+                />
+              </Suspense>
+            )}
+
+            {!isVehicle && (
+              <Suspense fallback={null}>
+                <PriceSignalNote
+                  listingId={listing.id}
+                  category={listing.category}
+                  subcategory={listing.subcategory}
+                  brand={listing.brand}
                   currentPrice={listing.price}
                 />
               </Suspense>

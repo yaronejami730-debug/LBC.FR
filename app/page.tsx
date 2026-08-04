@@ -480,7 +480,7 @@ export default async function Home() {
         subtitle="Sous les 100 €"
         href="/search?priceMax=100"
         hrefLabel="Toutes les bonnes affaires"
-        cardBadge={{ label: "Bonne affaire", tone: "bargain" }}
+        cardBadge={{ label: "Moins de 100 €", tone: "bargain" }}
         listings={bargainsRow}
       />
 
