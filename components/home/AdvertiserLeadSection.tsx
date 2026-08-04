@@ -77,7 +77,9 @@ export default function AdvertiserLeadSection({
   }
 
   return (
-    <section id="annonceurs" className="scroll-mt-24 px-6 pt-4 pb-10 max-w-7xl mx-auto">
+    // Placé en tête de la home, entre la barre de catégories et la bannière
+    // photo. La largeur et les marges latérales viennent du <header> parent.
+    <section id="annonceurs" className="scroll-mt-24 mb-4">
       <div className="rounded-2xl border border-surface-container bg-white">
         {/* Ligne d'accroche — toujours visible, jamais envahissante. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">

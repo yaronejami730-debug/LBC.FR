@@ -295,6 +295,10 @@ export default async function Home() {
 
       {/* Hero */}
       <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
+        <AdvertiserLeadSection
+          listingsCount={inventory.total}
+          categoriesCount={CATEGORIES.length}
+        />
         {activeBanner?.bgImage ? (
           // Variante photo : l'image dicte la hauteur (ratio natif, jamais de
           // crop). Le texte est superposé seulement si `showText` est actif
@@ -636,12 +640,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* Devenir annonceur — dernier bloc avant le pied de page */}
-      <AdvertiserLeadSection
-        listingsCount={inventory.total}
-        categoriesCount={CATEGORIES.length}
-      />
 
       {/* Footer */}
       <SiteFooter />
