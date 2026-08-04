@@ -31,6 +31,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://www.dealandcompany.fr" },
 };
 
+/** Titre de niveau 1 de la page d'accueil. Constant, jamais piloté par une
+ *  campagne : c'est le libellé sur lequel la home se positionne. */
+const HOME_H1 = "Petites annonces gratuites entre particuliers en France";
+
 const HOME_FAQ = [
   {
     q: "Qu'est-ce que Deal&Co ?",
@@ -291,6 +295,11 @@ export default async function Home() {
           // crop). Le texte est superposé seulement si `showText` est actif
           // (sinon : photo seule, lisible et propre).
           <div className="relative rounded-2xl overflow-hidden">
+            {/* La bannière photo peut n'afficher aucun texte : sans ce H1, la
+                page la plus forte du site partait en production sans aucun
+                titre de niveau 1. Le titre de campagne, lui, reste un simple
+                paragraphe — il décrit une promo, pas le sujet de la page. */}
+            <h1 className="sr-only">{HOME_H1}</h1>
             <img
               src={activeBanner.bgImage}
               alt={activeBanner.title ?? ""}
@@ -301,9 +310,9 @@ export default async function Home() {
                 <div className="absolute inset-0 bg-black/35" />
                 <div className="absolute inset-0 p-6 md:p-10 flex items-end md:items-center">
                   <div className="relative z-10 max-w-2xl">
-                    <h1 className="text-white text-2xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
+                    <p className="text-white text-2xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
                       {activeBanner.title}
-                    </h1>
+                    </p>
                     {activeBanner.subtitle && (
                       <p className="text-white/90 text-sm md:text-lg mt-3 leading-relaxed drop-shadow">
                         {activeBanner.subtitle}
@@ -341,7 +350,7 @@ export default async function Home() {
           >
             <div className="relative z-10 max-w-2xl">
               <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight leading-tight drop-shadow">
-                {activeBanner?.title ?? "Petites annonces gratuites entre particuliers en France"}
+                {activeBanner?.title ?? HOME_H1}
               </h1>
               {activeBanner?.subtitle && (
                 <p className="text-white/90 text-base md:text-lg mt-3 leading-relaxed drop-shadow">{activeBanner.subtitle}</p>

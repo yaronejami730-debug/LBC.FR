@@ -6,6 +6,8 @@ import { CAR_BRANDS } from "@/lib/carBrands";
 import { CATEGORIES } from "@/lib/categories";
 import { slugToSubcategoryLabel, subcategoryToSlug } from "@/lib/seo-content";
 import { listingUrl } from "@/lib/listing-slug";
+import { brandMetadataFilter, parseVehicleMeta } from "@/lib/vehicle-meta";
+import { getSeoInventory, isIndexable, listingPageRobots, slugifyValue } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -14,21 +16,24 @@ import ListingCard from "@/components/home/ListingCard";
 const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 3600;
 
-function slugToMarque(slug: string): string {
-  return slug
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ")
-    .replace(/Benz$/, "-Benz")
-    .replace(/Rover$/, "Rover");
-}
+/**
+ * Slug → marque, par table de correspondance.
+ *
+ * L'ancienne version reconstruisait le nom en recapitalisant les mots du slug,
+ * ce qui échouait sur toute marque accentuée : `citroen` redonnait « Citroen »,
+ * qui ne correspond à aucune entrée du référentiel (« Citroën »). La page
+ * partait alors en 404 alors que la marque existe. On indexe donc une fois pour
+ * toutes, avec la même normalisation que le reste du SEO.
+ */
+const BRAND_BY_SLUG = new Map(CAR_BRANDS.map((b) => [slugifyValue(b.name), b]));
 
-function marqueToSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-export function generateStaticParams() {
-  const brandParams = CAR_BRANDS.map((b) => ({ marque: marqueToSlug(b.name) }));
+/** Les 40+ marques du référentiel n'ont pas toutes du stock. On ne pré-rend que
+ *  celles qui en ont ; les autres restent servies à la demande, en `noindex`. */
+export async function generateStaticParams() {
+  const inv = await getSeoInventory();
+  const brandParams = Object.entries(inv.byBrand)
+    .filter(([, count]) => isIndexable(count))
+    .map(([marque]) => ({ marque }));
   // Sous-catégories véhicules — partagent la même route.
   const subParams =
     CATEGORIES.find((c) => c.id === "vehicules")?.subcategories.map((s) => ({
@@ -47,8 +52,7 @@ export async function generateMetadata({
   const { marque: marqueSlug } = await params;
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
-  const marque = slugToMarque(marqueSlug);
-  const brand = CAR_BRANDS.find((b) => b.name.toLowerCase() === marque.toLowerCase());
+  const brand = BRAND_BY_SLUG.get(marqueSlug);
 
   if (!brand) {
     // Sous-catégorie véhicule (Motos, Caravaning, Utilitaires, Équipements auto).
@@ -61,7 +65,7 @@ export async function generateMetadata({
       title: `${subLabel} d'occasion entre particuliers — ${subCount} annonce${subCount !== 1 ? "s" : ""} — Deal&Co`,
       description: `Achetez ou vendez ${subLabel.toLowerCase()} d'occasion entre particuliers en France. ${subCount} annonce${subCount !== 1 ? "s" : ""} disponible${subCount !== 1 ? "s" : ""} sur Deal&Co, sans commission.`,
       alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
-      robots: page > 1 ? { index: false, follow: true } : undefined,
+      robots: listingPageRobots(subCount, page),
     };
   }
 
@@ -70,7 +74,7 @@ export async function generateMetadata({
       status: "APPROVED",
       deletedAt: null,
       category: "Véhicules",
-      metadata: { contains: brand.name, mode: "insensitive" },
+      metadata: { contains: brandMetadataFilter(brand.name), mode: "insensitive" },
     },
   }).catch(() => 0);
 
@@ -78,7 +82,7 @@ export async function generateMetadata({
     title: `${brand.name} occasion entre particuliers — ${count} annonce${count !== 1 ? "s" : ""} — Deal&Co`,
     description: `Achetez une ${brand.name} d'occasion entre particuliers en France. ${count} annonce${count !== 1 ? "s" : ""} de particuliers sans commission. Toutes les ${brand.name} disponibles sur Deal&Co.`,
     alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
-    robots: page > 1 ? { index: false, follow: true } : undefined,
+    robots: listingPageRobots(count, page),
     openGraph: {
       title: `${brand.name} occasion — Petites annonces particuliers`,
       description: `${count} ${brand.name} d'occasion entre particuliers en France. Sans frais d'agence, contact direct avec le vendeur.`,
@@ -102,8 +106,7 @@ export default async function MarquePage({
   const { marque: marqueSlug } = await params;
   const { page: pageParam } = await searchParams;
 
-  const marque = slugToMarque(marqueSlug);
-  const brand = CAR_BRANDS.find((b) => b.name.toLowerCase() === marque.toLowerCase());
+  const brand = BRAND_BY_SLUG.get(marqueSlug);
 
   // La route /annonces/vehicules/<slug> capture aussi les sous-catégories
   // (Motos, Caravaning, Utilitaires, Équipements auto). Si le slug n'est pas
@@ -124,7 +127,7 @@ export default async function MarquePage({
     status: "APPROVED",
     deletedAt: null,
     category: "Véhicules",
-    metadata: { contains: brand.name, mode: "insensitive" },
+    metadata: { contains: brandMetadataFilter(brand.name), mode: "insensitive" },
   };
 
   const [listings, total, priceAgg] = await Promise.all([
@@ -156,6 +159,13 @@ export default async function MarquePage({
 
   if (total === 0 && page === 1) notFound();
 
+  // « Autres marques » ne doit proposer que des marques qui ont du stock :
+  // sinon chaque page marque sème des liens vers des 404.
+  const inv = await getSeoInventory();
+  const otherBrands = CAR_BRANDS.filter(
+    (b) => b.name !== brand.name && (inv.byBrand[slugifyValue(b.name)] ?? 0) > 0,
+  ).slice(0, 12);
+
   const totalPages = Math.ceil(total / PER_PAGE);
   const avgPrice = Math.round(priceAgg._avg.price ?? 0);
   const minPrice = Math.round(priceAgg._min.price ?? 0);
@@ -163,22 +173,15 @@ export default async function MarquePage({
   // Discover popular models from listings metadata to build maillage interne
   const modelStats = new Map<string, { count: number; raw: string }>();
   for (const l of listings) {
-    try {
-      const meta = JSON.parse(l.metadata) as { modele?: string };
-      if (!meta.modele) continue;
-      const slug = meta.modele
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-      if (!slug) continue;
-      const existing = modelStats.get(slug);
-      modelStats.set(slug, {
-        count: (existing?.count ?? 0) + 1,
-        raw: existing?.raw ?? meta.modele,
-      });
-    } catch {}
+    const { modele } = parseVehicleMeta(l.metadata);
+    if (!modele) continue;
+    const slug = slugifyValue(modele);
+    if (!slug) continue;
+    const existing = modelStats.get(slug);
+    modelStats.set(slug, {
+      count: (existing?.count ?? 0) + 1,
+      raw: existing?.raw ?? modele,
+    });
   }
   const topModels = Array.from(modelStats.entries())
     .sort((a, b) => b[1].count - a[1].count)
@@ -360,10 +363,10 @@ export default async function MarquePage({
         <section className="mt-10">
           <h3 className="text-base font-bold text-on-surface mb-3">Autres marques disponibles</h3>
           <div className="flex flex-wrap gap-2">
-            {CAR_BRANDS.filter((b) => b.name !== brand.name).slice(0, 12).map((b) => (
+            {otherBrands.map((b) => (
               <Link
                 key={b.name}
-                href={`/annonces/vehicules/${marqueToSlug(b.name)}`}
+                href={`/annonces/vehicules/${slugifyValue(b.name)}`}
                 className="px-3 py-1.5 bg-white border border-surface-container rounded-full text-xs font-semibold text-on-surface-variant hover:border-primary/40 hover:text-primary transition-colors"
               >
                 {b.name}

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES, slugToCity, citySlug as toCitySlug } from "@/lib/cities";
 import { listingUrl } from "@/lib/listing-slug";
+import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -15,8 +16,13 @@ export const dynamicParams = true;
 
 const BASE = "https://www.dealandcompany.fr";
 
+/** Seules les villes qui ont réellement du stock sont pré-rendues ; les autres
+ *  restent accessibles à la demande (`dynamicParams`) mais en `noindex`. */
 export async function generateStaticParams() {
-  return FRENCH_CITIES.slice(0, 40).map((c) => ({ slug: c.slug }));
+  const inv = await getSeoInventory();
+  return Object.entries(inv.byCity)
+    .filter(([, count]) => isIndexable(count))
+    .map(([slug]) => ({ slug }));
 }
 
 export async function generateMetadata({
@@ -33,12 +39,11 @@ export async function generateMetadata({
       where: {
         status: "APPROVED",
         deletedAt: null,
+        shadowBanned: false,
         location: { contains: city.name, mode: "insensitive" },
       } as any,
     })
     .catch(() => 0);
-
-  if (total === 0) return { robots: { index: false, follow: true } };
 
   const countLabel = `${total.toLocaleString("fr-FR")} annonce${total > 1 ? "s" : ""}`;
   const title = `Annonces à ${city.name} (${city.departmentCode}) — ${countLabel} gratuites`;
@@ -50,6 +55,10 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical },
+    // Une page ville avec une ou deux annonces ne sert personne : Google la
+    // classe en contenu mince et le signal rejaillit sur tout le domaine. On
+    // la sert quand même (liens suivis), sans la faire entrer dans l'index.
+    robots: isIndexable(total) ? undefined : { index: false, follow: true },
     openGraph: {
       title,
       description,

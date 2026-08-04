@@ -7,6 +7,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { TOP_CITIES } from "@/lib/cities";
 import { subcategoryToSlug, fallbackContent } from "@/lib/seo-content";
 import { getRelatedBlogPosts } from "@/lib/blog/category-links";
+import { listingPageRobots } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -19,7 +20,9 @@ export const revalidate = 3600;
 
 const getCategoryTotal = cache((label: string) =>
   prisma.listing
-    .count({ where: { status: "APPROVED", deletedAt: null, category: label } as any })
+    .count({
+      where: { status: "APPROVED", deletedAt: null, shadowBanned: false, category: label } as any,
+    })
     .catch(() => 0),
 );
 
@@ -56,7 +59,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `${BASE}/annonces/${cat.id}` },
-    robots: page > 1 ? { index: false, follow: true } : undefined,
+    robots: listingPageRobots(total, page),
     openGraph: {
       title,
       description,
@@ -94,7 +97,7 @@ export default async function CategoryPage({
 
   const [listings, total, priceAgg] = await Promise.all([
     prisma.listing.findMany({
-      where: { status: "APPROVED", deletedAt: null, category: cat.label } as any,
+      where: { status: "APPROVED", deletedAt: null, shadowBanned: false, category: cat.label } as any,
       orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
       take: PER_PAGE,
       skip,
@@ -102,7 +105,13 @@ export default async function CategoryPage({
     }),
     getCategoryTotal(cat.label),
     prisma.listing.aggregate({
-      where: { status: "APPROVED", deletedAt: null, category: cat.label, price: { gt: 0 } } as any,
+      where: {
+        status: "APPROVED",
+        deletedAt: null,
+        shadowBanned: false,
+        category: cat.label,
+        price: { gt: 0 },
+      } as any,
       _min: { price: true },
       _max: { price: true },
     }),
@@ -110,8 +119,11 @@ export default async function CategoryPage({
 
   const totalPages = Math.ceil(total / PER_PAGE);
 
-  // 404 for empty categories — cleaner signal than noindex (stops crawl budget waste)
-  if (total === 0 && page === 1) notFound();
+  // Une catégorie vide n'est plus une 404 : la navigation et le pied de page
+  // pointent vers les 13 catégories, et renvoyer une erreur depuis chaque page
+  // du site est un signal bien pire qu'une page pauvre. On sert donc l'état
+  // vide avec un appel à publier — `generateMetadata` pose le `noindex`, donc
+  // rien n'entre dans l'index et le budget d'exploration reste protégé.
 
   const seo = fallbackContent({ categoryId: cat.id });
   const relatedPosts = getRelatedBlogPosts(cat.id, 4);

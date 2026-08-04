@@ -5,6 +5,8 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { CAR_BRANDS } from "@/lib/carBrands";
 import { listingUrl } from "@/lib/listing-slug";
+import { brandMetadataFilter, parseVehicleMeta } from "@/lib/vehicle-meta";
+import { listingPageRobots } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -35,7 +37,7 @@ const getListings = cache(
         deletedAt: null,
         shadowBanned: false,
         category: "Véhicules",
-        metadata: { contains: marque, mode: "insensitive" },
+        metadata: { contains: brandMetadataFilter(marque), mode: "insensitive" },
       } as any,
       orderBy: [{ isPremium: "desc" }, { createdAt: "desc" }],
       take: 200,
@@ -52,13 +54,8 @@ const getListings = cache(
     }).catch(() => []);
 
     return rows.filter((l) => {
-      try {
-        const meta = JSON.parse(l.metadata) as { modele?: string };
-        if (!meta.modele) return false;
-        return slugify(meta.modele) === modeleSlug;
-      } catch {
-        return false;
-      }
+      const { modele } = parseVehicleMeta(l.metadata);
+      return modele !== null && slugify(modele) === modeleSlug;
     });
   },
 );
@@ -77,18 +74,7 @@ export async function generateMetadata({
   if (!marqueLabel) return {};
 
   const rows = await getListings(marqueLabel, modele);
-  if (rows.length === 0) return { robots: { index: false, follow: true } };
-
-  const sampleModel =
-    rows
-      .map((l) => {
-        try {
-          return JSON.parse(l.metadata).modele as string;
-        } catch {
-          return null;
-        }
-      })
-      .find(Boolean) ?? modele;
+  const sampleModel = rows.map((l) => parseVehicleMeta(l.metadata).modele).find(Boolean) ?? modele;
 
   const canonical = `${BASE}/annonces/vehicules/${marque}/${modele}`;
   const title = `${marqueLabel} ${sampleModel} occasion — ${rows.length} annonce${rows.length > 1 ? "s" : ""} entre particuliers`;
@@ -98,7 +84,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical },
-    robots: page > 1 ? { index: false, follow: true } : undefined,
+    robots: listingPageRobots(rows.length, page),
     openGraph: {
       title,
       description,
@@ -129,16 +115,7 @@ export default async function ModelePage({
   const rows = await getListings(marqueLabel, modele);
   if (rows.length === 0) notFound();
 
-  const sampleModel =
-    rows
-      .map((l) => {
-        try {
-          return JSON.parse(l.metadata).modele as string;
-        } catch {
-          return null;
-        }
-      })
-      .find(Boolean) ?? modele;
+  const sampleModel = rows.map((l) => parseVehicleMeta(l.metadata).modele).find(Boolean) ?? modele;
 
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
   const skip = (page - 1) * PER_PAGE;

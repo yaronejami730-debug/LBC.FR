@@ -11,6 +11,7 @@ import {
   slugToSubcategoryLabel,
 } from "@/lib/seo-content";
 import { getRelatedBlogPostsForCity } from "@/lib/blog/category-links";
+import { getSeoInventory, isIndexable, listingPageRobots } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -23,8 +24,6 @@ export const revalidate = 86400;
 export const dynamicParams = true;
 
 const BASE = "https://www.dealandcompany.fr";
-const PRIORITY_CATEGORIES = ["vehicules", "immobilier", "multimedia", "mode", "maison"];
-const PRIORITY_CITIES = TOP_CITIES.slice(0, 15);
 
 type RouteShape =
   | { kind: "city"; citySlug: string }
@@ -50,31 +49,23 @@ function parseSlug(categorie: string, slug: string[]): RouteShape | null {
   return null;
 }
 
+/**
+ * On ne pré-rend que les combinaisons qui ont réellement du stock.
+ *
+ * L'ancienne version générait le produit cartésien catégories × villes ×
+ * sous-catégories — environ 800 pages compilées à chaque build, dont la quasi-
+ * totalité vides. `dynamicParams` reste à `true` : toute autre combinaison est
+ * rendue à la demande, puis mise en cache par le CDN.
+ */
 export async function generateStaticParams() {
+  const inv = await getSeoInventory();
   const params: { categorie: string; slug: string[] }[] = [];
 
-  for (const cat of CATEGORIES) {
-    for (const city of TOP_CITIES) {
-      params.push({ categorie: cat.id, slug: [city.slug] });
-    }
-  }
-
-  // Sub-only landing pages (cat × sub)
-  for (const cat of CATEGORIES) {
-    for (const sub of cat.subcategories) {
-      params.push({ categorie: cat.id, slug: [subcategoryToSlug(sub)] });
-    }
-  }
-
-  for (const cat of CATEGORIES) {
-    if (!PRIORITY_CATEGORIES.includes(cat.id)) continue;
-    for (const sub of cat.subcategories) {
-      for (const city of PRIORITY_CITIES) {
-        params.push({
-          categorie: cat.id,
-          slug: [subcategoryToSlug(sub), city.slug],
-        });
-      }
+  for (const bucket of [inv.byCategorySub, inv.byCategoryCity, inv.byCategorySubCity]) {
+    for (const [key, count] of Object.entries(bucket)) {
+      if (!isIndexable(count)) continue;
+      const [categorie, ...slug] = key.split("/");
+      params.push({ categorie, slug });
     }
   }
 
@@ -139,7 +130,7 @@ export async function generateMetadata({
     keywords: content.keywords,
     alternates: { canonical: baseUrl },
     // noindex si page > 1 (pagination) ou page vide (aucune annonce).
-    robots: page > 1 || total === 0 ? { index: false, follow: true } : undefined,
+    robots: listingPageRobots(total, page),
     openGraph: {
       title,
       description: content.metaDescription,
