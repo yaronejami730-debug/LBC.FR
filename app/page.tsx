@@ -9,8 +9,6 @@ import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
 import AdvertiserLeadSection from "@/components/home/AdvertiserLeadSection";
-import { CATEGORIES } from "@/lib/categories";
-import { getSeoInventory } from "@/lib/seo/inventory";
 import SiteFooter from "@/components/SiteFooter";
 import ListingRow from "@/components/home/ListingRow";
 import ListingCard, { type HomeListing } from "@/components/home/ListingCard";
@@ -262,7 +260,6 @@ export default async function Home() {
     recents,
     ads,
     activeBanner,
-    inventory,
   ] = await Promise.all([
     getFeatured(),
     getBargains(),
@@ -272,7 +269,6 @@ export default async function Home() {
     getRecents(),
     getActiveAds(5).catch(() => []),
     getActiveBanner(),
-    getSeoInventory(),
   ]);
 
   // Évite qu'une même annonce apparaisse dans plusieurs rangées.
@@ -294,11 +290,8 @@ export default async function Home() {
       <Navbar active="accueil" />
 
       {/* Hero */}
-      <header className="pt-24 md:pt-44 pb-4 px-4 max-w-7xl mx-auto">
-        <AdvertiserLeadSection
-          listingsCount={inventory.total}
-          categoriesCount={CATEGORIES.length}
-        />
+      <header className="pt-[84px] md:pt-[132px] pb-4 px-4 max-w-7xl mx-auto">
+        <AdvertiserLeadSection />
         {activeBanner?.bgImage ? (
           // Variante photo : l'image dicte la hauteur (ratio natif, jamais de
           // crop). Le texte est superposé seulement si `showText` est actif

@@ -1,14 +1,11 @@
 "use client";
 
 /**
- * Bandeau « Devenir annonceur » de la page d'accueil.
+ * Bandeau « Faites-vous Sponsoriser par Deal&Co » de la page d'accueil.
  *
- * Volontairement discret : la home appartient aux annonces, pas à la régie.
- * Une ligne sobre en bas de page, et le formulaire ne se déplie qu'au clic —
- * un visiteur venu acheter ne le voit jamais, un annonceur le trouve.
- *
- * Les chiffres affichés viennent de la base, jamais de valeurs inventées : un
- * annonceur qui découvre l'écart au premier appel ne signe pas.
+ * Plié : une seule phrase d'accroche, toute la barre est cliquable. Déplié :
+ * le pitch, les arguments et le formulaire. Un visiteur venu acheter ne subit
+ * qu'une ligne ; une marque qui clique a tout sous les yeux.
  */
 
 import { useState } from "react";
@@ -17,15 +14,19 @@ import { ADVERTISER_BUDGETS } from "@/lib/advertiser-budgets";
 type Status = "idle" | "loading" | "success" | "error";
 
 const INPUT =
-  "w-full px-3.5 py-2.5 rounded-lg border border-[#e6e9ee] bg-[#fafbfc] text-[#191c1e] text-sm placeholder:text-[#9aa2ad] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/20 focus:border-[#2f6fb8] focus:bg-white transition";
+  "w-full px-3.5 py-2.5 rounded-lg border border-[#dbe3ee] bg-white text-[#191c1e] text-sm placeholder:text-[#9aa2ad] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/20 focus:border-[#2f6fb8] focus:bg-white transition";
 
-export default function AdvertiserLeadSection({
-  listingsCount,
-  categoriesCount,
-}: {
-  listingsCount: number;
-  categoriesCount: number;
-}) {
+/** Arguments de vente affichés en pastilles. Le nombre d'annonces n'y figure
+ *  pas : ce qui intéresse un annonceur, c'est le nombre d'emplacements
+ *  ciblables, pas le stock du jour. */
+const SELLING_POINTS = [
+  { icon: "category", label: "30+ catégories & sous-catégories" },
+  { icon: "ads_click", label: "Bannière home, catégorie, emailing" },
+  { icon: "public", label: "France entière + DOM-TOM" },
+  { icon: "schedule", label: "Rappel sous 24 à 48 h" },
+];
+
+export default function AdvertiserLeadSection() {
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -79,43 +80,77 @@ export default function AdvertiserLeadSection({
   return (
     // Placé en tête de la home, entre la barre de catégories et la bannière
     // photo. La largeur et les marges latérales viennent du <header> parent.
-    <section id="annonceurs" className="scroll-mt-24 mb-4">
-      <div className="rounded-2xl border border-surface-container bg-white">
-        {/* Ligne d'accroche — toujours visible, jamais envahissante. */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
-          <span className="material-symbols-outlined text-[20px] text-outline">campaign</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-on-surface">
-              Vous êtes une marque&nbsp;? Faites-vous sponsoriser par Deal&amp;Co.
-            </p>
-            <p className="text-xs text-outline mt-0.5">
-              Bannières, mises en avant par catégorie, encarts emailing —{" "}
-              {listingsCount.toLocaleString("fr-FR")} annonces et {categoriesCount} catégories
-              ciblables. Rappel sous 24 à 48&nbsp;h.
-            </p>
-          </div>
+    <section id="annonceurs" className="scroll-mt-24 mb-2">
+      <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#e9f2ff] via-[#f3f8ff] to-[#e6fbf3] ring-1 ring-inset ring-[#2f6fb8]/15">
+        {/* Barre pliée : une seule phrase, toute la barre est cliquable. */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="advertiser-form"
+          className="group flex w-full items-center gap-3 px-4 py-3 text-left sm:px-6"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2f6fb8] text-white shadow-sm">
+            <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+          </span>
 
-          {status !== "success" && (
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-              aria-controls="advertiser-form"
-              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-outline-variant/40 px-4 py-2 text-xs font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
-            >
-              {open ? "Fermer" : "Être rappelé"}
-              <span
-                className={`material-symbols-outlined text-[16px] transition-transform ${open ? "rotate-180" : ""}`}
-              >
-                expand_more
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] sm:text-sm font-extrabold text-[#0d2947]">
+              Gagnez de nouveaux clients avec Deal&amp;Co Ads
+              <span className="ml-2 hidden sm:inline rounded-full bg-[#00c190]/15 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-[#00795e]">
+                Places limitées
               </span>
-            </button>
-          )}
-        </div>
+            </span>
+            <span className="mt-0.5 block truncate text-[11px] sm:text-xs text-[#4a5c72]">
+              Votre marque devant des milliers d&apos;acheteurs, dans plus d&apos;une trentaine de
+              catégories.
+            </span>
+          </span>
+
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] sm:text-xs font-bold text-[#2f6fb8] shadow-sm ring-1 ring-inset ring-[#2f6fb8]/20 transition group-hover:bg-[#2f6fb8] group-hover:text-white">
+            <span className="hidden sm:inline">{open ? "Réduire" : "Je veux en savoir plus"}</span>
+            <span
+              className={`material-symbols-outlined text-[18px] transition-transform ${open ? "rotate-180" : ""}`}
+            >
+              expand_more
+            </span>
+          </span>
+        </button>
+
+        {/* Pitch — visible seulement une fois déplié. */}
+        {(open || status === "success") && (
+          <div className="border-t border-white/70 px-4 pt-5 sm:px-6">
+            <h2 className="font-headline text-lg sm:text-xl font-extrabold leading-tight text-[#0d2947]">
+              Faites-vous Sponsoriser par Deal&amp;Co.
+            </h2>
+            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-[#4a5c72]">
+              Bannière d&apos;accueil, mise en avant par catégorie, encart emailing : votre marque
+              s&apos;affiche là où les gens achètent, sur{" "}
+              <strong className="font-bold text-[#0d2947]">
+                plus d&apos;une trentaine de catégories et sous-catégories
+              </strong>{" "}
+              — auto, immobilier, mode, maison, high-tech, emploi, services. Tout est ciblable.
+            </p>
+
+            <ul className="mt-3 flex flex-wrap gap-1.5">
+              {SELLING_POINTS.map((p) => (
+                <li
+                  key={p.label}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-[#33475f] ring-1 ring-inset ring-[#2f6fb8]/10"
+                >
+                  <span className="material-symbols-outlined text-[15px] text-[#2f6fb8]">
+                    {p.icon}
+                  </span>
+                  {p.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Formulaire — déplié à la demande. */}
         {(open || status === "success") && (
-          <div id="advertiser-form" className="border-t border-surface-container px-5 py-5">
+          <div id="advertiser-form" className="px-4 pb-5 pt-4 sm:px-6">
             {status === "success" ? (
               <p className="flex items-center gap-2 text-sm text-on-surface">
                 <span className="material-symbols-outlined text-[20px] text-[#216b4d]">check_circle</span>
@@ -267,6 +302,19 @@ export default function AdvertiserLeadSection({
                 </div>
               </form>
             )}
+
+            {/* Signature : le logo bleu ferme le modal en bas à droite. */}
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-white/70 pt-3">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7d8b9c]">
+                Une offre
+              </span>
+              <img
+                src="/logo-dealco.png"
+                alt="Deal&Co"
+                className="h-5 w-auto opacity-90"
+                loading="lazy"
+              />
+            </div>
           </div>
         )}
       </div>
