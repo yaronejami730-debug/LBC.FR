@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Bloc « Devenir annonceur » de la page d'accueil.
+ * Bandeau « Devenir annonceur » de la page d'accueil.
  *
- * Le seul trafic entrant régulier du site arrive sur la home : c'est là qu'une
- * offre de sponsoring a une chance d'être vue. Le formulaire reste court — nom,
- * prénom, email, téléphone, budget — parce que chaque champ supplémentaire
- * coûte des conversions ; la qualification fine se fait pendant le rappel.
+ * Volontairement discret : la home appartient aux annonces, pas à la régie.
+ * Une ligne sobre en bas de page, et le formulaire ne se déplie qu'au clic —
+ * un visiteur venu acheter ne le voit jamais, un annonceur le trouve.
  *
  * Les chiffres affichés viennent de la base, jamais de valeurs inventées : un
  * annonceur qui découvre l'écart au premier appel ne signe pas.
@@ -17,37 +16,8 @@ import { ADVERTISER_BUDGETS } from "@/lib/advertiser-budgets";
 
 type Status = "idle" | "loading" | "success" | "error";
 
-const FORMATS = [
-  { icon: "wallpaper", label: "Bannière page d'accueil" },
-  { icon: "category", label: "Mise en avant par catégorie" },
-  { icon: "mail", label: "Encart emailing" },
-  { icon: "article", label: "Article sponsorisé" },
-];
-
-function Field({
-  id,
-  icon,
-  children,
-}: {
-  id: string;
-  icon: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <span
-        aria-hidden="true"
-        className="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[20px] text-slate-400"
-      >
-        {icon}
-      </span>
-      {children}
-    </div>
-  );
-}
-
 const INPUT =
-  "peer w-full pl-11 pr-4 py-3.5 rounded-xl border border-[#e6e9ee] bg-[#f8fafc] text-[#191c1e] text-sm placeholder:text-[#9aa2ad] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/25 focus:border-[#2f6fb8] focus:bg-white transition";
+  "w-full px-3.5 py-2.5 rounded-lg border border-[#e6e9ee] bg-[#fafbfc] text-[#191c1e] text-sm placeholder:text-[#9aa2ad] focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/20 focus:border-[#2f6fb8] focus:bg-white transition";
 
 export default function AdvertiserLeadSection({
   listingsCount,
@@ -56,6 +26,7 @@ export default function AdvertiserLeadSection({
   listingsCount: number;
   categoriesCount: number;
 }) {
+  const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -105,109 +76,54 @@ export default function AdvertiserLeadSection({
     }
   }
 
-  const stats = [
-    { value: listingsCount.toLocaleString("fr-FR"), label: "annonces en ligne" },
-    { value: String(categoriesCount), label: "catégories ciblables" },
-    { value: "24-48 h", label: "délai de rappel" },
-  ];
-
   return (
-    <section
-      id="annonceurs"
-      className="scroll-mt-24 px-4 md:px-6 py-16 bg-gradient-to-b from-white to-[#eef2f6]"
-    >
-      <div className="max-w-7xl mx-auto">
-        <div className="rounded-[28px] overflow-hidden shadow-[0_30px_70px_-30px_rgba(15,40,70,0.45)] grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
-          {/* ---------- Argumentaire ---------- */}
-          <div className="relative bg-[#0e2740] px-7 py-10 md:px-12 md:py-14 flex flex-col justify-center overflow-hidden">
-            {/* Halos de marque — deux sources lumineuses, pas de dégradé plat. */}
-            <div
-              aria-hidden="true"
-              className="absolute -top-24 -left-16 w-[26rem] h-[26rem] rounded-full opacity-40 blur-3xl"
-              style={{ background: "radial-gradient(circle, #2f6fb8 0%, transparent 70%)" }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute -bottom-32 right-0 w-[22rem] h-[22rem] rounded-full opacity-25 blur-3xl"
-              style={{ background: "radial-gradient(circle, #3adfab 0%, transparent 70%)" }}
-            />
-
-            <div className="relative z-10">
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#fbbf24]/30 bg-[#fbbf24]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#fbbf24]">
-                <span className="material-symbols-outlined text-[14px]">campaign</span>
-                Espaces publicitaires
-              </span>
-
-              <h2 className="font-headline text-white text-[2rem] md:text-[2.75rem] font-extrabold leading-[1.08] tracking-tight mt-5 text-balance">
-                Placez votre marque là où l&apos;intention d&apos;achat est déjà là.
-              </h2>
-
-              <p className="text-white/70 mt-4 leading-relaxed max-w-md">
-                Nos visiteurs ne viennent pas flâner : ils cherchent une voiture, un logement, un
-                équipement. Vos formats s&apos;affichent au moment exact de la recherche.
-              </p>
-
-              {/* Preuves chiffrées — issues de la base, pas d'estimation marketing. */}
-              <dl className="mt-9 flex flex-wrap gap-x-10 gap-y-5">
-                {stats.map((s) => (
-                  <div key={s.label}>
-                    <dt className="sr-only">{s.label}</dt>
-                    <dd className="font-headline text-3xl font-extrabold text-white tabular-nums leading-none">
-                      {s.value}
-                    </dd>
-                    <p className="text-[11px] uppercase tracking-[0.1em] text-white/45 font-semibold mt-2">
-                      {s.label}
-                    </p>
-                  </div>
-                ))}
-              </dl>
-
-              <ul className="mt-9 flex flex-wrap gap-2">
-                {FORMATS.map((f) => (
-                  <li
-                    key={f.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.06] px-3.5 py-2 text-[13px] font-semibold text-white/85"
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-[#60fcc6]">
-                      {f.icon}
-                    </span>
-                    {f.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
+    <section id="annonceurs" className="scroll-mt-24 px-6 pt-4 pb-10 max-w-7xl mx-auto">
+      <div className="rounded-2xl border border-surface-container bg-white">
+        {/* Ligne d'accroche — toujours visible, jamais envahissante. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
+          <span className="material-symbols-outlined text-[20px] text-outline">campaign</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-on-surface">
+              Vous êtes une marque&nbsp;? Faites-vous sponsoriser par Deal&amp;Co.
+            </p>
+            <p className="text-xs text-outline mt-0.5">
+              Bannières, mises en avant par catégorie, encarts emailing —{" "}
+              {listingsCount.toLocaleString("fr-FR")} annonces et {categoriesCount} catégories
+              ciblables. Rappel sous 24 à 48&nbsp;h.
+            </p>
           </div>
 
-          {/* ---------- Formulaire ---------- */}
-          <div className="bg-white px-7 py-10 md:px-11 md:py-12">
-            {status === "success" ? (
-              <div className="h-full flex flex-col items-center justify-center text-center py-10">
-                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#e9f6ef]">
-                  <span className="material-symbols-outlined text-[32px] text-[#216b4d]">
-                    check
-                  </span>
-                </span>
-                <h3 className="font-headline text-2xl font-extrabold text-[#191c1e] mt-5">
-                  Demande envoyée
-                </h3>
-                <p className="text-slate-500 text-sm mt-3 leading-relaxed max-w-xs">
-                  Merci {firstName}. Nous vous rappelons au <strong>{phone}</strong> sous 24 à
-                  48 heures ouvrées. Un email de confirmation vient de partir.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div>
-                  <h3 className="font-headline text-2xl font-extrabold text-[#191c1e] tracking-tight">
-                    Parlons de votre campagne
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-1.5">
-                    Laissez vos coordonnées, on vous rappelle sous 24 à 48 h.
-                  </p>
-                </div>
+          {status !== "success" && (
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls="advertiser-form"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-outline-variant/40 px-4 py-2 text-xs font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
+            >
+              {open ? "Fermer" : "Être rappelé"}
+              <span
+                className={`material-symbols-outlined text-[16px] transition-transform ${open ? "rotate-180" : ""}`}
+              >
+                expand_more
+              </span>
+            </button>
+          )}
+        </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field id="adv-firstname" icon="person">
+        {/* Formulaire — déplié à la demande. */}
+        {(open || status === "success") && (
+          <div id="advertiser-form" className="border-t border-surface-container px-5 py-5">
+            {status === "success" ? (
+              <p className="flex items-center gap-2 text-sm text-on-surface">
+                <span className="material-symbols-outlined text-[20px] text-[#216b4d]">check_circle</span>
+                Merci {firstName}, nous vous rappelons au <strong>{phone}</strong> sous 24 à
+                48&nbsp;heures ouvrées.
+              </p>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-3 max-w-3xl">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
                     <label htmlFor="adv-firstname" className="sr-only">
                       Prénom
                     </label>
@@ -220,8 +136,8 @@ export default function AdvertiserLeadSection({
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                     />
-                  </Field>
-                  <Field id="adv-lastname" icon="badge">
+                  </div>
+                  <div>
                     <label htmlFor="adv-lastname" className="sr-only">
                       Nom
                     </label>
@@ -234,25 +150,24 @@ export default function AdvertiserLeadSection({
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                     />
-                  </Field>
+                  </div>
+                  <div>
+                    <label htmlFor="adv-company" className="sr-only">
+                      Société
+                    </label>
+                    <input
+                      id="adv-company"
+                      className={INPUT}
+                      placeholder="Société (facultatif)"
+                      autoComplete="organization"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <Field id="adv-company" icon="apartment">
-                  <label htmlFor="adv-company" className="sr-only">
-                    Société
-                  </label>
-                  <input
-                    id="adv-company"
-                    className={INPUT}
-                    placeholder="Société (facultatif)"
-                    autoComplete="organization"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                  />
-                </Field>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Field id="adv-email" icon="alternate_email">
+                  <div>
                     <label htmlFor="adv-email" className="sr-only">
                       Adresse email
                     </label>
@@ -266,8 +181,8 @@ export default function AdvertiserLeadSection({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
-                  </Field>
-                  <Field id="adv-phone" icon="call">
+                  </div>
+                  <div>
                     <label htmlFor="adv-phone" className="sr-only">
                       Téléphone
                     </label>
@@ -282,24 +197,24 @@ export default function AdvertiserLeadSection({
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                     />
-                  </Field>
+                  </div>
                 </div>
 
-                {/* Le budget en pastilles : un clic au lieu d'un menu déroulant,
-                    et les tranches restent lisibles d'un coup d'œil. */}
-                <fieldset className="mt-1">
-                  <legend className="text-xs font-bold uppercase tracking-[0.08em] text-slate-400 mb-2.5">
+                {/* Budget en pastilles : un clic au lieu d'un menu déroulant, et
+                    les tranches restent lisibles d'un coup d'œil. */}
+                <fieldset>
+                  <legend className="text-[11px] font-bold uppercase tracking-[0.08em] text-outline mb-2">
                     Budget mensuel envisagé
                   </legend>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {ADVERTISER_BUDGETS.map((b) => (
                       <label
                         key={b.value}
-                        className={`cursor-pointer rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors ${
+                        className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#2f6fb8]/40 ${
                           budget === b.value
-                            ? "border-[#2f6fb8] bg-[#2f6fb8] text-white"
-                            : "border-[#e6e9ee] bg-white text-slate-500 hover:border-[#2f6fb8]/50 hover:text-[#2f6fb8]"
-                        } has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#2f6fb8]/40`}
+                            ? "border-primary bg-primary text-white"
+                            : "border-outline-variant/40 bg-white text-on-surface-variant hover:border-primary hover:text-primary"
+                        }`}
                       >
                         <input
                           type="radio"
@@ -322,7 +237,7 @@ export default function AdvertiserLeadSection({
                   <textarea
                     id="adv-message"
                     rows={2}
-                    className="w-full px-4 py-3.5 rounded-xl border border-[#e6e9ee] bg-[#f8fafc] text-[#191c1e] text-sm placeholder:text-[#9aa2ad] resize-none focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/25 focus:border-[#2f6fb8] focus:bg-white transition"
+                    className={`${INPUT} resize-none`}
                     placeholder="Votre projet en deux lignes (facultatif)"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -330,35 +245,28 @@ export default function AdvertiserLeadSection({
                 </div>
 
                 {status === "error" && (
-                  <p
-                    role="alert"
-                    className="flex items-center gap-2 text-sm text-[#b03a26] font-semibold"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">error</span>
+                  <p role="alert" className="flex items-center gap-1.5 text-xs font-semibold text-[#b03a26]">
+                    <span className="material-symbols-outlined text-[16px]">error</span>
                     {errorMsg}
                   </p>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={status === "loading"}
-                  className="group mt-1 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#2f6fb8] py-4 text-sm font-extrabold text-white transition hover:bg-[#255a99] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {status === "loading" ? "Envoi…" : "Être rappelé sous 24-48 h"}
-                  {status !== "loading" && (
-                    <span className="material-symbols-outlined text-[18px] transition-transform group-hover:translate-x-0.5">
-                      arrow_forward
-                    </span>
-                  )}
-                </button>
-
-                <p className="text-[11px] text-slate-400 leading-relaxed text-center">
-                  Vos coordonnées servent uniquement à vous rappeler au sujet de cette demande.
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={status === "loading"}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-bold text-white transition hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {status === "loading" ? "Envoi…" : "Envoyer ma demande"}
+                  </button>
+                  <p className="text-[11px] text-outline">
+                    Vos coordonnées servent uniquement à vous rappeler à ce sujet.
+                  </p>
+                </div>
               </form>
             )}
           </div>
-        </div>
+        )}
       </div>
     </section>
   );
