@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { getImageDimensions } from "@/lib/image-dims";
 import { getActiveAds } from "@/lib/ads";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -271,6 +272,10 @@ export default async function Home() {
     getActiveBanner(),
   ]);
 
+  const bannerDims = activeBanner?.bgImage
+    ? await getImageDimensions(activeBanner.bgImage)
+    : null;
+
   // Évite qu'une même annonce apparaisse dans plusieurs rangées.
   const [
     featuredRow,
@@ -302,11 +307,29 @@ export default async function Home() {
                 titre de niveau 1. Le titre de campagne, lui, reste un simple
                 paragraphe — il décrit une promo, pas le sujet de la page. */}
             <h1 className="sr-only">{HOME_H1}</h1>
-            <img
-              src={activeBanner.bgImage}
-              alt={activeBanner.title ?? ""}
-              className="block w-full h-auto"
-            />
+            {/* Élément LCP de la home : `priority` le fait précharger, et les
+                dimensions natives réservent la hauteur avant l'arrivée des
+                octets (sinon toute la page saute au chargement). Sans
+                dimensions connues, on garde la balise brute plutôt que de
+                rogner l'image dans une boîte arbitraire. */}
+            {bannerDims ? (
+              <Image
+                src={activeBanner.bgImage}
+                alt={activeBanner.title ?? ""}
+                width={bannerDims.width}
+                height={bannerDims.height}
+                priority
+                quality={70}
+                sizes="(max-width: 768px) 100vw, 1248px"
+                className="block w-full h-auto"
+              />
+            ) : (
+              <img
+                src={activeBanner.bgImage}
+                alt={activeBanner.title ?? ""}
+                className="block w-full h-auto"
+              />
+            )}
             {activeBanner.showText && (
               <>
                 <div className="absolute inset-0 bg-black/35" />
@@ -444,6 +467,8 @@ export default async function Home() {
                 src={src}
                 alt={label}
                 fill
+                quality={70}
+                loading="lazy"
                 sizes={featured ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 50vw, 33vw"}
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
@@ -559,22 +584,23 @@ export default async function Home() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             {[
-              { label: "Voitures d'occasion", href: "/annonces/vehicules" },
-              { label: "Immobilier", href: "/annonces/immobilier" },
-              { label: "Mode & vêtements", href: "/annonces/mode" },
-              { label: "Électronique", href: "/annonces/multimedia" },
-              { label: "Mobilier & maison", href: "/annonces/maison" },
-              { label: "Animaux", href: "/annonces/animaux" },
-              { label: "Loisirs & sport", href: "/annonces/loisirs" },
-              { label: "Services", href: "/annonces/services" },
-              { label: "Matériel professionnel", href: "/annonces/materiel-pro" },
-              { label: "Bébé & Enfant", href: "/annonces/bebe-enfant" },
-              { label: "Vacances", href: "/annonces/vacances" },
-              { label: "Emploi", href: "/annonces/emploi" },
-            ].map(({ label, href }) => (
+              { label: "Voitures d'occasion", href: "/annonces/vehicules", title: "Voitures d'occasion entre particuliers" },
+              { label: "Immobilier", href: "/annonces/immobilier", title: "Annonces immobilières entre particuliers" },
+              { label: "Mode & vêtements", href: "/annonces/mode", title: "Vêtements et mode d'occasion" },
+              { label: "Électronique", href: "/annonces/multimedia", title: "Multimédia et électronique d'occasion" },
+              { label: "Mobilier & maison", href: "/annonces/maison", title: "Meubles et équipement de la maison d'occasion" },
+              { label: "Animaux", href: "/annonces/animaux", title: "Annonces animaux et accessoires" },
+              { label: "Loisirs & sport", href: "/annonces/loisirs", title: "Loisirs et matériel de sport d'occasion" },
+              { label: "Services", href: "/annonces/services", title: "Services de proximité entre particuliers" },
+              { label: "Matériel professionnel", href: "/annonces/materiel-pro", title: "Matériel professionnel d'occasion" },
+              { label: "Bébé & Enfant", href: "/annonces/bebe-enfant", title: "Puériculture et articles bébé d'occasion" },
+              { label: "Vacances", href: "/annonces/vacances", title: "Locations de vacances entre particuliers" },
+              { label: "Emploi", href: "/annonces/emploi", title: "Offres d'emploi et missions" },
+            ].map(({ label, href, title }) => (
               <Link
                 key={href}
                 href={href}
+                title={title}
                 className="text-xs font-semibold text-[#2f6fb8] hover:underline truncate"
               >
                 {label}

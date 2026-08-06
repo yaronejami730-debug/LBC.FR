@@ -8,15 +8,18 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+// `title` alimente l'attribut title de chaque lien : les libellés de la barre
+// ne font qu'un mot, l'audit SEO comme un lecteur d'écran ont besoin de la
+// destination en clair.
 const PUBLIC_ITEMS = [
-  { href: "/", label: "Accueil", icon: "home", key: "accueil" },
-  { href: "/search", label: "Recherche", icon: "search", key: "recherche" },
+  { href: "/", label: "Accueil", icon: "home", key: "accueil", title: "Accueil Deal&Co" },
+  { href: "/search", label: "Recherche", icon: "search", key: "recherche", title: "Rechercher une annonce" },
 ];
 
 const AUTH_ITEMS = [
-  { href: "/post", label: "Déposer", icon: "add_circle", key: "deposer" },
-  { href: "/favoris", label: "Favoris", icon: "favorite", key: "favoris" },
-  { href: "/messages", label: "Messages", icon: "chat", key: "messages" },
+  { href: "/post", label: "Déposer", icon: "add_circle", key: "deposer", title: "Déposer une annonce gratuite" },
+  { href: "/favoris", label: "Favoris", icon: "favorite", key: "favoris", title: "Mes annonces favorites" },
+  { href: "/messages", label: "Messages", icon: "chat", key: "messages", title: "Ma messagerie" },
 ];
 
 export default function BottomNav({ active }: { active?: string }) {
@@ -47,19 +50,32 @@ export default function BottomNav({ active }: { active?: string }) {
     }
 
     fetchUnread();
-    const interval = setInterval(fetchUnread, 3_000);
-    return () => clearInterval(interval);
+    // 3 s tenait le compteur à jour au prix d'une requête toutes les 3 s par
+    // onglet ouvert, réseau mobile compris. 30 s suffit pour un badge, et rien
+    // ne part quand l'onglet est en arrière-plan.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchUnread();
+    }, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchUnread();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [isLoggedIn, pathname]);
 
   return (
     <footer className="md:hidden fixed bottom-0 left-0 w-full flex justify-evenly items-center pb-6 pt-3 bg-white/90 backdrop-blur-xl shadow-[0_-8px_24px_rgba(21,21,125,0.04)] z-50 rounded-t-2xl border-t border-slate-200/20">
       {/* Public items always visible */}
-      {PUBLIC_ITEMS.map(({ href, label, icon, key }) => {
+      {PUBLIC_ITEMS.map(({ href, label, icon, key, title }) => {
         const isActive = active === key;
         return (
           <Link
             key={key}
             href={href}
+            title={title}
             className={`flex flex-col items-center justify-center px-3 py-1 transition-all ${isActive ? "text-[#2f6fb8] font-bold bg-[#d5e3fc]/30 rounded-xl" : "text-slate-400 hover:text-[#2f6fb8]"
               }`}
           >
@@ -82,13 +98,14 @@ export default function BottomNav({ active }: { active?: string }) {
           ))}
         </div>
       ) : isLoggedIn ? (
-        AUTH_ITEMS.map(({ href, label, icon, key }) => {
+        AUTH_ITEMS.map(({ href, label, icon, key, title }) => {
           const isActive = active === key;
           const showBadge = key === "messages" && unread > 0;
           return (
             <Link
               key={key}
               href={href}
+              title={title}
               className={`flex flex-col items-center justify-center px-3 py-1 transition-all ${isActive ? "text-[#2f6fb8] font-bold bg-[#d5e3fc]/30 rounded-xl" : "text-slate-400 hover:text-[#2f6fb8]"
                 }`}
             >

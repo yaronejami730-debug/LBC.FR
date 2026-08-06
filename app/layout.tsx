@@ -104,17 +104,30 @@ export default function RootLayout({
         />
         <link rel="apple-touch-icon" href="/logo.png" />
         {/* Material Symbols — range réduit (400 + FILL 0..1) → fichier ~5× plus
-            petit. Le preload accélère le téléchargement ; le stylesheet est
-            chargé normalement (le truc print+onLoad ne fonctionne pas en JSX :
-            React ne propage pas un onLoad sous forme de chaîne au DOM). */}
+            petit.
+
+            Chargé en `media="print"` : la feuille se télécharge sans bloquer le
+            rendu, puis un script la repasse en `all` une fois arrivée. En 3G,
+            un stylesheet Google bloquant coûtait un aller-retour DNS + TLS +
+            téléchargement avant le premier pixel. Contrepartie assumée : les
+            icônes apparaissent juste après le texte. */}
         <link
           rel="preload"
           as="style"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
         />
         <link
+          id="material-symbols"
           rel="stylesheet"
+          media="print"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "var l=document.getElementById('material-symbols');" +
+              "if(l){if(l.sheet){l.media='all'}else{l.addEventListener('load',function(){l.media='all'})}}",
+          }}
         />
       </head>
       <body className={`${inter.variable} ${manrope.variable}`}>
