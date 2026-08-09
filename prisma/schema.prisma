@@ -190,6 +190,16 @@ model Listing {
   phone               String?
   phoneHash           String?
   hidePhone           Boolean   @default(false)
+  /// PARTICULIER | PRO — sous quelle casquette l'annonce est publiée.
+  ///
+  /// Un compte converti du particulier au professionnel garde les deux usages :
+  /// il vend son canapé le samedi et son stock la semaine. Le choix est fait à
+  /// la publication, pas déduit du compte, parce que les deux ne suivent pas
+  /// les mêmes règles — notamment sur la précision de l'adresse affichée.
+  postedAs            String    @default("PARTICULIER")
+  /// Adresse précise, réservée aux annonces professionnelles : un local
+  /// commercial est une adresse publique, le domicile d'un particulier non.
+  addressLine         String?
   /// APPROVED | PENDING | REJECTED | REMOVED | SOLD
   ///
   /// REMOVED = retirée par la modération. Invisible publiquement (toutes les
@@ -244,6 +254,7 @@ model Listing {
   @@index([status, deletedAt, shadowBanned, category, subcategory, location])
   @@index([qualityScore])
   @@index([status, permanentDeletionAt])
+  @@index([postedAs])
   @@index([lshBand0])
   @@index([lshBand1])
   @@index([lshBand2])

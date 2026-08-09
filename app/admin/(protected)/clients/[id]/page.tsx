@@ -1,5 +1,8 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TrustDossier } from "@/app/admin/(protected)/securite/TrustDossier";
+import { WatchButton, UnwatchButton, BanButton, UnbanButton } from "@/app/admin/(protected)/securite/SecurityActions";
 import { prisma } from "@/lib/prisma";
 import { getClientListings } from "@/app/admin/actions";
 import ClientListingsPanel from "./ClientListingsPanel";
@@ -29,6 +32,9 @@ export default async function ClientDetailPage({
       createdAt: true,
       consentGivenAt: true,
       bannedAt: true,
+      banReason: true,
+      watchedAt: true,
+      watchReason: true,
       phoneNumber: true,
       // Compte uniquement les annonces non supprimées — sinon le total reste
       // figé après une suppression depuis le CRM.
@@ -101,16 +107,50 @@ export default async function ClientDetailPage({
 
             <PhoneEditor userId={user.id} initialPhone={user.phoneNumber} />
 
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <ConsentReminderButton
                 userId={user.id}
                 consentGiven={Boolean(user.consentGivenAt)}
                 banned={Boolean(user.bannedAt)}
               />
+              {user.bannedAt ? (
+                <UnbanButton userId={user.id} />
+              ) : (
+                <>
+                  {user.watchedAt ? (
+                    <UnwatchButton userId={user.id} />
+                  ) : (
+                    <WatchButton userId={user.id} />
+                  )}
+                  <BanButton userId={user.id} userName={user.name} />
+                </>
+              )}
             </div>
+
+            {user.watchedAt && (
+              <p className="mt-2 text-xs text-slate-500">
+                <span className="font-bold text-slate-700">Sous surveillance</span>
+                {user.watchReason ? ` — ${user.watchReason}` : ""}
+              </p>
+            )}
+            {user.bannedAt && (
+              <p className="mt-2 text-xs text-rose-700">
+                <span className="font-bold">Compte banni</span>
+                {user.banReason ? ` — ${user.banReason}` : ""}
+              </p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Dossier de confiance — le contexte à lire avant toute sanction. */}
+      <Suspense
+        fallback={
+          <div className="bg-white rounded-2xl border border-[#eceef0] h-40 animate-pulse" />
+        }
+      >
+        <TrustDossier userId={user.id} />
+      </Suspense>
 
       {/* Listings */}
       <div>

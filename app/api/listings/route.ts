@@ -41,6 +41,12 @@ import { computeTrustScore } from "@/lib/trust-score";
 import { isOpenSearchEnabled } from "@/lib/opensearch";
 import { searchListings } from "@/lib/opensearch-search";
 import { indexListing } from "@/lib/opensearch-sync";
+import {
+  postingCapabilities,
+  resolvePostedAs,
+  sanitizeLocation,
+  addressLineFor,
+} from "@/lib/listing-location";
 import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
@@ -103,7 +109,17 @@ export async function POST(req: NextRequest) {
 
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { restrictedAt: true, emailVerified: true },
+      select: {
+        restrictedAt: true,
+        emailVerified: true,
+        isPro: true,
+        professionalStatus: true,
+        proVerifications: {
+          orderBy: { submittedAt: "desc" },
+          take: 1,
+          select: { requestType: true, status: true },
+        },
+      },
     });
     // Le gate « confirmer son email » regarde l'email lui-même, pas le badge admin.
     if (!currentUser?.emailVerified) {
@@ -120,9 +136,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, price, category, subcategory, description, location, condition, images, metadata, phone, hidePhone } = body;
+    const { title, price, category, subcategory, description, location: rawLocation, condition, images, metadata, phone, hidePhone, postedAs: postedAsRaw } = body;
 
-    if (!title || price === undefined || price === null || !category || !description || !location) {
+    if (!title || price === undefined || price === null || !category || !description || !rawLocation) {
       return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
     }
 
@@ -132,13 +148,35 @@ export async function POST(req: NextRequest) {
     if (typeof description !== "string" || description.trim().length < 10 || description.trim().length > 10_000) {
       return NextResponse.json({ error: "Description invalide (10-10000 caractères)" }, { status: 400 });
     }
-    if (typeof location !== "string" || location.trim().length < 2 || location.trim().length > 200) {
+    if (typeof rawLocation !== "string" || rawLocation.trim().length < 2 || rawLocation.trim().length > 200) {
       return NextResponse.json({ error: "Localisation invalide" }, { status: 400 });
     }
 
     const parsedPrice = typeof price === "number" ? price : parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice < 0) {
       return NextResponse.json({ error: "Prix invalide" }, { status: 400 });
+    }
+
+    // Casquette de publication. Le mode est *résolu côté serveur* à partir de
+    // ce que le compte a réellement le droit de faire : un client qui envoie
+    // `postedAs: "PRO"` sans habilitation retombe sur le mode particulier, et
+    // avec lui sur la troncature d'adresse.
+    const capabilities = postingCapabilities({
+      isPro: currentUser?.isPro ?? false,
+      professionalStatus: currentUser?.professionalStatus ?? "NONE",
+      proRequestType: currentUser?.proVerifications?.[0]?.requestType ?? null,
+    });
+    const postedAs = resolvePostedAs(postedAsRaw, capabilities);
+    // Tout ce qui suit ne voit que la localisation publiable : impossible de
+    // laisser fuiter l'adresse complète dans un email, un index ou une page.
+    const location = sanitizeLocation(rawLocation, postedAs);
+    const addressLine = addressLineFor(rawLocation, postedAs);
+
+    if (location.length < 2) {
+      return NextResponse.json(
+        { error: "Indiquez au moins une ville ou une commune." },
+        { status: 400 },
+      );
     }
 
     // Extract numeric range columns from metadata so they're queryable
@@ -514,6 +552,8 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         phoneHash: phoneCheck.hash,
         hidePhone: hidePhone === true,
+        postedAs,
+        addressLine,
         userId: session.user.id,
         status: listingStatus,
         rejectionReason,
