@@ -28,6 +28,7 @@ import BrandBadge from "../BrandBadge";
 import { CATEGORIES } from "@/lib/categories";
 import { listingSlug, listingUrl } from "@/lib/listing-slug";
 import ShareListing from "@/components/ShareListing";
+import { RemovedNotice } from "@/components/listing/RemovedNotice";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -441,6 +442,15 @@ export default async function ListingPage({
         <HistoryTracker category={listing.category} />
         <MarkViewed listingId={listing.id} />
         {!isOwner && <ViewTracker listingId={listing.id} />}
+
+        {isOwner && (
+          <RemovedNotice
+            listingId={listing.id}
+            status={listing.status}
+            reason={listingData.rejectionReason}
+            permanentDeletionAt={listingData.permanentDeletionAt}
+          />
+        )}
 
         {/* Breadcrumb visible — SEO + UX */}
         <nav

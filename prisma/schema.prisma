@@ -33,6 +33,13 @@ model User {
   bannedAt                DateTime?
   banReason               String?
   restrictedAt            DateTime?
+  banDecidedBy            String?
+  /// Mise sous surveillance : le compte n'a rien fait qui justifie une
+  /// sanction, mais il mérite d'être regardé. Aucun effet sur le compte —
+  /// c'est un marque-page de modérateur, pas une punition.
+  watchedAt               DateTime?
+  watchReason             String?
+  watchedBy               String?
   spamScore               Int                       @default(0)
   apiKeys                 ApiKey[]
   consentGivenAt          DateTime?
@@ -90,6 +97,9 @@ model User {
   subscribers        Subscription[]    @relation("SubscriptionSeller")
   proVerifications   ProVerification[] @relation("ProVerificationUser")
   proReviews         ProVerification[] @relation("ProVerificationReviewer")
+
+  @@index([watchedAt])
+  @@index([bannedAt])
 }
 
 /// Abonnement d'un utilisateur aux publications d'un vendeur.
@@ -180,9 +190,19 @@ model Listing {
   phone               String?
   phoneHash           String?
   hidePhone           Boolean   @default(false)
+  /// APPROVED | PENDING | REJECTED | REMOVED | SOLD
+  ///
+  /// REMOVED = retirée par la modération. Invisible publiquement (toutes les
+  /// requêtes publiques filtrent sur APPROVED), mais toujours accessible à son
+  /// auteur depuis son espace personnel pendant le délai de conservation.
   status              String    @default("APPROVED")
   rejectionReason     String?
   adminNote           String?
+  /// Retrait de modération : date du retrait et date de destruction définitive.
+  /// `permanentDeletionAt` n'est jamais repoussé quand l'annonce est refusée à
+  /// nouveau — sinon une annonce refusée en boucle ne serait jamais purgée.
+  removedAt           DateTime?
+  permanentDeletionAt DateTime?
   expiresAt           DateTime?
   expiryNotifiedAt    DateTime?
   photoReminderSentAt DateTime?
@@ -223,6 +243,7 @@ model Listing {
   @@index([status, deletedAt, shadowBanned, category])
   @@index([status, deletedAt, shadowBanned, category, subcategory, location])
   @@index([qualityScore])
+  @@index([status, permanentDeletionAt])
   @@index([lshBand0])
   @@index([lshBand1])
   @@index([lshBand2])
@@ -403,6 +424,57 @@ model Blacklist {
 
   @@id([kind, value])
   @@index([kind])
+}
+
+/// Registre anti-réinscription.
+///
+/// Quand un compte banni est détruit, ses données personnelles disparaissent —
+/// mais pas la décision de bannissement, sinon il suffirait de se réinscrire
+/// avec la même adresse. Cette table ne contient donc *aucune* donnée en
+/// clair : uniquement des empreintes non réversibles, calculées après
+/// normalisation, et le strict nécessaire pour justifier le blocage.
+///
+/// Un email seul se remplace en trente secondes : le registre garde aussi le
+/// téléphone et le SIRET, plus difficiles à renouveler, et l'empreinte
+/// d'appareil connue au moment du bannissement.
+model BanRegistry {
+  id           String    @id @default(cuid())
+  /// sha256(pepper + valeur normalisée). Aucune valeur en clair.
+  emailHash    String?   @unique
+  phoneHash    String?
+  siretHash    String?
+  deviceHashes String    @default("[]")
+  banReason    String
+  bannedAt     DateTime  @default(now())
+  /// Renseigné quand le compte d'origine a été détruit — sert au journal
+  /// d'audit, jamais à retrouver la personne.
+  purgedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([phoneHash])
+  @@index([siretHash])
+}
+
+/// Journal des actions d'administration irréversibles.
+///
+/// Volontairement pauvre en données : une suppression définitive doit laisser
+/// une trace vérifiable (qui, quoi, combien, quand) sans réintroduire les
+/// données qu'elle vient justement d'effacer.
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  action     String // PERMANENT_DELETE_BANNED_ACCOUNTS, PERMANENT_DELETE_LISTING, WATCH_ACCOUNT…
+  adminId    String
+  adminName  String?
+  targetType String? // "user" | "listing"
+  targetId   String?
+  count      Int      @default(1)
+  reason     String?
+  detailsJson String  @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([adminId, createdAt])
+  @@index([createdAt])
 }
 
 model SavedSearch {

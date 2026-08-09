@@ -15,7 +15,21 @@ type Listing = {
   status: string;
   isPremium: boolean;
   viewCount: number;
+  rejectionReason?: string | null;
+  permanentDeletionAt?: Date | string | null;
 };
+
+/**
+ * Jours restants avant la destruction définitive d'une annonce retirée.
+ * Dupliqué côté client plutôt qu'importé : `lib/moderation/removal` tire tout
+ * Prisma et le SDK Blob avec lui, ce qui n'a rien à faire dans un bundle
+ * navigateur.
+ */
+function daysLeft(at: Date | string | null | undefined): number | null {
+  if (!at) return null;
+  const ms = new Date(at).getTime() - Date.now();
+  return ms <= 0 ? 0 : Math.ceil(ms / 86_400_000);
+}
 
 export default function ProfileTabs({ listings }: { listings: Listing[] }) {
   const [tab, setTab] = useState<"annonces" | "performance">("annonces");
@@ -128,6 +142,11 @@ export default function ProfileTabs({ listings }: { listings: Listing[] }) {
                         Refusée
                       </span>
                     )}
+                    {listing.status === "REMOVED" && (
+                      <span className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        Retirée
+                      </span>
+                    )}
                   </div>
                   <div className="p-2.5 flex flex-col gap-0.5">
                     <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">
@@ -140,6 +159,32 @@ export default function ProfileTabs({ listings }: { listings: Listing[] }) {
                     <p className="text-outline/70 text-[10px]">
                       {formatDistanceToNow(listing.createdAt)}
                     </p>
+
+                    {/* Retrait : sans date limite affichée, la suppression au
+                        bout de 21 jours passerait pour une perte de données. */}
+                    {(listing.status === "REMOVED" || listing.status === "REJECTED") &&
+                      (() => {
+                        const left = daysLeft(listing.permanentDeletionAt);
+                        if (left === null) return null;
+                        return (
+                          <div className="mt-2 rounded-lg bg-red-50 border border-red-200 px-2 py-1.5">
+                            {listing.rejectionReason && (
+                              <p className="text-[10px] text-red-800 line-clamp-2">
+                                {listing.rejectionReason}
+                              </p>
+                            )}
+                            <p className="text-[10px] font-bold text-red-700 mt-0.5">
+                              ⏳{" "}
+                              {left === 0
+                                ? "Suppression imminente"
+                                : `Suppression définitive dans ${left} jour${left > 1 ? "s" : ""}`}
+                            </p>
+                            <p className="text-[10px] text-red-700/80">
+                              Modifiez-la pour demander une nouvelle validation.
+                            </p>
+                          </div>
+                        );
+                      })()}
                   </div>
                 </Link>
               );

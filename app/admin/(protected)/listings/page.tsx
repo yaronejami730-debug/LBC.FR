@@ -4,9 +4,13 @@ import ListingActions from "@/components/admin/ListingActions";
 import PendingReasonButton from "@/components/admin/PendingReasonButton";
 import { formatDistanceToNow } from "@/lib/utils";
 
+// « Refusée » et « retirée » ne disent pas la même chose : la première n'a
+// jamais été publiée, la seconde a été enlevée après coup. Les confondre dans
+// un seul onglet empêchait de voir ce qui avait réellement circulé sur le site.
 const STATUS_OPTIONS = [
   { value: "APPROVED", label: "En ligne", icon: "check_circle", color: "text-emerald-600 bg-emerald-50" },
-  { value: "REJECTED", label: "Retirées", icon: "remove_circle", color: "text-[#ba1a1a] bg-[#fff8f7]" },
+  { value: "REJECTED", label: "Refusées", icon: "remove_circle", color: "text-[#ba1a1a] bg-[#fff8f7]" },
+  { value: "REMOVED", label: "Retirées", icon: "visibility_off", color: "text-rose-700 bg-rose-50" },
   { value: "PENDING",  label: "En attente", icon: "pending_actions", color: "text-amber-600 bg-amber-50" },
 ];
 
@@ -16,6 +20,18 @@ export default async function ListingsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status = "APPROVED" } = await searchParams;
+
+  // Refusées et retirées portent toutes deux un motif : la colonne s'affiche
+  // pour les deux, sinon elle disparaîtrait là où elle est la plus utile.
+  const showsReason = status === "REJECTED" || status === "REMOVED";
+  const emptyLabel =
+    status === "APPROVED"
+      ? "en ligne"
+      : status === "REJECTED"
+        ? "refusée"
+        : status === "REMOVED"
+          ? "retirée"
+          : "en attente";
 
   const [listings, counts] = await Promise.all([
     prisma.listing.findMany({
@@ -108,7 +124,7 @@ export default async function ListingsPage({
                 <span className="truncate max-w-full">{listing.user.name}</span>
               </div>
 
-              {status === "REJECTED" && listing.rejectionReason && (
+              {showsReason && listing.rejectionReason && (
                 <p className="mt-2 text-xs italic text-[#777683]">{listing.rejectionReason}</p>
               )}
 
@@ -144,7 +160,7 @@ export default async function ListingsPage({
         {listings.length === 0 && (
           <p className="bg-white border border-[#eceef0] rounded-2xl py-10 text-center text-[#777683]">
             Aucune annonce{" "}
-            {status === "APPROVED" ? "en ligne" : status === "REJECTED" ? "retirée" : "en attente"}
+            {emptyLabel}
           </p>
         )}
       </div>
@@ -160,7 +176,7 @@ export default async function ListingsPage({
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Catégorie</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Prix</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Date</th>
-                {status === "REJECTED" && (
+                {showsReason && (
                   <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Motif</th>
                 )}
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3 min-w-52">Actions</th>
@@ -247,8 +263,8 @@ export default async function ListingsPage({
                       </span>
                     </td>
 
-                    {/* Rejection reason (only in REJECTED tab) */}
-                    {status === "REJECTED" && (
+                    {/* Motif — onglets « refusées » et « retirées » */}
+                    {showsReason && (
                       <td className="px-4 py-3 max-w-[180px]">
                         <span className="text-xs text-[#777683] italic line-clamp-2">
                           {listing.rejectionReason || "—"}
@@ -277,7 +293,7 @@ export default async function ListingsPage({
             </span>
             <p className="text-[#777683] mt-2">
               Aucune annonce{" "}
-              {status === "APPROVED" ? "en ligne" : status === "REJECTED" ? "retirée" : "en attente"}
+              {emptyLabel}
             </p>
           </div>
         )}

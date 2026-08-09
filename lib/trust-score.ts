@@ -85,13 +85,26 @@ export async function computeTrustScore({
   }
 
   // History (max 25)
-  const [approvedListings, soldListingsRaw] = await Promise.all([
+  const [approvedListings, soldListingsRaw, contentQuality, removedListings] = await Promise.all([
     prisma.listing.count({
       where: { userId, status: "APPROVED", deletedAt: null } as any,
     }),
     prisma.listing.count({
       where: { userId, status: "SOLD", deletedAt: null } as any,
     }).catch(() => 0),
+    // Qualité moyenne du contenu publié : photos, titre, description, champs
+    // obligatoires de la catégorie — tout est déjà agrégé dans `qualityScore`
+    // au moment de la publication (cf. lib/quality-score.ts). Un compte qui
+    // soigne ses annonces se distingue d'un compte qui en empile des vides,
+    // et c'est un signal bien plus solide que l'ancienneté seule.
+    prisma.listing
+      .aggregate({
+        where: { userId, deletedAt: null } as any,
+        _avg: { qualityScore: true },
+        _count: { _all: true },
+      })
+      .catch(() => null),
+    prisma.listing.count({ where: { userId, status: "REMOVED" } as any }).catch(() => 0),
   ]);
 
   if (approvedListings >= 50) {
@@ -114,6 +127,34 @@ export async function computeTrustScore({
   if (user.verified) {
     s += 5;
     breakdown.admin_verified = 5;
+  }
+
+  // Content quality (−12 … +12)
+  //
+  // Ne compte qu'à partir de trois annonces : sur une seule, la moyenne dit
+  // surtout que l'annonce est récente, pas que le compte est sérieux.
+  const publishedCount = contentQuality?._count?._all ?? 0;
+  const avgQuality = contentQuality?._avg?.qualityScore ?? null;
+  if (publishedCount >= 3 && avgQuality !== null) {
+    if (avgQuality >= 75) {
+      s += 12;
+      breakdown.content_excellent = 12;
+    } else if (avgQuality >= 60) {
+      s += 6;
+      breakdown.content_good = 6;
+    } else if (avgQuality < 40) {
+      s -= 12;
+      breakdown.content_poor = -12;
+    }
+  }
+
+  // Retraits de modération — plus lourds qu'un simple refus : un refus arrive
+  // avant publication, un retrait signifie qu'un contenu déjà diffusé a dû être
+  // enlevé.
+  if (removedListings > 0) {
+    const pen = -Math.min(20, removedListings * 5);
+    s += pen;
+    breakdown.removed_listings = pen;
   }
 
   // Penalties (uncapped negative)

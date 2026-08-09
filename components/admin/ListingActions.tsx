@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { rejectListing, approveListing } from "@/app/admin/actions";
+import { removeListingAction, restoreListingAction } from "@/app/admin/(protected)/securite/actions";
 
 type Props = {
   listingId: string;
@@ -25,32 +26,43 @@ export default function ListingActions({ listingId, status }: Props) {
         <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>
           {done === "approved" ? "check_circle" : "cancel"}
         </span>
-        {done === "approved" ? "Validée" : "Refusée"}
+        {done === "approved" ? "Validée" : "Retirée"}
       </span>
     );
   }
 
-  if (status === "REJECTED") {
+  // Refusée (jamais publiée) et retirée (publiée puis enlevée) partagent le
+  // même écran d'action : dans les deux cas la seule décision restante est de
+  // remettre l'annonce en ligne.
+  if (status === "REJECTED" || status === "REMOVED") {
+    const removed = status === "REMOVED";
     return (
       <div className="flex flex-col gap-1">
         {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#ba1a1a] bg-[#ffdad6] px-2.5 py-1 rounded-full">
-            <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>cancel</span>
-            Retirée
+            <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              {removed ? "visibility_off" : "cancel"}
+            </span>
+            {removed ? "Retirée" : "Refusée"}
           </span>
           <button
             onClick={() => {
               setError("");
               startTransition(async () => {
-                try { await approveListing(listingId); setDone("approved"); }
-                catch (err) { setError(err instanceof Error ? err.message : "Erreur"); }
+                try {
+                  if (removed) await restoreListingAction(listingId);
+                  else await approveListing(listingId);
+                  setDone("approved");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Erreur");
+                }
               });
             }}
             disabled={isPending}
             className="text-[10px] text-[#777683] hover:text-[#2f6fb8] underline underline-offset-2 disabled:opacity-50"
           >
-            {isPending ? "…" : "Restaurer"}
+            {isPending ? "…" : "Remettre en ligne"}
           </button>
         </div>
       </div>
@@ -125,7 +137,11 @@ export default function ListingActions({ listingId, status }: Props) {
     );
   }
 
-  // APPROVED — seul bouton disponible : Retirer
+  // APPROVED — seul bouton disponible : Retirer.
+  //
+  // Le motif est obligatoire ici, contrairement au refus d'une annonce jamais
+  // publiée : retirer un contenu déjà en ligne déclenche un email à son auteur,
+  // et un email de retrait sans motif est incompréhensible.
   return (
     <div className="space-y-2">
       {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
@@ -144,24 +160,28 @@ export default function ListingActions({ listingId, status }: Props) {
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Motif (optionnel)"
+            placeholder="Motif (envoyé à l'utilisateur)"
             className="text-xs border border-[#c7c5d4] rounded-lg px-2.5 py-1.5 outline-none focus:border-[#ba1a1a] w-full"
           />
+          <p className="text-[10px] text-[#777683]">
+            L'annonce devient invisible immédiatement. Son auteur a 21 jours pour la corriger.
+          </p>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
                 setError("");
                 startTransition(async () => {
                   try {
-                    await rejectListing(listingId, reason);
+                    await removeListingAction(listingId, reason);
                     setShowReject(false);
                     setReason("");
+                    setDone("rejected");
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Erreur");
                   }
                 });
               }}
-              disabled={isPending}
+              disabled={isPending || !reason.trim()}
               className="text-xs bg-[#ba1a1a] text-white px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-50"
             >
               {isPending ? "…" : "Confirmer"}

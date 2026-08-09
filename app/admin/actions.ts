@@ -11,6 +11,7 @@ import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import { baseEmail } from "@/lib/emails/base";
 import { syncSource, parseSourceUrl } from "@/lib/external-sync";
 import { normalizePhone, hashPhone } from "@/lib/moderation/phone";
+import { deletionDateFrom } from "@/lib/moderation/removal";
 import { pingIndexNow } from "@/lib/indexnow";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { sendExpoPush } from "@/lib/expo-push";
@@ -43,9 +44,17 @@ async function requireAdmin() {
 
 export async function approveListing(id: string) {
   await requireAdmin();
+  // L'approbation est le seul moment où le compte à rebours de suppression
+  // s'arrête : une annonce corrigée puis validée n'a plus d'échéance.
   const listing = await prisma.listing.update({
     where: { id },
-    data: { status: "APPROVED", rejectionReason: null },
+    data: {
+      status: "APPROVED",
+      rejectionReason: null,
+      removedAt: null,
+      permanentDeletionAt: null,
+      shadowBanned: false,
+    },
     include: { user: { select: { name: true, email: true, companyName: true, isPro: true } } },
   });
 
@@ -88,13 +97,39 @@ export async function approveListing(id: string) {
   pingIndexNow(urls).catch(() => {});
 }
 
+/**
+ * Refus d'une annonce.
+ *
+ * Un refus arme le même délai de conservation qu'un retrait : l'annonce reste
+ * accessible à son auteur le temps qu'il la corrige, puis elle est détruite.
+ * `permanentDeletionAt` n'est armé qu'une fois — un refus après correction ne
+ * repousse pas l'échéance, sinon l'aller-retour refus/modification permettrait
+ * de garder indéfiniment un contenu jamais publiable.
+ */
 export async function rejectListing(id: string, reason: string) {
   await requireAdmin();
+
+  const current = await prisma.listing.findUnique({
+    where: { id },
+    select: { removedAt: true, permanentDeletionAt: true },
+  });
+  const removedAt = current?.removedAt ?? new Date();
+  const permanentDeletionAt = current?.permanentDeletionAt ?? deletionDateFrom(removedAt);
+
   const listing = await prisma.listing.update({
     where: { id },
-    data: { status: "REJECTED", rejectionReason: reason || null },
+    data: {
+      status: "REJECTED",
+      rejectionReason: reason || null,
+      removedAt,
+      permanentDeletionAt,
+    },
     select: { id: true, title: true, userId: true },
   });
+
+  import("@/lib/opensearch-sync")
+    .then((m) => m.deleteListingFromIndex(id))
+    .catch(() => {});
 
   sendPushNotification({
     userId: listing.userId,
@@ -103,6 +138,7 @@ export async function rejectListing(id: string, reason: string) {
   }).catch(() => {});
 
   revalidatePath("/admin/listings");
+  revalidatePath("/admin/securite");
   revalidatePath("/admin");
 }
 
@@ -126,27 +162,24 @@ export async function rejectUser(id: string, adminNote: string) {
   revalidatePath("/admin/users");
 }
 
+/**
+ * Bannit un compte depuis l'écran utilisateurs.
+ *
+ * Délègue au centre de sécurité pour qu'il n'existe qu'un seul comportement de
+ * bannissement : empreinte anti-réinscription enregistrée, annonces retirées
+ * avec délai de conservation, journal d'audit alimenté. Deux implémentations
+ * divergentes finiraient par bannir différemment selon le bouton cliqué.
+ */
 export async function banUser(id: string, reason: string) {
-  await requireAdmin();
-  await prisma.user.update({
-    where: { id },
-    data: { bannedAt: new Date(), banReason: reason || null },
-  });
-  // Reject all active listings from this user
-  await prisma.listing.updateMany({
-    where: { userId: id, status: { in: ["APPROVED", "PENDING"] } },
-    data: { status: "REJECTED", rejectionReason: "Compte suspendu" },
-  });
+  const { banAccountAction } = await import("@/app/admin/(protected)/securite/actions");
+  await banAccountAction(id, reason || "Compte suspendu");
   revalidatePath("/admin/users");
   revalidatePath("/admin/listings");
 }
 
 export async function unbanUser(id: string) {
-  await requireAdmin();
-  await prisma.user.update({
-    where: { id },
-    data: { bannedAt: null, banReason: null },
-  });
+  const { unbanAccountAction } = await import("@/app/admin/(protected)/securite/actions");
+  await unbanAccountAction(id);
   revalidatePath("/admin/users");
 }
 

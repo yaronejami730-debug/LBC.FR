@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
 import { verifyEmail } from "@/lib/emails/verify-email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkBanRegistry, BAN_BLOCK_MESSAGE } from "@/lib/moderation/ban-registry";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,6 +34,19 @@ export async function POST(req: NextRequest) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
+  }
+
+  // Réinscription après bannissement. Le registre ne contient que des
+  // empreintes : on compare des hachages, jamais des valeurs en clair.
+  // Le message renvoyé est volontairement identique quel que soit le signal
+  // qui a déclenché le blocage — préciser « votre numéro est banni » revient à
+  // indiquer quoi changer pour passer au travers.
+  const ban = await checkBanRegistry({ email, phone: null, siret: isPro ? siret : null }).catch(
+    () => ({ blocked: false, matchedOn: null as null }),
+  );
+  if (ban.blocked) {
+    console.warn(`[REGISTER] inscription refusée (registre: ${ban.matchedOn})`);
+    return NextResponse.json({ error: BAN_BLOCK_MESSAGE }, { status: 403 });
   }
 
   if (isPro && siret) {

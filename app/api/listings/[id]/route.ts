@@ -57,8 +57,26 @@ export async function PATCH(
   if (!listing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (listing.userId !== userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // Une annonce dont le délai de conservation est écoulé n'est plus
+  // modifiable : elle est en attente de destruction, la remettre en file
+  // reviendrait à la ressusciter au moment où on s'apprête à l'effacer.
+  const expired =
+    !!listing.permanentDeletionAt && listing.permanentDeletionAt.getTime() <= Date.now();
+  if (expired) {
+    return NextResponse.json(
+      { error: "Le délai de modification de cette annonce est écoulé." },
+      { status: 409 },
+    );
+  }
+
   const body = await req.json();
   const { title, price, description, location, condition, images, category, subcategory, metadata } = body;
+
+  // Une annonce retirée qui repart en modération conserve son échéance : sans
+  // ça, le cycle modifier → refuser → modifier repousserait la suppression
+  // indéfiniment. Elle remonte en revanche en tête de file, parce qu'un
+  // contenu déjà sanctionné mérite d'être revu vite.
+  const wasSanctioned = listing.status === "REMOVED" || listing.status === "REJECTED";
 
   const updated = await prisma.listing.update({
     where: { id },
@@ -73,10 +91,26 @@ export async function PATCH(
       ...(subcategory !== undefined && { subcategory }),
       ...(metadata !== undefined && { metadata }),
       status: "PENDING",
+      ...(wasSanctioned && { reviewPriority: 100, shadowBanned: false }),
     },
   });
 
-  // Resynchronise l'index OpenSearch — fire-and-forget.
+  if (wasSanctioned) {
+    prisma.moderationEvent
+      .create({
+        data: {
+          listingId: id,
+          userId,
+          actor: "system",
+          action: "listing_resubmitted",
+          reason: "Annonce corrigée par son auteur après retrait ou refus",
+        },
+      })
+      .catch(() => {});
+  }
+
+  // Resynchronise l'index OpenSearch — fire-and-forget. Une annonce en attente
+  // n'est pas indexable : `listingToDocument` s'appuie sur le statut.
   indexListing(updated).catch((err) =>
     console.error("[OpenSearch] indexListing (PATCH) échec:", err),
   );
