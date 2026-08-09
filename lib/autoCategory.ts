@@ -1,9 +1,10 @@
 /**
  * Détection automatique de catégorie basée sur l'AdClassifier v2.0
- * Utilise categories-classifier.json (5 006 termes, 12 catégories, 46 sous-catégories)
+ * Utilise categories-classifier.json (13 catégories, 55 sous-catégories)
  */
 
 import { AdClassifier } from "./classifier";
+import { classifyWellness } from "./wellness/classify";
 import categoriesData from "./categories-classifier.json";
 import { expandAbbreviations } from "./normalize-fr";
 
@@ -135,6 +136,20 @@ export type DetectResult = { categoryId: string; subcategory: string; confidence
 
 export function detectCategory(title: string, description = ""): DetectResult | null {
   if (!title || title.trim().length < 3) return null;
+
+  // La rubrique « Beauté & Bien-être » a son propre moteur : il connaît le
+  // niveau 3 (type d'annonce) et distingue une prestation d'une location de
+  // cabine entre professionnels, ce que des mots-clés à plat ne savent pas
+  // faire. Il passe en premier, sinon « cabine de massage à louer » finirait
+  // en immobilier et « coiffeur à domicile » en services à la personne.
+  const wellness = classifyWellness({ title, description });
+  if (wellness && wellness.offerKind !== "vente_produit" && wellness.confidence >= 0.6) {
+    return {
+      categoryId: "beaute-bien-etre",
+      subcategory: wellness.subcategory,
+      confidence: wellness.confidence,
+    };
+  }
 
   // Expansion des abréviations FR avant classification ("pc av" → "pare-chocs avant")
   const result = classifier.classify(

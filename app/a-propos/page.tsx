@@ -113,7 +113,7 @@ export default function AProposPage() {
               Que vous vendiez un smartphone, une voiture, un canapé ou un appartement, vous méritez une plateforme qui travaille pour vous — pas pour ses propres revenus publicitaires. Deal&amp;Co est construite sur ce principe.
             </p>
             <p>
-              Nous couvrons toute la France avec 14 catégories d&apos;annonces : immobilier, véhicules, mode, multimédia, maison, loisirs, animaux, services et bien plus. Chaque annonce est modérée avant publication pour garantir la fiabilité des offres.
+              Nous couvrons toute la France avec 15 catégories d&apos;annonces : immobilier, véhicules, mode, multimédia, maison, loisirs, animaux, services, beauté &amp; bien-être et bien plus. Chaque annonce est modérée avant publication pour garantir la fiabilité des offres.
             </p>
           </div>
         </section>

@@ -71,6 +71,11 @@ model User {
   draft             Draft?
   pushSubscriptions PushSubscription[]
   expoPushTokens    ExpoPushToken[]
+
+  // Vérification des comptes professionnels
+  proVerifiedAt    DateTime?
+  proVerifications ProVerification[] @relation("ProVerificationUser")
+  proReviews       ProVerification[] @relation("ProVerificationReviewer")
 }
 
 model ApiKey {
@@ -751,4 +756,42 @@ model AdvertiserLead {
 
   @@index([status, createdAt])
   @@index([email])
+}
+
+/// Dossier de vérification d'un compte professionnel.
+///
+/// Un SIRET valide ne prouve rien : il est public, n'importe qui peut recopier
+/// celui d'une autre entreprise. Le passage en compte pro exige donc une pièce
+/// d'identité et un justificatif d'entreprise (Kbis ou avis de situation
+/// SIRENE), relus par un modérateur — même logique que la validation des
+/// annonces.
+///
+/// Les documents ne sont pas stockés en accès public : seul le `pathname` du
+/// blob privé est conservé, et l'admin les consulte via une route qui vérifie
+/// son rôle.
+model ProVerification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("ProVerificationUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  status      String @default("PENDING") // PENDING | APPROVED | REJECTED
+  siret       String
+  companyName String
+
+  /// Type de pièce fournie : CNI | PASSEPORT | TITRE_SEJOUR
+  idDocumentType String
+  idDocumentPath String
+  /// Type de justificatif : KBIS | AVIS_SIRENE
+  companyDocType String
+  companyDocPath String
+
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedById    String?
+  reviewedBy      User?     @relation("ProVerificationReviewer", fields: [reviewedById], references: [id])
+  rejectionReason String?
+  adminNote       String?
+
+  @@index([status, submittedAt])
+  @@index([userId])
 }

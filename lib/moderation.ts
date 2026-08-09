@@ -1,4 +1,9 @@
 import { CATEGORIES, getCategoryByLabel } from "@/lib/categories";
+import {
+  screenWellnessListing,
+  WELLNESS_REJECTION_REASON,
+} from "@/lib/moderation/wellness-policy";
+import { classifyWellness } from "@/lib/wellness/classify";
 
 export type ModerationVerdict = "approve" | "review" | "reject";
 export type ModerationSeverity = "critical" | "major" | "minor";
@@ -37,6 +42,8 @@ export type ModerationResult = {
   publicReason: string | null;
   adminNote: string;
   suggestsProActivity: boolean;
+  /** Classification fine « Bien-être & Beauté », null hors rubrique. */
+  wellness: ReturnType<typeof classifyWellness>;
 };
 
 const PRO_ACTIVITY_MESSAGE =
@@ -279,6 +286,30 @@ export function moderateListing(input: ModerationInput): ModerationResult {
     }
   }
 
+  // 13. Politique « Beauté & Bien-être »
+  //
+  // Le contrôle des termes bannis ne regarde pas la catégorie : une annonce de
+  // massage naturiste rangée dans « Divers » ou « Services » reste interdite.
+  // Seuls les déclenchements de relecture humaine dépendent de la rubrique.
+  const wellnessClass = classifyWellness({
+    title,
+    description,
+    price: input.price,
+  });
+  const wellness = screenWellnessListing({
+    text: full,
+    category: input.category,
+    subcategory: input.subcategory,
+    confidence: wellnessClass?.confidence ?? null,
+    hasImages: (input.images?.length ?? 0) > 0,
+  });
+  for (const b of wellness.banned) {
+    add(`wellness_banned_${b.id}`, "critical", `Contenu interdit : ${b.label}`);
+  }
+  for (const s of wellness.suspicious) {
+    add(`wellness_signal_${s.id}`, "minor", `Signal bien-être : ${s.label}`);
+  }
+
   // Verdict
   const critical = flags.filter((f) => f.severity === "critical").length;
   const major = flags.filter((f) => f.severity === "major").length;
@@ -296,20 +327,27 @@ export function moderateListing(input: ModerationInput): ModerationResult {
   else if (hasNoImage) verdict = "review"; // no photo → always manual approval
   else verdict = "approve";
 
+  // Massage, spa et signaux faibles bien-être : jamais de publication
+  // automatique. Une relecture inutile ne coûte rien, une annonce de
+  // prostitution publiée coûte le sérieux du site.
+  if (verdict === "approve" && wellness.requiresManualReview) verdict = "review";
+
   const rejectReasons = flags
     .filter((f) => f.severity === "critical" || f.severity === "major")
     .map((f) => f.message);
 
   let publicReason: string | null = null;
   if (verdict === "reject") {
-    publicReason = suggestsProActivity
-      ? PRO_ACTIVITY_MESSAGE
-      : rejectReasons.slice(0, 3).join(" · ");
+    publicReason = wellness.banned.length > 0
+      ? WELLNESS_REJECTION_REASON
+      : suggestsProActivity
+        ? PRO_ACTIVITY_MESSAGE
+        : rejectReasons.slice(0, 3).join(" · ");
   }
 
   const adminNote = flags.length > 0
     ? flags.map((f) => `[${f.severity}] ${f.code}: ${f.message}`).join("\n")
     : "Aucun signal détecté";
 
-  return { verdict, score, flags, publicReason, adminNote, suggestsProActivity };
+  return { verdict, score, flags, publicReason, adminNote, suggestsProActivity, wellness: wellnessClass };
 }

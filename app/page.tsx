@@ -40,7 +40,7 @@ const HOME_H1 = "Petites annonces gratuites entre particuliers en France";
 const HOME_FAQ = [
   {
     q: "Qu'est-ce que Deal&Co ?",
-    a: "Deal&Co est un site français de petites annonces gratuites entre particuliers et professionnels, permettant l'achat, la vente et l'échange de véhicules, biens immobiliers, mode, électronique, mobilier et plus de 14 catégories de biens partout en France, sans commission ni intermédiaire.",
+    a: "Deal&Co est un site français de petites annonces gratuites entre particuliers et professionnels, permettant l'achat, la vente et l'échange de véhicules, biens immobiliers, mode, électronique, mobilier, beauté & bien-être et plus de 15 catégories de biens partout en France, sans commission ni intermédiaire.",
   },
   {
     q: "La publication d'annonces est-elle gratuite sur Deal&Co ?",
@@ -119,7 +119,7 @@ const jsonLd = {
       areaServed: { "@type": "Country", name: "France" },
       knowsLanguage: ["fr"],
       description:
-        "Deal&Co est un site français de petites annonces gratuites entre particuliers et professionnels, sans commission, couvrant 14 catégories principales (véhicules, immobilier, mode, multimédia, maison, loisirs, animaux, services, emploi, bébé & enfant, vacances et divers) partout en France.",
+        "Deal&Co est un site français de petites annonces gratuites entre particuliers et professionnels, sans commission, couvrant 15 catégories principales (véhicules, immobilier, mode, multimédia, maison, loisirs, animaux, services, beauté & bien-être, emploi, bébé & enfant, vacances et divers) partout en France.",
       slogan: "Achetez et vendez près de chez vous, gratuitement",
       email: "contact@dealandcompany.fr",
       contactPoint: {

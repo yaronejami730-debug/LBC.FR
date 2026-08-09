@@ -11,6 +11,7 @@ const navItems = [
   { href: "/admin/users", icon: "group", label: "Utilisateurs", exact: false },
   { href: "/admin/listings", icon: "list_alt", label: "Annonces", exact: false },
   { href: "/admin/categories", icon: "tune", label: "Catégories", exact: false },
+  { href: "/admin/verifications-pro", icon: "verified_user", label: "Vérifications pro", exact: false },
   { href: "/admin/crm", icon: "handshake", label: "CRM", exact: false },
   { href: "/admin/annonceurs", icon: "storefront", label: "Annonceurs", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },

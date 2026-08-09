@@ -26,7 +26,7 @@ Deal&Co (dealandcompany.fr) est un site français de petites annonces lancé pou
 
 ## Description courte
 
-Deal&Co est un site de petites annonces gratuites entre particuliers en France, couvrant 14 catégories principales (véhicules, immobilier, mode, multimédia, maison, loisirs, animaux, services, emploi, communauté, matériel professionnel, bébé & enfant, vacances, divers).
+Deal&Co est un site de petites annonces gratuites entre particuliers en France, couvrant 15 catégories principales (véhicules, immobilier, mode, multimédia, maison, loisirs, animaux, services, beauté & bien-être, emploi, communauté, matériel professionnel, bébé & enfant, vacances, divers).
 
 ## Faits clés
 

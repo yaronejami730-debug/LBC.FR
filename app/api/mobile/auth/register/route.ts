@@ -51,7 +51,11 @@ export async function POST(req: NextRequest) {
         memberSince: new Date().getFullYear(),
         consentGivenAt: new Date(),
         marketingConsent: marketingConsent === true,
-        ...(isPro && siret && companyName ? { isPro: true, siret, companyName } : {}),
+        // Inscription pro : le SIRET et la raison sociale sont enregistrés, mais
+        // `isPro` reste faux. Le badge professionnel s'obtient après dépôt d'une
+        // pièce d'identité et d'un Kbis, validés dans /admin/verifications-pro —
+        // sinon il suffisait de recopier le SIRET d'une autre entreprise.
+        ...(isPro && siret && companyName ? { siret, companyName } : {}),
         ...(earlyAdopter ? { earlyAdopterDiscount: true } : {}),
       },
     });

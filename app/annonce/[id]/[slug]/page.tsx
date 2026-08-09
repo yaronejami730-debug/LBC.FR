@@ -15,6 +15,7 @@ import OwnerActions from "../OwnerActions";
 import PhotoGallery from "../PhotoGallery";
 import MarketEstimate from "@/components/listing/MarketEstimate";
 import PriceSignalNote from "@/components/listing/PriceSignalNote";
+import WellnessCard, { type WellnessMeta } from "@/components/listing/WellnessCard";
 import HistoryTracker from "@/components/HistoryTracker";
 import ProBadge from "@/components/ProBadge";
 import ListingInfoTip from "../ListingInfoTip";
@@ -908,6 +909,17 @@ export default async function ListingPage({
                 />
               </Suspense>
             )}
+
+            {listing.category === "Beauté & Bien-être" && (() => {
+              const wm = (() => {
+                try {
+                  return (JSON.parse(listing.metadata) as { wellness?: WellnessMeta }).wellness ?? null;
+                } catch {
+                  return null;
+                }
+              })();
+              return wm ? <WellnessCard meta={wm} price={listing.price} /> : null;
+            })()}
 
             {!isVehicle && (
               <Suspense fallback={null}>

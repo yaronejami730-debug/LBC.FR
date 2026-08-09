@@ -195,6 +195,13 @@ export default function RegisterPage() {
                   {siretError && (
                     <p className="text-error text-xs font-medium">{siretError}</p>
                   )}
+                  {/* Dit dès l'inscription ce qui attend le compte : le badge
+                      pro n'est plus délivré sur la seule saisie d'un SIRET. */}
+                  <p className="text-outline text-[11px] leading-relaxed bg-surface-container-low rounded-xl px-3 py-2">
+                    Après inscription, une vérification d&apos;identité est demandée depuis votre
+                    profil (pièce d&apos;identité + Kbis ou avis SIRENE). Le badge professionnel
+                    s&apos;active une fois le dossier validé, sous 24 à 48&nbsp;h.
+                  </p>
                 </div>
               )}
 

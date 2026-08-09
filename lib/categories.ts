@@ -66,6 +66,28 @@ export const CATEGORIES: Category[] = [
     subcategories: ["Services à la personne", "Réparations", "Événementiel", "Cours particuliers", "Services divers"],
   },
   {
+    id: "beaute-bien-etre",
+    label: "Beauté & Bien-être",
+    icon: "spa",
+    // Prestations de salon uniquement : toute connotation sensuelle est
+    // bannie par lib/moderation/wellness-policy.ts.
+    // Alignées sur lib/wellness/taxonomy.ts, qui porte le niveau 3 (type
+    // d'annonce) et les axes tarif / durée / capacité / public.
+    subcategories: [
+      "Massage",
+      "Onglerie",
+      "Sourcils & cils",
+      "Maquillage",
+      "Soins du visage",
+      "Épilation",
+      "Coiffure",
+      "Spa & détente",
+      "Location d'espace bien-être",
+      "Sport & récupération",
+      "Relaxation & bien-être",
+    ],
+  },
+  {
     id: "emploi",
     label: "Emploi",
     icon: "work",

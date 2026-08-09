@@ -20,6 +20,12 @@ import { citySlug } from "@/lib/cities";
 import { computeQualityScore } from "@/lib/quality-score";
 import { detectCategory } from "@/lib/autoCategory";
 import { extractAttributes } from "@/lib/extract-attributes";
+import { classifyWellness } from "@/lib/wellness/classify";
+import {
+  WELLNESS_CATEGORY_ID,
+  WELLNESS_PRO_THRESHOLD,
+  PRO_UPGRADE_INVITE,
+} from "@/lib/moderation/wellness-policy";
 import { scanText } from "@/lib/moderation/url-scanner";
 import { scanScam } from "@/lib/moderation/scam-patterns";
 import { fingerprintFields, findDuplicates, dedupSignal } from "@/lib/moderation/dedup";
@@ -158,6 +164,8 @@ export async function POST(req: NextRequest) {
     let reviewPriority = 0;
     let shadowBanned = false;
     let moderationFlags: { code: string; severity: string; message: string }[] = [];
+    /** Invitation à passer en compte pro (jamais un rejet), renvoyée au client. */
+    let proUpgradeInvite: string | null = null;
 
     if (categorySetting?.approvalMode === "MANUAL") {
       listingStatus = "PENDING";
@@ -278,6 +286,92 @@ export async function POST(req: NextRequest) {
         },
       ];
     }
+    // ── Rubrique « Beauté & Bien-être » ──────────────────────────────────
+    // Niveau 3 (type d'annonce) + tarif, durée, capacité, public visé :
+    // persistés pour l'affichage et le filtrage, sans nouvel appel au moteur.
+    if (categoryId === WELLNESS_CATEGORY_ID) {
+      const w = classifyWellness({ title, description, price: parsedPrice });
+
+      // Le formulaire l'emporte sur l'extraction : ce que le vendeur a déclaré
+      // est plus sûr que ce qu'on a deviné dans son texte.
+      const declaredDuration = metaObj.durationMin ? parseInt(String(metaObj.durationMin)) || null : null;
+      const declaredCapacity = metaObj.capacity
+        ? parseInt(String(metaObj.capacity).replace("+", "")) || null
+        : null;
+      const durationMin = declaredDuration ?? w?.durationMin ?? null;
+      const capacity = declaredCapacity ?? w?.capacity ?? null;
+      const tariffType = (metaObj.tariffType as string) || w?.tariffType || "fixe";
+      const pricePerPerson =
+        parsedPrice && capacity && capacity > 1 && tariffType !== "par_personne"
+          ? Math.round((parsedPrice / capacity) * 100) / 100
+          : null;
+
+      if (w || declaredDuration || declaredCapacity) {
+        metaObj.wellness = {
+          type: w?.type ?? null,
+          typeId: w?.typeId ?? null,
+          extraTypes: w?.extraTypes ?? [],
+          offerKind: (metaObj.offerKind as string) || w?.offerKind || "prestation",
+          audience:
+            (metaObj.offerKind as string) === "location_espace"
+              ? "professionnel"
+              : (w?.audience ?? "particulier"),
+          formats: w?.formats ?? [],
+          place: (metaObj.place as string) ?? null,
+          durationMin,
+          capacity,
+          tariffType,
+          priceUnit: (metaObj.priceUnit as string) || w?.priceUnit || null,
+          pricePerPerson,
+          tags: w?.tags ?? [],
+          // Carte des prestations — bornée et nettoyée côté serveur : le
+          // client peut envoyer n'importe quoi.
+          services: Array.isArray(metaObj.services)
+            ? metaObj.services
+                .filter((s: any) => s && typeof s.label === "string" && Number(s.price) > 0)
+                .slice(0, 20)
+                .map((s: any) => ({
+                  label: String(s.label).trim().slice(0, 80),
+                  durationMin: Number(s.durationMin) > 0 ? Math.min(Number(s.durationMin), 999) : null,
+                  price: Math.round(Number(s.price) * 100) / 100,
+                }))
+            : [],
+        };
+      }
+
+      // Un particulier peut vendre ponctuellement une prestation de bien-être.
+      // Au-delà de WELLNESS_PRO_THRESHOLD annonces actives, c'est une activité
+      // de salon : on invite à passer en compte professionnel — vérifié, donc
+      // authentifiable — plutôt que de rejeter. L'annonce part en relecture, pas
+      // à la poubelle.
+      const sellerIsPro = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isPro: true },
+      });
+      const isRentalListing =
+        (metaObj.offerKind as string) === "location_espace" || w?.offerKind === "location_espace";
+      if (!sellerIsPro?.isPro && w?.offerKind !== "vente_produit" && !isRentalListing) {
+        const wellnessCount = await prisma.listing.count({
+          where: {
+            userId: session.user.id,
+            category,
+            deletedAt: null,
+            status: { in: ["APPROVED", "PENDING"] },
+          },
+        });
+        if (wellnessCount >= WELLNESS_PRO_THRESHOLD) {
+          proUpgradeInvite = PRO_UPGRADE_INVITE;
+          if (listingStatus === "APPROVED") {
+            listingStatus = "PENDING";
+            reviewPriority += 2;
+          }
+          adminNote =
+            `[WELLNESS_VOLUME] ${wellnessCount + 1}e annonce bien-être sur un compte particulier — inviter au passage en pro\n` +
+            (adminNote ?? "");
+        }
+      }
+    }
+
     // Attributs extraits → persistés dans metadata pour filtrage/recherche
     if (attributes.brand) metaObj.detectedBrand = attributes.brand;
     if (attributes.model) metaObj.detectedModel = attributes.model;
@@ -594,7 +688,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { ...listing, rejectedForProActivity },
+      { ...listing, rejectedForProActivity, proUpgradeInvite },
       { status: 201 },
     );
   } catch (err) {

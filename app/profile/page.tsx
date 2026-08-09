@@ -34,6 +34,13 @@ export default async function ProfilePage() {
         take: 1,
         select: { keyPrefix: true, createdAt: true },
       },
+      // Dernier dossier de vérification pro : tant qu'il est en attente, le
+      // formulaire cède la place au statut.
+      proVerifications: {
+        orderBy: { submittedAt: "desc" },
+        take: 1,
+        select: { status: true, rejectionReason: true, submittedAt: true },
+      },
     },
   });
 
@@ -120,7 +127,21 @@ export default async function ProfilePage() {
           }
           return null;
         })()}
-        {!user.isPro && <UpgradePro />}
+        {!user.isPro && (
+          <>
+            {user.proVerifications[0]?.status === "REJECTED" && (
+              <div className="bg-error-container text-on-error-container rounded-2xl px-5 py-4 mb-4 text-sm">
+                <p className="font-bold">Dossier professionnel refusé</p>
+                <p className="mt-1 leading-relaxed">
+                  {user.proVerifications[0].rejectionReason ??
+                    "Justificatifs non conformes."}{" "}
+                  Vous pouvez en déposer un nouveau ci-dessous.
+                </p>
+              </div>
+            )}
+            <UpgradePro pending={user.proVerifications[0]?.status === "PENDING"} />
+          </>
+        )}
 
         {/* Clé API — pros uniquement */}
         {user.isPro && (

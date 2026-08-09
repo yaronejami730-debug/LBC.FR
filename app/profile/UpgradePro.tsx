@@ -1,14 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
-export default function UpgradePro() {
+/**
+ * Demande de compte professionnel.
+ *
+ * Le SIRET ne suffit plus à activer le badge : il est public et se recopie.
+ * L'utilisateur dépose une pièce d'identité et un justificatif d'entreprise
+ * (Kbis ou avis de situation SIRENE), un modérateur tranche. Le formulaire
+ * n'active donc rien — il ouvre un dossier.
+ */
+
+type DocKind = "identity" | "company";
+
+const ID_TYPES = [
+  { value: "CNI", label: "Carte nationale d'identité" },
+  { value: "PASSEPORT", label: "Passeport" },
+  { value: "TITRE_SEJOUR", label: "Titre de séjour" },
+];
+
+const COMPANY_DOC_TYPES = [
+  { value: "KBIS", label: "Extrait Kbis" },
+  { value: "AVIS_SIRENE", label: "Avis de situation SIRENE" },
+];
+
+export default function UpgradePro({ pending = false }: { pending?: boolean }) {
   const [siret, setSiret] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const [idType, setIdType] = useState("CNI");
+  const [companyDocType, setCompanyDocType] = useState("KBIS");
+  const [idPath, setIdPath] = useState("");
+  const [companyPath, setCompanyPath] = useState("");
+  const [idName, setIdName] = useState("");
+  const [companyDocName, setCompanyDocName] = useState("");
+  const [uploading, setUploading] = useState<DocKind | null>(null);
+
+  const idInput = useRef<HTMLInputElement>(null);
+  const companyInput = useRef<HTMLInputElement>(null);
 
   async function handleSiretChange(value: string) {
     const clean = value.replace(/\s/g, "").slice(0, 14);
@@ -35,25 +68,54 @@ export default function UpgradePro() {
     }
   }
 
+  async function uploadDoc(kind: DocKind, file: File) {
+    setUploading(kind);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("kind", kind);
+      const res = await fetch("/api/pro-verification/upload", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Envoi du document impossible");
+        return;
+      }
+      if (kind === "identity") {
+        setIdPath(data.path);
+        setIdName(file.name);
+      } else {
+        setCompanyPath(data.path);
+        setCompanyDocName(file.name);
+      }
+    } catch {
+      setError("Envoi du document impossible");
+    } finally {
+      setUploading(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!companyName) return;
+    if (!companyName || !idPath || !companyPath) return;
     setSaving(true);
     setError("");
     try {
       const res = await fetch("/api/profile/upgrade-pro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ siret, companyName }),
+        body: JSON.stringify({
+          siret,
+          companyName,
+          idDocumentType: idType,
+          idDocumentPath: idPath,
+          companyDocType,
+          companyDocPath: companyPath,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Une erreur est survenue");
-      } else {
-        setSuccess(true);
-        // Hard reload to re-render server component with updated user
-        setTimeout(() => window.location.reload(), 1200);
-      }
+      if (!res.ok) setError(data.error ?? "Une erreur est survenue");
+      else setSubmitted(true);
     } catch {
       setError("Erreur réseau, réessayez");
     } finally {
@@ -61,15 +123,20 @@ export default function UpgradePro() {
     }
   }
 
-  if (success) {
+  if (submitted || pending) {
     return (
-      <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] mb-8 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+      <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] mb-8 flex items-start gap-4">
+        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <span className="material-symbols-outlined text-amber-600" style={{ fontVariationSettings: "'FILL' 1" }}>
+            hourglass_top
+          </span>
         </div>
         <div>
-          <p className="font-bold text-on-surface">Compte Pro activé !</p>
-          <p className="text-outline text-sm">Rechargement en cours…</p>
+          <p className="font-bold text-on-surface">Dossier en cours d&apos;examen</p>
+          <p className="text-outline text-sm mt-0.5 leading-relaxed">
+            Un modérateur vérifie vos justificatifs sous 24 à 48&nbsp;heures ouvrées. Vous recevrez
+            un email dès que votre compte professionnel sera activé.
+          </p>
         </div>
       </div>
     );
@@ -83,9 +150,15 @@ export default function UpgradePro() {
         </div>
         <div>
           <h3 className="font-extrabold text-on-surface font-['Manrope']">Passer en compte Pro</h3>
-          <p className="text-outline text-xs mt-0.5">Affichez le badge Pro sur vos annonces</p>
+          <p className="text-outline text-xs mt-0.5">Vérification d&apos;identité requise · 24 à 48 h</p>
         </div>
       </div>
+
+      <p className="text-xs text-outline leading-relaxed mb-5 bg-surface-container-low rounded-xl px-4 py-3">
+        Un numéro SIRET est public&nbsp;: nous vérifions donc qu&apos;il vous appartient. Vos
+        documents sont stockés de façon privée, consultés uniquement par la modération, et ne sont
+        jamais visibles des autres utilisateurs.
+      </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -125,19 +198,115 @@ export default function UpgradePro() {
           </div>
         )}
 
+        <DocField
+          legend="Pièce d'identité du dirigeant"
+          hint="Recto-verso lisible, en cours de validité."
+          types={ID_TYPES}
+          type={idType}
+          onType={setIdType}
+          fileName={idName}
+          busy={uploading === "identity"}
+          inputRef={idInput}
+          onFile={(f) => uploadDoc("identity", f)}
+        />
+
+        <DocField
+          legend="Justificatif d'entreprise"
+          hint="Kbis ou avis de situation SIRENE de moins de 3 mois."
+          types={COMPANY_DOC_TYPES}
+          type={companyDocType}
+          onType={setCompanyDocType}
+          fileName={companyDocName}
+          busy={uploading === "company"}
+          inputRef={companyInput}
+          onFile={(f) => uploadDoc("company", f)}
+        />
+
         {error && (
           <p className="text-error text-sm font-medium bg-error-container px-4 py-3 rounded-xl">{error}</p>
         )}
 
         <button
           type="submit"
-          disabled={!companyName || saving}
+          disabled={!companyName || !idPath || !companyPath || saving}
           className="w-full bg-gradient-to-r from-primary to-primary-container text-white font-bold py-3 rounded-full shadow-[0_8px_24px_rgba(21,21,125,0.2)] active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          <span className="material-symbols-outlined text-[18px]">store</span>
-          {saving ? "Activation…" : "Activer le compte Pro"}
+          <span className="material-symbols-outlined text-[18px]">verified_user</span>
+          {saving ? "Envoi…" : "Envoyer mon dossier"}
         </button>
       </form>
     </div>
+  );
+}
+
+function DocField({
+  legend,
+  hint,
+  types,
+  type,
+  onType,
+  fileName,
+  busy,
+  inputRef,
+  onFile,
+}: {
+  legend: string;
+  hint: string;
+  types: { value: string; label: string }[];
+  type: string;
+  onType: (v: string) => void;
+  fileName: string;
+  busy: boolean;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="block text-sm font-bold text-primary tracking-tight mb-1.5 uppercase">
+        {legend}
+      </legend>
+      <select
+        value={type}
+        onChange={(e) => onType(e.target.value)}
+        className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary outline-none mb-2 text-sm"
+      >
+        {types.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
+      </select>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,application/pdf"
+        className="sr-only"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className={`w-full flex items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 text-left transition-colors ${
+          fileName ? "border-green-300 bg-green-50" : "border-outline-variant/50 hover:border-primary"
+        }`}
+      >
+        <span
+          className={`material-symbols-outlined text-[22px] ${fileName ? "text-green-600" : "text-outline"}`}
+          style={fileName ? { fontVariationSettings: "'FILL' 1" } : {}}
+        >
+          {busy ? "hourglass_top" : fileName ? "task_alt" : "upload_file"}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-on-surface truncate">
+            {busy ? "Envoi en cours…" : fileName || "Choisir un fichier"}
+          </span>
+          <span className="block text-[11px] text-outline">{hint} JPEG, PNG ou PDF · 8 Mo max.</span>
+        </span>
+      </button>
+    </fieldset>
   );
 }

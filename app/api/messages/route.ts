@@ -8,6 +8,11 @@ import { isEmailAllowed } from "@/lib/notifications/preferences";
 import { newMessageEmail } from "@/lib/emails/new-message";
 import { rateLimit } from "@/lib/rate-limit";
 import { scanScam } from "@/lib/moderation/scam-patterns";
+import {
+  scanAdultContent,
+  recidiveAction,
+  ADULT_BLOCK_MESSAGE,
+} from "@/lib/moderation/adult-filter";
 import { scanText } from "@/lib/moderation/url-scanner";
 import { ensureBlacklistPrimed } from "@/lib/moderation/blacklist";
 import { aggregateRisk, signal } from "@/lib/moderation/risk-engine";
@@ -120,6 +125,67 @@ export async function POST(req: NextRequest) {
   // Seuils abaissés vs annonces : le scam vit dans la messagerie.
   const text = (content ?? "").trim();
   await ensureBlacklistPrimed(prisma);
+  // ── Contenus à caractère sexuel — blocage dur ──
+  // Le filtre anti-arnaque laisse passer en signalant ; sur une sollicitation
+  // sexuelle, un faux négatif expose directement le destinataire. Ici le
+  // message n'est pas créé, donc jamais remis.
+  const adult = scanAdultContent(text);
+  if (adult.blocked) {
+    const priorBlocks = await prisma.moderationEvent
+      .count({ where: { userId: session.user.id, action: "message_blocked" } })
+      .catch(() => 0);
+    const total = priorBlocks + 1;
+    const action = recidiveAction(total);
+
+    await prisma.moderationEvent.create({
+      data: {
+        userId: session.user.id,
+        actor: "system",
+        action: "message_blocked",
+        reason:
+          `conv=${conversationId} categorie=${adult.category} palier=${action} tentative=${total}` +
+          (adult.obfuscated ? " [contournement du filtre]" : "") +
+          ` motifs=${adult.matches.map((m) => m.id).join(",")}`,
+        flagsJson: JSON.stringify(adult.matches),
+      } as any,
+    }).catch(() => {});
+
+    // Récidive : surveillance, puis restriction. Le bannissement reste une
+    // décision humaine — la file admin voit le compte arriver.
+    if (action === "watch") {
+      await prisma.user
+        .update({ where: { id: session.user.id }, data: { spamScore: { increment: 20 } } })
+        .catch(() => {});
+    } else if (action === "suspend" || action === "ban") {
+      await prisma.user
+        .update({
+          where: { id: session.user.id },
+          data: {
+            restrictedAt: new Date(),
+            spamScore: { increment: 40 },
+            adminNote: `[ADULT_CONTENT] ${total} messages bloqués — ${
+              action === "ban" ? "bannissement à trancher" : "compte restreint automatiquement"
+            }`,
+          },
+        })
+        .catch(() => {});
+    }
+
+    return NextResponse.json(
+      {
+        error: ADULT_BLOCK_MESSAGE,
+        blocked: true,
+        warning:
+          action === "warn"
+            ? "Premier avertissement. Toute récidive entraînera une restriction du compte."
+            : action === "watch"
+              ? "Votre compte est désormais sous surveillance."
+              : "Votre compte est restreint. Contactez le support.",
+      },
+      { status: 422 },
+    );
+  }
+
   const scamReport = scanScam(text);
   const urlReport = scanText(text);
   const riskHits = scamReport.hits.map((h) =>
