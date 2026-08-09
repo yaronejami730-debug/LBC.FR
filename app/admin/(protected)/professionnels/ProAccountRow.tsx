@@ -62,21 +62,30 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
   const shownStatus = optimisticStatus ?? account.professionalStatus;
   const st = STATUS[shownStatus] ?? STATUS.NONE;
 
-  function run(fn: () => Promise<void>, nextStatus?: string, disappears = false) {
+  function run(
+    fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
+    nextStatus?: string,
+    disappears = false,
+  ) {
     setError("");
     if (nextStatus) setOptimisticStatus(nextStatus);
     if (disappears) setRemoved(true);
     setPanel("none");
     setReason("");
     start(async () => {
-      try {
-        await fn();
+      // L'action renvoie son échec au lieu de le lever : en production, une
+      // exception dans une Server Action perd son message.
+      const res = await fn().catch((e) => ({
+        ok: false as const,
+        error: e instanceof Error ? e.message : "Action impossible",
+      }));
+      if (res.ok) {
         setConfirm("");
-      } catch (e) {
-        setOptimisticStatus(null);
-        setRemoved(false);
-        setError(e instanceof Error ? e.message : "Action impossible");
+        return;
       }
+      setOptimisticStatus(null);
+      setRemoved(false);
+      setError(res.error);
     });
   }
 
@@ -158,11 +167,13 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
             const next = !badge;
             setBadge(next);
             start(async () => {
-              try {
-                await setVerificationBadge(account.id, next);
-              } catch {
+              const res = await setVerificationBadge(account.id, next).catch(() => ({
+                ok: false as const,
+                error: "Modification du badge impossible",
+              }));
+              if (!res.ok) {
                 setBadge(!next);
-                setError("Modification du badge impossible");
+                setError(res.error);
               }
             });
           }}

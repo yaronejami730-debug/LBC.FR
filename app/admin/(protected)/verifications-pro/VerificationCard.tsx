@@ -87,14 +87,16 @@ export default function VerificationCard({ compte }: { compte: Compte }) {
     (Date.now() - new Date(compte.user.createdAt).getTime()) / 86_400_000,
   );
 
-  function run(fn: () => Promise<void>) {
+  function run(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setError("");
     startTransition(async () => {
-      try {
-        await fn();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Action impossible");
-      }
+      // L'action renvoie son échec : en production, une exception levée dans
+      // une Server Action perd son message.
+      const res = await fn().catch((e) => ({
+        ok: false as const,
+        error: e instanceof Error ? e.message : "Action impossible",
+      }));
+      if (!res.ok) setError(res.error);
     });
   }
 
@@ -315,11 +317,17 @@ export default function VerificationCard({ compte }: { compte: Compte }) {
           disabled={pending}
           onConfirm={() =>
             run(async () => {
-              if (panel === "info") await requestVerificationInfo(compte.id, reason);
-              else if (panel === "reject") await rejectVerification(compte.id, reason);
-              else await suspendVerification(compte.id, reason);
-              setPanel("none");
-              setReason("");
+              const res =
+                panel === "info"
+                  ? await requestVerificationInfo(compte.id, reason)
+                  : panel === "reject"
+                    ? await rejectVerification(compte.id, reason)
+                    : await suspendVerification(compte.id, reason);
+              if (res.ok) {
+                setPanel("none");
+                setReason("");
+              }
+              return res;
             })
           }
         />

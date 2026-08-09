@@ -17,15 +17,18 @@ export default function ModeratorForm() {
   function run(role: "ADMIN" | "USER") {
     setMsg(null);
     start(async () => {
-      try {
-        await setUserRole(email, role);
+      const res = await setUserRole(email, role).catch((e) => ({
+        ok: false as const,
+        error: e instanceof Error ? e.message : "Action impossible",
+      }));
+      if (res.ok) {
         setMsg({
           ok: true,
           text: role === "ADMIN" ? `${email} est désormais administrateur.` : `Rôle retiré à ${email}.`,
         });
         setEmail("");
-      } catch (e) {
-        setMsg({ ok: false, text: e instanceof Error ? e.message : "Action impossible" });
+      } else {
+        setMsg({ ok: false, text: res.error });
       }
     });
   }
