@@ -30,22 +30,22 @@ async function requireAdmin(): Promise<string> {
 }
 
 /**
- * Journalise sur le dernier dossier du compte, s'il en a un.
+ * Journalise sur le dernier compte du compte, s'il en a un.
  *
  * Beaucoup de comptes professionnels sont antérieurs à la vérification : ils
- * n'ont aucun dossier. La décision est alors tracée dans `ModerationEvent`,
+ * n'ont aucun compte. La décision est alors tracée dans `ModerationEvent`,
  * pour qu'aucune action n'échappe à l'historique.
  */
 async function trace(userId: string, action: string, adminId: string, details?: string) {
-  const dossier = await prisma.proVerification.findFirst({
+  const lastRequest = await prisma.proVerification.findFirst({
     where: { userId },
     orderBy: { submittedAt: "desc" },
     select: { id: true },
   });
 
-  if (dossier) {
+  if (lastRequest) {
     await prisma.proVerificationLog.create({
-      data: { verificationId: dossier.id, action, actor: `admin:${adminId}`, details: details ?? null },
+      data: { verificationId: lastRequest.id, action, actor: `admin:${adminId}`, details: details ?? null },
     });
   }
   await prisma.moderationEvent.create({
@@ -107,11 +107,11 @@ export async function verifyProAccount(userId: string) {
     where: { userId, status: { in: ["PENDING", "INFO_REQUESTED"] } },
     data: { status: "APPROVED", approvedAt: new Date(), approvedById: adminId },
   });
-  const dossiers = await prisma.proVerification.findMany({
+  const requests = await prisma.proVerification.findMany({
     where: { userId, documentsDeletedAt: null },
     select: { id: true },
   });
-  for (const d of dossiers) {
+  for (const d of requests) {
     await deleteProDocuments(d.id, `admin:${adminId}`, "Habilitation accordée");
   }
   await trace(userId, "APPROVED", adminId);
@@ -242,7 +242,7 @@ export async function reinstateProAccount(userId: string) {
 /**
  * Suppression définitive du compte et de tout ce qui s'y rattache.
  *
- * Irréversible : les annonces, conversations, favoris et dossiers partent avec
+ * Irréversible : les annonces, conversations, favoris et comptes partent avec
  * le compte (cascades Prisma). Un administrateur ne peut pas être supprimé
  * depuis cette file — il faut d'abord lui retirer son rôle, pour qu'une
  * mauvaise manipulation ne coupe pas l'accès à l'administration.

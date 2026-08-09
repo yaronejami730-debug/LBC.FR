@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Les fichiers déposés le sont sous kyc/<userId>/ : refuser tout autre
-  // chemin empêche de rattacher à son dossier le document d'un autre compte.
+  // chemin empêche de rattacher à sa demande le document d'un autre utilisateur.
   const prefix = `kyc/${session.user.id}/`;
   if (!String(b.idDocumentPath).startsWith(prefix) || !String(b.companyDocPath).startsWith(prefix)) {
     return NextResponse.json({ error: "Documents invalides" }, { status: 400 });
@@ -47,11 +47,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ce SIRET est déjà associé à un compte" }, { status: 409 });
   }
 
-  const openDossier = await prisma.proVerification.findFirst({
+  const openRequest = await prisma.proVerification.findFirst({
     where: { userId: session.user.id, status: { in: ["PENDING", "INFO_REQUESTED"] } },
     select: { id: true },
   });
-  if (openDossier) {
+  if (openRequest) {
     return NextResponse.json({ error: "Une demande est déjà en cours d'examen" }, { status: 409 });
   }
 
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     select: { email: true, name: true, isPro: true },
   });
 
-  // Un compte déjà professionnel qui redépose un dossier ne perd pas ses
+  // Un compte déjà professionnel qui renvoie une demande ne perd pas ses
   // droits : il n'y a que deux origines possibles pour une demande.
   const requestType = REQUEST_TYPES.has(b.requestType)
     ? b.requestType
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   const str = (v: unknown, max: number) => (v ? String(v).trim().slice(0, max) : null);
 
-  const dossier = await prisma.proVerification.create({
+  const demande = await prisma.proVerification.create({
     data: {
       userId: session.user.id,
       status: "PENDING",
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.proVerificationLog.create({
     data: {
-      verificationId: dossier.id,
+      verificationId: demande.id,
       action: "SUBMITTED",
       actor: `user:${session.user.id}`,
       details: `${requestType} — ${companyName} (SIRET ${siret})`,

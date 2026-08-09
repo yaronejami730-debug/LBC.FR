@@ -36,28 +36,28 @@ async function log(verificationId: string, action: string, adminId: string, deta
   });
 }
 
-async function loadDossier(id: string) {
-  const dossier = await prisma.proVerification.findUnique({
+async function loadAccount(id: string) {
+  const account = await prisma.proVerification.findUnique({
     where: { id },
     include: { user: { select: { id: true, email: true, name: true } } },
   });
-  if (!dossier) throw new Error("Dossier introuvable");
-  return dossier;
+  if (!account) throw new Error("Compte introuvable");
+  return account;
 }
 
 /**
- * Valide un dossier. C'est le seul endroit qui accorde l'habilitation : SIRET,
- * raison sociale et `isPro` sont recopiés depuis le dossier vérifié, jamais
+ * Valide un account. C'est le seul endroit qui accorde l'habilitation : SIRET,
+ * raison sociale et `isPro` sont recopiés depuis le compte vérifié, jamais
  * depuis ce que le compte s'était attribué.
  */
 export async function approveVerification(id: string) {
   const adminId = await requireAdmin();
-  const dossier = await loadDossier(id);
+  const account = await loadAccount(id);
 
   // Un SIRET déjà rattaché à un autre compte bloque l'approbation : c'est
   // exactement la fraude que cette file existe pour arrêter.
-  const holder = await prisma.user.findUnique({ where: { siret: dossier.siret } });
-  if (holder && holder.id !== dossier.userId) {
+  const holder = await prisma.user.findUnique({ where: { siret: account.siret } });
+  if (holder && holder.id !== account.userId) {
     throw new Error(`SIRET déjà rattaché au compte ${holder.email}`);
   }
 
@@ -76,29 +76,29 @@ export async function approveVerification(id: string) {
       },
     }),
     prisma.user.update({
-      where: { id: dossier.userId },
+      where: { id: account.userId },
       data: {
         isPro: true,
         professionalStatus: "APPROVED",
-        siret: dossier.siret,
-        companyName: dossier.companyName,
+        siret: account.siret,
+        companyName: account.companyName,
         proVerifiedAt: now,
       },
     }),
   ]);
-  await log(id, "APPROVED", adminId, dossier.companyName);
+  await log(id, "APPROVED", adminId, account.companyName);
 
   // La vérification a eu lieu : les pièces n'ont plus d'objet. Elles partent
   // immédiatement, avant même l'email de confirmation.
   await deleteProDocuments(id, `admin:${adminId}`, "Habilitation accordée");
 
-  if (dossier.user.email) {
+  if (account.user.email) {
     await sendEmail({
-      to: dossier.user.email,
+      to: account.user.email,
       subject: "Votre compte professionnel est activé",
       html: proVerificationApprovedEmail({
-        name: dossier.user.name ?? "",
-        companyName: dossier.companyName,
+        name: account.user.name ?? "",
+        companyName: account.companyName,
       }),
     }).catch((err) => console.error("[verif-pro] email approbation:", err));
   }
@@ -106,13 +106,13 @@ export async function approveVerification(id: string) {
   revalidatePath("/admin/verifications-pro");
 }
 
-/** Refuse un dossier. Le motif part à l'utilisateur : il doit être exploitable. */
+/** Refuse un account. Le motif part à l'utilisateur : il doit être exploitable. */
 export async function rejectVerification(id: string, reason: string) {
   const adminId = await requireAdmin();
   const motif = reason.trim();
   if (motif.length < 5) throw new Error("Motif de refus trop court");
 
-  const dossier = await loadDossier(id);
+  const account = await loadAccount(id);
   const now = new Date();
 
   await prisma.$transaction([
@@ -130,17 +130,17 @@ export async function rejectVerification(id: string, reason: string) {
     // Le refus ne touche ni `isPro` ni les annonces : un compte particulier
     // refusé reste un compte particulier intact.
     prisma.user.update({
-      where: { id: dossier.userId },
+      where: { id: account.userId },
       data: { professionalStatus: "REJECTED" },
     }),
   ]);
   await log(id, "REJECTED", adminId, motif.slice(0, 500));
 
-  if (dossier.user.email) {
+  if (account.user.email) {
     await sendEmail({
-      to: dossier.user.email,
+      to: account.user.email,
       subject: "Votre demande de compte professionnel",
-      html: proVerificationRejectedEmail({ name: dossier.user.name ?? "", reason: motif.slice(0, 500) }),
+      html: proVerificationRejectedEmail({ name: account.user.name ?? "", reason: motif.slice(0, 500) }),
     }).catch((err) => console.error("[verif-pro] email refus:", err));
   }
 
@@ -148,7 +148,7 @@ export async function rejectVerification(id: string, reason: string) {
 }
 
 /**
- * Demande une pièce ou une précision. Le dossier reste ouvert — c'est une
+ * Demande une pièce ou une précision. La demande reste ouverte — c'est une
  * relance, pas un refus : il doit rester dans la file de travail.
  */
 export async function requestVerificationInfo(id: string, request: string) {
@@ -156,7 +156,7 @@ export async function requestVerificationInfo(id: string, request: string) {
   const demande = request.trim();
   if (demande.length < 5) throw new Error("Demande trop courte");
 
-  const dossier = await loadDossier(id);
+  const account = await loadAccount(id);
 
   await prisma.$transaction([
     prisma.proVerification.update({
@@ -164,18 +164,18 @@ export async function requestVerificationInfo(id: string, request: string) {
       data: { status: "INFO_REQUESTED", infoRequest: demande.slice(0, 500) },
     }),
     prisma.user.update({
-      where: { id: dossier.userId },
+      where: { id: account.userId },
       data: { professionalStatus: "INFO_REQUESTED" },
     }),
   ]);
   await log(id, "INFO_REQUESTED", adminId, demande.slice(0, 500));
 
-  if (dossier.user.email) {
+  if (account.user.email) {
     await sendEmail({
-      to: dossier.user.email,
+      to: account.user.email,
       subject: "Informations complémentaires pour votre compte professionnel",
       html: proVerificationInfoRequestedEmail({
-        name: dossier.user.name ?? "",
+        name: account.user.name ?? "",
         request: demande.slice(0, 500),
       }),
     }).catch((err) => console.error("[verif-pro] email info:", err));
@@ -194,7 +194,7 @@ export async function suspendVerification(id: string, reason: string) {
   const motif = reason.trim();
   if (motif.length < 5) throw new Error("Motif de suspension trop court");
 
-  const dossier = await loadDossier(id);
+  const account = await loadAccount(id);
   const now = new Date();
 
   await prisma.$transaction([
@@ -208,21 +208,21 @@ export async function suspendVerification(id: string, reason: string) {
       },
     }),
     prisma.user.update({
-      where: { id: dossier.userId },
+      where: { id: account.userId },
       data: { isPro: false, professionalStatus: "SUSPENDED" },
     }),
     prisma.proProfile.updateMany({
-      where: { userId: dossier.userId },
+      where: { userId: account.userId },
       data: { isPublished: false },
     }),
   ]);
   await log(id, "SUSPENDED", adminId, motif.slice(0, 500));
 
-  if (dossier.user.email) {
+  if (account.user.email) {
     await sendEmail({
-      to: dossier.user.email,
+      to: account.user.email,
       subject: "Votre compte professionnel a été suspendu",
-      html: proVerificationSuspendedEmail({ name: dossier.user.name ?? "", reason: motif.slice(0, 500) }),
+      html: proVerificationSuspendedEmail({ name: account.user.name ?? "", reason: motif.slice(0, 500) }),
     }).catch((err) => console.error("[verif-pro] email suspension:", err));
   }
 
@@ -232,7 +232,7 @@ export async function suspendVerification(id: string, reason: string) {
 /** Lève une suspension et rend l'habilitation. */
 export async function reinstateVerification(id: string) {
   const adminId = await requireAdmin();
-  const dossier = await loadDossier(id);
+  const account = await loadAccount(id);
 
   await prisma.$transaction([
     prisma.proVerification.update({
@@ -240,7 +240,7 @@ export async function reinstateVerification(id: string) {
       data: { status: "APPROVED", suspendedAt: null, suspendedById: null },
     }),
     prisma.user.update({
-      where: { id: dossier.userId },
+      where: { id: account.userId },
       data: { isPro: true, professionalStatus: "APPROVED" },
     }),
   ]);
@@ -286,8 +286,8 @@ export async function updateVerificationNote(id: string, note: string) {
   revalidatePath("/admin/verifications-pro");
 }
 
-/** Trace l'ouverture d'un dossier — qui a consulté les pièces, et quand. */
-export async function markDossierOpened(id: string) {
+/** Trace l'ouverture d'un compte — qui a consulté les pièces, et quand. */
+export async function markCompteOpened(id: string) {
   const adminId = await requireAdmin();
   await log(id, "OPENED", adminId);
 }

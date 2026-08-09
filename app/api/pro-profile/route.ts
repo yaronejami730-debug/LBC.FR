@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
             : user?.professionalStatus === "SUSPENDED"
               ? "Votre habilitation professionnelle est suspendue. Contactez l'équipe."
               : "L'espace professionnel est réservé aux comptes professionnels vérifiés. " +
-                "Déposez votre dossier depuis votre profil pour l'activer.",
+                "Envoyez votre demande depuis votre profil pour l'activer.",
       },
       { status: 403 },
     );

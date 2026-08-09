@@ -8,15 +8,15 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * Effacement des pièces des dossiers dormants.
+ * Effacement des pièces des comptes professionnels laissés sans suite.
  *
- * Un dossier refusé ou en attente de complément garde ses pièces : le compte
+ * Un compte refusé ou en attente de complément garde ses pièces : le compte
  * peut contester ou compléter, et le modérateur doit pouvoir s'y référer. Mais
  * si rien ne bouge pendant DOCUMENT_RETENTION_MONTHS mois, plus rien ne
  * justifie de conserver une carte d'identité — elle est supprimée du stockage
  * et son chemin neutralisé.
  *
- * Les dossiers approuvés ne passent pas par ici : leurs pièces sont déjà
+ * Les comptes approuvés ne passent pas par ici : leurs pièces sont déjà
  * détruites au moment de la décision.
  */
 export async function GET(req: Request) {
@@ -30,9 +30,9 @@ export async function GET(req: Request) {
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - DOCUMENT_RETENTION_MONTHS);
 
-  // « Dormant » se mesure à la dernière trace d'activité du dossier : sa
+  // « Dormant » se mesure à la dernière trace d'activité du compte : sa
   // décision si elle existe, son dépôt sinon.
-  const dossiers = await prisma.proVerification.findMany({
+  const dormant = await prisma.proVerification.findMany({
     where: {
       documentsDeletedAt: null,
       status: { in: ["REJECTED", "INFO_REQUESTED", "PENDING", "SUSPENDED"] },
@@ -52,9 +52,9 @@ export async function GET(req: Request) {
   });
 
   let purged = 0;
-  for (const d of dossiers) {
-    // Un dossier repris entre-temps a des lignes d'historique récentes : on ne
-    // touche pas à un dossier encore vivant.
+  for (const d of dormant) {
+    // Un compte repris entre-temps a des lignes d'historique récentes : on ne
+    // touche pas à un compte encore vivant.
     const recentActivity = await prisma.proVerificationLog.count({
       where: { verificationId: d.id, createdAt: { gt: cutoff } },
     });
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
     const done = await deleteProDocuments(
       d.id,
       "cron:pro-documents-purge",
-      `Dossier ${d.status} sans activité depuis ${DOCUMENT_RETENTION_MONTHS} mois`,
+      `Compte ${d.status} sans activité depuis ${DOCUMENT_RETENTION_MONTHS} mois`,
     );
     if (!done) continue;
     purged++;
@@ -83,5 +83,5 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ purged, examined: dossiers.length });
+  return NextResponse.json({ purged, examined: dormant.length });
 }

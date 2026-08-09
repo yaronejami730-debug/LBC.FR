@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  *
  * Les documents vivent en blob privé : ils n'ont pas d'URL publique et ne
  * peuvent être servis qu'ici, après contrôle du rôle ADMIN. Le chemin demandé
- * doit en plus correspondre à un dossier existant — sinon un admin (ou une
+ * doit en plus correspondre à un compte existant — sinon un admin (ou une
  * faille de session) pourrait parcourir tout le store.
  */
 export async function GET(req: NextRequest) {

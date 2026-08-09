@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
  * Le SIRET ne suffit plus à activer le badge : il est public et se recopie.
  * L'utilisateur dépose une pièce d'identité et un justificatif d'entreprise
  * (Kbis ou avis de situation SIRENE), un modérateur tranche. Le formulaire
- * n'active donc rien — il ouvre un dossier.
+ * n'active donc rien — il ouvre un compte.
  */
 
 type DocKind = "identity" | "company";
@@ -29,7 +29,7 @@ export default function UpgradePro({
   infoRequest = null,
 }: {
   pending?: boolean;
-  /** Complément réclamé par un modérateur : le dossier reste ouvert. */
+  /** Complément réclamé par un modérateur : la demande reste ouverte. */
   infoRequest?: string | null;
 }) {
   const [siret, setSiret] = useState("");
@@ -148,7 +148,7 @@ export default function UpgradePro({
   }
 
   if (infoRequest && !submitted) {
-    // Le dossier est ouvert mais incomplet : on montre la demande, et le
+    // Le compte est ouvert mais incomplet : on montre la demande, et le
     // formulaire reste accessible juste en dessous pour redéposer.
     return (
       <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] mb-8">
@@ -177,7 +177,7 @@ export default function UpgradePro({
           </span>
         </div>
         <div>
-          <p className="font-bold text-on-surface">Dossier en cours d&apos;examen</p>
+          <p className="font-bold text-on-surface">Compte professionnel en cours de vérification</p>
           <p className="text-outline text-sm mt-0.5 leading-relaxed">
             Un modérateur vérifie vos justificatifs sous 24 à 48&nbsp;heures ouvrées. Vous recevrez
             un email dès que votre compte professionnel sera activé.
@@ -206,7 +206,7 @@ export default function UpgradePro({
         votre profil, ni sur vos annonces. Ils sont stockés de façon privée, servent uniquement à la
         modération, et sont <strong>supprimés définitivement dès la validation</strong> de votre
         compte. En cas de refus ou de demande de complément, ils sont conservés le temps de traiter
-        le dossier, puis effacés automatiquement au bout de 14&nbsp;mois sans réponse.
+        le compte, puis effacés automatiquement au bout de 14&nbsp;mois sans réponse.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -299,7 +299,7 @@ export default function UpgradePro({
           className="w-full bg-gradient-to-r from-primary to-primary-container text-white font-bold py-3 rounded-full shadow-[0_8px_24px_rgba(21,21,125,0.2)] active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">verified_user</span>
-          {saving ? "Envoi…" : "Envoyer mon dossier"}
+          {saving ? "Envoi…" : "Envoyer ma demande"}
         </button>
       </form>
     </div>

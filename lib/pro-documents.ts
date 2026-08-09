@@ -11,10 +11,10 @@ import { prisma } from "@/lib/prisma";
  *
  * - **Habilitation accordée** → suppression immédiate. Le contrôle a eu lieu,
  *   la preuve n'a plus d'objet.
- * - **Refus, demande de complément, suspension** → conservation. Le dossier
- *   peut être contesté ou repris, et le modérateur doit pouvoir se référer aux
+ * - **Refus, demande de complément, suspension** → conservation. La demande
+ *   peut être contestée ou reprise, et le modérateur doit pouvoir se référer aux
  *   pièces réellement fournies.
- * - **Dossier laissé en l'état** → suppression automatique au bout de 14 mois
+ * - **Compte laissé en l'état** → suppression automatique au bout de 14 mois
  *   (cf. /api/cron/pro-documents-purge). Si le compte n'a rien régularisé en
  *   plus d'un an, la conservation n'est plus justifiable.
  *
@@ -23,11 +23,11 @@ import { prisma } from "@/lib/prisma";
  * que par une route qui exige le rôle ADMIN.
  */
 
-/** Délai au-delà duquel un dossier dormant perd ses pièces. */
+/** Délai au-delà duquel un compte laissé sans suite perd ses pièces. */
 export const DOCUMENT_RETENTION_MONTHS = 14;
 
 /**
- * Efface les deux pièces d'un dossier et neutralise leurs chemins.
+ * Efface les deux pièces justificatives d'un compte et neutralise leurs chemins.
  *
  * Les colonnes ne peuvent pas être nulles (elles décrivent ce qui *a* été
  * fourni) : on y écrit un marqueur, qui empêche toute tentative de lecture
@@ -38,13 +38,13 @@ export async function deleteProDocuments(
   actor: string,
   reason: string,
 ): Promise<boolean> {
-  const dossier = await prisma.proVerification.findUnique({
+  const account = await prisma.proVerification.findUnique({
     where: { id: verificationId },
     select: { idDocumentPath: true, companyDocPath: true, documentsDeletedAt: true },
   });
-  if (!dossier || dossier.documentsDeletedAt) return false;
+  if (!account || account.documentsDeletedAt) return false;
 
-  const paths = [dossier.idDocumentPath, dossier.companyDocPath].filter(
+  const paths = [account.idDocumentPath, account.companyDocPath].filter(
     (p) => p && !p.startsWith("deleted:"),
   );
 

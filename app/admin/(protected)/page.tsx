@@ -1,12 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import LiveVisitorCount from "@/components/admin/LiveVisitorCount";
+import { WELLNESS_CATEGORY_LABEL } from "@/lib/moderation/wellness-policy";
 
 export const dynamic = "force-dynamic";
 
 async function getStats() {
   const now = new Date();
-  const [totalUsers, proUsers, pendingListings, activeListings, approvedListings, rejectedListings, totalAds] =
+  const [
+    totalUsers,
+    proUsers,
+    pendingListings,
+    activeListings,
+    approvedListings,
+    rejectedListings,
+    totalAds,
+    pendingProAccounts,
+    visits30d,
+  ] =
     await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isPro: true } }),
@@ -23,8 +33,29 @@ async function getStats() {
       prisma.listing.count({ where: { status: "APPROVED" } }),
       prisma.listing.count({ where: { status: "REJECTED" } }),
       prisma.advertisement.count({ where: { isActive: true } }),
+      // Comptes professionnels en attente d'un modérateur — la file de travail.
+      prisma.user.count({
+        where: { professionalStatus: { in: ["PENDING", "INFO_REQUESTED"] } },
+      }),
+      // Visites : pages vues sur 30 jours, journalisées par le tracker.
+      prisma.userEvent.count({
+        where: {
+          kind: "page_view",
+          createdAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      }),
     ]);
-  return { totalUsers, proUsers, pendingListings, activeListings, approvedListings, rejectedListings, totalAds };
+  return {
+    totalUsers,
+    proUsers,
+    pendingListings,
+    activeListings,
+    approvedListings,
+    rejectedListings,
+    totalAds,
+    pendingProAccounts,
+    visits30d,
+  };
 }
 
 async function getRecentPending() {
@@ -41,14 +72,22 @@ async function getRecentPending() {
 export default async function AdminDashboard() {
   const [stats, pending] = await Promise.all([getStats(), getRecentPending()]);
 
+  // Chaque pavé mène à l'écran qui permet d'agir dessus : un compteur qui ne
+  // se clique pas oblige à retrouver la page à la main.
   const cards = [
     {
-      label: "Utilisateurs inscrits",
-      value: stats.totalUsers,
-      icon: "group",
+      label: "Comptes particuliers",
+      value: stats.totalUsers - stats.proUsers,
+      icon: "person",
       color: "bg-[#e1e0ff] text-[#2f6fb8]",
       href: "/admin/users",
-      sub: `${stats.proUsers} Pro · ${stats.totalUsers - stats.proUsers} Particuliers`,
+    },
+    {
+      label: "Comptes professionnels",
+      value: stats.proUsers,
+      icon: "storefront",
+      color: "bg-[#d5e3fc] text-[#2f6fb8]",
+      href: "/admin/professionnels?statut=APPROVED",
     },
     {
       label: "Annonces en attente",
@@ -66,11 +105,20 @@ export default async function AdminDashboard() {
       href: "/admin/listings?status=APPROVED",
     },
     {
-      label: "Publicités actives",
-      value: stats.totalAds,
-      icon: "campaign",
-      color: "bg-[#d5e3fc] text-[#515f74]",
-      href: "/admin/ads",
+      label: "Visites (30 j)",
+      value: stats.visits30d,
+      icon: "visibility",
+      color: "bg-slate-100 text-slate-600",
+      href: "/admin/behavioral",
+    },
+    {
+      label: "En attente de vérification",
+      value: stats.pendingProAccounts,
+      icon: "verified_user",
+      color: "bg-amber-100 text-amber-700",
+      href: "/admin/verifications-pro?statut=PENDING",
+      urgent: stats.pendingProAccounts > 0,
+      sub: "Comptes professionnels",
     },
   ];
 
@@ -83,8 +131,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-5 gap-5">
-        <LiveVisitorCount />
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {cards.map((card) => (
           <Link
             key={card.label}

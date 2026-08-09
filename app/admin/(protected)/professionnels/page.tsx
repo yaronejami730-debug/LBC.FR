@@ -1,23 +1,30 @@
 import { prisma } from "@/lib/prisma";
 import ProAccountRow from "./ProAccountRow";
 import ModeratorForm from "./ModeratorForm";
+import VerificationCard, { type Compte } from "../verifications-pro/VerificationCard";
 
 export const metadata = { title: "Professionnels — Admin" };
 export const dynamic = "force-dynamic";
 
+// Une seule section pour la modération professionnelle : les demandes à
+// instruire et les comptes déjà en ligne. Un modérateur n'a pas à se demander
+// dans quel écran chercher.
 const TABS = [
-  { value: "ALL", label: "Tous" },
-  { value: "APPROVED", label: "Vérifiés" },
-  { value: "NONE", label: "Non vérifiés" },
-  { value: "PENDING", label: "En attente" },
+  { value: "PENDING", label: "À vérifier" },
   { value: "INFO_REQUESTED", label: "Infos demandées" },
+  { value: "APPROVED", label: "Vérifiés" },
   { value: "REJECTED", label: "Refusés" },
   { value: "SUSPENDED", label: "Suspendus" },
+  { value: "NONE", label: "Non vérifiés" },
+  { value: "ALL", label: "Tous" },
 ];
+
+/** Onglets qui affichent la demande complète (pièces, historique, décisions). */
+const REQUEST_TABS = new Set(["PENDING", "INFO_REQUESTED"]);
 
 /**
  * Tous les comptes professionnels présents sur la plateforme — pas seulement
- * les dossiers déposés.
+ * ceux qui ont envoyé une demande.
  *
  * Beaucoup de comptes sont passés « pro » avant l'existence de la
  * vérification : ce sont eux qu'il faut pouvoir reprendre un par un. D'où le
@@ -29,7 +36,7 @@ export default async function ProfessionnelsPage({
   searchParams: Promise<{ statut?: string; q?: string }>;
 }) {
   const { statut, q } = await searchParams;
-  const filter = TABS.some((t) => t.value === statut) ? statut! : "ALL";
+  const filter = TABS.some((t) => t.value === statut) ? statut! : "PENDING";
   const search = (q ?? "").trim();
 
   const base = {
@@ -52,6 +59,62 @@ export default async function ProfessionnelsPage({
         : {},
     ],
   };
+
+  // Les onglets d'instruction montrent la demande elle-même : entreprise,
+  // responsable, pièces justificatives, historique, actions de modération.
+  if (REQUEST_TABS.has(filter)) {
+    const [requests, statusCounts] = await Promise.all([
+      prisma.proVerification.findMany({
+        where: { status: filter },
+        orderBy: { submittedAt: "asc" },
+        take: 200,
+        include: {
+          logs: { orderBy: { createdAt: "desc" }, take: 20 },
+          user: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              createdAt: true,
+              isPro: true,
+              phoneNumber: true,
+              emailVerified: true,
+              phoneVerified: true,
+              professionalStatus: true,
+              _count: { select: { listings: true } },
+            },
+          },
+        },
+      }),
+      prisma.user.groupBy({
+        by: ["professionalStatus"],
+        where: base as never,
+        _count: { _all: true },
+      }),
+    ]);
+
+    const counts = Object.fromEntries(statusCounts.map((c) => [c.professionalStatus, c._count._all]));
+
+    return (
+      <div className="space-y-6">
+        <Header />
+        <ModeratorForm />
+        <Tabs filter={filter} counts={counts} search="" />
+
+        {requests.length === 0 ? (
+          <p className="bg-white border border-[#eceef0] rounded-2xl px-6 py-10 text-center text-slate-400 font-medium">
+            Aucune demande dans cette file.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {requests.map((r) => (
+              <VerificationCard key={r.id} compte={JSON.parse(JSON.stringify(r)) as Compte} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const [accounts, counts] = await Promise.all([
     prisma.user.findMany({
@@ -90,14 +153,7 @@ export default async function ProfessionnelsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-extrabold text-slate-900">Professionnels</h1>
-        <p className="text-slate-500 mt-1">
-          Tous les comptes professionnels de la plateforme. Même traitement que la validation des
-          annonces : vérifier, demander des informations, refuser, suspendre.
-        </p>
-      </div>
-
+      <Header />
       <ModeratorForm />
 
       <form method="get" className="flex flex-wrap gap-2">
@@ -116,21 +172,7 @@ export default async function ProfessionnelsPage({
         </button>
       </form>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <a
-            key={t.value}
-            href={`/admin/professionnels?statut=${t.value}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
-              filter === t.value
-                ? "bg-[#2f6fb8] text-white"
-                : "bg-white text-slate-500 border border-[#eceef0] hover:border-[#2f6fb8]"
-            }`}
-          >
-            {t.label} ({t.value === "ALL" ? total : (byStatus[t.value] ?? 0)})
-          </a>
-        ))}
-      </div>
+      <Tabs filter={filter} counts={byStatus} search={search} total={total} />
 
       {accounts.length === 0 ? (
         <p className="bg-white border border-[#eceef0] rounded-2xl px-6 py-10 text-center text-slate-400 font-medium">
@@ -143,6 +185,52 @@ export default async function ProfessionnelsPage({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function Header() {
+  return (
+    <div>
+      <h1 className="text-3xl font-extrabold text-slate-900">Professionnels</h1>
+      <p className="text-slate-500 mt-1">
+        Demandes à instruire et comptes déjà en ligne, au même endroit : vérifier, demander des
+        informations, refuser, suspendre, supprimer.
+      </p>
+    </div>
+  );
+}
+
+function Tabs({
+  filter,
+  counts,
+  search,
+  total,
+}: {
+  filter: string;
+  counts: Record<string, number>;
+  search: string;
+  total?: number;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {TABS.map((t) => (
+        <a
+          key={t.value}
+          href={`/admin/professionnels?statut=${t.value}${search ? `&q=${encodeURIComponent(search)}` : ""}`}
+          className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+            filter === t.value
+              ? "bg-[#2f6fb8] text-white"
+              : "bg-white text-slate-500 border border-[#eceef0] hover:border-[#2f6fb8]"
+          }`}
+        >
+          {t.label} (
+          {t.value === "ALL"
+            ? (total ?? Object.values(counts).reduce((a, b) => a + b, 0))
+            : (counts[t.value] ?? 0)}
+          )
+        </a>
+      ))}
     </div>
   );
 }

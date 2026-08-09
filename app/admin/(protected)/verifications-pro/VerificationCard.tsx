@@ -10,7 +10,7 @@ import {
   updateVerificationNote,
 } from "./actions";
 
-export type Dossier = {
+export type Compte = {
   id: string;
   status: string;
   requestType: string;
@@ -74,17 +74,17 @@ function docUrl(path: string) {
   return `/api/admin/pro-verification/document?path=${encodeURIComponent(path)}`;
 }
 
-export default function VerificationCard({ dossier }: { dossier: Dossier }) {
+export default function VerificationCard({ compte }: { compte: Compte }) {
   const [pending, startTransition] = useTransition();
-  const [note, setNote] = useState(dossier.adminNote ?? "");
+  const [note, setNote] = useState(compte.adminNote ?? "");
   const [reason, setReason] = useState("");
   /** Formulaire ouvert : refus, demande d'info ou suspension. */
   const [panel, setPanel] = useState<"none" | "reject" | "info" | "suspend">("none");
   const [error, setError] = useState("");
 
-  const submitted = new Date(dossier.submittedAt);
+  const submitted = new Date(compte.submittedAt);
   const accountAgeDays = Math.floor(
-    (Date.now() - new Date(dossier.user.createdAt).getTime()) / 86_400_000,
+    (Date.now() - new Date(compte.user.createdAt).getTime()) / 86_400_000,
   );
 
   function run(fn: () => Promise<void>) {
@@ -102,15 +102,15 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
     <div className="bg-white border border-[#eceef0] rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-extrabold text-slate-900 text-lg">{dossier.companyName}</p>
-          {dossier.commercialName && dossier.commercialName !== dossier.companyName && (
-            <p className="text-sm text-slate-600">Enseigne : {dossier.commercialName}</p>
+          <p className="font-extrabold text-slate-900 text-lg">{compte.companyName}</p>
+          {compte.commercialName && compte.commercialName !== compte.companyName && (
+            <p className="text-sm text-slate-600">Enseigne : {compte.commercialName}</p>
           )}
           <p className="text-sm text-slate-500 mt-0.5">
-            SIRET <span className="font-mono">{dossier.siret}</span>
-            {dossier.siren ? <> · SIREN <span className="font-mono">{dossier.siren}</span></> : null} ·{" "}
+            SIRET <span className="font-mono">{compte.siret}</span>
+            {compte.siren ? <> · SIREN <span className="font-mono">{compte.siren}</span></> : null} ·{" "}
             <a
-              href={`https://annuaire-entreprises.data.gouv.fr/etablissement/${dossier.siret}`}
+              href={`https://annuaire-entreprises.data.gouv.fr/etablissement/${compte.siret}`}
               target="_blank"
               rel="noreferrer"
               className="text-[#2f6fb8] font-semibold hover:underline"
@@ -119,31 +119,31 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
             </a>
           </p>
           <p className="text-sm text-slate-500 mt-1">
-            {dossier.user.name} · {dossier.user.email}
-            {dossier.user.phoneNumber ? ` · ${dossier.user.phoneNumber}` : ""}
+            {compte.user.name} · {compte.user.email}
+            {compte.user.phoneNumber ? ` · ${compte.user.phoneNumber}` : ""}
           </p>
-          {(dossier.responsibleFirstName || dossier.professionalPhone) && (
+          {(compte.responsibleFirstName || compte.professionalPhone) && (
             <p className="text-sm text-slate-500 mt-1">
               Responsable :{" "}
-              {[dossier.responsibleFirstName, dossier.responsibleLastName].filter(Boolean).join(" ") || "—"}
-              {dossier.professionalPhone ? ` · ${dossier.professionalPhone}` : ""}
-              {dossier.professionalEmail ? ` · ${dossier.professionalEmail}` : ""}
+              {[compte.responsibleFirstName, compte.responsibleLastName].filter(Boolean).join(" ") || "—"}
+              {compte.professionalPhone ? ` · ${compte.professionalPhone}` : ""}
+              {compte.professionalEmail ? ` · ${compte.professionalEmail}` : ""}
             </p>
           )}
-          {(dossier.businessAddress || dossier.businessActivity) && (
+          {(compte.businessAddress || compte.businessActivity) && (
             <p className="text-sm text-slate-500">
-              {[dossier.businessAddress, dossier.businessActivity, dossier.businessCategory]
+              {[compte.businessAddress, compte.businessActivity, compte.businessCategory]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
           )}
           <p className="text-xs text-slate-400 mt-1">
-            {dossier.requestType === "DIRECT_PROFESSIONAL"
+            {compte.requestType === "DIRECT_PROFESSIONAL"
               ? "Inscription professionnelle directe"
               : "Conversion particulier → professionnel"}{" "}
-            · compte créé il y a {accountAgeDays} j · {dossier.user._count.listings} annonces ·
-            email {dossier.user.emailVerified ? "vérifié" : "non vérifié"} · téléphone{" "}
-            {dossier.user.phoneVerified ? "vérifié" : "non vérifié"} · déposé le{" "}
+            · compte créé il y a {accountAgeDays} j · {compte.user._count.listings} annonces ·
+            email {compte.user.emailVerified ? "vérifié" : "non vérifié"} · téléphone{" "}
+            {compte.user.phoneVerified ? "vérifié" : "non vérifié"} · déposé le{" "}
             {submitted.toLocaleDateString("fr-FR")} à{" "}
             {submitted.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
           </p>
@@ -151,36 +151,36 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
 
         <span
           className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-            dossier.status === "PENDING" || dossier.status === "INFO_REQUESTED"
+            compte.status === "PENDING" || compte.status === "INFO_REQUESTED"
               ? "bg-amber-100 text-amber-700"
-              : dossier.status === "APPROVED"
+              : compte.status === "APPROVED"
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-rose-100 text-rose-700"
           }`}
         >
-          {STATUS_LABELS[dossier.status] ?? dossier.status}
+          {STATUS_LABELS[compte.status] ?? compte.status}
         </span>
       </div>
 
-      {dossier.documentsDeletedAt ? (
+      {compte.documentsDeletedAt ? (
         <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
           Pièces justificatives supprimées le{" "}
-          {new Date(dossier.documentsDeletedAt).toLocaleDateString("fr-FR")} — conformément à la
+          {new Date(compte.documentsDeletedAt).toLocaleDateString("fr-FR")} — conformément à la
           durée de conservation. Types fournis :{" "}
-          {ID_LABELS[dossier.idDocumentType] ?? dossier.idDocumentType} et{" "}
-          {COMPANY_LABELS[dossier.companyDocType] ?? dossier.companyDocType}.
+          {ID_LABELS[compte.idDocumentType] ?? compte.idDocumentType} et{" "}
+          {COMPANY_LABELS[compte.companyDocType] ?? compte.companyDocType}.
         </p>
       ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
         <DocLink
-          label={ID_LABELS[dossier.idDocumentType] ?? dossier.idDocumentType}
+          label={ID_LABELS[compte.idDocumentType] ?? compte.idDocumentType}
           caption="Pièce d'identité"
-          href={docUrl(dossier.idDocumentPath)}
+          href={docUrl(compte.idDocumentPath)}
         />
         <DocLink
-          label={COMPANY_LABELS[dossier.companyDocType] ?? dossier.companyDocType}
+          label={COMPANY_LABELS[compte.companyDocType] ?? compte.companyDocType}
           caption="Justificatif d'entreprise"
-          href={docUrl(dossier.companyDocPath)}
+          href={docUrl(compte.companyDocPath)}
         />
       </div>
       )}
@@ -194,8 +194,8 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
           value={note}
           onChange={(e) => setNote(e.target.value)}
           onBlur={() => {
-            if (note !== (dossier.adminNote ?? "")) {
-              run(() => updateVerificationNote(dossier.id, note));
+            if (note !== (compte.adminNote ?? "")) {
+              run(() => updateVerificationNote(compte.id, note));
             }
           }}
           placeholder="Constat de vérification (nom du dirigeant, cohérence des pièces…)"
@@ -203,15 +203,15 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         />
       </div>
 
-      {dossier.infoRequest && dossier.status === "INFO_REQUESTED" && (
+      {compte.infoRequest && compte.status === "INFO_REQUESTED" && (
         <p className="mt-3 text-sm text-amber-800 bg-amber-50 rounded-xl px-3 py-2">
-          Information demandée : {dossier.infoRequest}
+          Information demandée : {compte.infoRequest}
         </p>
       )}
 
-      {dossier.rejectionReason && dossier.status === "REJECTED" && (
+      {compte.rejectionReason && compte.status === "REJECTED" && (
         <p className="mt-3 text-sm text-rose-700 bg-rose-50 rounded-xl px-3 py-2">
-          Motif transmis : {dossier.rejectionReason}
+          Motif transmis : {compte.rejectionReason}
         </p>
       )}
 
@@ -221,12 +221,12 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         </p>
       )}
 
-      {(dossier.status === "PENDING" || dossier.status === "INFO_REQUESTED") && (
+      {(compte.status === "PENDING" || compte.status === "INFO_REQUESTED") && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => approveVerification(dossier.id))}
+            onClick={() => run(() => approveVerification(compte.id))}
             className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">verified</span>
@@ -251,7 +251,7 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         </div>
       )}
 
-      {dossier.status === "APPROVED" && (
+      {compte.status === "APPROVED" && (
         <div className="mt-4">
           <button
             type="button"
@@ -265,12 +265,12 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         </div>
       )}
 
-      {dossier.status === "SUSPENDED" && (
+      {compte.status === "SUSPENDED" && (
         <div className="mt-4">
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => reinstateVerification(dossier.id))}
+            onClick={() => run(() => reinstateVerification(compte.id))}
             className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
           >
             Réactiver le compte professionnel
@@ -315,9 +315,9 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
           disabled={pending}
           onConfirm={() =>
             run(async () => {
-              if (panel === "info") await requestVerificationInfo(dossier.id, reason);
-              else if (panel === "reject") await rejectVerification(dossier.id, reason);
-              else await suspendVerification(dossier.id, reason);
+              if (panel === "info") await requestVerificationInfo(compte.id, reason);
+              else if (panel === "reject") await rejectVerification(compte.id, reason);
+              else await suspendVerification(compte.id, reason);
               setPanel("none");
               setReason("");
             })
@@ -325,13 +325,13 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         />
       )}
 
-      {dossier.logs.length > 0 && (
+      {compte.logs.length > 0 && (
         <details className="mt-4">
           <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Historique ({dossier.logs.length})
+            Historique ({compte.logs.length})
           </summary>
           <ul className="mt-2 space-y-1">
-            {dossier.logs.map((l) => (
+            {compte.logs.map((l) => (
               <li key={l.id} className="text-xs text-slate-500">
                 <span className="font-mono">
                   {new Date(l.createdAt).toLocaleString("fr-FR", {

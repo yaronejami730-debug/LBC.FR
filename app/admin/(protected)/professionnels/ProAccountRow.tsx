@@ -50,25 +50,47 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
   const [reason, setReason] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  // Affichage optimiste : le statut change à l'instant du clic, sans attendre
+  // l'aller-retour serveur. En cas d'échec, on revient à l'état réel et le
+  // message d'erreur explique pourquoi.
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
+  const [removed, setRemoved] = useState(false);
 
-  const st = STATUS[account.professionalStatus] ?? STATUS.NONE;
+  const shownStatus = optimisticStatus ?? account.professionalStatus;
+  const st = STATUS[shownStatus] ?? STATUS.NONE;
 
-  function run(fn: () => Promise<void>) {
+  function run(fn: () => Promise<void>, nextStatus?: string, disappears = false) {
     setError("");
+    if (nextStatus) setOptimisticStatus(nextStatus);
+    if (disappears) setRemoved(true);
+    setPanel("none");
+    setReason("");
     start(async () => {
       try {
         await fn();
-        setPanel("none");
-        setReason("");
         setConfirm("");
       } catch (e) {
+        setOptimisticStatus(null);
+        setRemoved(false);
         setError(e instanceof Error ? e.message : "Action impossible");
       }
     });
   }
 
+  if (removed) {
+    return (
+      <div className="bg-white border border-[#eceef0] rounded-2xl px-4 py-3 text-sm text-slate-400">
+        {account.companyName || account.name} — compte supprimé
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white border border-[#eceef0] rounded-2xl p-4">
+    <div
+      className={`bg-white border border-[#eceef0] rounded-2xl p-4 transition-opacity ${
+        pending ? "opacity-60" : "opacity-100"
+      }`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-extrabold text-slate-900">
@@ -101,21 +123,21 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
       {error && <p className="mt-2 text-sm font-semibold text-rose-700">{error}</p>}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        {account.professionalStatus !== "APPROVED" && (
+        {shownStatus !== "APPROVED" && (
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => verifyProAccount(account.id))}
+            onClick={() => run(() => verifyProAccount(account.id), "APPROVED")}
             className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
           >
             Vérifier
           </button>
         )}
-        {account.professionalStatus === "SUSPENDED" && (
+        {shownStatus === "SUSPENDED" && (
           <button
             type="button"
             disabled={pending}
-            onClick={() => run(() => reinstateProAccount(account.id))}
+            onClick={() => run(() => reinstateProAccount(account.id), "APPROVED")}
             className="rounded-full border border-emerald-200 px-4 py-2 text-xs font-bold text-emerald-700 disabled:opacity-50"
           >
             Réactiver
@@ -123,7 +145,7 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
         )}
         <Toggle label="Demander des infos" active={panel === "info"} onClick={() => setPanel(panel === "info" ? "none" : "info")} />
         <Toggle label="Refuser" active={panel === "refuse"} onClick={() => setPanel(panel === "refuse" ? "none" : "refuse")} tone="rose" />
-        {account.professionalStatus !== "SUSPENDED" && (
+        {shownStatus !== "SUSPENDED" && (
           <Toggle label="Suspendre" active={panel === "suspend"} onClick={() => setPanel(panel === "suspend" ? "none" : "suspend")} tone="rose" />
         )}
         <Toggle label="Supprimer le compte" active={panel === "delete"} onClick={() => setPanel(panel === "delete" ? "none" : "delete")} tone="rose" />
@@ -150,15 +172,17 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
           <button
             type="button"
             disabled={pending || reason.trim().length < 5}
-            onClick={() =>
-              run(() =>
+            onClick={() => {
+              const action =
                 panel === "info"
-                  ? requestProInfo(account.id, reason)
+                  ? () => requestProInfo(account.id, reason)
                   : panel === "refuse"
-                    ? refuseProAccount(account.id, reason)
-                    : suspendProAccount(account.id, reason),
-              )
-            }
+                    ? () => refuseProAccount(account.id, reason)
+                    : () => suspendProAccount(account.id, reason);
+              const next =
+                panel === "info" ? "INFO_REQUESTED" : panel === "refuse" ? "REJECTED" : "SUSPENDED";
+              run(action, next);
+            }}
             className="mt-2 rounded-full bg-[#2f6fb8] px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
           >
             Confirmer
@@ -182,7 +206,7 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
           <button
             type="button"
             disabled={pending || confirm.trim().toLowerCase() !== account.email.toLowerCase()}
-            onClick={() => run(() => deleteUserAccount(account.id, confirm))}
+            onClick={() => run(() => deleteUserAccount(account.id, confirm), undefined, true)}
             className="mt-2 rounded-full bg-rose-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             Supprimer définitivement
