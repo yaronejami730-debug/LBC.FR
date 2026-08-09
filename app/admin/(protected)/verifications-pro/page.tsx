@@ -5,9 +5,11 @@ export const metadata = { title: "Vérifications pro — Admin" };
 export const dynamic = "force-dynamic";
 
 const STATUSES = [
-  { value: "PENDING", label: "En attente" },
-  { value: "APPROVED", label: "Validés" },
+  { value: "PENDING", label: "À vérifier" },
+  { value: "INFO_REQUESTED", label: "Infos demandées" },
+  { value: "APPROVED", label: "Vérifiés" },
   { value: "REJECTED", label: "Refusés" },
+  { value: "SUSPENDED", label: "Suspendus" },
 ];
 
 export default async function VerificationsProPage({
@@ -24,6 +26,7 @@ export default async function VerificationsProPage({
       orderBy: { submittedAt: "asc" },
       take: 200,
       include: {
+        logs: { orderBy: { createdAt: "desc" }, take: 20 },
         user: {
           select: {
             id: true,
@@ -32,6 +35,9 @@ export default async function VerificationsProPage({
             createdAt: true,
             isPro: true,
             phoneNumber: true,
+            emailVerified: true,
+            phoneVerified: true,
+            professionalStatus: true,
             _count: { select: { listings: true } },
           },
         },
@@ -59,9 +65,9 @@ export default async function VerificationsProPage({
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="En attente" value={countByStatus.PENDING ?? 0} />
-        <Stat label="Validés" value={countByStatus.APPROVED ?? 0} tone="good" />
-        <Stat label="Refusés" value={countByStatus.REJECTED ?? 0} />
+        <Stat label="À vérifier" value={countByStatus.PENDING ?? 0} />
+        <Stat label="Vérifiés" value={countByStatus.APPROVED ?? 0} tone="good" />
+        <Stat label="Suspendus" value={countByStatus.SUSPENDED ?? 0} tone={countByStatus.SUSPENDED ? "bad" : undefined} />
         <Stat label="Hors délai 48 h" value={late} tone={late > 0 ? "bad" : undefined} />
       </div>
 

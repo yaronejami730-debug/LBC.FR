@@ -73,10 +73,17 @@ model User {
   expoPushTokens    ExpoPushToken[]
 
   // Vérification des comptes professionnels
-  proVerifiedAt    DateTime?
-  proProfile       ProProfile?
-  proVerifications ProVerification[] @relation("ProVerificationUser")
-  proReviews       ProVerification[] @relation("ProVerificationReviewer")
+  //
+  // `isPro` dit ce que le compte *est* aujourd'hui ; `professionalStatus` dit
+  // où en est son habilitation. Les deux existent parce qu'un compte peut être
+  // particulier avec un dossier en cours (PENDING) sans rien perdre, ou
+  // professionnel suspendu sans être rétrogradé.
+  /// NONE | PENDING | APPROVED | REJECTED | SUSPENDED | INFO_REQUESTED
+  professionalStatus String            @default("NONE")
+  proVerifiedAt      DateTime?
+  proProfile         ProProfile?
+  proVerifications   ProVerification[] @relation("ProVerificationUser")
+  proReviews         ProVerification[] @relation("ProVerificationReviewer")
 }
 
 model ApiKey {
@@ -775,9 +782,23 @@ model ProVerification {
   userId String
   user   User   @relation("ProVerificationUser", fields: [userId], references: [id], onDelete: Cascade)
 
-  status      String @default("PENDING") // PENDING | APPROVED | REJECTED
-  siret       String
-  companyName String
+  /// PENDING | APPROVED | REJECTED | SUSPENDED | INFO_REQUESTED
+  status      String @default("PENDING")
+  /// DIRECT_PROFESSIONAL (inscription pro) | CONVERT_FROM_PRIVATE (conversion)
+  requestType String @default("CONVERT_FROM_PRIVATE")
+
+  siret            String
+  siren            String?
+  companyName      String
+  commercialName   String?
+  businessAddress  String?
+  businessActivity String?
+  businessCategory String?
+
+  responsibleFirstName String?
+  responsibleLastName  String?
+  professionalPhone    String?
+  professionalEmail    String?
 
   /// Type de pièce fournie : CNI | PASSEPORT | TITRE_SEJOUR
   idDocumentType String
@@ -786,15 +807,48 @@ model ProVerification {
   companyDocType String
   companyDocPath String
 
-  submittedAt     DateTime  @default(now())
+  submittedAt DateTime @default(now())
+
+  /// Conservé pour compatibilité : miroir de approvedAt/rejectedAt.
   reviewedAt      DateTime?
   reviewedById    String?
   reviewedBy      User?     @relation("ProVerificationReviewer", fields: [reviewedById], references: [id])
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectedAt      DateTime?
+  rejectedById    String?
+  suspendedAt     DateTime?
+  suspendedById   String?
   rejectionReason String?
+  /// Demande d'information adressée au professionnel, en clair.
+  infoRequest     String?
   adminNote       String?
+
+  logs ProVerificationLog[]
 
   @@index([status, submittedAt])
   @@index([userId])
+}
+
+/// Historique immuable des décisions de modération professionnelle.
+///
+/// Aucune ligne n'est modifiée ni supprimée : une décision d'habilitation doit
+/// pouvoir être reconstituée des mois plus tard, y compris si le dossier a
+/// changé de statut entre-temps.
+model ProVerificationLog {
+  id             String          @id @default(cuid())
+  verificationId String
+  verification   ProVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+
+  /// SUBMITTED | OPENED | INFO_REQUESTED | DOCUMENT_ADDED | UPDATED | APPROVED | REJECTED | SUSPENDED | REINSTATED
+  action  String
+  /// Auteur : "user:{id}" ou "admin:{id}".
+  actor   String
+  details String?
+
+  createdAt DateTime @default(now())
+
+  @@index([verificationId, createdAt])
 }
 
 /// Espace professionnel : un établissement, une fiche, une carte de prestations.

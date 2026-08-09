@@ -6,42 +6,39 @@ import { proVerificationSubmittedEmail } from "@/lib/emails/pro-verification";
 
 const ID_TYPES = new Set(["CNI", "PASSEPORT", "TITRE_SEJOUR"]);
 const COMPANY_DOC_TYPES = new Set(["KBIS", "AVIS_SIRENE"]);
+const REQUEST_TYPES = new Set(["DIRECT_PROFESSIONAL", "CONVERT_FROM_PRIVATE"]);
 
 /**
- * Demande de passage en compte professionnel.
+ * Demande d'habilitation professionnelle.
  *
- * Le compte n'est **pas** activé ici : la route enregistre un dossier en
- * attente. Le SIRET seul ne prouve rien — il est public, et des comptes se
- * déclaraient pro avec le SIRET d'une entreprise tierce. `isPro` ne bascule
- * qu'à l'approbation d'un modérateur (app/admin/(protected)/verifications-pro).
+ * Le compte n'est **pas** activé ici, et rien de ce qu'il pouvait faire ne lui
+ * est retiré : il reste un compte particulier pleinement utilisable pendant
+ * toute l'instruction. Un SIRET est public — il ne prouve rien. Seul un
+ * modérateur fait passer `professionalStatus` à APPROVED, depuis
+ * /admin/verifications-pro.
  */
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const {
-    siret,
-    companyName,
-    idDocumentType,
-    idDocumentPath,
-    companyDocType,
-    companyDocPath,
-  } = await req.json().catch(() => ({}));
+  const b = await req.json().catch(() => ({}));
+  const siret = String(b.siret ?? "").replace(/\s/g, "").slice(0, 14);
+  const companyName = String(b.companyName ?? "").trim();
 
   if (!siret || !companyName) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
-  if (!idDocumentPath || !ID_TYPES.has(idDocumentType)) {
+  if (!b.idDocumentPath || !ID_TYPES.has(b.idDocumentType)) {
     return NextResponse.json({ error: "Pièce d'identité manquante" }, { status: 400 });
   }
-  if (!companyDocPath || !COMPANY_DOC_TYPES.has(companyDocType)) {
+  if (!b.companyDocPath || !COMPANY_DOC_TYPES.has(b.companyDocType)) {
     return NextResponse.json({ error: "Justificatif d'entreprise manquant" }, { status: 400 });
   }
 
   // Les fichiers déposés le sont sous kyc/<userId>/ : refuser tout autre
   // chemin empêche de rattacher à son dossier le document d'un autre compte.
   const prefix = `kyc/${session.user.id}/`;
-  if (!String(idDocumentPath).startsWith(prefix) || !String(companyDocPath).startsWith(prefix)) {
+  if (!String(b.idDocumentPath).startsWith(prefix) || !String(b.companyDocPath).startsWith(prefix)) {
     return NextResponse.json({ error: "Documents invalides" }, { status: 400 });
   }
 
@@ -50,32 +47,66 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ce SIRET est déjà associé à un compte" }, { status: 409 });
   }
 
-  const pending = await prisma.proVerification.findFirst({
-    where: { userId: session.user.id, status: "PENDING" },
+  const openDossier = await prisma.proVerification.findFirst({
+    where: { userId: session.user.id, status: { in: ["PENDING", "INFO_REQUESTED"] } },
     select: { id: true },
   });
-  if (pending) {
-    return NextResponse.json(
-      { error: "Une demande est déjà en cours d'examen" },
-      { status: 409 },
-    );
+  if (openDossier) {
+    return NextResponse.json({ error: "Une demande est déjà en cours d'examen" }, { status: 409 });
   }
-
-  await prisma.proVerification.create({
-    data: {
-      userId: session.user.id,
-      siret: String(siret).replace(/\s/g, "").slice(0, 14),
-      companyName: String(companyName).slice(0, 200),
-      idDocumentType,
-      idDocumentPath,
-      companyDocType,
-      companyDocPath,
-    },
-  });
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { email: true, name: true },
+    select: { email: true, name: true, isPro: true },
+  });
+
+  // Un compte déjà professionnel qui redépose un dossier ne perd pas ses
+  // droits : il n'y a que deux origines possibles pour une demande.
+  const requestType = REQUEST_TYPES.has(b.requestType)
+    ? b.requestType
+    : user?.isPro
+      ? "DIRECT_PROFESSIONAL"
+      : "CONVERT_FROM_PRIVATE";
+
+  const str = (v: unknown, max: number) => (v ? String(v).trim().slice(0, max) : null);
+
+  const dossier = await prisma.proVerification.create({
+    data: {
+      userId: session.user.id,
+      status: "PENDING",
+      requestType,
+      siret,
+      siren: str(b.siren, 9) ?? siret.slice(0, 9),
+      companyName: companyName.slice(0, 200),
+      commercialName: str(b.commercialName, 200),
+      businessAddress: str(b.businessAddress, 300),
+      businessActivity: str(b.businessActivity, 200),
+      businessCategory: str(b.businessCategory, 100),
+      responsibleFirstName: str(b.responsibleFirstName, 100),
+      responsibleLastName: str(b.responsibleLastName, 100),
+      professionalPhone: str(b.professionalPhone, 30),
+      professionalEmail: str(b.professionalEmail, 200),
+      idDocumentType: b.idDocumentType,
+      idDocumentPath: b.idDocumentPath,
+      companyDocType: b.companyDocType,
+      companyDocPath: b.companyDocPath,
+    },
+  });
+
+  await prisma.proVerificationLog.create({
+    data: {
+      verificationId: dossier.id,
+      action: "SUBMITTED",
+      actor: `user:${session.user.id}`,
+      details: `${requestType} — ${companyName} (SIRET ${siret})`,
+    },
+  });
+
+  // Le statut d'habilitation avance ; `isPro` ne bouge pas. Le compte
+  // particulier continue exactement comme avant.
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { professionalStatus: "PENDING" },
   });
 
   if (user?.email) {
@@ -91,7 +122,7 @@ export async function POST(req: NextRequest) {
     await sendEmail({
       to: adminTo,
       subject: `Vérification pro à traiter — ${companyName}`,
-      html: `<p>Nouvelle demande de compte professionnel.</p>
+      html: `<p>Nouvelle demande de compte professionnel (${requestType}).</p>
              <p><strong>${companyName}</strong> — SIRET ${siret}<br/>
              Compte : ${user?.email ?? session.user.id}</p>
              <p><a href="https://www.dealandcompany.fr/admin/verifications-pro">Ouvrir la file de vérification</a></p>`,

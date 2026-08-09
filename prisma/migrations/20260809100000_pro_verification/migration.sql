@@ -5,8 +5,7 @@
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "proVerifiedAt" TIMESTAMP(3);
 
 CREATE TABLE IF NOT EXISTS "ProVerification" (
-    "id" 
-    EXT NOT NULL,
+    "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDING',
     "siret" TEXT NOT NULL,
@@ -27,10 +26,17 @@ CREATE TABLE IF NOT EXISTS "ProVerification" (
 CREATE INDEX IF NOT EXISTS "ProVerification_status_submittedAt_idx" ON "ProVerification"("status", "submittedAt");
 CREATE INDEX IF NOT EXISTS "ProVerification_userId_idx" ON "ProVerification"("userId");
 
-ALTER TABLE "ProVerification"
-    ADD CONSTRAINT "ProVerification_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ProVerification_userId_fkey') THEN
+        ALTER TABLE "ProVerification"
+            ADD CONSTRAINT "ProVerification_userId_fkey"
+            FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
 
-ALTER TABLE "ProVerification"
-    ADD CONSTRAINT "ProVerification_reviewedById_fkey"
-    FOREIGN KEY ("reviewedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ProVerification_reviewedById_fkey') THEN
+        ALTER TABLE "ProVerification"
+            ADD CONSTRAINT "ProVerification_reviewedById_fkey"
+            FOREIGN KEY ("reviewedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;

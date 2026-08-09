@@ -4,14 +4,29 @@ import { useState, useTransition } from "react";
 import {
   approveVerification,
   rejectVerification,
+  requestVerificationInfo,
+  suspendVerification,
+  reinstateVerification,
   updateVerificationNote,
 } from "./actions";
 
 export type Dossier = {
   id: string;
   status: string;
+  requestType: string;
   siret: string;
+  siren: string | null;
   companyName: string;
+  commercialName: string | null;
+  businessAddress: string | null;
+  businessActivity: string | null;
+  businessCategory: string | null;
+  responsibleFirstName: string | null;
+  responsibleLastName: string | null;
+  professionalPhone: string | null;
+  professionalEmail: string | null;
+  infoRequest: string | null;
+  logs: { id: string; action: string; actor: string; details: string | null; createdAt: string | Date }[];
   idDocumentType: string;
   idDocumentPath: string;
   companyDocType: string;
@@ -27,6 +42,9 @@ export type Dossier = {
     createdAt: string | Date;
     isPro: boolean;
     phoneNumber: string | null;
+    emailVerified: boolean;
+    phoneVerified: boolean;
+    professionalStatus: string;
     _count: { listings: number };
   };
 };
@@ -52,6 +70,8 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
   const [note, setNote] = useState(dossier.adminNote ?? "");
   const [reason, setReason] = useState("");
   const [showReject, setShowReject] = useState(false);
+  /** Formulaire ouvert : refus, demande d'info ou suspension. */
+  const [panel, setPanel] = useState<"none" | "reject" | "info" | "suspend">("none");
   const [error, setError] = useState("");
 
   const submitted = new Date(dossier.submittedAt);
