@@ -203,7 +203,20 @@ export function screenWellnessListing({
  */
 export const WELLNESS_PRO_THRESHOLD = 4;
 
-/** Invitation affichée au particulier qui dépasse le seuil. Jamais un refus. */
+/**
+ * Plafond dur pour un compte particulier dans la rubrique. Au-delà, la
+ * publication est refusée au profit de l'espace professionnel : une carte de
+ * quinze prestations n'a pas à devenir quinze annonces.
+ */
+export const WELLNESS_MAX_FOR_INDIVIDUALS = 5;
+
+/** Refus affiché au particulier qui a atteint le plafond. */
+export const WELLNESS_LIMIT_REACHED =
+  "Vous avez atteint la limite de 5 annonces en Beauté & Bien-être pour un compte particulier. " +
+  "Passez gratuitement en compte professionnel pour créer votre espace : une seule fiche, votre " +
+  "carte complète, vos tarifs et toutes vos prestations.";
+
+/** Invitation affichée au particulier qui approche du plafond. Jamais un refus. */
 export const PRO_UPGRADE_INVITE =
   "Vous publiez régulièrement des prestations de bien-être. Passez en compte professionnel " +
   "pour faire vérifier votre activité : votre salon affiche alors un badge vérifié, vos annonces " +

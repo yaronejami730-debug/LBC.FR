@@ -231,11 +231,6 @@ const inputCls =
   "w-full bg-surface-container-low rounded-xl px-4 py-3 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all placeholder:text-outline-variant/60";
 
 /** Options des champs bien-être — valeurs stockées telles quelles en metadata. */
-const WELLNESS_OFFER_KINDS = [
-  { value: "prestation", label: "Prestation à un client" },
-  { value: "location_espace", label: "Location d'espace (entre pros)" },
-  { value: "recherche_modele", label: "Recherche de modèle" },
-];
 const WELLNESS_DURATIONS = [
   { value: "30", label: "30 min" },
   { value: "45", label: "45 min" },
@@ -245,7 +240,6 @@ const WELLNESS_DURATIONS = [
   { value: "240", label: "Demi-journée" },
   { value: "480", label: "Journée" },
 ];
-const WELLNESS_CAPACITIES = ["1", "2", "3", "4", "5", "6+"];
 const WELLNESS_PRICE_UNITS = [
   { value: "seance", label: "La séance" },
   { value: "heure", label: "De l'heure" },
@@ -311,28 +305,13 @@ export default function PostForm() {
   // mais ne devine rien d'un titre pauvre — et un acheteur qui compare deux
   // hammams a besoin que ce soit déclaré. Ces champs priment sur l'extraction.
   const [wellness, setWellness] = useState({
-    offerKind: "prestation",
     durationMin: "",
-    capacity: "",
     priceUnit: "",
     tariffType: "fixe",
     place: "",
   });
   const setW = (k: keyof typeof wellness, v: string) =>
     setWellness((prev) => ({ ...prev, [k]: v }));
-
-  // Carte des prestations : un praticien vend rarement une seule chose. Le prix
-  // de l'annonce reste le tarif d'appel ; cette liste donne le menu complet,
-  // sans obliger à publier dix annonces.
-  const [services, setServices] = useState<{ label: string; duration: string; price: string }[]>([
-    { label: "", duration: "", price: "" },
-  ]);
-  const setService = (i: number, k: "label" | "duration" | "price", v: string) =>
-    setServices((prev) => prev.map((s, idx) => (idx === i ? { ...s, [k]: v } : s)));
-  const addService = () =>
-    setServices((prev) => (prev.length >= 20 ? prev : [...prev, { label: "", duration: "", price: "" }]));
-  const removeService = (i: number) =>
-    setServices((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
   const [vehicle, setVehicle] = useState<VehicleFields>({
     marque: "", modele: "", nomModele: "", annee: "", kilometrage: "",
@@ -724,22 +703,10 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           images: images.filter(Boolean),
           metadata: categoryId === "beaute-bien-etre"
             ? JSON.stringify({
-                offerKind: wellness.offerKind,
                 durationMin: wellness.durationMin || null,
-                capacity: wellness.capacity || null,
                 priceUnit: wellness.priceUnit || null,
                 tariffType: wellness.tariffType,
                 place: wellness.place || null,
-                // Lignes vides ignorées : une prestation sans nom ni prix ne
-                // vaut rien à l'affichage.
-                services: services
-                  .filter((s) => s.label.trim() && s.price.trim())
-                  .map((s) => ({
-                    label: s.label.trim().slice(0, 80),
-                    durationMin: s.duration ? parseInt(s.duration) || null : null,
-                    price: parseFloat(s.price.replace(",", ".")) || null,
-                  }))
-                  .filter((s) => s.price !== null),
               })
             : categoryId === "vehicules"
             ? JSON.stringify({ ...vehicle })
@@ -1430,28 +1397,10 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Détails de la prestation</p>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Nature de l&apos;annonce</label>
-                  <div className="flex flex-wrap gap-2">
-                    {WELLNESS_OFFER_KINDS.map((o) => (
-                      <button key={o.value} type="button" onClick={() => setW("offerKind", o.value)} className={pillCls(wellness.offerKind === o.value) + " whitespace-nowrap"}>{o.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
                   <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Durée</label>
                   <div className="flex flex-wrap gap-2">
                     {WELLNESS_DURATIONS.map((d) => (
                       <button key={d.value} type="button" onClick={() => setW("durationMin", wellness.durationMin === d.value ? "" : d.value)} className={pillCls(wellness.durationMin === d.value)}>{d.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Nombre de personnes couvertes par le prix</label>
-                  <div className="flex flex-wrap gap-2">
-                    {WELLNESS_CAPACITIES.map((c) => (
-                      <button key={c} type="button" onClick={() => setW("capacity", wellness.capacity === c ? "" : c)} className={pillCls(wellness.capacity === c)}>{c}</button>
                     ))}
                   </div>
                 </div>
@@ -1485,66 +1434,17 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                   </div>
                 </div>
 
-                {/* Carte des prestations */}
-                <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">
-                    Carte des prestations <span className="normal-case font-medium tracking-normal text-outline/70">(facultatif)</span>
-                  </label>
-                  <p className="text-xs text-outline leading-relaxed">
-                    Listez vos tarifs : massage californien 30 €, sourcils 10 €, pose gel 45 €…
-                    Ils s&apos;affichent en menu sur l&apos;annonce.
-                  </p>
+                {/* La carte complète des prestations vit sur la fiche
+                    professionnelle (/profile/espace-pro), pas dans une annonce :
+                    un salon ne doit pas publier une annonce par prestation. */}
+                <p className="text-xs text-outline leading-relaxed bg-surface-container-low rounded-xl px-3 py-2.5">
+                  Une annonce = une prestation. Vous en proposez plusieurs&nbsp;?{" "}
+                  <a href="/profile" className="font-bold text-primary hover:underline">
+                    Passez en compte professionnel
+                  </a>{" "}
+                  et présentez votre carte complète sur une seule fiche.
+                </p>
 
-                  <div className="space-y-2">
-                    {services.map((s, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          value={s.label}
-                          onChange={(e) => setService(i, "label", e.target.value)}
-                          placeholder="Prestation"
-                          maxLength={80}
-                          className={inputCls + " flex-1 py-2.5"}
-                        />
-                        <input
-                          value={s.duration}
-                          onChange={(e) => setService(i, "duration", e.target.value.replace(/\D/g, "").slice(0, 3))}
-                          placeholder="min"
-                          inputMode="numeric"
-                          className={inputCls + " w-20 py-2.5 text-center"}
-                        />
-                        <div className="relative w-24">
-                          <input
-                            value={s.price}
-                            onChange={(e) => setService(i, "price", e.target.value.replace(/[^\d.,]/g, "").slice(0, 7))}
-                            placeholder="Prix"
-                            inputMode="decimal"
-                            className={inputCls + " py-2.5 pr-7 text-right"}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-outline">€</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeService(i)}
-                          disabled={services.length <= 1}
-                          aria-label="Retirer cette ligne"
-                          className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-outline hover:text-error hover:bg-error-container/40 disabled:opacity-30 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[20px]">close</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={addService}
-                    disabled={services.length >= 20}
-                    className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                    Ajouter une prestation
-                  </button>
-                </div>
               </div>
             )}
 

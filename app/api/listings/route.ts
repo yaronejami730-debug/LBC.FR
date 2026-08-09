@@ -24,6 +24,8 @@ import { classifyWellness } from "@/lib/wellness/classify";
 import {
   WELLNESS_CATEGORY_ID,
   WELLNESS_PRO_THRESHOLD,
+  WELLNESS_MAX_FOR_INDIVIDUALS,
+  WELLNESS_LIMIT_REACHED,
   PRO_UPGRADE_INVITE,
 } from "@/lib/moderation/wellness-policy";
 import { scanText } from "@/lib/moderation/url-scanner";
@@ -290,6 +292,10 @@ export async function POST(req: NextRequest) {
     // Niveau 3 (type d'annonce) + tarif, durée, capacité, public visé :
     // persistés pour l'affichage et le filtrage, sans nouvel appel au moteur.
     if (categoryId === WELLNESS_CATEGORY_ID) {
+      const sellerIsPro = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isPro: true },
+      });
       const w = classifyWellness({ title, description, price: parsedPrice });
 
       // Le formulaire l'emporte sur l'extraction : ce que le vendeur a déclaré
@@ -326,7 +332,11 @@ export async function POST(req: NextRequest) {
           tags: w?.tags ?? [],
           // Carte des prestations — bornée et nettoyée côté serveur : le
           // client peut envoyer n'importe quoi.
-          services: Array.isArray(metaObj.services)
+          // Carte de prestations : réservée à la fiche professionnelle
+          // (/profile/espace-pro). Une annonce de particulier décrit une seule
+          // prestation — sinon la rubrique redevient un annuaire de salons
+          // éclaté en dizaines d'annonces.
+          services: sellerIsPro?.isPro && Array.isArray(metaObj.services)
             ? metaObj.services
                 .filter((s: any) => s && typeof s.label === "string" && Number(s.price) > 0)
                 .slice(0, 20)
@@ -344,10 +354,6 @@ export async function POST(req: NextRequest) {
       // de salon : on invite à passer en compte professionnel — vérifié, donc
       // authentifiable — plutôt que de rejeter. L'annonce part en relecture, pas
       // à la poubelle.
-      const sellerIsPro = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { isPro: true },
-      });
       const isRentalListing =
         (metaObj.offerKind as string) === "location_espace" || w?.offerKind === "location_espace";
       if (!sellerIsPro?.isPro && w?.offerKind !== "vente_produit" && !isRentalListing) {
@@ -359,6 +365,21 @@ export async function POST(req: NextRequest) {
             status: { in: ["APPROVED", "PENDING"] },
           },
         });
+        // Cinq annonces bien-être passent sans rien demander. Au-delà, ce
+        // n'est plus une prestation ponctuelle : la publication est refusée et
+        // remplacée par une invitation à ouvrir un espace professionnel, où la
+        // carte complète tient sur une seule fiche. Refus, jamais sanction.
+        if (wellnessCount >= WELLNESS_MAX_FOR_INDIVIDUALS) {
+          return NextResponse.json(
+            {
+              error: WELLNESS_LIMIT_REACHED,
+              proUpgradeInvite: PRO_UPGRADE_INVITE,
+              proUpgradeUrl: "/profile",
+              wellnessLimitReached: true,
+            },
+            { status: 403 },
+          );
+        }
         if (wellnessCount >= WELLNESS_PRO_THRESHOLD) {
           proUpgradeInvite = PRO_UPGRADE_INVITE;
           if (listingStatus === "APPROVED") {
@@ -366,7 +387,7 @@ export async function POST(req: NextRequest) {
             reviewPriority += 2;
           }
           adminNote =
-            `[WELLNESS_VOLUME] ${wellnessCount + 1}e annonce bien-être sur un compte particulier — inviter au passage en pro\n` +
+            `[WELLNESS_VOLUME] ${wellnessCount + 1}e annonce bien-être sur un compte particulier — compte probablement professionnel\n` +
             (adminNote ?? "");
         }
       }

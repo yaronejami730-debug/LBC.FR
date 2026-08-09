@@ -74,6 +74,7 @@ model User {
 
   // Vérification des comptes professionnels
   proVerifiedAt    DateTime?
+  proProfile       ProProfile?
   proVerifications ProVerification[] @relation("ProVerificationUser")
   proReviews       ProVerification[] @relation("ProVerificationReviewer")
 }
@@ -794,4 +795,61 @@ model ProVerification {
 
   @@index([status, submittedAt])
   @@index([userId])
+}
+
+/// Espace professionnel : un établissement, une fiche, une carte de prestations.
+///
+/// Un salon ne doit pas publier trente annonces pour présenter trente
+/// prestations. Il crée un espace, y range sa carte, et ses annonces renvoient
+/// dessus. Réservé aux comptes professionnels vérifiés (cf. ProVerification) :
+/// c'est ce qui distingue une fiche d'établissement d'une petite annonce.
+model ProProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Nom commercial affiché — « Barber Turbigo », « Beauty Studio Paris 3 ».
+  name        String
+  slug        String  @unique
+  /// Identifiants de catégories couvertes (JSON), ex. ["beaute-bien-etre"].
+  categories  String  @default("[]")
+  description String?
+
+  addressLine String?
+  city        String?
+  postalCode  String?
+  phone       String?
+  website     String?
+
+  /// Horaires par jour (JSON) : { "lundi": "09:00-19:00", … }
+  hours      String  @default("{}")
+  /// Photos de l'établissement (JSON, URLs).
+  photos     String  @default("[]")
+  coverImage String?
+
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  services ProService[]
+
+  @@index([isPublished, city])
+}
+
+/// Une ligne de la carte : « Massage relaxant · 60 min · 60 € ».
+model ProService {
+  id        String     @id @default(cuid())
+  profileId String
+  profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  /// Rubrique de la carte : « Massages », « Coiffure », « Barbe »…
+  section     String
+  label       String
+  durationMin Int?
+  price       Float
+  /// Mention libre : « +5 € », « à partir de », « sur devis ».
+  priceNote   String?
+  position    Int     @default(0)
+
+  @@index([profileId, position])
 }
