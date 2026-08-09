@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Fichier manquant" }, { status: 400 });
   }
-  if (kind !== "identity" && kind !== "company") {
+  if (kind !== "identity" && kind !== "identity_back" && kind !== "company") {
     return NextResponse.json({ error: "Type de document inconnu" }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {

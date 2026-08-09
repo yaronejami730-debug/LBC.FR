@@ -801,11 +801,13 @@ model ProVerification {
   professionalEmail    String?
 
   /// Type de pièce fournie : CNI | PASSEPORT | TITRE_SEJOUR
-  idDocumentType String
-  idDocumentPath String
+  idDocumentType     String
+  idDocumentPath     String
+  /// Verso de la pièce (CNI, titre de séjour) — absent pour un passeport.
+  idDocumentBackPath String?
   /// Type de justificatif : KBIS | AVIS_SIRENE
-  companyDocType String
-  companyDocPath String
+  companyDocType     String
+  companyDocPath     String
 
   submittedAt DateTime @default(now())
 

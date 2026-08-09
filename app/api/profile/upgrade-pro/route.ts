@@ -88,6 +88,10 @@ export async function POST(req: NextRequest) {
       professionalEmail: str(b.professionalEmail, 200),
       idDocumentType: b.idDocumentType,
       idDocumentPath: b.idDocumentPath,
+      idDocumentBackPath:
+        typeof b.idDocumentBackPath === "string" && b.idDocumentBackPath.startsWith(prefix)
+          ? b.idDocumentBackPath
+          : null,
       companyDocType: b.companyDocType,
       companyDocPath: b.companyDocPath,
     },

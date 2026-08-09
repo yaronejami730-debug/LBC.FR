@@ -27,13 +27,32 @@ export async function GET(req: NextRequest) {
       result.nom_commercial ||
       null;
 
+    // L'API renvoie l'établissement du SIRET demandé dans `matching_etablissements`
+    // (le siège n'est pas forcément le bon établissement).
+    const etab =
+      (result.matching_etablissements ?? []).find((e: any) => e.siret === siret) ??
+      result.siege ??
+      null;
+
     const active = result.etat_administratif === "A";
 
     if (!active) {
       return NextResponse.json({ error: "Cette entreprise est inactive ou radiée" }, { status: 400 });
     }
 
-    return NextResponse.json({ siret, companyName });
+    // Tout ce que l'API sait, on le renvoie : ce sont autant de champs que le
+    // professionnel n'aura pas à ressaisir.
+    return NextResponse.json({
+      siret,
+      siren: result.siren ?? siret.slice(0, 9),
+      companyName,
+      commercialName: result.nom_commercial ?? etab?.nom_commercial ?? null,
+      address: etab?.adresse ?? result.siege?.adresse ?? null,
+      city: etab?.libelle_commune ?? result.siege?.libelle_commune ?? null,
+      postalCode: etab?.code_postal ?? result.siege?.code_postal ?? null,
+      activity: etab?.activite_principale ?? result.activite_principale ?? null,
+      category: result.section_activite_principale ?? null,
+    });
   } catch {
     return NextResponse.json({ error: "Impossible de vérifier le SIRET" }, { status: 500 });
   }

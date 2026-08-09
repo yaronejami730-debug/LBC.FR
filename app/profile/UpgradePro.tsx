@@ -11,7 +11,7 @@ import { useRef, useState } from "react";
  * n'active donc rien — il ouvre un compte.
  */
 
-type DocKind = "identity" | "company";
+type DocKind = "identity" | "identity_back" | "company";
 
 const ID_TYPES = [
   { value: "CNI", label: "Carte nationale d'identité" },
@@ -56,12 +56,15 @@ export default function UpgradePro({
   const [idType, setIdType] = useState("CNI");
   const [companyDocType, setCompanyDocType] = useState("KBIS");
   const [idPath, setIdPath] = useState("");
+  const [idBackPath, setIdBackPath] = useState("");
+  const [idBackName, setIdBackName] = useState("");
   const [companyPath, setCompanyPath] = useState("");
   const [idName, setIdName] = useState("");
   const [companyDocName, setCompanyDocName] = useState("");
   const [uploading, setUploading] = useState<DocKind | null>(null);
 
   const idInput = useRef<HTMLInputElement>(null);
+  const idBackInput = useRef<HTMLInputElement>(null);
   const companyInput = useRef<HTMLInputElement>(null);
 
   async function handleSiretChange(value: string) {
@@ -81,6 +84,15 @@ export default function UpgradePro({
         } else {
           setCompanyName(data.companyName ?? "");
           if (!data.companyName) setError("Nom d'entreprise introuvable pour ce SIRET");
+          // Tout ce que l'annuaire des entreprises connaît est pré-rempli : le
+          // professionnel corrige au lieu de tout ressaisir.
+          setBiz((prev) => ({
+            ...prev,
+            siren: data.siren ?? prev.siren,
+            commercialName: data.commercialName ?? prev.commercialName,
+            businessAddress: data.address ?? prev.businessAddress,
+            businessActivity: data.activity ?? prev.businessActivity,
+          }));
         }
       } catch {
         setError("Impossible de vérifier le SIRET");
@@ -106,6 +118,9 @@ export default function UpgradePro({
       if (kind === "identity") {
         setIdPath(data.path);
         setIdName(file.name);
+      } else if (kind === "identity_back") {
+        setIdBackPath(data.path);
+        setIdBackName(file.name);
       } else {
         setCompanyPath(data.path);
         setCompanyDocName(file.name);
@@ -120,6 +135,10 @@ export default function UpgradePro({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!companyName || !idPath || !companyPath) return;
+    if (idType !== "PASSEPORT" && !idBackPath) {
+      setError("Le verso de la pièce d'identité est requis.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -133,6 +152,7 @@ export default function UpgradePro({
           requestType: "CONVERT_FROM_PRIVATE",
           idDocumentType: idType,
           idDocumentPath: idPath,
+          idDocumentBackPath: idBackPath || null,
           companyDocType,
           companyDocPath: companyPath,
         }),
@@ -266,7 +286,7 @@ export default function UpgradePro({
         </div>
 
         <DocField
-          legend="Pièce d'identité du dirigeant"
+          legend="Pièce d'identité du dirigeant — recto"
           hint="Recto-verso lisible, en cours de validité."
           types={ID_TYPES}
           type={idType}
@@ -276,6 +296,21 @@ export default function UpgradePro({
           inputRef={idInput}
           onFile={(f) => uploadDoc("identity", f)}
         />
+
+        {/* Un passeport n'a pas de verso ; une CNI et un titre de séjour, si. */}
+        {idType !== "PASSEPORT" && (
+          <DocField
+            legend="Pièce d'identité — verso"
+            hint="Le dos de la carte, lisible."
+            types={[]}
+            type={idType}
+            onType={() => {}}
+            fileName={idBackName}
+            busy={uploading === "identity_back"}
+            inputRef={idBackInput}
+            onFile={(f) => uploadDoc("identity_back", f)}
+          />
+        )}
 
         <DocField
           legend="Justificatif d'entreprise"
@@ -295,7 +330,13 @@ export default function UpgradePro({
 
         <button
           type="submit"
-          disabled={!companyName || !idPath || !companyPath || saving}
+          disabled={
+            !companyName ||
+            !idPath ||
+            !companyPath ||
+            (idType !== "PASSEPORT" && !idBackPath) ||
+            saving
+          }
           className="w-full bg-gradient-to-r from-primary to-primary-container text-white font-bold py-3 rounded-full shadow-[0_8px_24px_rgba(21,21,125,0.2)] active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-[18px]">verified_user</span>
@@ -358,6 +399,7 @@ function DocField({
       <legend className="block text-sm font-bold text-primary tracking-tight mb-1.5 uppercase">
         {legend}
       </legend>
+      {types.length > 0 && (
       <select
         value={type}
         onChange={(e) => onType(e.target.value)}
@@ -369,6 +411,7 @@ function DocField({
           </option>
         ))}
       </select>
+      )}
 
       <input
         ref={inputRef}
