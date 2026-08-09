@@ -8,9 +8,19 @@
  * une réinscription sans conserver la moindre donnée personnelle lisible.
  *
  * Bloquer sur l'email seul ne sert à rien : une adresse jetable se crée en
- * trente secondes. Les signaux retenus sont ceux qui coûtent réellement à
- * renouveler — numéro de téléphone vérifié, SIRET, empreinte d'appareil —, et
- * ils ne sont utilisés que pour la prévention de la fraude.
+
+
+* trente secondes. Les signaux **bloquants** sont donc ceux qui coûtent
+ * réellement à renouveler et qui appartiennent à la personne : email, numéro
+ * de téléphone, empreinte d'appareil.
+ *
+ * **Le SIRET n'est pas bloquant, et ne doit jamais le devenir.** Un SIRET est
+ * un identifiant public : n'importe qui peut recopier celui d'Apple ou de Sony
+ * dans un formulaire. Bannir le fraudeur qui l'a usurpé puis interdire ce SIRET
+ * reviendrait à punir l'entreprise réelle — la seule qui pourra un jour prouver
+ * qu'il est le sien, pièces à l'appui. Le SIRET est donc conservé comme
+ * *signal d'usurpation* : une nouvelle demande portant ce numéro est acceptée,
+ * mais signalée au modérateur, qui tranchera sur les justificatifs.
  *
  * Le poivre (`BAN_REGISTRY_PEPPER`) empêche qu'une liste d'emails connus soit
  * testée hors ligne contre le registre. Sans lui, on retombe sur un simple
@@ -134,18 +144,20 @@ export async function registerBan(entry: BanRegistryEntry): Promise<void> {
 export type BanCheckInput = {
   email?: string | null;
   phone?: string | null;
-  siret?: string | null;
   deviceFingerprint?: string | null;
 };
 
 export type BanCheckResult = {
   blocked: boolean;
   /** Signal ayant déclenché le blocage — pour le journal serveur uniquement. */
-  matchedOn: "email" | "phone" | "siret" | "device" | null;
+  matchedOn: "email" | "phone" | "device" | null;
 };
 
 /**
  * Vérifie une inscription contre le registre.
+ *
+ * Ne regarde que les identifiants personnels. Le SIRET en est délibérément
+ * absent : voir `siretFlaggedByBan` pour ce qu'on en fait à la place.
  *
  * Le motif du blocage n'est jamais renvoyé à l'utilisateur : lui dire « votre
  * numéro est banni » lui apprend exactement quoi changer. L'appelant affiche un
@@ -154,17 +166,15 @@ export type BanCheckResult = {
 export async function checkBanRegistry(input: BanCheckInput): Promise<BanCheckResult> {
   const emailHash = input.email ? hashEmail(input.email) : null;
   const phoneHash = input.phone ? hashPhoneForBan(input.phone) : null;
-  const siretHash = input.siret ? hashSiret(input.siret) : null;
 
   const or: Array<Record<string, unknown>> = [];
   if (emailHash) or.push({ emailHash });
   if (phoneHash) or.push({ phoneHash });
-  if (siretHash) or.push({ siretHash });
   if (or.length === 0) return { blocked: false, matchedOn: null };
 
   const hit = await prisma.banRegistry.findFirst({
     where: { OR: or },
-    select: { emailHash: true, phoneHash: true, siretHash: true },
+    select: { emailHash: true, phoneHash: true },
   });
   if (!hit) return { blocked: false, matchedOn: null };
 
@@ -173,11 +183,74 @@ export async function checkBanRegistry(input: BanCheckInput): Promise<BanCheckRe
       ? "email"
       : phoneHash && hit.phoneHash === phoneHash
         ? "phone"
-        : siretHash && hit.siretHash === siretHash
-          ? "siret"
-          : null;
+        : null;
 
   return { blocked: true, matchedOn };
+}
+
+/**
+ * Ce SIRET a-t-il déjà servi à un compte banni ?
+ *
+ * Renvoie un **signal**, jamais un refus. Un SIRET usurpé est justement celui
+ * d'une entreprise qui n'a rien fait : elle doit pouvoir ouvrir son compte, et
+ * c'est même souhaitable — c'est la seule qui peut produire le Kbis
+ * correspondant et couper l'herbe sous le pied de l'usurpateur.
+ *
+ * L'appelant s'en sert pour orienter la demande vers un examen manuel attentif,
+ * pas pour la bloquer.
+ */
+export async function siretFlaggedByBan(siret: string | null | undefined): Promise<boolean> {
+  if (!siret) return false;
+  const siretHash = hashSiret(siret);
+  if (!siretHash) return false;
+  const hit = await prisma.banRegistry.findFirst({
+    where: { siretHash },
+    select: { id: true },
+  });
+  return !!hit;
+}
+
+/**
+ * Libère un SIRET encore détenu par des comptes bannis.
+ *
+ * `User.siret` est unique : tant qu'un compte banni le porte, l'entreprise
+ * réelle se voit répondre « ce SIRET est déjà associé à un compte » et reste
+ * dehors — le fraudeur lui aurait confisqué son identité d'entreprise en
+ * partant. Un compte banni n'a aucun titre à conserver un identifiant public
+ * qu'il n'a pas prouvé sien : on le détache.
+ *
+ * Ne touche jamais à un compte actif : si le détenteur n'est pas banni, le
+ * conflit est réel et l'appelant doit le refuser normalement.
+ */
+export async function releaseSiretFromBannedAccounts(siret: string): Promise<number> {
+  const digits = (siret ?? "").replace(/\s/g, "");
+  if (!digits) return 0;
+
+  const holders = await prisma.user.findMany({
+    where: { siret: digits, bannedAt: { not: null } },
+    select: { id: true },
+  });
+  if (holders.length === 0) return 0;
+
+  await prisma.user.updateMany({
+    where: { id: { in: holders.map((h) => h.id) } },
+    data: { siret: null },
+  });
+
+  for (const h of holders) {
+    await prisma.moderationEvent
+      .create({
+        data: {
+          userId: h.id,
+          actor: "system",
+          action: "siret_released",
+          reason: "SIRET détaché d'un compte banni : identifiant public réclamé par un autre compte",
+        },
+      })
+      .catch(() => { });
+  }
+
+  return holders.length;
 }
 
 /**

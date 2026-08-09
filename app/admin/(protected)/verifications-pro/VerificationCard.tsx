@@ -15,6 +15,7 @@ export type Compte = {
   status: string;
   requestType: string;
   siret: string;
+  siretPreviouslyBanned?: boolean;
   siren: string | null;
   companyName: string;
   commercialName: string | null;
@@ -120,6 +121,23 @@ export default function VerificationCard({ compte }: { compte: Compte }) {
               Vérifier à l&apos;annuaire des entreprises
             </a>
           </p>
+          {/* SIRET déjà vu sur un compte banni. Ce n'est pas une charge contre
+              ce demandeur : un SIRET est public, et celui qui arrive avec le
+              Kbis correspondant est le plus souvent l'entreprise usurpée. */}
+          {compte.siretPreviouslyBanned && (
+            <div className="mt-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+              <p className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[15px]">gpp_maybe</span>
+                Ce SIRET a déjà servi à un compte banni
+              </p>
+              <p className="text-[11px] text-amber-800/85 mt-1 leading-snug">
+                Signal, pas verdict. Un SIRET est public et se recopie : ce demandeur est
+                probablement l&apos;entreprise usurpée. Vérifiez que le Kbis et la pièce
+                d&apos;identité désignent bien la même personne, puis validez normalement.
+              </p>
+            </div>
+          )}
+
           <p className="text-sm text-slate-500 mt-1">
             {compte.user.name} · {compte.user.email}
             {compte.user.phoneNumber ? ` · ${compte.user.phoneNumber}` : ""}

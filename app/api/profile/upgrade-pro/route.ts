@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { proVerificationSubmittedEmail } from "@/lib/emails/pro-verification";
+import {
+  siretFlaggedByBan,
+  releaseSiretFromBannedAccounts,
+} from "@/lib/moderation/ban-registry";
 
 const ID_TYPES = new Set(["CNI", "PASSEPORT", "TITRE_SEJOUR"]);
 const COMPANY_DOC_TYPES = new Set(["KBIS", "AVIS_SIRENE"]);
@@ -42,10 +46,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Documents invalides" }, { status: 400 });
   }
 
+  // Un compte banni ne garde pas la main sur un identifiant public qu'il n'a
+  // jamais prouvé sien : on le détache avant de tester le conflit, sinon
+  // l'usurpateur aurait confisqué à l'entreprise réelle sa propre identité.
+  await releaseSiretFromBannedAccounts(siret).catch((err) =>
+    console.error("[upgrade-pro] libération SIRET:", err),
+  );
+
   const existingSiret = await prisma.user.findUnique({ where: { siret } });
   if (existingSiret && existingSiret.id !== session.user.id) {
     return NextResponse.json({ error: "Ce SIRET est déjà associé à un compte" }, { status: 409 });
   }
+
+  // Signal, pas verdict : le dossier passe en examen attentif, il n'est pas
+  // refusé. C'est le Kbis qui tranchera à qui ce SIRET appartient vraiment.
+  const siretPreviouslyBanned = await siretFlaggedByBan(siret).catch(() => false);
 
   const openRequest = await prisma.proVerification.findFirst({
     where: { userId: session.user.id, status: { in: ["PENDING", "INFO_REQUESTED"] } },
@@ -76,6 +91,7 @@ export async function POST(req: NextRequest) {
       status: "PENDING",
       requestType,
       siret,
+      siretPreviouslyBanned,
       siren: str(b.siren, 9) ?? siret.slice(0, 9),
       companyName: companyName.slice(0, 200),
       commercialName: str(b.commercialName, 200),
@@ -102,7 +118,11 @@ export async function POST(req: NextRequest) {
       verificationId: demande.id,
       action: "SUBMITTED",
       actor: `user:${session.user.id}`,
-      details: `${requestType} — ${companyName} (SIRET ${siret})`,
+      details:
+        `${requestType} — ${companyName} (SIRET ${siret})` +
+        (siretPreviouslyBanned
+          ? " — ⚠ SIRET déjà vu sur un compte banni : vérifier que le Kbis correspond bien au demandeur"
+          : ""),
     },
   });
 

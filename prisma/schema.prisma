@@ -900,6 +900,15 @@ model ProVerification {
   requestType String @default("CONVERT_FROM_PRIVATE")
 
   siret            String
+  /// Ce SIRET a déjà servi à un compte banni.
+  ///
+  /// Ce n'est pas une charge contre le demandeur — c'est souvent l'inverse. Un
+  /// SIRET est public : celui d'Apple ou de Sony se recopie en trois secondes.
+  /// Le compte qui arrive ensuite avec ce numéro est le plus souvent
+  /// l'entreprise réelle, la seule capable de fournir le Kbis correspondant.
+  /// Le drapeau sert à faire examiner le dossier avec attention, jamais à le
+  /// refuser d'office.
+  siretPreviouslyBanned Boolean @default(false)
   siren            String?
   companyName      String
   commercialName   String?

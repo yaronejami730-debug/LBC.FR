@@ -5,7 +5,11 @@ import { sendEmail } from "@/lib/email";
 import { verifyEmail } from "@/lib/emails/verify-email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { signMobileToken } from "@/lib/mobile-auth";
-import { checkBanRegistry, BAN_BLOCK_MESSAGE } from "@/lib/moderation/ban-registry";
+import {
+  checkBanRegistry,
+  releaseSiretFromBannedAccounts,
+  BAN_BLOCK_MESSAGE,
+} from "@/lib/moderation/ban-registry";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,6 +39,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email déjà utilisé" }, { status: 409 });
     }
     if (isPro && siret) {
+      // Identifiant public : un compte banni ne le confisque pas à l'entreprise
+      // réelle, qui est justement celle qui pourra en fournir le Kbis.
+      await releaseSiretFromBannedAccounts(siret).catch((err) =>
+        console.error("[MOBILE-REGISTER] libération SIRET:", err),
+      );
+
       const siretUsed = await prisma.user.findUnique({ where: { siret } });
       if (siretUsed) {
         return NextResponse.json({ error: "Ce SIRET est déjà associé à un compte" }, { status: 409 });
@@ -42,11 +52,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Même contrôle anti-réinscription que sur le web : une porte fermée d'un
-    // côté et ouverte de l'autre ne ferme rien.
-    const ban = await checkBanRegistry({
-      email: normalizedEmail,
-      siret: isPro ? siret : null,
-    }).catch(() => ({ blocked: false, matchedOn: null as null }));
+    // côté et ouverte de l'autre ne ferme rien. Le SIRET en est exclu, comme
+    // côté web.
+    const ban = await checkBanRegistry({ email: normalizedEmail }).catch(() => ({
+      blocked: false,
+      matchedOn: null as null,
+    }));
     if (ban.blocked) {
       console.warn(`[MOBILE-REGISTER] inscription refusée (registre: ${ban.matchedOn})`);
       return NextResponse.json({ error: BAN_BLOCK_MESSAGE }, { status: 403 });

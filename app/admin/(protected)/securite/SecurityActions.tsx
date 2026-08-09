@@ -540,7 +540,11 @@ export function PurgeBannedButton({
           </p>
           <p className="text-sm text-slate-600 mb-2">
             Seule l'empreinte anti-réinscription est conservée, sous forme de hachage, afin
-            d'empêcher la recréation d'un compte.
+            d'empêcher la recréation d'un compte avec la même adresse email.
+          </p>
+          <p className="text-sm text-slate-600 mb-2">
+            Le numéro SIRET, lui, redevient libre : il appartient à l'entreprise, pas au compte
+            qui l'avait recopié.
           </p>
           <p className="text-sm font-bold text-rose-700 mb-5">Cette action est irréversible.</p>
           <div className="flex justify-end gap-2">

@@ -4,7 +4,11 @@ import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
 import { verifyEmail } from "@/lib/emails/verify-email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { checkBanRegistry, BAN_BLOCK_MESSAGE } from "@/lib/moderation/ban-registry";
+import {
+  checkBanRegistry,
+  releaseSiretFromBannedAccounts,
+  BAN_BLOCK_MESSAGE,
+} from "@/lib/moderation/ban-registry";
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,15 +45,25 @@ export async function POST(req: NextRequest) {
   // Le message renvoyé est volontairement identique quel que soit le signal
   // qui a déclenché le blocage — préciser « votre numéro est banni » revient à
   // indiquer quoi changer pour passer au travers.
-  const ban = await checkBanRegistry({ email, phone: null, siret: isPro ? siret : null }).catch(
-    () => ({ blocked: false, matchedOn: null as null }),
-  );
+  //
+  // Le SIRET n'entre pas dans ce contrôle : il n'appartient pas au fraudeur
+  // qui l'a recopié, et le bloquer fermerait la porte à l'entreprise usurpée.
+  const ban = await checkBanRegistry({ email, phone: null }).catch(() => ({
+    blocked: false,
+    matchedOn: null as null,
+  }));
   if (ban.blocked) {
     console.warn(`[REGISTER] inscription refusée (registre: ${ban.matchedOn})`);
     return NextResponse.json({ error: BAN_BLOCK_MESSAGE }, { status: 403 });
   }
 
   if (isPro && siret) {
+    // Un SIRET retenu par un compte banni est relâché : c'est un identifiant
+    // public, et l'usurpateur n'a aucun titre à en priver l'entreprise réelle.
+    await releaseSiretFromBannedAccounts(siret).catch((err) =>
+      console.error("[REGISTER] libération SIRET:", err),
+    );
+
     const siretUsed = await prisma.user.findUnique({ where: { siret } });
     if (siretUsed) {
       return NextResponse.json({ error: "Ce SIRET est déjà associé à un compte" }, { status: 409 });
