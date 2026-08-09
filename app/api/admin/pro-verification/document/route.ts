@@ -22,6 +22,13 @@ export async function GET(req: NextRequest) {
 
   const path = req.nextUrl.searchParams.get("path");
   if (!path) return NextResponse.json({ error: "Chemin manquant" }, { status: 400 });
+  // Pièce déjà effacée : le chemin ne désigne plus rien.
+  if (path.startsWith("deleted:")) {
+    return NextResponse.json(
+      { error: "Document supprimé conformément à la durée de conservation" },
+      { status: 410 },
+    );
+  }
 
   const known = await prisma.proVerification.findFirst({
     where: { OR: [{ idDocumentPath: path }, { companyDocPath: path }] },

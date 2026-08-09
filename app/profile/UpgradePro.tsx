@@ -200,9 +200,13 @@ export default function UpgradePro({
       </div>
 
       <p className="text-xs text-outline leading-relaxed mb-5 bg-surface-container-low rounded-xl px-4 py-3">
-        Un numéro SIRET est public&nbsp;: nous vérifions donc qu&apos;il vous appartient. Vos
-        documents sont stockés de façon privée, consultés uniquement par la modération, et ne sont
-        jamais visibles des autres utilisateurs.
+        Un numéro SIRET est public&nbsp;: nous vérifions donc qu&apos;il vous appartient.
+        <br />
+        <strong>Vos documents ne sont jamais visibles</strong> — ni des autres utilisateurs, ni sur
+        votre profil, ni sur vos annonces. Ils sont stockés de façon privée, servent uniquement à la
+        modération, et sont <strong>supprimés définitivement dès la validation</strong> de votre
+        compte. En cas de refus ou de demande de complément, ils sont conservés le temps de traiter
+        le dossier, puis effacés automatiquement au bout de 14&nbsp;mois sans réponse.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">

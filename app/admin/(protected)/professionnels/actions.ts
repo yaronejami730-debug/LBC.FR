@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+import { deleteProDocuments } from "@/lib/pro-documents";
 import {
   proVerificationApprovedEmail,
   proVerificationRejectedEmail,
@@ -106,6 +107,13 @@ export async function verifyProAccount(userId: string) {
     where: { userId, status: { in: ["PENDING", "INFO_REQUESTED"] } },
     data: { status: "APPROVED", approvedAt: new Date(), approvedById: adminId },
   });
+  const dossiers = await prisma.proVerification.findMany({
+    where: { userId, documentsDeletedAt: null },
+    select: { id: true },
+  });
+  for (const d of dossiers) {
+    await deleteProDocuments(d.id, `admin:${adminId}`, "Habilitation accordée");
+  }
   await trace(userId, "APPROVED", adminId);
 
   if (user.email) {

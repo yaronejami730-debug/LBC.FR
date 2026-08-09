@@ -132,7 +132,8 @@ export default async function VerificationsProPage({
         <h1 className="text-3xl font-extrabold text-slate-900">Vérifications pro</h1>
         <p className="text-slate-500 mt-1">
           Pièce d&apos;identité + justificatif d&apos;entreprise. Le compte ne passe professionnel
-          qu&apos;après validation ici.
+          qu&apos;après validation ici. Les pièces sont supprimées dès l&apos;approbation, et au bout
+          de 14 mois pour un dossier resté sans suite.
         </p>
       </div>
 

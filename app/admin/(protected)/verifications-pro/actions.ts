@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+import { deleteProDocuments } from "@/lib/pro-documents";
 import {
   proVerificationApprovedEmail,
   proVerificationRejectedEmail,
@@ -86,6 +87,10 @@ export async function approveVerification(id: string) {
     }),
   ]);
   await log(id, "APPROVED", adminId, dossier.companyName);
+
+  // La vérification a eu lieu : les pièces n'ont plus d'objet. Elles partent
+  // immédiatement, avant même l'email de confirmation.
+  await deleteProDocuments(id, `admin:${adminId}`, "Habilitation accordée");
 
   if (dossier.user.email) {
     await sendEmail({

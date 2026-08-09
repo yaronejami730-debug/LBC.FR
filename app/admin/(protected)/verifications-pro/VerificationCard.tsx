@@ -35,6 +35,7 @@ export type Dossier = {
   reviewedAt: string | Date | null;
   rejectionReason: string | null;
   adminNote: string | null;
+  documentsDeletedAt: string | Date | null;
   user: {
     id: string;
     email: string;
@@ -161,6 +162,15 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         </span>
       </div>
 
+      {dossier.documentsDeletedAt ? (
+        <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          Pièces justificatives supprimées le{" "}
+          {new Date(dossier.documentsDeletedAt).toLocaleDateString("fr-FR")} — conformément à la
+          durée de conservation. Types fournis :{" "}
+          {ID_LABELS[dossier.idDocumentType] ?? dossier.idDocumentType} et{" "}
+          {COMPANY_LABELS[dossier.companyDocType] ?? dossier.companyDocType}.
+        </p>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
         <DocLink
           label={ID_LABELS[dossier.idDocumentType] ?? dossier.idDocumentType}
@@ -173,6 +183,7 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
           href={docUrl(dossier.companyDocPath)}
         />
       </div>
+      )}
 
       <div className="mt-4">
         <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
