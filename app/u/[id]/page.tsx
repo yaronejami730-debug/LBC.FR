@@ -2,6 +2,8 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { auth } from "@/lib/auth";
+import SubscribeButton from "@/components/SubscribeButton";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -64,7 +66,19 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   const user = (await getUserWithListings(id)) as any;
   if (!user) notFound();
 
-  const responseTime = await getUserResponseTime(user.id);
+  const [responseTime, session] = await Promise.all([getUserResponseTime(user.id), auth()]);
+  const viewerId = session?.user?.id ?? null;
+
+  // Abonnement : état du visiteur et audience du vendeur.
+  const [subscriberCount, mySubscription] = await Promise.all([
+    prisma.subscription.count({ where: { sellerId: user.id } }),
+    viewerId
+      ? prisma.subscription.findUnique({
+          where: { followerId_sellerId: { followerId: viewerId, sellerId: user.id } },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+  ]);
 
   const initials = (user.name as string)
     .split(" ")
@@ -123,6 +137,18 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
               )}
             </div>
             <h1 className="text-2xl font-extrabold text-[#2f6fb8] font-['Manrope']">{user.name}</h1>
+            {viewerId !== user.id && (
+              <div className="mt-4">
+                <SubscribeButton
+                  sellerId={user.id}
+                  sellerName={displayName}
+                  initialSubscribed={!!mySubscription}
+                  initialCount={subscriberCount}
+                  isLoggedIn={!!viewerId}
+                />
+              </div>
+            )}
+
             {user.verified && (
               <div className="flex items-center gap-1.5 text-[#00a67e] font-bold text-xs mt-2 bg-[#e6fcf5] px-3 py-1 rounded-full uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>

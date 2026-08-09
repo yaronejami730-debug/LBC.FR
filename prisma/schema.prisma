@@ -86,8 +86,33 @@ model User {
   badgeGrantedAt     DateTime?
   proVerifiedAt      DateTime?
   proProfile         ProProfile?
+  subscriptions      Subscription[]    @relation("SubscriptionFollower")
+  subscribers        Subscription[]    @relation("SubscriptionSeller")
   proVerifications   ProVerification[] @relation("ProVerificationUser")
   proReviews         ProVerification[] @relation("ProVerificationReviewer")
+}
+
+/// Abonnement d'un utilisateur aux publications d'un vendeur.
+///
+/// Gratuit et sans réciprocité, comme un abonnement à une chaîne : A suit B,
+/// B n'a rien à accepter. `lastNotifiedAt` retient jusqu'où l'abonné a été
+/// prévenu — c'est ce qui permet de regrouper plusieurs annonces publiées à la
+/// chaîne dans un seul email au lieu d'en envoyer un par annonce.
+model Subscription {
+  id         String @id @default(cuid())
+  followerId String
+  sellerId   String
+  follower   User   @relation("SubscriptionFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  seller     User   @relation("SubscriptionSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime  @default(now())
+  lastNotifiedAt DateTime?
+  /// Coupe les emails sans se désabonner.
+  emailEnabled   Boolean   @default(true)
+
+  @@unique([followerId, sellerId])
+  @@index([sellerId])
+  @@index([followerId])
 }
 
 model ApiKey {
