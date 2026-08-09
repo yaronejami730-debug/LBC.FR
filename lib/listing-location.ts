@@ -102,13 +102,11 @@ export function sanitizeLocation(raw: string, postedAs: PostedAs): string {
     .map((part) => part.trim())
     .filter((part) => part && !isStreetFragment(part));
 
-  // Tout a été coupé : la saisie était une adresse de bout en bout. On garde
-  // le dernier fragment (le plus général — souvent la ville) débarrassé de son
-  // éventuel numéro, plutôt que de renvoyer une localisation vide.
-  if (kept.length === 0) {
-    const last = value.split(",").pop()?.trim() ?? "";
-    return last.replace(/^\d{1,4}\s*(bis|ter|quater)?\s*/i, "").slice(0, 120);
-  }
+  // Tout a été coupé : la saisie ne contenait qu'une adresse de voie, sans
+  // commune. On renvoie une chaîne vide plutôt que de deviner — « 45 Bd
+  // Voltaire » ne dit pas dans quelle ville, et publier « Bd Voltaire » ferait
+  // fuiter la rue tout en n'aidant personne. L'appelant redemande une ville.
+  if (kept.length === 0) return "";
 
   return kept.join(", ").slice(0, 120);
 }

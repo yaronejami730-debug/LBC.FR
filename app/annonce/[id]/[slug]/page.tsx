@@ -980,6 +980,20 @@ export default async function ListingPage({
                 </div>
               </div>
 
+              {/* Adresse précise : uniquement pour une annonce professionnelle.
+                  Un local commercial a pignon sur rue et l'acheteur peut s'y
+                  rendre ; le domicile d'un particulier n'est jamais affiché. */}
+              {listingData.postedAs === "PRO" && listingData.addressLine ? (
+                <p className="text-sm text-slate-600 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-slate-400 text-[18px] shrink-0">storefront</span>
+                  <span>{listingData.addressLine}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-outline">
+                  Localisation approximative : l'adresse exacte du vendeur n'est pas communiquée.
+                </p>
+              )}
+
               <div className="h-64 rounded-3xl bg-surface-container-high overflow-hidden relative border border-outline-variant/10 shadow-inner group">
                 <iframe
                   width="100%"
