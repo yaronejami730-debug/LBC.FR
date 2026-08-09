@@ -137,6 +137,7 @@ export default async function ProfessionnelsPage({
         emailVerified: true,
         phoneVerified: true,
         bannedAt: true,
+        verified: true,
         _count: { select: { listings: true } },
         proProfile: { select: { slug: true, isPublished: true, _count: { select: { services: true } } } },
       },

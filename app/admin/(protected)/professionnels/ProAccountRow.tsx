@@ -8,6 +8,7 @@ import {
   suspendProAccount,
   reinstateProAccount,
   deleteUserAccount,
+  setVerificationBadge,
 } from "./actions";
 
 export type ProAccount = {
@@ -24,6 +25,7 @@ export type ProAccount = {
   emailVerified: boolean;
   phoneVerified: boolean;
   bannedAt: string | null;
+  verified: boolean;
   _count: { listings: number };
   proProfile: { slug: string; isPublished: boolean; _count: { services: number } } | null;
 };
@@ -55,6 +57,7 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
   // message d'erreur explique pourquoi.
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
+  const [badge, setBadge] = useState(account.verified);
 
   const shownStatus = optimisticStatus ?? account.professionalStatus;
   const st = STATUS[shownStatus] ?? STATUS.NONE;
@@ -148,6 +151,29 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
         {shownStatus !== "SUSPENDED" && (
           <Toggle label="Suspendre" active={panel === "suspend"} onClick={() => setPanel(panel === "suspend" ? "none" : "suspend")} tone="rose" />
         )}
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            const next = !badge;
+            setBadge(next);
+            start(async () => {
+              try {
+                await setVerificationBadge(account.id, next);
+              } catch {
+                setBadge(!next);
+                setError("Modification du badge impossible");
+              }
+            });
+          }}
+          className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+            badge
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-[#eceef0] bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          {badge ? "Retirer le badge" : "Accorder le badge"}
+        </button>
         <Toggle label="Supprimer le compte" active={panel === "delete"} onClick={() => setPanel(panel === "delete" ? "none" : "delete")} tone="rose" />
       </div>
 

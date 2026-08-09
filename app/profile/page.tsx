@@ -11,6 +11,8 @@ export const metadata: Metadata = {
 };
 import AvatarUpload from "./AvatarUpload";
 import UpgradePro from "./UpgradePro";
+import BadgePrompt from "./BadgePrompt";
+import { BADGE_DELAY_DAYS } from "@/lib/verification-badge";
 import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
@@ -101,6 +103,16 @@ export default async function ProfilePage() {
         </div>
 
         {/* Upgrade Pro — visible si pas encore Pro */}
+        {/* Badge proposé une fois l'identité vérifiée — pro approuvé ou
+            particulier à l'email confirmé — et tant qu'il n'est pas acquis. */}
+        {!user.verified &&
+          (user.professionalStatus === "APPROVED" || user.emailVerified) && (
+            <BadgePrompt
+              requestedAt={user.badgeRequestedAt ? user.badgeRequestedAt.toISOString() : null}
+              delayDays={BADGE_DELAY_DAYS}
+            />
+          )}
+
         {!user.isPro && (() => {
           const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
           const recentListings = user.listings.filter(

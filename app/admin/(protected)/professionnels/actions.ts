@@ -290,6 +290,33 @@ export async function deleteUserAccount(userId: string, confirmEmail: string) {
   revalidatePath("/admin/users");
 }
 
+/**
+ * Accorde ou retire le badge de vérification.
+ *
+ * Retrait possible à tout moment, sur un compte professionnel comme sur un
+ * compte particulier : le badge dit qu'un compte est sain aujourd'hui, pas
+ * qu'il l'a été une fois.
+ */
+export async function setVerificationBadge(userId: string, granted: boolean) {
+  const adminId = await requireAdmin();
+  await prisma.user.update({
+    where: { id: userId },
+    data: granted
+      ? { verified: true, badgeGrantedAt: new Date() }
+      : { verified: false, badgeGrantedAt: null, badgeRequestedAt: null },
+  });
+  await prisma.moderationEvent.create({
+    data: {
+      userId,
+      actor: `admin:${adminId}`,
+      action: granted ? "badge_granted" : "badge_revoked",
+      reason: granted ? "Badge de vérification accordé" : "Badge de vérification retiré",
+    } as any,
+  }).catch(() => {});
+  revalidatePath("/admin/professionnels");
+  revalidatePath("/admin/users");
+}
+
 /** Donne ou retire le rôle administrateur, à partir de l'email du compte. */
 export async function setUserRole(email: string, role: "ADMIN" | "USER") {
   const adminId = await requireAdmin();

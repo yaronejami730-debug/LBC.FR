@@ -80,6 +80,10 @@ model User {
   // professionnel suspendu sans être rétrogradé.
   /// NONE | PENDING | APPROVED | REJECTED | SUSPENDED | INFO_REQUESTED
   professionalStatus String            @default("NONE")
+  /// Badge de vérification : demandé par l'utilisateur, accordé après délai.
+  /// `verified` reste le drapeau d'affichage ; ces dates disent où l'on en est.
+  badgeRequestedAt   DateTime?
+  badgeGrantedAt     DateTime?
   proVerifiedAt      DateTime?
   proProfile         ProProfile?
   proVerifications   ProVerification[] @relation("ProVerificationUser")

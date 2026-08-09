@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/pro-documents-purge",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/verification-badge",
+      "schedule": "30 5 * * *"
     }
   ]
 }

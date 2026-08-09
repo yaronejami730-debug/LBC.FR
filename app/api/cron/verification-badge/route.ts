@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { baseEmail } from "@/lib/emails/base";
+import { BADGE_DELAY_DAYS } from "@/lib/verification-badge";
 
 export const runtime = "nodejs";
-
-/** Délai d'observation avant l'octroi du badge. */
-export const BADGE_DELAY_DAYS = 14;
 
 /**
  * Octroi différé du badge de vérification.
