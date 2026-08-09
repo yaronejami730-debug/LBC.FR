@@ -6,6 +6,7 @@ import { pingIndexNow } from "@/lib/indexnow";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { listingSlug } from "@/lib/listing-slug";
 import { indexListing, deleteListingFromIndex } from "@/lib/opensearch-sync";
+import { sanitizeLocation, addressLineFor } from "@/lib/listing-location";
 
 export async function GET(
   _req: NextRequest,
@@ -70,7 +71,23 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const { title, price, description, location, condition, images, category, subcategory, metadata } = body;
+  const { title, price, description, location: rawLocation, condition, images, category, subcategory, metadata } = body;
+
+  // La casquette de l'annonce ne change pas à la modification : elle a été
+  // fixée à la publication. La règle d'adresse la suit, sinon une annonce
+  // particulière rééditée pourrait ressortir avec une adresse complète.
+  const postedAs = listing.postedAs === "PRO" ? "PRO" : "PARTICULIER";
+  const location =
+    rawLocation === undefined ? undefined : sanitizeLocation(String(rawLocation), postedAs);
+  const addressLine =
+    rawLocation === undefined ? undefined : addressLineFor(String(rawLocation), postedAs);
+
+  if (location !== undefined && location.length < 2) {
+    return NextResponse.json(
+      { error: "Indiquez au moins une ville ou une commune." },
+      { status: 400 },
+    );
+  }
 
   // Une annonce retirée qui repart en modération conserve son échéance : sans
   // ça, le cycle modifier → refuser → modifier repousserait la suppression
@@ -85,6 +102,7 @@ export async function PATCH(
       ...(price !== undefined && { price: parseFloat(price) }),
       ...(description !== undefined && { description }),
       ...(location !== undefined && { location }),
+      ...(addressLine !== undefined && { addressLine }),
       ...(condition !== undefined && { condition }),
       ...(images !== undefined && { images: JSON.stringify(images) }),
       ...(category !== undefined && { category }),

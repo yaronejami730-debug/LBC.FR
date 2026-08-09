@@ -125,7 +125,8 @@ export async function ReportsTab() {
 
   return (
     <div className={CARD}>
-      <table className="w-full">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
         <thead className="bg-slate-50 border-b border-[#eceef0]">
           <tr>
             <th className={TH}>Contenu signalé</th>
@@ -181,6 +182,7 @@ export async function ReportsTab() {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -220,7 +222,8 @@ export async function RemovedListingsTab() {
         avec ses photos.
       </p>
       <div className={CARD}>
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
           <thead className="bg-slate-50 border-b border-[#eceef0]">
             <tr>
               <th className={TH}>Annonce</th>
@@ -266,6 +269,7 @@ export async function RemovedListingsTab() {
           </tbody>
         </table>
       </div>
+      </div>
     </>
   );
 }
@@ -300,7 +304,8 @@ export async function RejectedListingsTab() {
 
   return (
     <div className={CARD}>
-      <table className="w-full">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
         <thead className="bg-slate-50 border-b border-[#eceef0]">
           <tr>
             <th className={TH}>Annonce</th>
@@ -348,6 +353,7 @@ export async function RejectedListingsTab() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -405,7 +411,8 @@ export async function WatchedAccountsTab() {
         appliquée automatiquement — le score de confiance est une aide à la décision, pas une décision.
       </p>
       <div className={CARD}>
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
           <thead className="bg-slate-50 border-b border-[#eceef0]">
             <tr>
               <th className={TH}>Compte</th>
@@ -473,6 +480,7 @@ export async function WatchedAccountsTab() {
           </tbody>
         </table>
       </div>
+      </div>
     </>
   );
 }
@@ -523,7 +531,8 @@ export async function BannedAccountsTab() {
         {users.length === 0 ? (
           <Empty>Aucun compte banni.</Empty>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+        <table className="w-full min-w-[860px]">
             <thead className="bg-slate-50 border-b border-[#eceef0]">
               <tr>
                 <th className={TH}>Utilisateur</th>
@@ -571,6 +580,7 @@ export async function BannedAccountsTab() {
               ))}
             </tbody>
           </table>
+      </div>
         )}
       </div>
     </>

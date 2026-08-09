@@ -26,6 +26,8 @@ import { del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { registerBan } from "@/lib/moderation/ban-registry";
 import { deleteListingFromIndex } from "@/lib/opensearch-sync";
+import { sendEmail } from "@/lib/email";
+import { accountDeletedEmail } from "@/lib/emails/account-deleted";
 
 export type PurgeMode = "deleted" | "anonymized";
 
@@ -75,6 +77,9 @@ export async function purgeBannedAccount(
       bannedAt: true,
       banReason: true,
       role: true,
+      name: true,
+      companyName: true,
+      isPro: true,
     },
   });
   if (!user) throw new Error("Compte introuvable");
@@ -82,6 +87,7 @@ export async function purgeBannedAccount(
   if (user.role === "ADMIN") throw new Error("Un compte administrateur ne peut pas être supprimé ici");
 
   const reason = user.banReason ?? "Bannissement";
+  const displayName = user.isPro && user.companyName ? user.companyName : user.name;
 
   // ── 1. Registre anti-réinscription ────────────────────────────────────────
   const devices = await prisma.deviceSession.findMany({
@@ -263,6 +269,28 @@ export async function purgeBannedAccount(
       });
     }
   });
+
+  // ── 4. Dernier message ────────────────────────────────────────────────────
+  //
+  // Envoyé après la suppression, pas avant : une purge qui échoue en cours de
+  // route ne doit pas annoncer une destruction qui n'a pas eu lieu. L'adresse
+  // vient de la copie en mémoire — elle n'existe plus en base à cet instant,
+  // et c'est la dernière fois qu'on peut écrire à cette personne.
+  if (user.email) {
+    const fmt = (d: Date) =>
+      d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    await sendEmail({
+      to: user.email,
+      toName: displayName,
+      subject: "Votre compte Deal&Co a été supprimé définitivement",
+      html: accountDeletedEmail({
+        name: displayName,
+        bannedAt: fmt(user.bannedAt),
+        deletedAt: fmt(new Date()),
+        reason: user.banReason,
+      }),
+    }).catch((err) => console.error("[account-purge] email:", err));
+  }
 
   return {
     userId,

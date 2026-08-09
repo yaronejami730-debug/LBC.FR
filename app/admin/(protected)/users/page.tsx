@@ -117,8 +117,102 @@ export default async function UsersPage({
         </div>
       </div>
 
+      {/* Liste — cartes en dessous de md, tableau au-delà. Neuf colonnes ne
+          tiennent pas sur un téléphone : le tableau y était illisible et se
+          manipulait en défilant latéralement, geste impraticable au pouce. */}
+      <div className="md:hidden space-y-3">
+        {usersWithBreakdown.map((user) => (
+          <div key={user.id} className="bg-white rounded-2xl border border-[#eceef0] p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-[#e1e0ff] flex items-center justify-center flex-shrink-0">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[#2f6fb8] text-base font-bold">
+                    {user.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <Link
+                  href={`/admin/clients/${user.id}`}
+                  className="text-sm font-bold text-[#191c1e] hover:text-[#2f6fb8] block truncate"
+                >
+                  {user.name}
+                </Link>
+                <p className="text-xs text-[#777683] truncate">{user.email}</p>
+
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {user.isPro ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-[#2f6fb8] text-white px-2 py-0.5 rounded-full">
+                      <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>business_center</span>
+                      Pro
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#777683] bg-slate-100 px-2 py-0.5 rounded-full">
+                      <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                      Particulier
+                    </span>
+                  )}
+                  {user.role === "ADMIN" && (
+                    <span className="text-[10px] font-bold bg-[#2f6fb8] text-white px-2 py-0.5 rounded-full">Admin</span>
+                  )}
+                  {user.bannedAt && (
+                    <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Banni</span>
+                  )}
+                  {user.verified && (
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Vérifié</span>
+                  )}
+                  {user.activeCount > 0 && (
+                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">
+                      {user.activeCount} active{user.activeCount > 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {user.pendingCount > 0 && (
+                    <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                      {user.pendingCount} en attente
+                    </span>
+                  )}
+                </div>
+
+                {user.companyName && (
+                  <p className="text-[11px] text-[#777683] mt-1.5 truncate">
+                    {user.companyName}
+                    {user.siret ? ` · ${user.siret}` : ""}
+                  </p>
+                )}
+                {user.adminNote && (
+                  <p className="text-[11px] text-[#464652] italic mt-1 line-clamp-2">{user.adminNote}</p>
+                )}
+                <p className="text-[11px] text-[#9ca3af] mt-1">Membre depuis {user.memberSince}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-[#f2f4f6]">
+              {user.role === "ADMIN" ? (
+                <span className="text-xs text-[#777683] italic">Compte admin</span>
+              ) : (
+                <UserActions
+                  userId={user.id}
+                  verified={user.verified}
+                  bannedAt={user.bannedAt?.toISOString() ?? null}
+                />
+              )}
+            </div>
+          </div>
+        ))}
+
+        {users.length === 0 && (
+          <div className="bg-white rounded-2xl border border-[#eceef0] py-12 text-center">
+            <span className="material-symbols-outlined text-4xl text-[#c7c5d4]">group</span>
+            <p className="text-[#777683] mt-2 text-sm">Aucun utilisateur</p>
+          </div>
+        )}
+      </div>
+
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
+      <div className="hidden md:block bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

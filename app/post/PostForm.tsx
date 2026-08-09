@@ -299,6 +299,22 @@ export default function PostForm() {
   const [condition,   setCondition]   = useState("Bon état");
   const [phone,       setPhone]       = useState("");
   const [hidePhone,   setHidePhone]   = useState(false);
+
+  /**
+   * Casquette de publication.
+   *
+   * Un compte particulier devenu professionnel garde les deux usages : il vend
+   * son canapé le samedi et son stock la semaine. Le choix conditionne la
+   * précision de l'adresse publiée — complète pour un local commercial, réduite
+   * à la commune pour un domicile.
+   */
+  const [postedAs, setPostedAs] = useState<"PARTICULIER" | "PRO">("PARTICULIER");
+  const [postingCaps, setPostingCaps] = useState<{
+    mustChoose: boolean;
+    canPostAsPro: boolean;
+    canPostAsPrivate: boolean;
+    companyName: string | null;
+  } | null>(null);
   const [autoDetected, setAutoDetected] = useState(false);
   const [userPickedCategory, setUserPickedCategory] = useState(false);
   // Bien-être : le moteur déduit durée/capacité/unité d'un titre bien écrit,
@@ -362,6 +378,24 @@ export default function PostForm() {
   // Init photo mode from preference
   useEffect(() => {
     setPhotoMode(getAutoMode());
+  }, []);
+
+  // Casquettes de publication autorisées pour ce compte.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/profile/posting-mode")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((caps) => {
+        if (cancelled || !caps) return;
+        setPostingCaps(caps);
+        // Un compte purement professionnel n'a rien à choisir : sa casquette
+        // par défaut est la seule qu'il possède.
+        if (!caps.mustChoose && caps.canPostAsPro) setPostedAs("PRO");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ── Brouillon : restauration + sauvegarde automatique ───────────────────────
@@ -699,7 +733,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
         body: JSON.stringify({
           title, price: parseFloat(price),
           category: cat?.label || "Divers", subcategory,
-          description, location, condition,
+          description, location, condition, postedAs,
           images: images.filter(Boolean),
           metadata: categoryId === "beaute-bien-etre"
             ? JSON.stringify({
@@ -1943,16 +1977,73 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           <div className="space-y-5">
             <h2 className="text-2xl font-extrabold">Coordonnées</h2>
 
+            {/* Casquette de publication — posée uniquement aux comptes qui ont
+                réellement les deux usages (particulier devenu professionnel). */}
+            {postingCaps?.mustChoose && (
+              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 p-5 space-y-3">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                  Vous publiez cette annonce en tant que *
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      {
+                        value: "PARTICULIER" as const,
+                        icon: "person",
+                        title: "Particulier",
+                        hint: "Vente personnelle · localisation seule",
+                      },
+                      {
+                        value: "PRO" as const,
+                        icon: "storefront",
+                        title: postingCaps.companyName ?? "Professionnel",
+                        hint: "Activité pro · adresse complète",
+                      },
+                    ]
+                  ).map((opt) => {
+                    const on = postedAs === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setPostedAs(opt.value)}
+                        className={`text-left rounded-xl border-2 p-3 transition-all ${
+                          on
+                            ? "border-primary bg-primary/5"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <span
+                          className={`material-symbols-outlined text-xl ${on ? "text-primary" : "text-outline"}`}
+                        >
+                          {opt.icon}
+                        </span>
+                        <p className="font-bold text-sm text-on-surface mt-1 truncate">{opt.title}</p>
+                        <p className="text-[11px] text-outline leading-snug mt-0.5">{opt.hint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
               {/* Localisation */}
               <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Localisation *</label>
+                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                  {postedAs === "PRO" ? "Adresse de l'établissement *" : "Localisation *"}
+                </label>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-xl shrink-0">location_on</span>
                   <input value={location} onChange={(e) => setLocation(e.target.value)} autoFocus
                     className="flex-1 bg-transparent border-none p-0 text-base font-semibold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
-                    placeholder="Ville, département" />
+                    placeholder={postedAs === "PRO" ? "12 rue de Turbigo, 75003 Paris" : "Ville, département"} />
                 </div>
+                <p className="text-[11px] text-outline leading-snug">
+                  {postedAs === "PRO"
+                    ? "L'adresse complète de votre établissement est affichée sur l'annonce : les acheteurs peuvent venir sur place."
+                    : "Indiquez une ville ou un arrondissement, pas une adresse. Votre domicile n'est jamais affiché — si vous saisissez une rue, elle sera retirée."}
+                </p>
               </div>
               {/* Téléphone */}
               <div className="px-5 py-4 space-y-2">
