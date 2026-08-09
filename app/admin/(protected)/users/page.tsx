@@ -2,10 +2,29 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import UserActions from "@/components/admin/UserActions";
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const now = new Date();
+  const { q } = await searchParams;
+  const search = (q ?? "").trim();
+
   const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
+    // Ordre alphabétique : on cherche quelqu'un par son nom, pas par sa date
+    // d'inscription.
+    orderBy: { name: "asc" },
+    where: search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { companyName: { contains: search, mode: "insensitive" } },
+            { siret: { contains: search } },
+          ],
+        }
+      : undefined,
     select: {
       id: true,
       name: true,
@@ -53,8 +72,26 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-6">
+      {/* Recherche */}
+      <form method="get" className="flex flex-wrap gap-2">
+        <input
+          name="q"
+          defaultValue={search}
+          placeholder="Rechercher un nom, un email, une enseigne, un SIRET…"
+          className="flex-1 min-w-[220px] rounded-xl border border-[#eceef0] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/20"
+        />
+        <button type="submit" className="rounded-full bg-[#2f6fb8] px-5 py-2.5 text-sm font-bold text-white">
+          Rechercher
+        </button>
+        {search && (
+          <a href="/admin/users" className="rounded-full border border-[#eceef0] px-5 py-2.5 text-sm font-bold text-slate-500">
+            Effacer
+          </a>
+        )}
+      </form>
+
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-[#191c1e] font-headline">Utilisateurs</h1>
           <p className="text-sm text-[#777683] mt-1">Gestion et vérification des comptes</p>

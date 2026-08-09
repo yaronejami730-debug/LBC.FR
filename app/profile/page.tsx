@@ -39,7 +39,7 @@ export default async function ProfilePage() {
       proVerifications: {
         orderBy: { submittedAt: "desc" },
         take: 1,
-        select: { status: true, rejectionReason: true, submittedAt: true },
+        select: { status: true, rejectionReason: true, infoRequest: true, submittedAt: true },
       },
     },
   });
@@ -139,7 +139,14 @@ export default async function ProfilePage() {
                 </p>
               </div>
             )}
-            <UpgradePro pending={user.proVerifications[0]?.status === "PENDING"} />
+            <UpgradePro
+              pending={user.proVerifications[0]?.status === "PENDING"}
+              infoRequest={
+                user.proVerifications[0]?.status === "INFO_REQUESTED"
+                  ? user.proVerifications[0].infoRequest
+                  : null
+              }
+            />
           </>
         )}
 

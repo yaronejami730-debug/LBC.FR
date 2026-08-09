@@ -25,6 +25,7 @@ const getProfile = (slug: string) =>
             companyName: true,
             avatar: true,
             proVerifiedAt: true,
+            professionalStatus: true,
             listings: {
               where: { status: "APPROVED", deletedAt: null, shadowBanned: false },
               orderBy: { createdAt: "desc" },
@@ -44,7 +45,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const profile = await getProfile(slug);
-  if (!profile || !profile.isPublished) return { robots: { index: false, follow: false } };
+  if (!profile || !profile.isPublished || profile.user.professionalStatus !== "APPROVED") {
+    return { robots: { index: false, follow: false } };
+  }
 
   const where = profile.city ? ` à ${profile.city}` : "";
   const title = `${profile.name}${where} — Tarifs et prestations`;
@@ -74,7 +77,11 @@ export default async function ProProfilePage({
 }) {
   const { slug } = await params;
   const profile = await getProfile(slug);
-  if (!profile || !profile.isPublished) notFound();
+  // Une habilitation suspendue ou retirée retire la fiche du public, même si
+  // le drapeau `isPublished` est resté à vrai.
+  if (!profile || !profile.isPublished || profile.user.professionalStatus !== "APPROVED") {
+    notFound();
+  }
 
   const hours: Record<string, string> = (() => {
     try {

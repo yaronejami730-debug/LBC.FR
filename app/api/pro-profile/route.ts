@@ -43,14 +43,21 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { isPro: true, companyName: true },
+    select: { isPro: true, companyName: true, professionalStatus: true },
   });
-  if (!user?.isPro) {
+  // Verrou de sécurité : PENDING, INFO_REQUESTED, REJECTED et SUSPENDED n'ont
+  // aucune fonctionnalité professionnelle publique. Seul APPROVED en ouvre.
+  if (!user?.isPro || user.professionalStatus !== "APPROVED") {
     return NextResponse.json(
       {
         error:
-          "L'espace professionnel est réservé aux comptes professionnels vérifiés. " +
-          "Déposez votre dossier depuis votre profil pour l'activer.",
+          user?.professionalStatus === "PENDING" || user?.professionalStatus === "INFO_REQUESTED"
+            ? "Votre demande de compte professionnel est en cours de vérification. " +
+              "Votre espace sera disponible dès sa validation."
+            : user?.professionalStatus === "SUSPENDED"
+              ? "Votre habilitation professionnelle est suspendue. Contactez l'équipe."
+              : "L'espace professionnel est réservé aux comptes professionnels vérifiés. " +
+                "Déposez votre dossier depuis votre profil pour l'activer.",
       },
       { status: 403 },
     );

@@ -24,9 +24,30 @@ const COMPANY_DOC_TYPES = [
   { value: "AVIS_SIRENE", label: "Avis de situation SIRENE" },
 ];
 
-export default function UpgradePro({ pending = false }: { pending?: boolean }) {
+export default function UpgradePro({
+  pending = false,
+  infoRequest = null,
+}: {
+  pending?: boolean;
+  /** Complément réclamé par un modérateur : le dossier reste ouvert. */
+  infoRequest?: string | null;
+}) {
   const [siret, setSiret] = useState("");
   const [companyName, setCompanyName] = useState("");
+  // Champs entreprise de la demande d'habilitation. Le SIREN est déduit du
+  // SIRET (ses 9 premiers chiffres) mais reste modifiable.
+  const [biz, setBiz] = useState({
+    siren: "",
+    commercialName: "",
+    businessAddress: "",
+    businessActivity: "",
+    businessCategory: "",
+    responsibleFirstName: "",
+    responsibleLastName: "",
+    professionalPhone: "",
+    professionalEmail: "",
+  });
+  const setB = (k: keyof typeof biz, v: string) => setBiz((prev) => ({ ...prev, [k]: v }));
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -47,6 +68,7 @@ export default function UpgradePro({ pending = false }: { pending?: boolean }) {
     const clean = value.replace(/\s/g, "").slice(0, 14);
     setSiret(clean);
     setCompanyName("");
+    if (clean.length >= 9) setB("siren", clean.slice(0, 9));
     setError("");
 
     if (clean.length === 14) {
@@ -107,6 +129,8 @@ export default function UpgradePro({ pending = false }: { pending?: boolean }) {
         body: JSON.stringify({
           siret,
           companyName,
+          ...biz,
+          requestType: "CONVERT_FROM_PRIVATE",
           idDocumentType: idType,
           idDocumentPath: idPath,
           companyDocType,
@@ -121,6 +145,27 @@ export default function UpgradePro({ pending = false }: { pending?: boolean }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (infoRequest && !submitted) {
+    // Le dossier est ouvert mais incomplet : on montre la demande, et le
+    // formulaire reste accessible juste en dessous pour redéposer.
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow-[0_4px_24px_rgba(21,21,125,0.06)] mb-8">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-amber-600">help</span>
+          </div>
+          <div>
+            <p className="font-bold text-on-surface">Information demandée</p>
+            <p className="text-outline text-sm mt-0.5 leading-relaxed">{infoRequest}</p>
+            <p className="text-outline text-xs mt-2">
+              Répondez à l&apos;email reçu ou redéposez la pièce demandée ci-dessous.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (submitted || pending) {
@@ -198,6 +243,24 @@ export default function UpgradePro({ pending = false }: { pending?: boolean }) {
           </div>
         )}
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Text label="Nom commercial (enseigne)" value={biz.commercialName} onChange={(v) => setB("commercialName", v)} placeholder="Barber Turbigo" />
+          <Text label="SIREN" value={biz.siren} onChange={(v) => setB("siren", v.replace(/\D/g, "").slice(0, 9))} placeholder="9 chiffres" />
+        </div>
+        <Text label="Adresse de l'établissement" value={biz.businessAddress} onChange={(v) => setB("businessAddress", v)} placeholder="12 rue de Turbigo, 75003 Paris" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Text label="Activité" value={biz.businessActivity} onChange={(v) => setB("businessActivity", v)} placeholder="Salon de coiffure" />
+          <Text label="Catégorie" value={biz.businessCategory} onChange={(v) => setB("businessCategory", v)} placeholder="Beauté & Bien-être" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Text label="Prénom du responsable" value={biz.responsibleFirstName} onChange={(v) => setB("responsibleFirstName", v)} />
+          <Text label="Nom du responsable" value={biz.responsibleLastName} onChange={(v) => setB("responsibleLastName", v)} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Text label="Téléphone professionnel" value={biz.professionalPhone} onChange={(v) => setB("professionalPhone", v)} />
+          <Text label="Email professionnel" value={biz.professionalEmail} onChange={(v) => setB("professionalEmail", v)} />
+        </div>
+
         <DocField
           legend="Pièce d'identité du dirigeant"
           hint="Recto-verso lisible, en cours de validité."
@@ -235,6 +298,32 @@ export default function UpgradePro({ pending = false }: { pending?: boolean }) {
           {saving ? "Envoi…" : "Envoyer mon dossier"}
         </button>
       </form>
+    </div>
+  );
+}
+
+function Text({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-bold text-primary tracking-wider uppercase mb-1.5">
+        {label}
+      </label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-surface-container-low border-none rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary outline-none"
+      />
     </div>
   );
 }

@@ -55,6 +55,14 @@ const ID_LABELS: Record<string, string> = {
   TITRE_SEJOUR: "Titre de séjour",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "À vérifier",
+  INFO_REQUESTED: "Infos demandées",
+  APPROVED: "Validé",
+  REJECTED: "Refusé",
+  SUSPENDED: "Suspendu",
+};
+
 const COMPANY_LABELS: Record<string, string> = {
   KBIS: "Extrait Kbis",
   AVIS_SIRENE: "Avis SIRENE",
@@ -69,7 +77,6 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState(dossier.adminNote ?? "");
   const [reason, setReason] = useState("");
-  const [showReject, setShowReject] = useState(false);
   /** Formulaire ouvert : refus, demande d'info ou suspension. */
   const [panel, setPanel] = useState<"none" | "reject" | "info" | "suspend">("none");
   const [error, setError] = useState("");
@@ -95,8 +102,12 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-extrabold text-slate-900 text-lg">{dossier.companyName}</p>
+          {dossier.commercialName && dossier.commercialName !== dossier.companyName && (
+            <p className="text-sm text-slate-600">Enseigne : {dossier.commercialName}</p>
+          )}
           <p className="text-sm text-slate-500 mt-0.5">
-            SIRET <span className="font-mono">{dossier.siret}</span> ·{" "}
+            SIRET <span className="font-mono">{dossier.siret}</span>
+            {dossier.siren ? <> · SIREN <span className="font-mono">{dossier.siren}</span></> : null} ·{" "}
             <a
               href={`https://annuaire-entreprises.data.gouv.fr/etablissement/${dossier.siret}`}
               target="_blank"
@@ -110,27 +121,43 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
             {dossier.user.name} · {dossier.user.email}
             {dossier.user.phoneNumber ? ` · ${dossier.user.phoneNumber}` : ""}
           </p>
+          {(dossier.responsibleFirstName || dossier.professionalPhone) && (
+            <p className="text-sm text-slate-500 mt-1">
+              Responsable :{" "}
+              {[dossier.responsibleFirstName, dossier.responsibleLastName].filter(Boolean).join(" ") || "—"}
+              {dossier.professionalPhone ? ` · ${dossier.professionalPhone}` : ""}
+              {dossier.professionalEmail ? ` · ${dossier.professionalEmail}` : ""}
+            </p>
+          )}
+          {(dossier.businessAddress || dossier.businessActivity) && (
+            <p className="text-sm text-slate-500">
+              {[dossier.businessAddress, dossier.businessActivity, dossier.businessCategory]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
           <p className="text-xs text-slate-400 mt-1">
-            Compte créé il y a {accountAgeDays} j · {dossier.user._count.listings} annonces ·
-            déposé le {submitted.toLocaleDateString("fr-FR")} à{" "}
+            {dossier.requestType === "DIRECT_PROFESSIONAL"
+              ? "Inscription professionnelle directe"
+              : "Conversion particulier → professionnel"}{" "}
+            · compte créé il y a {accountAgeDays} j · {dossier.user._count.listings} annonces ·
+            email {dossier.user.emailVerified ? "vérifié" : "non vérifié"} · téléphone{" "}
+            {dossier.user.phoneVerified ? "vérifié" : "non vérifié"} · déposé le{" "}
+            {submitted.toLocaleDateString("fr-FR")} à{" "}
             {submitted.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
 
         <span
           className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-            dossier.status === "PENDING"
+            dossier.status === "PENDING" || dossier.status === "INFO_REQUESTED"
               ? "bg-amber-100 text-amber-700"
               : dossier.status === "APPROVED"
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-rose-100 text-rose-700"
           }`}
         >
-          {dossier.status === "PENDING"
-            ? "En attente"
-            : dossier.status === "APPROVED"
-              ? "Validé"
-              : "Refusé"}
+          {STATUS_LABELS[dossier.status] ?? dossier.status}
         </span>
       </div>
 
@@ -165,6 +192,12 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         />
       </div>
 
+      {dossier.infoRequest && dossier.status === "INFO_REQUESTED" && (
+        <p className="mt-3 text-sm text-amber-800 bg-amber-50 rounded-xl px-3 py-2">
+          Information demandée : {dossier.infoRequest}
+        </p>
+      )}
+
       {dossier.rejectionReason && dossier.status === "REJECTED" && (
         <p className="mt-3 text-sm text-rose-700 bg-rose-50 rounded-xl px-3 py-2">
           Motif transmis : {dossier.rejectionReason}
@@ -177,7 +210,7 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         </p>
       )}
 
-      {dossier.status === "PENDING" && (
+      {(dossier.status === "PENDING" || dossier.status === "INFO_REQUESTED") && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -186,12 +219,20 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
             className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">verified</span>
-            Valider le compte pro
+            Approuver
           </button>
           <button
             type="button"
             disabled={pending}
-            onClick={() => setShowReject((v) => !v)}
+            onClick={() => setPanel(panel === "info" ? "none" : "info")}
+            className="inline-flex items-center gap-2 rounded-full border border-amber-200 px-5 py-2.5 text-sm font-bold text-amber-700 transition hover:bg-amber-50 disabled:opacity-50"
+          >
+            Demander des informations
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setPanel(panel === "reject" ? "none" : "reject")}
             className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-5 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
           >
             Refuser
@@ -199,50 +240,162 @@ export default function VerificationCard({ dossier }: { dossier: Dossier }) {
         </div>
       )}
 
-      {showReject && dossier.status === "PENDING" && (
-        <div className="mt-3 rounded-xl bg-rose-50 p-3">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-rose-700 mb-1">
-            Motif envoyé à l&apos;utilisateur
-          </label>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {[
-              "Pièce d'identité illisible",
-              "Justificatif d'entreprise de plus de 3 mois",
-              "Le nom sur la pièce ne correspond pas au dirigeant déclaré",
-              "SIRET ne correspondant pas à l'entreprise déclarée",
-            ].map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setReason(r)}
-                className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-rose-700 border border-rose-200 hover:bg-rose-100"
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-          <textarea
-            rows={2}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Motif précis — il est envoyé tel quel par email."
-            className="w-full rounded-xl border border-rose-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-rose-300"
-          />
+      {dossier.status === "APPROVED" && (
+        <div className="mt-4">
           <button
             type="button"
-            disabled={pending || reason.trim().length < 5}
-            onClick={() =>
-              run(async () => {
-                await rejectVerification(dossier.id, reason);
-                setShowReject(false);
-              })
-            }
-            className="mt-2 rounded-full bg-rose-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
+            disabled={pending}
+            onClick={() => setPanel(panel === "suspend" ? "none" : "suspend")}
+            className="inline-flex items-center gap-2 rounded-full border border-rose-200 px-5 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-50 disabled:opacity-50"
           >
-            Confirmer le refus
+            <span className="material-symbols-outlined text-[18px]">pause_circle</span>
+            Suspendre l&apos;habilitation
           </button>
         </div>
       )}
+
+      {dossier.status === "SUSPENDED" && (
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => run(() => reinstateVerification(dossier.id))}
+            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+          >
+            Réactiver le compte professionnel
+          </button>
+        </div>
+      )}
+
+      {panel !== "none" && (
+        <ReasonPanel
+          tone={panel === "info" ? "amber" : "rose"}
+          title={
+            panel === "info"
+              ? "Information demandée au professionnel"
+              : panel === "reject"
+                ? "Motif de refus envoyé à l'utilisateur"
+                : "Motif de suspension envoyé à l'utilisateur"
+          }
+          presets={
+            panel === "info"
+              ? [
+                  "Merci de fournir un Kbis de moins de 3 mois.",
+                  "La pièce d'identité est illisible, merci de la redéposer.",
+                  "Merci de préciser l'activité exercée.",
+                ]
+              : panel === "reject"
+                ? [
+                    "Kbis invalide",
+                    "Informations incohérentes",
+                    "SIRET invalide",
+                    "Document illisible",
+                    "Activité non conforme",
+                    "Informations insuffisantes",
+                  ]
+                : [
+                    "Activité non conforme aux conditions d'utilisation",
+                    "Signalements répétés",
+                    "Documents devenus caducs",
+                  ]
+          }
+          value={reason}
+          onChange={setReason}
+          disabled={pending}
+          onConfirm={() =>
+            run(async () => {
+              if (panel === "info") await requestVerificationInfo(dossier.id, reason);
+              else if (panel === "reject") await rejectVerification(dossier.id, reason);
+              else await suspendVerification(dossier.id, reason);
+              setPanel("none");
+              setReason("");
+            })
+          }
+        />
+      )}
+
+      {dossier.logs.length > 0 && (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Historique ({dossier.logs.length})
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {dossier.logs.map((l) => (
+              <li key={l.id} className="text-xs text-slate-500">
+                <span className="font-mono">
+                  {new Date(l.createdAt).toLocaleString("fr-FR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>{" "}
+                · <span className="font-bold text-slate-700">{l.action}</span> · {l.actor}
+                {l.details ? ` — ${l.details}` : ""}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+/** Formulaire de motif partagé par le refus, la demande d'info et la suspension. */
+function ReasonPanel({
+  tone,
+  title,
+  presets,
+  value,
+  onChange,
+  onConfirm,
+  disabled,
+}: {
+  tone: "rose" | "amber";
+  title: string;
+  presets: string[];
+  value: string;
+  onChange: (v: string) => void;
+  onConfirm: () => void;
+  disabled: boolean;
+}) {
+  const c =
+    tone === "rose"
+      ? { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", btn: "bg-rose-600 hover:bg-rose-700" }
+      : { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", btn: "bg-amber-600 hover:bg-amber-700" };
+
+  return (
+    <div className={`mt-3 rounded-xl ${c.bg} p-3`}>
+      <label className={`block text-[11px] font-bold uppercase tracking-wider ${c.text} mb-1`}>
+        {title}
+      </label>
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {presets.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onChange(p)}
+            className={`rounded-full bg-white px-3 py-1 text-[11px] font-semibold ${c.text} border ${c.border} hover:opacity-80`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+      <textarea
+        rows={2}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Ce texte est envoyé tel quel par email."
+        className={`w-full rounded-xl border ${c.border} px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-black/5`}
+      />
+      <button
+        type="button"
+        disabled={disabled || value.trim().length < 5}
+        onClick={onConfirm}
+        className={`mt-2 rounded-full ${c.btn} px-5 py-2 text-sm font-bold text-white transition disabled:opacity-50`}
+      >
+        Confirmer
+      </button>
     </div>
   );
 }
