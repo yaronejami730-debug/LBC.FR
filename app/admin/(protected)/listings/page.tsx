@@ -41,12 +41,12 @@ export default async function ListingsPage({
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 bg-white border border-[#eceef0] p-1.5 rounded-2xl w-fit">
+      <div className="flex items-center gap-2 bg-white border border-[#eceef0] p-1.5 rounded-2xl w-full md:w-fit overflow-x-auto no-scrollbar">
         {STATUS_OPTIONS.map((opt) => (
           <Link
             key={opt.value}
             href={`/admin/listings?status=${opt.value}`}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shrink-0 ${
               status === opt.value
                 ? "bg-[#2f6fb8] text-white shadow-sm"
                 : "text-[#464652] hover:bg-[#f2f4f6]"
@@ -70,8 +70,87 @@ export default async function ListingsPage({
         ))}
       </div>
 
+      {/* Liste — cartes en dessous de md, tableau au-delà : sept colonnes ne
+          tiennent pas sur un téléphone, et un tableau qui défile latéralement
+          se manipule mal au pouce. */}
+      <div className="md:hidden space-y-3">
+        {listings.map((listing) => {
+          const images = (() => {
+            try { return JSON.parse(listing.images) as string[]; }
+            catch { return [] as string[]; }
+          })();
+          const img = images[0] || "";
+
+          return (
+            <div key={listing.id} className="bg-white rounded-2xl border border-[#eceef0] p-4">
+              <div className="flex gap-3">
+                <div className="w-16 h-16 rounded-xl overflow-hidden bg-[#f2f4f6] flex-shrink-0">
+                  {img ? (
+                    <img src={img} alt={listing.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="material-symbols-outlined text-[#777683] flex items-center justify-center w-full h-full text-xl">image</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-[#191c1e] line-clamp-2">{listing.title}</p>
+                  <p className="text-sm font-extrabold text-[#2f6fb8] mt-0.5">
+                    {listing.price.toLocaleString("fr-FR")} €
+                  </p>
+                  <p className="text-xs text-[#777683] mt-0.5 line-clamp-1">{listing.location}</p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#777683]">
+                <span className="bg-[#f2f4f6] text-[#464652] px-2.5 py-1 rounded-full font-medium">
+                  {listing.category}
+                </span>
+                <span>{formatDistanceToNow(listing.createdAt)}</span>
+                <span className="truncate max-w-full">{listing.user.name}</span>
+              </div>
+
+              {status === "REJECTED" && listing.rejectionReason && (
+                <p className="mt-2 text-xs italic text-[#777683]">{listing.rejectionReason}</p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/annonce/${listing.id}`}
+                  target="_blank"
+                  title={`Voir « ${listing.title} »`}
+                  className="text-xs font-bold text-[#2f6fb8] hover:underline flex items-center gap-0.5"
+                >
+                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                  Voir
+                </Link>
+                {(listing.adminNote || listing.flagsJson !== "[]") && (
+                  <PendingReasonButton
+                    title={listing.title}
+                    adminNote={listing.adminNote}
+                    flagsJson={listing.flagsJson}
+                    riskScore={listing.riskScore}
+                    riskDecision={listing.riskDecision}
+                    reviewPriority={listing.reviewPriority}
+                  />
+                )}
+              </div>
+
+              <div className="mt-3">
+                <ListingActions listingId={listing.id} status={listing.status} />
+              </div>
+            </div>
+          );
+        })}
+
+        {listings.length === 0 && (
+          <p className="bg-white border border-[#eceef0] rounded-2xl py-10 text-center text-[#777683]">
+            Aucune annonce{" "}
+            {status === "APPROVED" ? "en ligne" : status === "REJECTED" ? "retirée" : "en attente"}
+          </p>
+        )}
+      </div>
+
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
+      <div className="hidden md:block bg-white rounded-2xl border border-[#eceef0] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

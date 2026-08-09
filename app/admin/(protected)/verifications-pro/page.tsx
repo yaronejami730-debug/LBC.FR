@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import VerificationCard, { type Dossier } from "./VerificationCard";
+import ProAccountRow from "../professionnels/ProAccountRow";
 
 export const metadata = { title: "Vérifications pro — Admin" };
 export const dynamic = "force-dynamic";
@@ -10,6 +11,10 @@ const STATUSES = [
   { value: "APPROVED", label: "Vérifiés" },
   { value: "REJECTED", label: "Refusés" },
   { value: "SUSPENDED", label: "Suspendus" },
+  // Comptes passés « pro » avant l'existence de la vérification : ils n'ont
+  // aucun dossier, donc n'apparaîtraient dans aucune file. Ce sont pourtant
+  // ceux qu'il faut reprendre en premier.
+  { value: "LEGACY", label: "Pros sans dossier" },
 ];
 
 export default async function VerificationsProPage({
@@ -19,6 +24,73 @@ export default async function VerificationsProPage({
 }) {
   const { statut } = await searchParams;
   const filter = STATUSES.some((s) => s.value === statut) ? statut : "PENDING";
+
+  // Onglet « sans dossier » : on interroge les comptes, pas les dossiers.
+  if (filter === "LEGACY") {
+    const legacy = await prisma.user.findMany({
+      where: { isPro: true, proVerifications: { none: {} } },
+      orderBy: [{ companyName: "asc" }, { name: "asc" }],
+      take: 300,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        companyName: true,
+        siret: true,
+        isPro: true,
+        role: true,
+        professionalStatus: true,
+        proVerifiedAt: true,
+        createdAt: true,
+        emailVerified: true,
+        phoneVerified: true,
+        bannedAt: true,
+        _count: { select: { listings: true } },
+        proProfile: { select: { slug: true, isPublished: true, _count: { select: { services: true } } } },
+      },
+    });
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900">Vérifications pro</h1>
+          <p className="text-slate-500 mt-1">
+            Comptes professionnels antérieurs à la vérification : aucun justificatif n&apos;a jamais
+            été fourni. Passez-les en revue, réclamez les pièces ou supprimez-les.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {STATUSES.map((s) => (
+            <a
+              key={s.value}
+              href={`/admin/verifications-pro?statut=${s.value}`}
+              className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+                filter === s.value
+                  ? "bg-[#2f6fb8] text-white"
+                  : "bg-white text-slate-500 border border-[#eceef0] hover:border-[#2f6fb8]"
+              }`}
+            >
+              {s.label}
+              {s.value === "LEGACY" ? ` (${legacy.length})` : ""}
+            </a>
+          ))}
+        </div>
+
+        {legacy.length === 0 ? (
+          <p className="bg-white border border-[#eceef0] rounded-2xl px-6 py-10 text-center text-slate-400 font-medium">
+            Tous les comptes professionnels ont un dossier.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {legacy.map((a) => (
+              <ProAccountRow key={a.id} account={JSON.parse(JSON.stringify(a))} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const [dossiers, counts] = await Promise.all([
     prisma.proVerification.findMany({
