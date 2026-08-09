@@ -78,6 +78,8 @@ export type SeoInventory = {
   byBrand: Record<string, number>;
   /** clé = `${marqueSlug}/${modeleSlug}` */
   byBrandModel: Record<string, number>;
+  /** Fiches professionnelles publiées et vérifiées. */
+  proProfiles: SeoListingEntry[];
 };
 
 const EMPTY_INVENTORY: SeoInventory = {
@@ -91,6 +93,7 @@ const EMPTY_INVENTORY: SeoInventory = {
   byCity: {},
   byBrand: {},
   byBrandModel: {},
+  proProfiles: [],
 };
 
 /** Index label de catégorie → id de route, construit une fois. */
@@ -146,6 +149,7 @@ async function buildInventory(): Promise<SeoInventory> {
     byCity: {},
     byBrand: {},
     byBrandModel: {},
+    proProfiles: [],
   };
 
   for (const row of rows) {
@@ -186,6 +190,33 @@ async function buildInventory(): Promise<SeoInventory> {
 
     bump(inv.byBrand, brandSlug);
     if (modele) bump(inv.byBrandModel, `${brandSlug}/${slugifyValue(modele)}`);
+  }
+
+  // ── Fiches professionnelles ───────────────────────────────────────────────
+  //
+  // Ce sont les meilleures pages du site pour la recherche locale et pour les
+  // moteurs génératifs : une adresse réelle, des horaires, une carte de
+  // prestations tarifées, un SIRET contrôlé. Elles portaient déjà leurs données
+  // structurées LocalBusiness, mais n'étaient annoncées nulle part — donc
+  // découvertes uniquement par maillage interne, ou pas du tout.
+  //
+  // Condition d'entrée : profil publié **et** habilitation professionnelle
+  // accordée. Une fiche non vérifiée n'est pas une source fiable, et la
+  // présenter comme telle à Google se retournerait contre le domaine.
+  const pros = await prisma.proProfile
+    .findMany({
+      where: {
+        isPublished: true,
+        user: { professionalStatus: "APPROVED", bannedAt: null },
+      },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+      take: 5_000,
+    })
+    .catch(() => []);
+
+  for (const pro of pros) {
+    inv.proProfiles.push({ path: `/pro/${pro.slug}`, lastModified: pro.updatedAt });
   }
 
   return inv;

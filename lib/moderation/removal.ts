@@ -21,6 +21,7 @@
  */
 
 import { del } from "@vercel/blob";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { deleteListingFromIndex } from "@/lib/opensearch-sync";
 import { sendEmail } from "@/lib/email";
@@ -29,6 +30,22 @@ import { sendPushNotification } from "@/lib/notifications/send";
 
 /** Durée de conservation d'une annonce retirée, en jours. */
 export const REMOVAL_RETENTION_DAYS = 21;
+
+/**
+ * Invalide l'instantané SEO.
+ *
+ * `revalidateTag` n'est utilisable que dans une action serveur ou un route
+ * handler. Les retraits passent toujours par l'un des deux, mais un appel
+ * depuis un script de maintenance lèverait — et faire échouer une suppression
+ * définitive parce qu'un cache n'a pas pu être vidé serait absurde.
+ */
+function purgeSeoSnapshot(): void {
+  try {
+    revalidateTag("listings");
+  } catch (err) {
+    console.warn("[removal] invalidation sitemap ignorée:", err);
+  }
+}
 
 export function deletionDateFrom(removedAt: Date): Date {
   return new Date(removedAt.getTime() + REMOVAL_RETENTION_DAYS * 24 * 60 * 60 * 1000);
@@ -97,11 +114,18 @@ export async function removeListing({
     },
   });
 
-  // L'index de recherche est la seule surface qui ne relit pas le statut :
-  // il faut l'expurger explicitement, sinon l'annonce reste trouvable.
+  // Deux surfaces ne relisent pas le statut et doivent être expurgées à la
+  // main, sinon l'annonce reste trouvable après son retrait :
+  //
+  //  - l'index OpenSearch, qui sert la recherche du site ;
+  //  - l'inventaire SEO, dont dérive le sitemap. Il est mis en cache 6 h, donc
+  //    sans invalidation l'URL resterait annoncée à Google alors que la page
+  //    répond déjà en `noindex`. Un signal contradictoire est pire qu'un signal
+  //    tardif.
   deleteListingFromIndex(listingId).catch((err) =>
     console.error("[removal] désindexation:", err),
   );
+  purgeSeoSnapshot();
 
   await prisma.moderationEvent
     .create({
@@ -168,6 +192,10 @@ export async function restoreListing(listingId: string, actor: string, reason = 
     })
     .catch(() => {});
 
+  // L'annonce redevient indexable : elle doit réapparaître au sitemap sans
+  // attendre l'expiration de l'instantané.
+  purgeSeoSnapshot();
+
   return listing;
 }
 
@@ -229,6 +257,11 @@ export async function purgeListing(listingId: string): Promise<boolean> {
     await tx.listingImage.deleteMany({ where: { listingId } });
     await tx.listing.delete({ where: { id: listingId } });
   });
+
+  // L'URL n'existe plus : elle doit sortir du sitemap au prochain rendu, pas
+  // six heures plus tard. Google la trouverait en 404 après l'avoir vue
+  // annoncée comme valide.
+  purgeSeoSnapshot();
 
   return true;
 }

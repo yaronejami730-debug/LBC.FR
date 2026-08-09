@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { removeListing, restoreListing, purgeListing } from "@/lib/moderation/removal";
@@ -310,9 +310,15 @@ export async function banAccountAction(userId: string, reason: string) {
     details: { listingsRemoved: live.length },
   });
 
+  // Sa fiche professionnelle sort de l'index et du sitemap au même titre que
+  // ses annonces — un compte banni n'est plus une source fiable. Le retrait des
+  // annonces le fait déjà, mais pas pour un pro qui n'en avait aucune.
+  revalidateTag("listings");
+
   revalidateSecurity();
   revalidatePath("/admin/users");
   revalidatePath("/admin/listings");
+  revalidatePath("/pro", "layout");
   revalidatePath("/", "layout");
 }
 
@@ -342,8 +348,13 @@ export async function unbanAccountAction(userId: string) {
     targetId: userId,
   });
 
+  // Le compte redevient une source légitime : sa fiche peut réintégrer le
+  // sitemap sans attendre l'expiration de l'instantané.
+  revalidateTag("listings");
+
   revalidateSecurity();
   revalidatePath("/admin/users");
+  revalidatePath("/pro", "layout");
 }
 
 // ── Suppression définitive ────────────────────────────────────────────────────

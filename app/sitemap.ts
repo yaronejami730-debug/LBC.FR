@@ -159,6 +159,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  // --- Fiches professionnelles ---------------------------------------------
+  //
+  // Priorité haute, et volontairement au-dessus des annonces : une fiche pro
+  // est stable dans le temps, adossée à un SIRET vérifié et à une adresse
+  // réelle, là où une annonce disparaît en quelques semaines.
+  for (const pro of inv.proProfiles) {
+    entries.push({
+      url: `${BASE}${pro.path}`,
+      lastModified: pro.lastModified,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    });
+  }
+
   // --- Annonces ------------------------------------------------------------
   for (const listing of inv.listings) {
     entries.push({

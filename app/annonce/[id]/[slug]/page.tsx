@@ -50,7 +50,17 @@ export async function generateMetadata({
   if (!listing) return {};
 
   const ld = listing as any;
-  if (ld.shadowBanned) {
+
+  // Une annonce qui n'est pas en ligne ne s'indexe pas, quelle que soit la
+  // raison : en attente de modération, refusée, retirée, vendue, supprimée.
+  //
+  // Le contrôle porte sur le statut lui-même et non sur ses conséquences
+  // (`shadowBanned`, `deletedAt`), parce que ces drapeaux ne couvrent pas tous
+  // les cas : une annonce REJECTED n'est pas shadow-bannie, et émettait donc
+  // une metadata indexable avec canonical. La page renvoie déjà 404 aux
+  // visiteurs non propriétaires — mais `generateMetadata` s'exécute avant, et
+  // un signal d'indexation ne doit jamais dépendre de qui consulte la page.
+  if (listing.status !== "APPROVED" || ld.shadowBanned || ld.deletedAt) {
     return { robots: { index: false, follow: false } };
   }
   // Annonces importées depuis une source externe — `noindex` pour éviter la

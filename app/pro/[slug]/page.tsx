@@ -26,6 +26,7 @@ const getProfile = (slug: string) =>
             avatar: true,
             proVerifiedAt: true,
             professionalStatus: true,
+            bannedAt: true,
             listings: {
               where: { status: "APPROVED", deletedAt: null, shadowBanned: false },
               orderBy: { createdAt: "desc" },
@@ -45,7 +46,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const profile = await getProfile(slug);
-  if (!profile || !profile.isPublished || profile.user.professionalStatus !== "APPROVED") {
+  // Un compte banni n'est plus une source fiable, même si sa fiche est restée
+  // publiée : elle sort de l'index en même temps que ses annonces.
+  if (
+    !profile ||
+    !profile.isPublished ||
+    profile.user.professionalStatus !== "APPROVED" ||
+    profile.user.bannedAt
+  ) {
     return { robots: { index: false, follow: false } };
   }
 
@@ -79,7 +87,12 @@ export default async function ProProfilePage({
   const profile = await getProfile(slug);
   // Une habilitation suspendue ou retirée retire la fiche du public, même si
   // le drapeau `isPublished` est resté à vrai.
-  if (!profile || !profile.isPublished || profile.user.professionalStatus !== "APPROVED") {
+  if (
+    !profile ||
+    !profile.isPublished ||
+    profile.user.professionalStatus !== "APPROVED" ||
+    profile.user.bannedAt
+  ) {
     notFound();
   }
 
