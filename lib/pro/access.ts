@@ -13,6 +13,9 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
+import { capabilitiesOf, type Capability } from "./capabilities";
+import { lexiconFor } from "./lexicon";
+import { builtModulesFor } from "./modules";
 
 /** Cookie qui retient la dernière boutique ouverte. */
 export const ACTIVE_ESTABLISHMENT_COOKIE = "activeEstablishment";

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** Absences à venir de l'équipe. */
 export async function GET(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     const timeOff = await prisma.proTimeOff.findMany({
       where: { member: { profileId: profile.id }, endAt: { gte: new Date() } },
       orderBy: { startAt: "asc" },
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
     const memberId = String(body.memberId ?? "");
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 /** Supprime une absence. `?id=…` */
 export async function DELETE(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     const id = new URL(req.url).searchParams.get("id") ?? "";
 
     const existing = await prisma.proTimeOff.findUnique({

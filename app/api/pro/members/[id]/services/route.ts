@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     await requireOwnedMember(profile.id, id);
 
     const body = (await req.json().catch(() => ({}))) as { serviceIds?: unknown };

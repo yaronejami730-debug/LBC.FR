@@ -12,7 +12,7 @@ const MAX_MEMBERS = 60;
 /** Équipe de l'établissement, avec les prestations que chacun assure. */
 export async function GET(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     const members = await prisma.proMember.findMany({
       where: { profileId: profile.id },
       orderBy: { position: "asc" },
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
 
     const count = await prisma.proMember.count({ where: { profileId: profile.id } });
     if (count >= MAX_MEMBERS) {

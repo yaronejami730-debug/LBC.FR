@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ProfileEditor from "./ProfileEditor";
 import ProNav from "./ProNav";
+import { resolveProContext } from "@/lib/pro/access";
 
 export const metadata = { title: "Mon espace professionnel" };
 export const dynamic = "force-dynamic";
@@ -16,29 +17,22 @@ export const dynamic = "force-dynamic";
  * Réservée aux comptes dont l'habilitation est APPROVED : une fiche publique
  * est précisément ce qu'un faux SIRET cherchait à obtenir.
  */
-export default async function EspaceProPage() {
+export default async function EspaceProPage({
+  searchParams,
+}: {
+  // `?etab=` prime sur le cookie : un lien envoyé à un associé doit ouvrir la
+  // bonne boutique, pas la dernière que lui a consultée.
+  searchParams: Promise<{ etab?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=/profile/espace-pro");
 
+  const { etab } = await searchParams;
+  const context = await resolveProContext(undefined, etab ?? null).catch(() => null);
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: {
-      companyName: true,
-      professionalStatus: true,
-      // Le logo de la fiche est l'avatar du compte : une seule image à tenir
-      // à jour, la même partout où le professionnel apparaît.
-      avatar: true,
-      proProfiles: {
-        // Un seul établissement pour l'instant : la sélection multi-boutique
-        // n'existe pas encore côté interface.
-        take: 1,
-        orderBy: { createdAt: "asc" },
-        include: {
-          services: { orderBy: { position: "asc" } },
-          members: { where: { isActive: true }, select: { id: true } },
-        },
-      },
-    },
+    select: { companyName: true, professionalStatus: true, avatar: true },
   });
 
   if (user?.professionalStatus !== "APPROVED") {
@@ -69,7 +63,15 @@ export default async function EspaceProPage() {
     );
   }
 
-  const profile = user.proProfiles[0];
+  // La fiche courante vient du contexte : établissement actif résolu depuis
+  // `?etab=`, le cookie, ou à défaut le premier accessible.
+  const profile = context?.establishment ?? null;
+  const services = profile
+    ? await prisma.proService.findMany({ where: { profileId: profile.id }, orderBy: { position: "asc" } })
+    : [];
+  const memberCount = profile
+    ? await prisma.proMember.count({ where: { profileId: profile.id, isActive: true } })
+    : 0;
 
   return (
     <div className="bg-surface min-h-screen mb-24 md:mb-0">
@@ -78,9 +80,16 @@ export default async function EspaceProPage() {
         <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">
           Mon espace professionnel
         </h1>
-        <ProNav current="/profile/espace-pro" slug={profile?.slug} />
+        <ProNav
+          current="/profile/espace-pro"
+          slug={profile?.slug}
+          modules={context?.modules ?? []}
+          establishments={context?.establishments ?? []}
+          activeEstablishmentId={profile?.id}
+          canBook={context?.capabilities.includes("bookings") ?? false}
+        />
 
-        {profile && profile.members.length === 0 && (
+        {profile && memberCount === 0 && context?.capabilities.includes("bookings") && (
           // Sans équipe, le moteur n'a personne à qui attribuer un rendez-vous :
           // la fiche reste une vitrine et le bouton « Réserver » n'apparaît pas.
           <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -106,12 +115,12 @@ export default async function EspaceProPage() {
             coverY: profile?.coverY ?? 50,
             coverZoom: profile?.coverZoom ?? 1,
             services:
-              profile?.services.map((s) => ({
+              services.map((s) => ({
                 section: s.section,
                 label: s.label,
                 durationMin: s.durationMin ? String(s.durationMin) : "",
                 price: String(s.price),
-              })) ?? [],
+              })),
           }}
         />
       </main>

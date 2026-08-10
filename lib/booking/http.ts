@@ -8,7 +8,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ProAccessError, resolveProScope } from "@/lib/pro/access";
+import { ProAccessError, requireCapability, resolveProContext } from "@/lib/pro/access";
+import type { Capability } from "@/lib/pro/capabilities";
 import { BookingError } from "./engine";
 
 export function bookingErrorResponse(error: unknown): NextResponse {
@@ -27,13 +28,19 @@ export function bookingErrorResponse(error: unknown): NextResponse {
  * professionnelles. PENDING, INFO_REQUESTED, REJECTED et SUSPENDED n'ont accès
  * à rien.
  */
-export async function requireProProfile(req: NextRequest) {
+export async function requireProProfile(req: NextRequest, capability?: Capability) {
   try {
     // L'établissement actif vient de `?etab=`, du cookie, ou à défaut du
     // premier accessible. Un indépendant n'en a qu'un et ne voit jamais cette
     // résolution ; un groupe de trois salons pilote celui qu'il a ouvert.
-    const scope = await resolveProScope(req);
-    return { userId: scope.userId, profile: scope.establishment, scope };
+    //
+    // `capability` est le garde-fou métier, en un seul argument : un garage
+    // qui devinerait l'URL des prestations reçoit un 403, sans qu'aucune
+    // condition métier ne soit écrite dans la route.
+    const context = capability
+      ? await requireCapability(req, capability)
+      : await resolveProContext(req);
+    return { userId: context.userId, profile: context.establishment, context };
   } catch (error) {
     if (error instanceof ProAccessError) {
       throw new BookingError(error.message, error.status, error.code);

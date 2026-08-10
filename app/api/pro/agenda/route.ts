@@ -20,7 +20,7 @@ const MAX_RANGE_DAYS = 62;
  */
 export async function GET(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "bookings");
 
     const url = new URL(req.url);
     const from = url.searchParams.get("from") ?? dayKey(new Date());

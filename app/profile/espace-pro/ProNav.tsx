@@ -1,35 +1,57 @@
 import Link from "next/link";
-
-const TABS = [
-  { href: "/profile/espace-pro", label: "Ma fiche", icon: "storefront" },
-  { href: "/profile/espace-pro/agenda", label: "Agenda", icon: "calendar_month" },
-  { href: "/profile/espace-pro/equipe", label: "Équipe & horaires", icon: "group" },
-  { href: "/profile/espace-pro/parametres", label: "Réservation", icon: "tune" },
-];
+import type { ProModule } from "@/lib/pro/modules";
+import EstablishmentSwitcher, { type SwitcherEstablishment } from "./EstablishmentSwitcher";
 
 /**
- * Navigation de l'espace professionnel, et surtout lien vers la fiche
- * publique : le pro n'avait aucun moyen d'atteindre sa propre page depuis
- * son back-office, elle n'existait que pour ses clients.
+ * Navigation de l'espace professionnel.
+ *
+ * Les onglets ne sont plus une liste en dur : ils viennent de `modulesFor()`,
+ * dérivé des capacités de l'établissement. Un dépôt-vente automobile n'a donc
+ * jamais d'onglet « Prestations », et un salon de coiffure jamais d'onglet
+ * « Véhicules » — sans qu'aucune condition métier n'existe ici.
+ *
+ * Le lien vers la fiche publique reste : le professionnel n'avait aucun moyen
+ * d'atteindre sa propre page depuis son back-office.
  */
-export default function ProNav({ current, slug }: { current: string; slug?: string | null }) {
+export default function ProNav({
+  current,
+  slug,
+  modules,
+  establishments = [],
+  activeEstablishmentId,
+  canBook = false,
+}: {
+  current: string;
+  slug?: string | null;
+  modules: ProModule[];
+  establishments?: SwitcherEstablishment[];
+  activeEstablishmentId?: string;
+  /** Le lien « Tester la réservation » n'a de sens que si elle est ouverte. */
+  canBook?: boolean;
+}) {
   return (
     <div className="mb-5 space-y-3">
+      {establishments.length > 1 && activeEstablishmentId && (
+        <EstablishmentSwitcher establishments={establishments} activeId={activeEstablishmentId} />
+      )}
+
       <nav className="flex gap-1.5 overflow-x-auto no-scrollbar" aria-label="Espace professionnel">
-        {TABS.map((tab) => {
-          const active = tab.href === current;
+        {modules.map((module) => {
+          const active = module.href === current;
           return (
             <Link
-              key={tab.href}
-              href={tab.href}
-              title={tab.label}
+              key={module.id}
+              href={module.href}
+              title={module.label}
               aria-current={active ? "page" : undefined}
               className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-colors ${
-                active ? "bg-primary text-white" : "bg-white border border-slate-100 text-on-surface-variant hover:border-primary hover:text-primary"
+                active
+                  ? "bg-primary text-white"
+                  : "bg-white border border-slate-100 text-on-surface-variant hover:border-primary hover:text-primary"
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
-              {tab.label}
+              <span className="material-symbols-outlined text-[18px]">{module.icon}</span>
+              {module.label}
             </Link>
           );
         })}
@@ -45,14 +67,16 @@ export default function ProNav({ current, slug }: { current: string; slug?: stri
             <span className="material-symbols-outlined text-[16px]">open_in_new</span>
             Voir ma page publique
           </Link>
-          <Link
-            href={`/pro/${slug}/reserver`}
-            title="Tester le parcours de réservation"
-            className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-xs font-bold text-on-surface-variant hover:text-primary"
-          >
-            <span className="material-symbols-outlined text-[16px]">event_available</span>
-            Tester la réservation
-          </Link>
+          {canBook && (
+            <Link
+              href={`/pro/${slug}/reserver`}
+              title="Tester le parcours de réservation"
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-xs font-bold text-on-surface-variant hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-[16px]">event_available</span>
+              Tester la réservation
+            </Link>
+          )}
         </div>
       )}
     </div>

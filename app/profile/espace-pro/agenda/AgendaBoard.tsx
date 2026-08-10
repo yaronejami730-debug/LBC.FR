@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import NewBookingDialog, { type DialogService } from "./NewBookingDialog";
 
 type AgendaBooking = {
   id: string;
@@ -44,6 +45,9 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
   const [memberFilter, setMemberFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [services, setServices] = useState<DialogService[]>([]);
+  /** Ouverture du formulaire d'ajout, éventuellement préremplie. */
+  const [adding, setAdding] = useState<null | { day?: string; memberId?: string }>(null);
 
   const [from, to] = useMemo(() => {
     if (view === "day") return [anchor, anchor];
@@ -60,6 +64,7 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
       if (!res.ok) throw new Error(data.error ?? "Agenda indisponible");
       setBookings(data.bookings);
       setMembers(data.members);
+      setServices(data.services ?? []);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -97,6 +102,17 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
   return (
     <div className="space-y-4">
       <div className={`${card} flex flex-wrap items-center gap-3`}>
+        {/* Le geste principal de cet écran : une coiffeuse qui décroche doit
+            le trouver sans chercher. */}
+        <button
+          type="button"
+          onClick={() => setAdding({ day: view === "day" ? anchor : undefined })}
+          className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-bold text-white shadow-[0_4px_12px_rgba(47,111,184,0.25)]"
+        >
+          <span className="material-symbols-outlined text-[18px]">add</span>
+          Ajouter un rendez-vous
+        </button>
+
         <div className="flex rounded-full bg-surface-container-low p-0.5">
           {(["day", "week"] as const).map((v) => (
             <button
@@ -144,6 +160,16 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
         </span>
       </div>
 
+      {adding && (
+        <NewBookingDialog
+          services={services}
+          members={members}
+          defaults={adding}
+          onClose={() => setAdding(null)}
+          onCreated={load}
+        />
+      )}
+
       {error && <div className="rounded-xl bg-rose-50 border border-rose-100 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {loading && <div className={`${card} text-sm text-outline`}>Chargement de l&apos;agenda…</div>}
 
@@ -154,7 +180,13 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
             <section key={day} className={card}>
               <h2 className="text-sm font-extrabold font-['Manrope'] capitalize mb-3">{formatDay(day)}</h2>
               {dayBookings.length === 0 ? (
-                <p className="text-sm text-outline">Aucun rendez-vous.</p>
+                <button
+                  type="button"
+                  onClick={() => setAdding({ day, memberId: memberFilter !== "all" ? memberFilter : undefined })}
+                  className="w-full text-left text-sm text-outline hover:text-primary"
+                >
+                  Aucun rendez-vous — cliquez pour en ajouter un.
+                </button>
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {dayBookings.map((b) => {

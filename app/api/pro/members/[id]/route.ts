@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     await requireOwnedMember(profile.id, id);
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     await requireOwnedMember(profile.id, id);
 
     const pending = await prisma.proBooking.count({

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /** Règles de réservation de l'établissement (valeurs par défaut si jamais réglées). */
 export async function GET(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "bookings");
     const settings = await loadBookingPolicy(profile.id);
     return NextResponse.json({ settings });
   } catch (error) {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
  */
 export async function PUT(req: NextRequest) {
   try {
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "bookings");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
     const data = {

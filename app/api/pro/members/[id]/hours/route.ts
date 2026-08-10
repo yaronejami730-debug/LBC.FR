@@ -13,7 +13,7 @@ type SlotInput = { weekday?: unknown; startMin?: unknown; endMin?: unknown; labe
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     await requireOwnedMember(profile.id, id);
 
     const [workingHours, breaks] = await Promise.all([
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await ctx.params;
-    const { profile } = await requireProProfile(req);
+    const { profile } = await requireProProfile(req, "staff");
     await requireOwnedMember(profile.id, id);
 
     const body = (await req.json().catch(() => ({}))) as {

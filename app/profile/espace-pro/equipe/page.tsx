@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ProNav from "../ProNav";
 import TeamManager from "./TeamManager";
+import { resolveProContext } from "@/lib/pro/access";
 
 export const metadata = { title: "Équipe et horaires" };
 export const dynamic = "force-dynamic";
@@ -16,31 +17,18 @@ export const dynamic = "force-dynamic";
  * C'est l'écran qui alimente le moteur de créneaux : tant qu'il est vide,
  * la page publique n'affiche aucun bouton « Réserver ».
  */
-export default async function EquipePage() {
+export default async function EquipePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ etab?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=/profile/espace-pro/equipe");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      professionalStatus: true,
-      proProfiles: {
-        // Un seul établissement pour l'instant : la sélection multi-boutique
-        // n'existe pas encore côté interface.
-        take: 1,
-        orderBy: { createdAt: "asc" },
-        include: {
-          services: { where: { isActive: true }, orderBy: { position: "asc" } },
-          members: {
-            orderBy: { position: "asc" },
-            include: { services: { select: { serviceId: true } } },
-          },
-        },
-      },
-    },
-  });
+  const { etab } = await searchParams;
+  const context = await resolveProContext(undefined, etab ?? null).catch(() => null);
 
-  if (user?.professionalStatus !== "APPROVED" || !user.proProfiles[0]) {
+  if (!context || !context.capabilities.includes("staff")) {
     return (
       <div className="bg-surface min-h-screen">
         <Navbar />
@@ -48,9 +36,9 @@ export default async function EquipePage() {
           <div className="bg-white rounded-2xl border border-slate-100 p-6">
             <h1 className="text-xl font-extrabold font-['Manrope']">Équipe et horaires</h1>
             <p className="text-sm text-outline mt-2 leading-relaxed">
-              {user?.professionalStatus !== "APPROVED"
-                ? "Réservé aux comptes professionnels vérifiés."
-                : "Créez d'abord votre fiche d'établissement."}
+              {context
+                ? "La gestion d'équipe n'est pas activée pour votre activité."
+                : "Réservé aux comptes professionnels vérifiés, avec une fiche établissement."}
             </p>
             <Link
               href="/profile/espace-pro"
@@ -66,25 +54,43 @@ export default async function EquipePage() {
     );
   }
 
-  const profile = user.proProfiles[0];
+  const profile = context.establishment;
+  const [services, members] = await Promise.all([
+    prisma.proService.findMany({
+      where: { profileId: profile.id, isActive: true },
+      orderBy: { position: "asc" },
+    }),
+    prisma.proMember.findMany({
+      where: { profileId: profile.id },
+      orderBy: { position: "asc" },
+      include: { services: { select: { serviceId: true } } },
+    }),
+  ]);
 
   return (
     <div className="bg-surface min-h-screen mb-24 md:mb-0">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-3xl mx-auto">
         <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">
-          Équipe et horaires
+          {context.lexicon.staff} et horaires
         </h1>
-        <ProNav current="/profile/espace-pro/equipe" slug={profile.slug} />
+        <ProNav
+          current="/profile/espace-pro/equipe"
+          slug={profile.slug}
+          modules={context.modules}
+          establishments={context.establishments}
+          activeEstablishmentId={profile.id}
+          canBook={context.capabilities.includes("bookings")}
+        />
 
         <TeamManager
-          services={profile.services.map((s) => ({
+          services={services.map((s) => ({
             id: s.id,
             label: s.label,
             section: s.section,
             durationMin: s.durationMin,
           }))}
-          initialMembers={profile.members.map((m) => ({
+          initialMembers={members.map((m) => ({
             id: m.id,
             displayName: m.displayName,
             role: m.role,
