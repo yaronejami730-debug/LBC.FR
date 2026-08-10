@@ -1,3 +1,5 @@
+import { LISTING_LIFETIME_DAYS } from "@/lib/listing-lifetime";
+
 export function listingExpiringEmail({
   name,
   listingTitle,
@@ -29,7 +31,7 @@ export function listingExpiringEmail({
   </td></tr>
   <tr><td class="pad" style="padding:0 8px 28px;">
     <p style="font-size:15px;color:#424751;line-height:1.75;margin:0 0 16px;text-align:center;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-    <p style="font-size:15px;color:#424751;line-height:1.75;margin:0;text-align:center;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a atteint sa durée de vie de <strong>90 jours</strong> sur Deal&nbsp;&amp;&nbsp;Co. Elle sera automatiquement retirée du site dans <strong>48 heures</strong>.</p>
+    <p style="font-size:15px;color:#424751;line-height:1.75;margin:0;text-align:center;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a atteint sa durée de vie de <strong>${LISTING_LIFETIME_DAYS} jours</strong> sur Deal&nbsp;&amp;&nbsp;Co. Elle sera automatiquement retirée du site dans <strong>48 heures</strong>.</p>
   </td></tr>
   ${imageUrl ? `
   <tr><td style="padding:0 8px 24px;">

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { listingExpiresAt, LISTING_LIFETIME_DAYS } from "@/lib/listing-lifetime";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import RepublishButton from "./RepublishButton";
@@ -28,7 +29,7 @@ export default async function RepublierPage({
   if (!listing || listing.userId !== session.user.id) notFound();
 
   const imgs = (() => { try { return JSON.parse(listing.images) as string[]; } catch { return []; } })();
-  const expiresAt = new Date(listing.createdAt.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const expiresAt = listingExpiresAt(listing.createdAt);
   const msLeft = expiresAt.getTime() - Date.now();
   const expired = msLeft <= 0;
 
@@ -64,8 +65,8 @@ export default async function RepublierPage({
 
             <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
               {expired
-                ? "Cette annonce a atteint sa durée de vie de 90 jours. En la republiant, elle sera remise en ligne pour 90 jours supplémentaires."
-                : "Votre annonce arrive à expiration. Republiez-la maintenant pour la maintenir en ligne 90 jours de plus."}
+                ? `Cette annonce a atteint sa durée de vie de ${LISTING_LIFETIME_DAYS} jours. En la republiant, elle sera remise en ligne pour ${LISTING_LIFETIME_DAYS} jours supplémentaires.`
+                : `Votre annonce arrive à expiration. Republiez-la maintenant pour la maintenir en ligne ${LISTING_LIFETIME_DAYS} jours de plus.`}
             </p>
 
             <RepublishButton listingId={listing.id} />

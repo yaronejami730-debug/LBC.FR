@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { apiFetch } from "@/lib/api";
+import { colors } from "@/lib/theme";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
@@ -28,16 +29,16 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-app" edges={["bottom"]}>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 8 }} keyboardShouldPersistTaps="handled">
           <Text className="text-on-surface text-3xl font-extrabold mb-2">Mot de passe oublié</Text>
           <Text className="text-on-surface-variant text-sm mb-8">Saisissez votre email — nous vous enverrons un lien de réinitialisation.</Text>
 
           {sent ? (
-            <View className="bg-green-50 border border-green-200 rounded-xl p-4">
-              <Text className="text-green-800 font-semibold">Email envoyé !</Text>
-              <Text className="text-green-700 text-sm mt-1">Si un compte existe avec cette adresse, vous recevrez un lien sous peu.</Text>
+            <View className="bg-success/10 border border-success/30 rounded-xl p-4">
+              <Text className="text-success font-semibold">Email envoyé !</Text>
+              <Text className="text-success text-sm mt-1">Si un compte existe avec cette adresse, vous recevrez un lien sous peu.</Text>
             </View>
           ) : (
             <>
@@ -48,12 +49,12 @@ export default function ForgotPasswordScreen() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 placeholder="vous@exemple.com"
-                placeholderTextColor="#9ca3af"
-                className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-6 bg-white"
+                placeholderTextColor={colors.outline}
+                className="border border-line rounded-xl px-4 py-3 text-on-surface mb-6 bg-surface"
               />
-              {error && <Text className="text-red-600 text-sm mb-3">{error}</Text>}
+              {error && <Text className="text-danger text-sm mb-3">{error}</Text>}
               <Pressable onPress={submit} disabled={loading} className="bg-primary py-3.5 rounded-full items-center active:opacity-80">
-                {loading ? <ActivityIndicator color="#ffffff" /> : <Text className="text-white font-bold text-base">Envoyer le lien</Text>}
+                {loading ? <ActivityIndicator color={colors.white} /> : <Text className="text-white font-bold text-base">Envoyer le lien</Text>}
               </Pressable>
             </>
           )}

@@ -24,6 +24,7 @@ import { API_BASE_URL } from "@/lib/config";
 import { getToken } from "@/lib/tokenStore";
 import { useAuth } from "@/lib/auth";
 import { firstImage, formatPrice, timeAgo } from "@/lib/format";
+import { colors } from "@/lib/theme";
 
 type Attachment = { url: string; type: "image" | "pdf"; name?: string | null };
 
@@ -226,7 +227,7 @@ export default function ConversationScreen() {
 
   if (!user) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center px-6">
+      <View className="flex-1 bg-app items-center justify-center px-6">
         <Text className="text-on-surface text-center mb-4">Connectez-vous pour discuter.</Text>
         <Pressable onPress={() => router.push("/(auth)/login")} className="bg-primary px-6 py-3 rounded-full">
           <Text className="text-white font-bold">Se connecter</Text>
@@ -270,10 +271,10 @@ export default function ConversationScreen() {
       />
 
       {conv && (
-        <View className="border-b border-surface-container bg-surface">
+        <View className="border-b border-line bg-surface">
           <Pressable
             onPress={() => router.push(`/annonce/${conv.listing.id}`)}
-            className="flex-row items-center px-4 py-2 bg-surface-container-low active:opacity-70"
+            className="flex-row items-center px-4 py-2 bg-surface active:opacity-70"
           >
             <View className="w-11 h-11 rounded-md bg-surface-container overflow-hidden mr-3">
               {listingImg && (
@@ -292,7 +293,7 @@ export default function ConversationScreen() {
       )}
 
       {loading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={colors.primary} /></View>
       ) : (
         <FlatList
           ref={listRef}
@@ -316,7 +317,7 @@ export default function ConversationScreen() {
             return (
               <View className={`my-1 max-w-[80%] ${mine ? "self-end" : "self-start"}`}>
                 {isImg && (
-                  <Pressable onPress={() => Linking.openURL(attUrl)} className="mb-1 rounded-2xl overflow-hidden">
+                  <Pressable onPress={() => Linking.openURL(attUrl)} className="mb-1 rounded-card overflow-hidden">
                     <Image
                       source={{ uri: attUrl }}
                       style={{ width: 220, height: 220 }}
@@ -327,9 +328,9 @@ export default function ConversationScreen() {
                 {isPdf && (
                   <Pressable
                     onPress={() => Linking.openURL(attUrl)}
-                    className={`flex-row items-center mb-1 px-3 py-2 rounded-2xl ${mine ? "bg-primary" : "bg-surface-container"}`}
+                    className={`flex-row items-center mb-1 px-3 py-2 rounded-card ${mine ? "bg-primary" : "bg-surface-container"}`}
                   >
-                    <Ionicons name="document-text-outline" size={22} color={mine ? "#ffffff" : "#2f6fb8"} />
+                    <Ionicons name="document-text-outline" size={22} color={mine ? colors.white : colors.primary} />
                     <Text className={`ml-2 max-w-[160px] ${mine ? "text-white" : "text-on-surface"}`} numberOfLines={1}>
                       {item.attachmentName ?? "Document.pdf"}
                     </Text>
@@ -337,7 +338,7 @@ export default function ConversationScreen() {
                 )}
                 {!!item.content && (
                   <View
-                    className={`px-3 py-2 rounded-2xl ${mine ? "bg-primary rounded-br-sm" : "bg-surface-container rounded-bl-sm"}`}
+                    className={`px-3 py-2 rounded-card ${mine ? "bg-primary rounded-br-sm" : "bg-surface-container rounded-bl-sm"}`}
                   >
                     <Text className={mine ? "text-white" : "text-on-surface"}>{item.content}</Text>
                   </View>
@@ -353,16 +354,16 @@ export default function ConversationScreen() {
       )}
 
       {error && (
-        <View className="px-3 py-2 bg-red-50 border-t border-red-200">
-          <Text className="text-red-700 text-xs">{error}</Text>
+        <View className="px-3 py-2 bg-danger/10 border-t border-danger/30">
+          <Text className="text-danger text-xs">{error}</Text>
         </View>
       )}
 
       {(attachment || uploading) && (
-        <View className="flex-row items-center px-3 py-2 border-t border-surface-container bg-surface-container-low">
+        <View className="flex-row items-center px-3 py-2 border-t border-line bg-surface">
           {uploading ? (
             <>
-              <ActivityIndicator color="#2f6fb8" />
+              <ActivityIndicator color={colors.primary} />
               <Text className="text-on-surface-variant text-sm ml-2">Envoi du fichier…</Text>
             </>
           ) : attachment ? (
@@ -374,13 +375,13 @@ export default function ConversationScreen() {
                   contentFit="cover"
                 />
               ) : (
-                <Ionicons name="document-text-outline" size={28} color="#2f6fb8" />
+                <Ionicons name="document-text-outline" size={28} color={colors.primary} />
               )}
               <Text className="text-on-surface text-sm ml-2 flex-1" numberOfLines={1}>
                 {attachment.type === "pdf" ? attachment.name ?? "Document.pdf" : "Photo prête à envoyer"}
               </Text>
               <Pressable onPress={() => setAttachment(null)} className="ml-2">
-                <Ionicons name="close-circle" size={22} color="#94a3b8" />
+                <Ionicons name="close-circle" size={22} color={colors.outline} />
               </Pressable>
             </>
           ) : null}
@@ -388,7 +389,7 @@ export default function ConversationScreen() {
       )}
 
       <View
-        className="flex-row items-end gap-2 p-2 border-t border-surface-container bg-surface"
+        className="flex-row items-end gap-2 p-2 border-t border-line bg-surface"
         style={{ paddingBottom: Math.max(8, insets.bottom) }}
       >
         <Pressable
@@ -396,15 +397,15 @@ export default function ConversationScreen() {
           disabled={uploading || sending}
           className="w-10 h-10 rounded-full border border-primary items-center justify-center"
         >
-          <Ionicons name="add" size={24} color="#2f6fb8" />
+          <Ionicons name="add" size={24} color={colors.primary} />
         </Pressable>
         <TextInput
           value={text}
           onChangeText={setText}
           placeholder="Votre message…"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colors.outline}
           multiline
-          className="flex-1 bg-surface-container rounded-2xl px-3 py-2 text-on-surface max-h-32"
+          className="flex-1 bg-surface-container rounded-card px-3 py-2 text-on-surface max-h-32"
         />
         <Pressable
           onPress={send}

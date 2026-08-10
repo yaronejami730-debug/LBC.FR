@@ -6,6 +6,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { firstImage, formatPrice, timeAgo } from "@/lib/format";
+import { colors } from "@/lib/theme";
 
 type Conversation = {
   id: string;
@@ -49,7 +50,7 @@ export default function MessagesScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-app">
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-on-surface text-xl font-bold mb-2">Messages</Text>
           <Text className="text-on-surface-variant text-sm mb-6 text-center">Connectez-vous pour voir vos conversations.</Text>
@@ -62,9 +63,9 @@ export default function MessagesScreen() {
   }
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app">
       {/* Header */}
-      <View className="px-4 pt-2 pb-3 border-b border-surface-container">
+      <View className="px-4 pt-2 pb-3 border-b border-line">
         <Text className="text-on-surface text-2xl font-extrabold">Mes messages</Text>
         {/* Filtres carrés : Tout / Non lu */}
         <View className="flex-row gap-2 mt-3">
@@ -78,10 +79,10 @@ export default function MessagesScreen() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={colors.primary} /></View>
       ) : error ? (
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-600 text-center mb-4">{error}</Text>
+          <Text className="text-danger text-center mb-4">{error}</Text>
           <Pressable onPress={load} className="bg-primary px-4 py-2 rounded-full">
             <Text className="text-white font-semibold">Réessayer</Text>
           </Pressable>
@@ -106,7 +107,7 @@ export default function MessagesScreen() {
             return (
               <Pressable
                 onPress={() => router.push(`/messages/${item.id}`)}
-                className="flex-row px-4 py-3 active:bg-surface-container-low"
+                className="flex-row px-4 py-3 active:bg-surface-container"
               >
                 <View className="w-14 h-14 rounded-md bg-surface-container overflow-hidden mr-3">
                   {img && <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" />}
@@ -144,7 +145,7 @@ function FilterBtn({ label, active, onPress }: { label: string; active: boolean;
   return (
     <Pressable
       onPress={onPress}
-      className={`px-4 py-2 rounded-lg border ${active ? "bg-primary border-primary" : "bg-surface border-surface-container"}`}
+      className={`px-4 py-2 rounded-xl border ${active ? "bg-primary border-primary" : "bg-surface border-line"}`}
     >
       <Text className={`text-sm font-bold ${active ? "text-white" : "text-on-surface-variant"}`}>{label}</Text>
     </Pressable>

@@ -1,11 +1,12 @@
 import { View, Text, Pressable, ScrollView, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@/lib/theme";
 
 const SITE = "https://www.dealandcompany.fr";
 
 export default function Aide() {
   return (
-    <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ padding: 16 }}>
+    <ScrollView className="flex-1 bg-app" contentContainerStyle={{ padding: 16 }}>
       <LinkRow
         icon="help-circle-outline"
         label="Centre d'aide / FAQ"
@@ -34,10 +35,10 @@ export default function Aide() {
 
 function LinkRow({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="flex-row items-center bg-surface-container-low rounded-xl px-4 py-3.5 mb-2 active:opacity-70">
-      <Ionicons name={icon} size={20} color="#2f6fb8" />
+    <Pressable onPress={onPress} className="flex-row items-center bg-surface rounded-xl px-4 py-3.5 mb-2 active:opacity-70">
+      <Ionicons name={icon} size={20} color={colors.primary} />
       <Text className="text-on-surface flex-1 ml-3 font-medium">{label}</Text>
-      <Ionicons name="open-outline" size={18} color="#94a3b8" />
+      <Ionicons name="open-outline" size={18} color={colors.outline} />
     </Pressable>
   );
 }

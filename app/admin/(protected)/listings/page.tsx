@@ -3,6 +3,7 @@ import Link from "next/link";
 import ListingActions from "@/components/admin/ListingActions";
 import PendingReasonButton from "@/components/admin/PendingReasonButton";
 import { formatDistanceToNow } from "@/lib/utils";
+import TimeLeftBadge from "@/components/admin/TimeLeftBadge";
 
 // « Refusée » et « retirée » ne disent pas la même chose : la première n'a
 // jamais été publiée, la seconde a été enlevée après coup. Les confondre dans
@@ -24,6 +25,8 @@ export default async function ListingsPage({
   // Refusées et retirées portent toutes deux un motif : la colonne s'affiche
   // pour les deux, sinon elle disparaîtrait là où elle est la plus utile.
   const showsReason = status === "REJECTED" || status === "REMOVED";
+  // Seules les annonces en ligne courent vers leur retrait automatique.
+  const showsExpiry = status === "APPROVED";
   const emptyLabel =
     status === "APPROVED"
       ? "en ligne"
@@ -121,6 +124,7 @@ export default async function ListingsPage({
                   {listing.category}
                 </span>
                 <span>{formatDistanceToNow(listing.createdAt)}</span>
+                {showsExpiry && <TimeLeftBadge createdAt={listing.createdAt} />}
                 <span className="truncate max-w-full">{listing.user.name}</span>
               </div>
 
@@ -176,6 +180,10 @@ export default async function ListingsPage({
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Catégorie</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Prix</th>
                 <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Date</th>
+                {/* L'échéance n'a de sens que pour ce qui est réellement en ligne. */}
+                {showsExpiry && (
+                  <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Expire dans</th>
+                )}
                 {showsReason && (
                   <th className="text-left text-[10px] font-bold uppercase tracking-widest text-[#777683] px-4 py-3">Motif</th>
                 )}
@@ -262,6 +270,13 @@ export default async function ListingsPage({
                         {formatDistanceToNow(listing.createdAt)}
                       </span>
                     </td>
+
+                    {/* Temps restant avant retrait automatique */}
+                    {showsExpiry && (
+                      <td className="px-4 py-3">
+                        <TimeLeftBadge createdAt={listing.createdAt} />
+                      </td>
+                    )}
 
                     {/* Motif — onglets « refusées » et « retirées » */}
                     {showsReason && (

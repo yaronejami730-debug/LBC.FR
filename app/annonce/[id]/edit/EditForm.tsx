@@ -17,7 +17,7 @@ type VehicleFields = {
 
 type Initial = {
   title: string; price: string; description: string; location: string;
-  condition: string; category: string; subcategory: string;
+  condition: string | null; category: string; subcategory: string;
   images: string[]; metadata: Record<string, string>;
 };
 
@@ -31,7 +31,7 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
   const [price, setPrice] = useState(initial.price);
   const [description, setDescription] = useState(initial.description);
   const [location, setLocation] = useState(initial.location);
-  const [condition, setCondition] = useState(initial.condition);
+  const [condition, setCondition] = useState(initial.condition ?? "Bon état");
   const [catId, setCatId] = useState(categoryId);
   const [subcategory, setSubcategory] = useState(initial.subcategory);
   const [images, setImages] = useState<string[]>(initial.images);

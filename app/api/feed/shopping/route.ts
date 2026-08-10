@@ -49,8 +49,10 @@ const SUBCATEGORY_GPC: Record<string, string> = {
   "Sports & hobbies": "499",
 };
 
-function mapCondition(condition: string): "new" | "used" {
-  return /^neuf/i.test(condition) ? "new" : "used";
+// Le flux Shopping n'accepte que « new » ou « used ». Une annonce sans état
+// (prestation) n'a rien à y faire, mais la valeur par défaut reste « used ».
+function mapCondition(condition: string | null): "new" | "used" {
+  return condition && /^neuf/i.test(condition) ? "new" : "used";
 }
 
 function esc(str: string): string {

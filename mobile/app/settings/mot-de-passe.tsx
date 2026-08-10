@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
 import { apiFetch } from "@/lib/api";
+import { colors } from "@/lib/theme";
+import { useGoBack } from "@/lib/navigation";
 
 export default function MotDePasse() {
-  const router = useRouter();
+  const goBack = useGoBack();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -28,7 +29,7 @@ export default function MotDePasse() {
         body: JSON.stringify({ currentPassword: current, newPassword: next }),
       });
       Alert.alert("Mot de passe modifié", "Votre mot de passe a été mis à jour.");
-      router.back();
+      goBack();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Échec de la modification");
     } finally {
@@ -37,15 +38,15 @@ export default function MotDePasse() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-surface">
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-app">
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Field label="MOT DE PASSE ACTUEL" value={current} onChangeText={setCurrent} />
         <Field label="NOUVEAU MOT DE PASSE" value={next} onChangeText={setNext} />
         <Field label="CONFIRMER LE NOUVEAU MOT DE PASSE" value={confirm} onChangeText={setConfirm} />
 
         {error && (
-          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-            <Text className="text-red-700 text-sm">{error}</Text>
+          <View className="bg-danger/10 border border-danger/30 rounded-xl p-3 mb-3">
+            <Text className="text-danger text-sm">{error}</Text>
           </View>
         )}
 
@@ -54,7 +55,7 @@ export default function MotDePasse() {
           disabled={saving}
           className={`py-3.5 rounded-full items-center ${saving ? "bg-outline" : "bg-primary"}`}
         >
-          {saving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold">Modifier le mot de passe</Text>}
+          {saving ? <ActivityIndicator color={colors.white} /> : <Text className="text-white font-bold">Modifier le mot de passe</Text>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -70,8 +71,8 @@ function Field({ label, value, onChangeText }: { label: string; value: string; o
         onChangeText={onChangeText}
         secureTextEntry
         autoCapitalize="none"
-        placeholderTextColor="#94a3b8"
-        className="bg-surface-container rounded-lg px-3 py-3 text-on-surface mb-4"
+        placeholderTextColor={colors.outline}
+        className="bg-surface-container rounded-xl px-3 py-3 text-on-surface mb-4"
       />
     </>
   );

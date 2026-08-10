@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
 import crypto from "crypto";
+import { inferOfferIntent } from "@/lib/offer-intent";
+import { fieldSetAsksCondition } from "@/lib/offer-fields";
 
 function hashKey(raw: string): string {
   return crypto.createHash("sha256").update(raw).digest("hex");
@@ -86,6 +88,19 @@ export async function POST(req: NextRequest) {
   const immoSurface = immo?.surface        ? parseFloat(immo.surface)      || null : null;
   const immoRooms   = immo?.rooms          ? parseInt(immo.rooms)          || null : null;
 
+  /**
+   * Même règle que le formulaire : l'état n'est stocké que s'il s'applique.
+   * L'API publique n'a pas de formulaire pour s'adapter, c'est donc ici que la
+   * prestation cesse d'hériter d'un « Bon état » qui ne veut rien dire.
+   */
+  const intent = inferOfferIntent({
+    title: String(title),
+    description: String(description),
+    categoryId: String(category),
+    subcategory: subcategory ? String(subcategory) : null,
+    price: parsedPrice,
+  });
+
   const listing = await prisma.listing.create({
     data: {
       title:       String(title).trim(),
@@ -94,7 +109,9 @@ export async function POST(req: NextRequest) {
       subcategory: subcategory ? String(subcategory) : null,
       description: String(description),
       location:    String(location),
-      condition:   condition ? String(condition) : "Bon état",
+      condition:   fieldSetAsksCondition(intent.fieldSet)
+        ? (condition ? String(condition) : "Bon état")
+        : null,
       images:      JSON.stringify(Array.isArray(images) ? images : []),
       metadata,
       vehicleKm,

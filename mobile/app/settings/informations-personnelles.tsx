@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import { colors } from "@/lib/theme";
+import { useGoBack } from "@/lib/navigation";
 
 const CIVILITIES = ["Monsieur", "Madame", "Autre"] as const;
 
@@ -38,7 +39,7 @@ type FullProfile = {
 };
 
 export default function InformationsPersonnelles() {
-  const router = useRouter();
+  const goBack = useGoBack();
   const { user, refresh } = useAuth();
   const [civility, setCivility] = useState("");
   const [lastName, setLastName] = useState("");
@@ -86,7 +87,7 @@ export default function InformationsPersonnelles() {
       await refresh();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       Alert.alert("Enregistré", "Vos informations ont été mises à jour.");
-      router.back();
+      goBack();
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       setError(e instanceof Error ? e.message : "Échec de l'enregistrement");
@@ -96,7 +97,7 @@ export default function InformationsPersonnelles() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-surface">
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-app">
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         <Text className="text-on-surface text-xl font-extrabold mb-4">Identité</Text>
 
@@ -108,7 +109,7 @@ export default function InformationsPersonnelles() {
               <Pressable
                 key={c}
                 onPress={() => { Haptics.selectionAsync().catch(() => {}); setCivility(c); }}
-                className={`flex-1 py-3 rounded-full border-2 items-center ${active ? "border-primary bg-primary/5" : "border-surface-container bg-white"}`}
+                className={`flex-1 py-3 rounded-full border-2 items-center ${active ? "border-primary bg-primary-light" : "border-line bg-surface"}`}
               >
                 <Text className={`text-sm font-bold ${active ? "text-primary" : "text-on-surface-variant"}`}>{c}</Text>
               </Pressable>
@@ -143,8 +144,8 @@ export default function InformationsPersonnelles() {
         )}
 
         {error && (
-          <View className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2 mb-3">
-            <Text className="text-red-700 text-sm">{error}</Text>
+          <View className="bg-danger/10 border border-danger/30 rounded-xl p-3 mt-2 mb-3">
+            <Text className="text-danger text-sm">{error}</Text>
           </View>
         )}
 
@@ -153,7 +154,7 @@ export default function InformationsPersonnelles() {
           disabled={saving}
           className={`py-3.5 rounded-full items-center mt-6 ${saving ? "bg-outline" : "bg-primary"}`}
         >
-          {saving ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold">Enregistrer</Text>}
+          {saving ? <ActivityIndicator color={colors.white} /> : <Text className="text-white font-bold">Enregistrer</Text>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -168,8 +169,8 @@ function Input(props: React.ComponentProps<typeof TextInput>) {
   return (
     <TextInput
       {...props}
-      placeholderTextColor="#94a3b8"
-      className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-4 bg-white"
+      placeholderTextColor={colors.outline}
+      className="border border-line rounded-xl px-4 py-3 text-on-surface mb-4 bg-surface"
     />
   );
 }

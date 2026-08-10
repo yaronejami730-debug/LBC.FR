@@ -1,0 +1,70 @@
+{
+  "key": "vehicules.voitures.vente",
+  "version": 1,
+  "status": "published",
+  "label": "Voiture — Vente",
+  "icon": "car",
+  "extends": ["_base.listing", "_mixin.vehicule"],
+  "taxonomy": { "category": "vehicules", "subcategory": "voitures", "listing_type": "vente", "path_labels": ["Véhicules", "Voitures", "Vente"] },
+  "transaction_types": ["vente", "echange"],
+  "default_transaction_type": "vente",
+
+  "fields": [
+    { "ref": "prix_vente",          "step": "tarification", "order": 1, "required": true, "facet": true, "seo_attr": true },
+    { "ref": "prix_negociable",     "step": "tarification", "order": 2 },
+    { "ref": "financement_possible","step": "tarification", "order": 3 },
+    { "ref": "reprise_possible",    "step": "tarification", "order": 4 },
+    { "ref": "mise_en_circulation", "step": "informations",     "order": 7, "required": true },
+    { "ref": "controle_technique",  "step": "caracteristiques", "order": 30, "required": true, "facet": true },
+    { "ref": "ct_validite",         "step": "caracteristiques", "order": 31, "visible_if": { "in": [{ "var": "attributes.controle_technique" }, ["Vierge, valide", "Valide avec défauts mineurs"]] } },
+    { "ref": "nb_proprietaires",    "step": "caracteristiques", "order": 32 },
+    { "ref": "carnet_entretien",    "step": "caracteristiques", "order": 33, "required": true },
+    { "ref": "garantie_mois",       "step": "caracteristiques", "order": 34 },
+    { "ref": "etat",                "step": "caracteristiques", "order": 35, "required": true }
+  ],
+
+  "pricing": { "model": "single", "currency": "EUR", "negotiable": true, "hide_price_allowed": false, "vat_mode": "both" },
+  "availability": { "mode": "none" },
+
+  "display": {
+    "template": "vehicle",
+    "title_pattern": "{marque} {modele} {version_finition} — {annee_vehicule}",
+    "blocks": [
+      { "type": "hero_gallery" },
+      { "type": "price_block", "options": { "show_negotiable": true, "show_financing": true } },
+      { "type": "key_facts", "fields": ["annee_vehicule", "kilometrage", "carburant", "boite_vitesse", "puissance_din", "controle_technique"] },
+      { "type": "description" },
+      { "type": "specs_table", "label": "Fiche technique complète" },
+      { "type": "amenities", "label": "Équipements", "fields": ["equipements_vehicule"] },
+      { "type": "documents", "label": "Historique et documents" },
+      { "type": "map" },
+      { "type": "seller_card" },
+      { "type": "similar" },
+      { "type": "cta_bar", "options": { "primary": "Contacter le vendeur" } }
+    ],
+    "card": { "primary_price": "vente", "facts": ["annee_vehicule", "kilometrage", "carburant", "boite_vitesse"] }
+  },
+
+  "validation": [
+    { "id": "km_aberrant", "severity": "warning", "when": { ">": [{ "var": "computed.km_par_an" }, 60000] }, "message": "Le kilométrage annuel moyen paraît très élevé. Vérifiez l'année et le kilométrage.", "field": "kilometrage" },
+    { "id": "ct_obligatoire", "severity": "error", "when": { "and": [{ "<": [{ "var": "computed.age_vehicule" }, 50] }, { ">": [{ "var": "computed.age_vehicule" }, 4] }, { "!": { "var": "attributes.controle_technique" } }] }, "message": "Le contrôle technique doit être renseigné pour un véhicule de plus de 4 ans.", "field": "controle_technique" },
+    { "id": "photo_compteur", "severity": "warning", "when": { "!": { "var": "media.has_group.tableau_bord" } }, "message": "Une photo du compteur rassure les acheteurs et accélère la vente.", "field": "photos" }
+  ],
+
+  "seo": {
+    "url_pattern": "/vehicules/voitures/{marque_slug}/{modele_slug}/{city_slug}/{id}-{title_slug}",
+    "schema_org": ["Car", "Offer"],
+    "title_pattern": "{marque} {modele} {annee_vehicule} — {kilometrage} km, {carburant} — {prix_vente} | Deal&Co",
+    "meta_description_pattern": "{marque} {modele} {version_finition} de {annee_vehicule}, {kilometrage} km, {carburant}, boîte {boite_vitesse}. {prix_vente} à {ville}.",
+    "h1_pattern": "{marque} {modele} {version_finition} {annee_vehicule}",
+    "hub_pages": true
+  },
+
+  "classifier": {
+    "head_nouns": ["voiture", "auto", "berline", "citadine", "suv", "break", "cabriolet", "coupé", "monospace", "4x4", "utilitaire", "fourgon", "camionnette"],
+    "modifiers": ["km", "kilométrage", "essence", "diesel", "hybride", "boîte auto", "cv", "contrôle technique", "première main", "carte grise"],
+    "negative": ["m²", "pièces", "chambres", "locataire", "loyer", "dpe", "copropriété", "couchages", "cuisine équipée"],
+    "transaction_cues": { "vente": ["à vendre", "vends", "vente", "cède", "prix ferme", "négociable"] },
+    "prior": 1.0
+  }
+}

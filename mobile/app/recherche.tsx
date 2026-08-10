@@ -11,13 +11,11 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { track } from "@/lib/track";
 import { useAuth } from "@/lib/auth";
-import { formatPrice, firstImage, timeAgo } from "@/lib/format";
 import { CATEGORIES } from "@/lib/categories";
 import FilterSheet, {
   type Filters,
@@ -26,6 +24,9 @@ import FilterSheet, {
   filtersToQuery,
   countActiveFilters,
 } from "@/components/search/FilterSheet";
+import { colors } from "@/lib/theme";
+import BackButton from "@/components/ui/BackButton";
+import SearchListingCard from "@/components/search/SearchListingCard";
 
 type Listing = {
   id: string;
@@ -52,7 +53,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 export default function RechercheScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ q?: string; category?: string }>();
+  const params = useLocalSearchParams<{ q?: string; category?: string; focus?: string }>();
 
   const initialCategory = params.category
     ? CATEGORIES.find((c) => c.id === params.category || c.label === params.category)?.label ?? ""
@@ -189,14 +190,12 @@ export default function RechercheScreen() {
   const activeCount = countActiveFilters(filters);
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app">
       {/* Barre recherche + retour */}
       <View className="flex-row items-center gap-2 px-3 pt-1 pb-2">
-        <Pressable onPress={() => router.back()} className="p-1 active:opacity-60">
-          <Ionicons name="chevron-back" size={26} color="#2f6fb8" />
-        </Pressable>
-        <View className="flex-1 flex-row items-center bg-surface-container rounded-full px-3 py-2">
-          <Ionicons name="search" size={18} color="#94a3b8" />
+        <BackButton />
+        <View className="flex-1 flex-row items-center bg-surface border border-line rounded-full px-3 py-2">
+          <Ionicons name="search" size={18} color={colors.outline} />
           <TextInput
             value={query}
             onChangeText={(v) => { setQuery(v); setShowSugg(true); }}
@@ -208,14 +207,14 @@ export default function RechercheScreen() {
               if (q) track("search", { q });
             }}
             returnKeyType="search"
-            autoFocus={!params.q}
+            autoFocus={params.focus === "1"}
             placeholder="Que cherchez-vous ?"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.outline}
             className="flex-1 ml-2 text-on-surface"
           />
           {query.length > 0 && (
             <Pressable onPress={() => { setQuery(""); setShowSugg(false); }} className="pl-2">
-              <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              <Ionicons name="close-circle" size={18} color={colors.outline} />
             </Pressable>
           )}
         </View>
@@ -224,7 +223,7 @@ export default function RechercheScreen() {
       {/* Pills : Filtres / Catégorie / Tri */}
       <View className="flex-row gap-2 px-3 pb-2">
         <Pressable onPress={() => setSheetOpen(true)} className="flex-row items-center border border-primary rounded-full px-3 py-2">
-          <Ionicons name="options-outline" size={16} color="#2f6fb8" />
+          <Ionicons name="options-outline" size={16} color={colors.primary} />
           <Text className="text-primary font-bold text-sm ml-1">Filtres</Text>
           {activeCount > 0 && (
             <View className="bg-primary rounded-full w-5 h-5 items-center justify-center ml-1.5">
@@ -236,18 +235,18 @@ export default function RechercheScreen() {
         {filters.category ? (
           <Pressable onPress={() => setFilters((f) => ({ ...f, category: "" }))} className="flex-row items-center border border-primary rounded-full px-3 py-2">
             <Text className="text-primary font-bold text-sm">{filters.category}</Text>
-            <Ionicons name="close-circle" size={16} color="#2f6fb8" style={{ marginLeft: 4 }} />
+            <Ionicons name="close-circle" size={16} color={colors.primary} style={{ marginLeft: 4 }} />
           </Pressable>
         ) : null}
 
         <Pressable onPress={openSort} className="flex-row items-center border border-primary rounded-full px-3 py-2">
           <Text className="text-primary font-bold text-sm">Tri : {SORT_LABELS[filters.sort]}</Text>
-          <Ionicons name="chevron-down" size={14} color="#2f6fb8" style={{ marginLeft: 2 }} />
+          <Ionicons name="chevron-down" size={14} color={colors.primary} style={{ marginLeft: 2 }} />
         </Pressable>
       </View>
 
       {showSugg && suggestions.length > 0 && (
-        <View className="bg-surface border-t border-b border-surface-container">
+        <View className="bg-surface border-t border-b border-line">
           {suggestions.map((s, i) => (
             <Pressable
               key={`${s.type}-${i}-${s.value}`}
@@ -262,26 +261,26 @@ export default function RechercheScreen() {
                   if (s.value.trim()) track("search", { q: s.value.trim() });
                 }
               }}
-              className="flex-row items-center px-4 py-3 active:bg-surface-container-low"
+              className="flex-row items-center px-4 py-3 active:bg-surface-container"
             >
-              <Ionicons name={s.type === "query" ? "search" : "pricetag-outline"} size={18} color="#94a3b8" />
+              <Ionicons name={s.type === "query" ? "search" : "pricetag-outline"} size={18} color={colors.outline} />
               <View className="flex-1 ml-3">
                 <Text className="text-on-surface text-sm" numberOfLines={1}>
                   {s.type === "query" ? `Rechercher "${s.value}"` : s.value}
                 </Text>
                 {s.sub && <Text className="text-on-surface-variant text-xs mt-0.5">{s.sub}</Text>}
               </View>
-              <Ionicons name="arrow-up" size={14} color="#94a3b8" style={{ transform: [{ rotate: "-45deg" }] }} />
+              <Ionicons name="arrow-up" size={14} color={colors.outline} style={{ transform: [{ rotate: "-45deg" }] }} />
             </Pressable>
           ))}
         </View>
       )}
 
       {loading && page === 1 ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={colors.primary} /></View>
       ) : error ? (
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-600 text-center mb-4">{error}</Text>
+          <Text className="text-danger text-center mb-4">{error}</Text>
           <Pressable onPress={() => load(1)} className="bg-primary px-4 py-2 rounded-full">
             <Text className="text-white font-semibold">Réessayer</Text>
           </Pressable>
@@ -297,62 +296,18 @@ export default function RechercheScreen() {
             </Text>
           }
           ListEmptyComponent={<View className="py-16 items-center"><Text className="text-on-surface-variant">Aucun résultat</Text></View>}
-          ListFooterComponent={loadingMore ? <ActivityIndicator color="#2f6fb8" style={{ marginTop: 16 }} /> : null}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} style={{ marginTop: 16 }} /> : null}
           onEndReached={onLoadMore}
           onEndReachedThreshold={0.5}
-          ItemSeparatorComponent={() => <View className="h-4" />}
-          renderItem={({ item }) => {
-            const img = firstImage(item.images);
-            const fav = favIds.has(item.id);
-            const seller = item.user?.isPro && item.user?.companyName ? item.user.companyName : item.user?.name;
-            const specs = [item.vehicleYear, item.vehicleKm ? `${item.vehicleKm.toLocaleString("fr-FR")} km` : null, item.condition]
-              .filter(Boolean)
-              .join(" • ");
-            return (
-              <Pressable onPress={() => router.push(`/annonce/${item.id}`)} className="bg-surface-container-low rounded-2xl overflow-hidden active:opacity-90">
-                <View style={{ width: "100%", aspectRatio: 4 / 3 }} className="bg-surface-container">
-                  {img ? (
-                    <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={150} cachePolicy="memory-disk" recyclingKey={item.id} />
-                  ) : (
-                    <View className="flex-1 items-center justify-center"><Text className="text-outline text-xs">Aucune photo</Text></View>
-                  )}
-                  {item.isPremium && (
-                    <View className="absolute top-3 left-3 bg-[#8b5cf6] px-2.5 py-1 rounded-full">
-                      <Text className="text-white text-[11px] font-bold">À la une</Text>
-                    </View>
-                  )}
-                  <Pressable onPress={() => toggleFav(item.id)} hitSlop={8} className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white items-center justify-center">
-                    <Ionicons name={fav ? "heart" : "heart-outline"} size={20} color={fav ? "#ef4444" : "#1a1a1a"} />
-                  </Pressable>
-                </View>
-                <View className="p-3">
-                  <Text className="text-on-surface text-base font-bold" numberOfLines={1}>{item.title}</Text>
-                  <Text className="text-on-surface text-lg font-extrabold mt-0.5">{formatPrice(item.price)}</Text>
-                  {item.user?.isPro && (
-                    <View className="self-start border border-primary rounded-full px-2 py-0.5 mt-1">
-                      <Text className="text-primary text-[10px] font-bold">Pro</Text>
-                    </View>
-                  )}
-                  {specs ? <Text className="text-on-surface-variant text-xs mt-1.5">{specs}</Text> : null}
-                  {seller && (
-                    <View className="flex-row items-center mt-2">
-                      <View className="w-6 h-6 rounded-full bg-surface-container overflow-hidden mr-2">
-                        {item.user?.avatar && (
-                          <Image source={{ uri: item.user.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
-                        )}
-                      </View>
-                      <Text className="text-on-surface-variant text-xs flex-1" numberOfLines={1}>
-                        Par {seller}
-                      </Text>
-                    </View>
-                  )}
-                  <Text className="text-on-surface-variant text-xs mt-1" numberOfLines={1}>
-                    {item.location} · {timeAgo(item.createdAt)}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          }}
+          ItemSeparatorComponent={() => <View className="h-3" />}
+          renderItem={({ item }) => (
+            <SearchListingCard
+              listing={item}
+              favorite={favIds.has(item.id)}
+              onPress={() => router.push(`/annonce/${item.id}`)}
+              onToggleFavorite={() => toggleFav(item.id)}
+            />
+          )}
         />
       )}
 
@@ -362,9 +317,9 @@ export default function RechercheScreen() {
           onPress={saveAlert}
           disabled={savingAlert}
           className="flex-row items-center bg-primary px-6 py-3.5 rounded-full shadow-lg active:opacity-90"
-          style={{ shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}
+          style={{ shadowColor: colors.navy, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}
         >
-          <Ionicons name="notifications-outline" size={18} color="#fff" />
+          <Ionicons name="notifications-outline" size={18} color={colors.white} />
           <Text className="text-white font-bold ml-2">{savingAlert ? "Sauvegarde…" : "Sauvegarder la recherche"}</Text>
         </Pressable>
       </View>

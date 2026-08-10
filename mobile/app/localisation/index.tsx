@@ -3,7 +3,9 @@ import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, Polygon, Circle, PROVIDER_DEFAULT, type Region } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter, Stack } from "expo-router";
+import { useLocalSearchParams, Stack } from "expo-router";
+import { colors } from "@/lib/theme";
+import BackButton from "@/components/ui/BackButton";
 
 type Geometry = {
   type: "Polygon" | "MultiPolygon";
@@ -29,7 +31,6 @@ function polyFromGeojson(geo: Geometry): { latitude: number; longitude: number }
 }
 
 export default function LocalisationScreen() {
-  const router = useRouter();
   const { location } = useLocalSearchParams<{ location?: string }>();
 
   const [region, setRegion] = useState<Region | null>(null);
@@ -98,13 +99,11 @@ export default function LocalisationScreen() {
   const initial = useMemo<Region>(() => region ?? { latitude: 46.6, longitude: 2.4, latitudeDelta: 8, longitudeDelta: 8 }, [region]);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-app" edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View className="flex-row items-center px-3 py-2 border-b border-surface-container">
-        <Pressable onPress={() => router.back()} hitSlop={10} className="p-1 active:opacity-60">
-          <Ionicons name="chevron-back" size={26} color="#1a1a1a" />
-        </Pressable>
+      <View className="flex-row items-center px-3 py-2 border-b border-line">
+        <BackButton />
         <View className="flex-1 ml-2">
           <Text className="text-on-surface text-base font-extrabold" numberOfLines={1}>{label || "Localisation"}</Text>
           <Text className="text-on-surface-variant text-[11px]">L'adresse exacte du vendeur n'est jamais affichée</Text>
@@ -124,7 +123,7 @@ export default function LocalisationScreen() {
                 <Polygon
                   key={i}
                   coordinates={ring}
-                  strokeColor="#2f6fb8"
+                  strokeColor={colors.primary}
                   fillColor="rgba(47,111,184,0.15)"
                   strokeWidth={2}
                 />
@@ -134,23 +133,23 @@ export default function LocalisationScreen() {
               <Circle
                 center={marker}
                 radius={2000}
-                strokeColor="#2f6fb8"
+                strokeColor={colors.primary}
                 fillColor="rgba(47,111,184,0.15)"
                 strokeWidth={2}
               />
             )
           )}
-          {marker && <Marker coordinate={marker} pinColor="#2f6fb8" />}
+          {marker && <Marker coordinate={marker} pinColor={colors.primary} />}
         </MapView>
 
         {loading && (
-          <View className="absolute inset-0 items-center justify-center bg-black/10">
-            <ActivityIndicator color="#2f6fb8" />
+          <View className="absolute inset-0 items-center justify-center bg-navy/10">
+            <ActivityIndicator color={colors.primary} />
           </View>
         )}
         {error && !loading && (
-          <View className="absolute top-3 left-3 right-3 bg-red-50 border border-red-200 rounded-xl p-3">
-            <Text className="text-red-700 text-sm">{error}</Text>
+          <View className="absolute top-3 left-3 right-3 bg-danger/10 border border-danger/30 rounded-xl p-3">
+            <Text className="text-danger text-sm">{error}</Text>
           </View>
         )}
       </View>

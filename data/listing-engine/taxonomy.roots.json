@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "note": "Arbre racine administrable. Chaque feuille 'types' pointe vers une clé de ListingType. Ajouter une sous-catégorie = ajouter une entrée ici + une config JSON. Aucun déploiement de code.",
+  "categories": [
+    {
+      "slug": "immobilier", "label": "Immobilier", "icon": "home", "order": 1,
+      "subcategories": [
+        { "slug": "vente", "label": "Vente", "transaction_types": ["vente"],
+          "types": ["appartement", "maison", "villa", "terrain", "parking", "local-commercial", "bureau", "immeuble", "chateau", "ferme"] },
+        { "slug": "location-longue-duree", "label": "Location longue durée", "transaction_types": ["location_longue_duree"],
+          "types": ["appartement", "maison", "studio", "chambre", "colocation", "parking", "local-commercial", "bureau", "box-stockage"] },
+        { "slug": "location-vacances", "label": "Location de vacances", "transaction_types": ["location_saisonniere"],
+          "types": ["appartement", "maison", "villa", "studio", "chalet", "chambre", "mobil-home", "peniche", "insolite"] },
+        { "slug": "colocation", "label": "Colocation", "transaction_types": ["location_longue_duree"], "types": ["chambre", "appartement-entier"] },
+        { "slug": "viager", "label": "Viager", "transaction_types": ["vente"], "types": ["appartement", "maison"] },
+        { "slug": "programme-neuf", "label": "Programme neuf", "transaction_types": ["vente"], "types": ["appartement", "maison"] }
+      ]
+    },
+    {
+      "slug": "vehicules", "label": "Véhicules", "icon": "car", "order": 2,
+      "subcategories": [
+        { "slug": "voitures", "label": "Voitures", "transaction_types": ["vente", "location", "loa", "lld", "leasing", "echange"], "types": ["vente", "location", "loa-lld"] },
+        { "slug": "motos", "label": "Motos et scooters", "transaction_types": ["vente", "location"], "types": ["vente", "location"] },
+        { "slug": "utilitaires", "label": "Utilitaires et camions", "transaction_types": ["vente", "location", "lld"], "types": ["vente", "location"] },
+        { "slug": "camping-cars", "label": "Camping-cars et vans", "transaction_types": ["vente", "location"], "types": ["vente", "location"] },
+        { "slug": "nautisme", "label": "Bateaux et jet-skis", "transaction_types": ["vente", "location"], "types": ["vente", "location"] },
+        { "slug": "velos", "label": "Vélos et trottinettes", "transaction_types": ["vente", "location"], "types": ["vente", "location"] },
+        { "slug": "pieces", "label": "Pièces et accessoires", "transaction_types": ["vente"], "types": ["piece-detachee", "pneus", "jantes", "equipement"] },
+        { "slug": "engins", "label": "Engins et agricole", "transaction_types": ["vente", "location"], "types": ["vente", "location"] }
+      ]
+    },
+    {
+      "slug": "services", "label": "Services", "icon": "briefcase", "order": 3,
+      "note": "Les types de prestation sont alimentés par catalogue_prestations_pro.json (2 200 entrées, 3 niveaux).",
+      "subcategories": [
+        { "slug": "evenementiel", "label": "Événementiel", "transaction_types": ["prestation"], "types": ["photographe", "videaste", "dj", "traiteur", "wedding-planner", "animation", "decoration", "location-salle"] },
+        { "slug": "travaux", "label": "Travaux et rénovation", "transaction_types": ["prestation"], "types": ["plomberie", "electricite", "peinture", "maconnerie", "menuiserie", "carrelage", "toiture", "isolation"] },
+        { "slug": "maison", "label": "Services à domicile", "transaction_types": ["prestation"], "types": ["menage", "jardinage", "garde-enfants", "aide-seniors", "bricolage", "demenagement"] },
+        { "slug": "beaute-bienetre", "label": "Beauté et bien-être", "transaction_types": ["prestation"], "types": ["coiffure", "esthetique", "massage", "onglerie", "maquillage"] },
+        { "slug": "cours", "label": "Cours et formation", "transaction_types": ["prestation"], "types": ["soutien-scolaire", "langues", "musique", "sport", "informatique", "formation-pro"] },
+        { "slug": "digital", "label": "Web et digital", "transaction_types": ["prestation"], "types": ["site-web", "developpement", "seo", "design", "redaction", "reseaux-sociaux"] },
+        { "slug": "auto-services", "label": "Services automobiles", "transaction_types": ["prestation"], "types": ["mecanique", "carrosserie", "lavage", "depannage"] },
+        { "slug": "animaux-services", "label": "Services animaliers", "transaction_types": ["prestation"], "types": ["garde", "toilettage", "education", "promenade"] },
+        { "slug": "sante", "label": "Santé et paramédical", "transaction_types": ["prestation"], "types": ["infirmier", "kine", "osteopathe", "psychologue", "dieteticien"] },
+        { "slug": "entreprise", "label": "Services aux entreprises", "transaction_types": ["prestation"], "types": ["comptabilite", "juridique", "secretariat", "nettoyage-pro", "securite", "conseil"] }
+      ]
+    },
+    {
+      "slug": "materiel", "label": "Matériel", "icon": "package", "order": 4,
+      "subcategories": [
+        { "slug": "location", "label": "Location de matériel", "transaction_types": ["location"], "types": ["sonorisation", "eclairage", "video", "photo", "outillage", "chantier", "jardinage", "reception", "sport", "camping", "bebe", "informatique", "scene"] },
+        { "slug": "vente", "label": "Vente de matériel", "transaction_types": ["vente"], "types": ["outillage", "chantier", "professionnel", "agricole"] }
+      ]
+    },
+    {
+      "slug": "emploi", "label": "Emploi", "icon": "user-check", "order": 5,
+      "subcategories": [
+        { "slug": "offres", "label": "Offres d'emploi", "transaction_types": ["emploi"], "types": ["cdi", "cdd", "interim", "alternance", "stage", "saisonnier"] },
+        { "slug": "missions", "label": "Missions freelance", "transaction_types": ["mission"], "types": ["mission-courte", "mission-longue", "regie"] },
+        { "slug": "recherche", "label": "Recherche d'emploi", "transaction_types": ["recherche"], "types": ["candidature-spontanee"] }
+      ]
+    },
+    {
+      "slug": "maison-jardin", "label": "Maison et jardin", "icon": "sofa", "order": 6,
+      "subcategories": [
+        { "slug": "meubles", "label": "Meubles", "transaction_types": ["vente", "don"], "types": ["canape", "table", "lit", "rangement", "bureau", "exterieur"] },
+        { "slug": "electromenager", "label": "Électroménager", "transaction_types": ["vente"], "types": ["gros-electromenager", "petit-electromenager"] },
+        { "slug": "decoration", "label": "Décoration", "transaction_types": ["vente"], "types": ["luminaire", "tapis", "art", "textile"] },
+        { "slug": "bricolage", "label": "Bricolage et jardin", "transaction_types": ["vente"], "types": ["outillage", "materiaux", "plantes", "piscine"] }
+      ]
+    },
+    {
+      "slug": "multimedia", "label": "Multimédia", "icon": "smartphone", "order": 7,
+      "subcategories": [
+        { "slug": "informatique", "label": "Informatique", "transaction_types": ["vente"], "types": ["ordinateur-portable", "ordinateur-fixe", "tablette", "composant", "peripherique"] },
+        { "slug": "telephonie", "label": "Téléphonie", "transaction_types": ["vente"], "types": ["smartphone", "accessoire", "montre-connectee"] },
+        { "slug": "image-son", "label": "Image et son", "transaction_types": ["vente"], "types": ["television", "hifi", "photo", "casque"] },
+        { "slug": "jeux-video", "label": "Jeux vidéo", "transaction_types": ["vente"], "types": ["console", "jeu", "accessoire"] }
+      ]
+    },
+    {
+      "slug": "mode", "label": "Mode", "icon": "shirt", "order": 8,
+      "subcategories": [
+        { "slug": "vetements", "label": "Vêtements", "transaction_types": ["vente"], "types": ["femme", "homme", "enfant", "bebe"] },
+        { "slug": "chaussures", "label": "Chaussures", "transaction_types": ["vente"], "types": ["femme", "homme", "enfant"] },
+        { "slug": "accessoires", "label": "Accessoires et luxe", "transaction_types": ["vente", "location"], "types": ["sac", "montre", "bijou", "lunettes", "location-tenue"] }
+      ]
+    },
+    {
+      "slug": "loisirs", "label": "Loisirs", "icon": "gamepad-2", "order": 9,
+      "subcategories": [
+        { "slug": "sport", "label": "Sport", "transaction_types": ["vente", "location"], "types": ["fitness", "cycles", "glisse", "nautique", "montagne"] },
+        { "slug": "musique", "label": "Instruments de musique", "transaction_types": ["vente", "location"], "types": ["guitare", "piano", "batterie", "vent", "studio"] },
+        { "slug": "collection", "label": "Collection", "transaction_types": ["vente"], "types": ["vinyle", "carte", "monnaie", "figurine", "antiquite"] },
+        { "slug": "livres", "label": "Livres et BD", "transaction_types": ["vente", "don"], "types": ["livre", "bd", "manga", "scolaire"] },
+        { "slug": "billetterie", "label": "Billetterie", "transaction_types": ["vente"], "types": ["concert", "sport", "spectacle", "parc"] }
+      ]
+    },
+    {
+      "slug": "famille", "label": "Famille", "icon": "baby", "order": 10,
+      "subcategories": [
+        { "slug": "puericulture", "label": "Puériculture", "transaction_types": ["vente", "location", "don"], "types": ["poussette", "siege-auto", "lit-bebe", "vetement-bebe", "jouet"] },
+        { "slug": "animaux", "label": "Animaux", "transaction_types": ["vente", "don"], "types": ["chien", "chat", "nac", "accessoire", "equide"] }
+      ]
+    },
+    {
+      "slug": "professionnel", "label": "Matériel et locaux professionnels", "icon": "building", "order": 11,
+      "subcategories": [
+        { "slug": "equipement-pro", "label": "Équipement professionnel", "transaction_types": ["vente", "location"], "types": ["restauration", "medical", "coiffure", "commerce", "industrie", "agricole"] },
+        { "slug": "fonds-commerce", "label": "Fonds de commerce", "transaction_types": ["vente"], "types": ["restaurant", "bar", "commerce", "franchise"] },
+        { "slug": "bureaux", "label": "Bureaux et coworking", "transaction_types": ["location"], "types": ["bureau-prive", "poste-coworking", "salle-reunion", "domiciliation"] }
+      ]
+    }
+  ]
+}

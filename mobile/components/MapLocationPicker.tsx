@@ -4,6 +4,7 @@ import MapView, { Marker, type Region } from "react-native-maps";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { colors } from "@/lib/theme";
 
 export type LocationValue = {
   label: string;
@@ -92,7 +93,7 @@ export function MapLocationPicker({ value, onChange }: Props) {
               draggable
               coordinate={{ latitude: value.latitude, longitude: value.longitude }}
               onDragEnd={(e) => onDragEnd(e.nativeEvent.coordinate.latitude, e.nativeEvent.coordinate.longitude)}
-              pinColor="#2f6fb8"
+              pinColor={colors.primary}
             />
           )}
         </MapView>
@@ -105,10 +106,10 @@ export function MapLocationPicker({ value, onChange }: Props) {
           className={`flex-row items-center px-3 py-2 rounded-full ${loadingGps ? "bg-outline" : "bg-primary"}`}
         >
           {loadingGps ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.white} size="small" />
           ) : (
             <>
-              <Ionicons name="locate" size={14} color="#fff" />
+              <Ionicons name="locate" size={14} color={colors.white} />
               <Text className="text-white text-xs font-bold ml-1">Ma position</Text>
             </>
           )}

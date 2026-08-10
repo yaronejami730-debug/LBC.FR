@@ -58,7 +58,7 @@ export default function AdCarousel({ ads: adsProp }: { ads?: Ad[] }) {
           track(ad.id, "click");
           Linking.openURL(ad.destinationUrl).catch(() => {});
         }}
-        className="flex-row items-center bg-surface-container-low border border-surface-container rounded-2xl p-3 active:opacity-80"
+        className="flex-row items-center bg-surface border border-line rounded-card p-3 active:opacity-80"
       >
         <View className="w-20 h-20 rounded-xl overflow-hidden bg-surface-container mr-3">
           <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" />

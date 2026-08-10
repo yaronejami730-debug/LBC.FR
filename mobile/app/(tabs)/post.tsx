@@ -24,12 +24,16 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { API_BASE_URL } from "@/lib/config";
 import { getToken } from "@/lib/tokenStore";
-import { apiFetch } from "@/lib/api";
-import { CATEGORIES, CONDITIONS } from "@/lib/categories";
+import { apiFetch, ApiError } from "@/lib/api";
+import { type Category } from "@/lib/categories";
+import { useTaxonomy, findCategoryByLabel } from "@/lib/taxonomy";
+import { useOfferIntent } from "@/lib/offer-intent";
 import { getPhotoTemplate, type PhotoSlot } from "@/lib/photoTemplates";
 import { MapLocationPicker, type LocationValue } from "@/components/MapLocationPicker";
+import { colors } from "@/lib/theme";
 
-type CategoryDef = (typeof CATEGORIES)[number];
+type CategoryDef = Category;
+type WellnessService = { label: string; durationMin: string; price: string };
 type SlotPhoto = { slotKey: string | null; url: string };
 
 const DRAFT_REMINDER_KEY = "dealandco.draft.lastReminderAt";
@@ -65,11 +69,24 @@ export default function PostScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
+  const { categories: CATEGORIES, conditions: CONDITIONS, wellness, fieldSets } = useTaxonomy();
+  const isPro = Boolean(user?.isPro);
+
   const [step, setStep] = useState(0);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState<CategoryDef | null>(null);
   const [subcategory, setSubcategory] = useState<string>("");
+  // Distingue un choix explicite de la pré-sélection automatique : la
+  // suggestion ne doit jamais écraser ce que l'utilisateur a choisi lui-même.
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  // Champs « Beauté & Bien-être » — mêmes clés que le formulaire web, elles
+  // sont relues telles quelles par /api/listings.
+  const [wDuration, setWDuration] = useState("");
+  const [wPriceUnit, setWPriceUnit] = useState("");
+  const [wTariffType, setWTariffType] = useState("fixe");
+  const [wPlace, setWPlace] = useState("");
+  const [wServices, setWServices] = useState<WellnessService[]>([]);
   const [suggestedCat, setSuggestedCat] = useState<{ label: string; sub: string } | null>(null);
   const [suggestedAttrs, setSuggestedAttrs] = useState<{ brand: string | null; model: string | null; year: number | null }>({ brand: null, model: null, year: null });
   const [brand, setBrand] = useState("");
@@ -89,6 +106,24 @@ export default function PostScreen() {
   const [uploadingImg, setUploadingImg] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Ce que l'annonce vend réellement — déduit du titre autant que de la
+   * rubrique. Décide des champs affichés : demander « État » pour une manucure
+   * était le défaut d'origine, une prestation n'a pas d'état.
+   */
+  const { intent, spec } = useOfferIntent({
+    title,
+    description,
+    category,
+    subcategory,
+    price,
+  });
+  /** L'utilisateur garde le dernier mot sur le régime proposé. */
+  const [regimeOverride, setRegimeOverride] = useState(false);
+  const fieldSpec = regimeOverride ? (fieldSets.bien ?? spec) : spec;
+  /** Valeurs des champs déclarés en données par le régime. */
+  const [extraFields, setExtraFields] = useState<Record<string, string>>({});
 
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const priceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,8 +178,14 @@ export default function PostScreen() {
         { auth: false },
       )
         .then((r) => {
-          if (r.categoryLabel) setSuggestedCat({ label: r.categoryLabel, sub: r.subcategory ?? "" });
-          else setSuggestedCat(null);
+          if (r.categoryLabel) {
+            setSuggestedCat({ label: r.categoryLabel, sub: r.subcategory ?? "" });
+            const match = findCategoryByLabel(CATEGORIES, r.categoryLabel);
+            if (match && !categoryTouched) {
+              setCategory(match);
+              setSubcategory(r.subcategory ?? "");
+            }
+          } else setSuggestedCat(null);
           if (r.attributes) {
             setSuggestedAttrs(r.attributes);
             let touched = false;
@@ -157,7 +198,7 @@ export default function PostScreen() {
         .catch(() => setSuggestedCat(null));
     }, 350);
     return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
-  }, [title]);
+  }, [title, CATEGORIES, categoryTouched]);
 
   // ⚠️ Tous les hooks AVANT les early returns (!user / !emailVerified) — sinon
   // le nombre de hooks change entre rendus → "Rendered more hooks" (Rules of Hooks).
@@ -197,6 +238,22 @@ export default function PostScreen() {
     return () => { if (priceTimer.current) clearTimeout(priceTimer.current); };
   }, [category?.id, category?.label, subcategory, brand, condition]);
 
+  // Quitter le régime « prestation » vide ses champs : sinon une durée saisie
+  // puis abandonnée partirait sur une annonce d'une autre nature. Idem pour les
+  // champs déclarés par le régime, qui n'ont plus d'existence hors de lui.
+  useEffect(() => {
+    if (fieldSpec.core.serviceDetails) return;
+    setWDuration("");
+    setWPriceUnit("");
+    setWTariffType("fixe");
+    setWPlace("");
+    setWServices([]);
+  }, [fieldSpec.core.serviceDetails]);
+
+  useEffect(() => {
+    setExtraFields({});
+  }, [fieldSpec.id]);
+
   // Si la catégorie change, requalifie les photos affectées à des slots disparus en extras.
   useEffect(() => {
     const validKeys = new Set(getPhotoTemplate(category?.id).slots.map((s) => s.key));
@@ -215,7 +272,7 @@ export default function PostScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-app">
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-on-surface text-xl font-bold mb-2">Publier une annonce</Text>
           <Text className="text-on-surface-variant text-sm mb-6 text-center">Connectez-vous pour publier.</Text>
@@ -229,7 +286,7 @@ export default function PostScreen() {
 
   if (!user.emailVerified) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-app">
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-on-surface text-xl font-bold mb-2">Email non vérifié</Text>
           <Text className="text-on-surface-variant text-sm mb-6 text-center">
@@ -393,17 +450,59 @@ export default function PostScreen() {
 
   const pickSuggestedCategory = () => {
     if (!suggestedCat) return;
-    const cat = CATEGORIES.find((c) => c.label === suggestedCat.label);
-    if (!cat) return;
+    const cat = findCategoryByLabel(CATEGORIES, suggestedCat.label);
+    if (!cat) {
+      // Référentiel local en retard sur le serveur : on le dit au lieu de ne
+      // rien faire, sinon l'étape suivante réclame une catégorie déjà trouvée.
+      setError("Catégorie indisponible hors ligne. Choisissez-la à l'étape suivante.");
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setCategory(cat);
     setSubcategory(suggestedCat.sub);
+    setCategoryTouched(true);
   };
+
+  const addService = () => {
+    Haptics.selectionAsync().catch(() => {});
+    setWServices((prev) => [...prev, { label: "", durationMin: "", price: "" }]);
+  };
+  const updateService = (index: number, patch: Partial<WellnessService>) =>
+    setWServices((prev) => prev.map((sv, i) => (i === index ? { ...sv, ...patch } : sv)));
+  const removeService = (index: number) =>
+    setWServices((prev) => prev.filter((_, i) => i !== index));
 
   const selectCategory = (c: CategoryDef) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setCategory(c);
     setSubcategory("");
+    setCategoryTouched(true);
+  };
+
+  /**
+   * Bloc bien-être envoyé au serveur. Les clés sont celles que lit
+   * /api/listings ; la carte n'est transmise que pour un pro, le serveur la
+   * jette de toute façon pour un particulier.
+   */
+  const wellnessMetadata = (): Record<string, unknown> => {
+    if (!fieldSpec.core.serviceDetails) return {};
+    const services = isPro && fieldSpec.core.serviceCard
+      ? wServices
+          .map((sv) => ({
+            label: sv.label.trim(),
+            durationMin: parseInt(sv.durationMin, 10) || null,
+            price: parseFloat(sv.price.replace(",", ".")),
+          }))
+          .filter((sv) => sv.label.length > 0 && sv.price > 0)
+          .slice(0, wellness.maxServices)
+      : [];
+    return {
+      ...(wDuration ? { durationMin: parseInt(wDuration, 10) } : {}),
+      ...(wPriceUnit ? { priceUnit: wPriceUnit } : {}),
+      ...(wTariffType ? { tariffType: wTariffType } : {}),
+      ...(wPlace ? { place: wPlace } : {}),
+      ...(services.length > 0 ? { services } : {}),
+    };
   };
 
   const submit = async () => {
@@ -425,13 +524,17 @@ export default function PostScreen() {
             subcategory: subcategory || null,
             description: description.trim(),
             location: location.trim(),
-            condition,
+            // L'état n'est envoyé que s'il a un sens. Le serveur le rejette
+            // aussi de son côté, mais autant ne pas fabriquer la valeur fausse.
+            ...(fieldSpec.core.condition ? { condition } : {}),
             images,
             metadata: {
               ...(brand.trim() ? { brand: brand.trim() } : {}),
               ...(model.trim() ? { model: model.trim() } : {}),
               ...(year.trim() ? { year: parseInt(year, 10) } : {}),
               ...(locationCoords ? { lat: locationCoords.lat, lng: locationCoords.lng } : {}),
+              ...(Object.keys(extraFields).length > 0 ? { fields: extraFields } : {}),
+              ...wellnessMetadata(),
             },
             phone: phone.trim() || null,
             hidePhone,
@@ -453,7 +556,22 @@ export default function PostScreen() {
       router.replace(`/annonce/${created.id}`);
     } catch (e) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      setError(e instanceof Error ? e.message : "Erreur lors de la publication");
+      // Quota bien-être d'un particulier : le serveur répond 403 avec une
+      // invitation à ouvrir un espace pro. C'est un refus, pas une sanction.
+      const payload = e instanceof ApiError ? (e.payload as { proUpgradeInvite?: string; wellnessLimitReached?: boolean } | null) : null;
+      if (payload?.wellnessLimitReached) {
+        Alert.alert(
+          "Trop d'annonces bien-être",
+          payload.proUpgradeInvite ?? (e instanceof Error ? e.message : ""),
+          [
+            { text: "Plus tard", style: "cancel" },
+            { text: "Passer en pro", onPress: () => router.push("/(tabs)/profile") },
+          ],
+        );
+        setError(null);
+      } else {
+        setError(e instanceof Error ? e.message : "Erreur lors de la publication");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -462,18 +580,18 @@ export default function PostScreen() {
   const current = STEPS[step];
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
         {/* Top bar : titre + croix */}
         <View className="flex-row items-center justify-between px-4 py-3">
           {step > 0 ? (
             <Pressable onPress={back} hitSlop={10} className="p-1 active:opacity-60">
-              <Ionicons name="chevron-back" size={26} color="#1a1a1a" />
+              <Ionicons name="chevron-back" size={26} color={colors.onSurface} />
             </Pressable>
           ) : <View style={{ width: 26 }} />}
           <Text className="text-on-surface text-base font-extrabold">Déposer une annonce</Text>
           <Pressable onPress={close} hitSlop={10} className="p-1 active:opacity-60">
-            <Ionicons name="close" size={26} color="#1a1a1a" />
+            <Ionicons name="close" size={26} color={colors.onSurface} />
           </Pressable>
         </View>
 
@@ -507,9 +625,9 @@ export default function PostScreen() {
               {suggestedCat && (
                 <Pressable
                   onPress={pickSuggestedCategory}
-                  className="flex-row items-center bg-primary/10 border border-primary/30 rounded-xl px-3 py-3 mt-2 active:opacity-80"
+                  className="flex-row items-center bg-primary-light border border-primary/30 rounded-xl px-3 py-3 mt-2 active:opacity-80"
                 >
-                  <Ionicons name="sparkles" size={18} color="#2f6fb8" />
+                  <Ionicons name="sparkles" size={18} color={colors.primary} />
                   <View className="flex-1 ml-2">
                     <Text className="text-primary text-xs font-bold">Catégorie suggérée</Text>
                     <Text className="text-on-surface text-sm font-semibold">
@@ -610,9 +728,9 @@ export default function PostScreen() {
                     <Image source={{ uri: displayUri(p.url) }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                     <Pressable
                       onPress={() => removeSlotPhoto(null, p.url)}
-                      className="absolute top-1 right-1 bg-black/70 rounded-full w-6 h-6 items-center justify-center"
+                      className="absolute top-1 right-1 bg-navy/70 rounded-full w-6 h-6 items-center justify-center"
                     >
-                      <Ionicons name="close" size={14} color="#fff" />
+                      <Ionicons name="close" size={14} color={colors.white} />
                     </Pressable>
                   </View>
                 ))}
@@ -620,13 +738,13 @@ export default function PostScreen() {
                   <Pressable
                     onPress={addExtraPhotos}
                     disabled={uploadingImg}
-                    className="w-[31%] aspect-square border-2 border-dashed border-outline/50 rounded-xl items-center justify-center bg-surface-container-low"
+                    className="w-[31%] aspect-square border-2 border-dashed border-outline/50 rounded-xl items-center justify-center bg-surface"
                   >
                     {uploadingImg ? (
-                      <ActivityIndicator color="#94a3b8" />
+                      <ActivityIndicator color={colors.outline} />
                     ) : (
                       <>
-                        <Ionicons name="add" size={28} color="#94a3b8" />
+                        <Ionicons name="add" size={28} color={colors.outline} />
                         <Text className="text-on-surface-variant text-xs font-bold mt-1">Ajouter</Text>
                       </>
                     )}
@@ -644,14 +762,14 @@ export default function PostScreen() {
               </Text>
               {/* Bandeau auto-fill */}
               {autoFilledFromTitle && (brand || model || year) && (
-                <View className="flex-row items-center bg-primary/10 border border-primary/30 rounded-xl px-3 py-2 mb-4">
-                  <Ionicons name="sparkles" size={16} color="#2f6fb8" />
+                <View className="flex-row items-center bg-primary-light border border-primary/30 rounded-xl px-3 py-2 mb-4">
+                  <Ionicons name="sparkles" size={16} color={colors.primary} />
                   <Text className="text-primary text-xs font-semibold ml-2 flex-1">Champs pré-remplis depuis votre titre</Text>
                 </View>
               )}
 
               {/* Brand / Model / Year — apparaissent si pertinents (détectés OU catégorie le justifie) */}
-              {(suggestedAttrs.brand || suggestedAttrs.model || suggestedAttrs.year || brand || model || year) && (
+              {fieldSpec.core.brand && (suggestedAttrs.brand || suggestedAttrs.model || suggestedAttrs.year || brand || model || year) && (
                 <>
                   <View className="flex-row gap-2">
                     <View className="flex-1">
@@ -668,14 +786,16 @@ export default function PostScreen() {
                 </>
               )}
 
-              <Label className="mt-4">Prix (€)</Label>
+              {/* « Prix » n'a pas le même sens pour un objet, un loyer ou un
+                  tarif horaire — le libellé suit le régime. */}
+              <Label className="mt-4">{fieldSpec.labels.price}</Label>
               <Field value={price} onChangeText={setPrice} placeholder="0" keyboardType="decimal-pad" />
               {priceSuggestion && (
                 <Pressable
                   onPress={() => { Haptics.selectionAsync().catch(() => {}); setPrice(String(priceSuggestion.suggested)); }}
-                  className="flex-row items-center bg-primary/10 border border-primary/30 rounded-xl px-3 py-2.5 mt-2 active:opacity-80"
+                  className="flex-row items-center bg-primary-light border border-primary/30 rounded-xl px-3 py-2.5 mt-2 active:opacity-80"
                 >
-                  <Ionicons name="trending-up" size={18} color="#2f6fb8" />
+                  <Ionicons name="trending-up" size={18} color={colors.primary} />
                   <View className="flex-1 ml-2">
                     <Text className="text-primary text-xs font-bold">Prix conseillé : {priceSuggestion.suggested} €</Text>
                     <Text className="text-on-surface-variant text-[11px]">Fourchette {priceSuggestion.range.low}–{priceSuggestion.range.high} € · basé sur {priceSuggestion.sampleSize} annonces</Text>
@@ -684,27 +804,224 @@ export default function PostScreen() {
                 </Pressable>
               )}
 
-              <Label className="mt-4">État</Label>
-              <View className="flex-row flex-wrap gap-2">
-                {CONDITIONS.map((c) => {
-                  const active = condition === c;
-                  return (
-                    <Pressable
-                      key={c}
-                      onPress={() => { Haptics.selectionAsync().catch(() => {}); setCondition(c); }}
-                      className={`px-3 py-2 rounded-full ${active ? "bg-primary" : "bg-surface-container"}`}
-                    >
-                      <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{c}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              {/* L'état ne se demande que d'un objet. Une prestation, un poste
+                  ou un événement n'en ont pas — la question était absurde et la
+                  réponse partait quand même en base. */}
+              {fieldSpec.core.condition && (
+                <>
+                  <Label className="mt-4">État</Label>
+                  <View className="flex-row flex-wrap gap-2">
+                    {CONDITIONS.map((c) => {
+                      const active = condition === c;
+                      return (
+                        <Pressable
+                          key={c}
+                          onPress={() => { Haptics.selectionAsync().catch(() => {}); setCondition(c); }}
+                          className={`px-3 py-2 rounded-full ${active ? "bg-primary" : "bg-surface-container"}`}
+                        >
+                          <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{c}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              {/* Le moteur annonce ce qu'il a compris plutôt que de changer le
+                  formulaire en silence. Sous 0,6 de confiance il se tait. */}
+              {!regimeOverride && intent && intent.confidence >= 0.6 && intent.nature !== "bien" && (
+                <View className="flex-row items-start bg-primary-light border border-primary/30 rounded-xl px-3 py-2.5 mt-4">
+                  <Ionicons name="sparkles" size={16} color={colors.primary} />
+                  <View className="flex-1 ml-2">
+                    <Text className="text-primary text-xs font-bold">
+                      Annonce reconnue comme « {fieldSpec.label.toLowerCase()} »
+                    </Text>
+                    <Text className="text-on-surface-variant text-[11px]">
+                      {intent.signals.slice(0, 2).join(" · ")} — les champs sont adaptés.
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => setRegimeOverride(true)} accessibilityLabel="Revenir au formulaire objet">
+                    <Text className="text-primary text-[11px] font-bold underline">Ce n'est pas ça</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {/* Champs propres au régime, déclarés en données côté serveur
+                  (lib/offer-fields.ts) et servis par /api/taxonomy. Rendus
+                  génériquement : ajouter « Caution » ou « Type de contrat » ne
+                  demande aucune nouvelle version de l'application. */}
+              {fieldSpec.extra.length > 0 && (
+                <View className="bg-surface border border-line rounded-card p-4 mt-5">
+                  <Text className="text-primary text-[10px] font-bold uppercase tracking-widest">
+                    {fieldSpec.label}
+                  </Text>
+                  {fieldSpec.extra.map((f) => (
+                    <View key={f.id}>
+                      <Label className="mt-4">{f.label}{f.required ? " *" : ""}</Label>
+                      {f.type === "select" ? (
+                        <View className="flex-row flex-wrap gap-2">
+                          {(f.options ?? []).map((o) => (
+                            <Chip
+                              key={o.value}
+                              label={o.label}
+                              active={extraFields[f.id] === o.value}
+                              onPress={() =>
+                                setExtraFields((prev) => ({
+                                  ...prev,
+                                  [f.id]: prev[f.id] === o.value ? "" : o.value,
+                                }))
+                              }
+                            />
+                          ))}
+                        </View>
+                      ) : (
+                        <Field
+                          value={extraFields[f.id] ?? ""}
+                          onChangeText={(t) => setExtraFields((prev) => ({ ...prev, [f.id]: t }))}
+                          placeholder={f.placeholder}
+                          keyboardType={f.type === "number" ? "decimal-pad" : "default"}
+                        />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* ── Bien-être : ce que le texte libre ne dit jamais de façon
+                   fiable — ce que le prix couvre, pour combien de temps, où.
+                   Mêmes champs que le formulaire web. ─────────────────── */}
+              {fieldSpec.core.serviceDetails && (
+                <View className="bg-surface border border-line rounded-card p-4 mt-5">
+                  <Text className="text-primary text-[10px] font-bold uppercase tracking-widest">
+                    Détails de la prestation
+                  </Text>
+
+                  <Label className="mt-4">Durée</Label>
+                  <View className="flex-row flex-wrap gap-2">
+                    {wellness.durations.map((d) => (
+                      <Chip
+                        key={d.value}
+                        label={d.label}
+                        active={wDuration === d.value}
+                        onPress={() => setWDuration(wDuration === d.value ? "" : d.value)}
+                      />
+                    ))}
+                  </View>
+
+                  <Label className="mt-4">Le prix correspond à</Label>
+                  <View className="flex-row flex-wrap gap-2">
+                    {wellness.priceUnits.map((u) => (
+                      <Chip
+                        key={u.value}
+                        label={u.label}
+                        active={wPriceUnit === u.value}
+                        onPress={() => setWPriceUnit(wPriceUnit === u.value ? "" : u.value)}
+                      />
+                    ))}
+                  </View>
+
+                  <Label className="mt-4">Type de tarif</Label>
+                  <View className="flex-row flex-wrap gap-2">
+                    {wellness.tariffTypes.map((t) => (
+                      <Chip
+                        key={t.value}
+                        label={t.label}
+                        active={wTariffType === t.value}
+                        onPress={() => setWTariffType(t.value)}
+                      />
+                    ))}
+                  </View>
+
+                  <Label className="mt-4">Lieu de la prestation</Label>
+                  <View className="flex-row flex-wrap gap-2">
+                    {wellness.places.map((pl) => (
+                      <Chip
+                        key={pl}
+                        label={pl}
+                        active={wPlace === pl}
+                        onPress={() => setWPlace(wPlace === pl ? "" : pl)}
+                      />
+                    ))}
+                  </View>
+
+                  {isPro && fieldSpec.core.serviceCard ? (
+                    <>
+                      {/* Carte des prestations : réservée aux comptes pro. Le
+                          serveur ignore ce tableau pour un particulier. */}
+                      <Label className="mt-5">Carte des prestations (optionnel)</Label>
+                      <Text className="text-on-surface-variant text-xs mb-2">
+                        Présentez votre carte complète sur cette fiche — {wellness.maxServices} lignes max.
+                      </Text>
+                      {wServices.map((sv, i) => (
+                        <View key={i} className="bg-app rounded-xl p-3 mb-2">
+                          <View className="flex-row items-center">
+                            <Field
+                              value={sv.label}
+                              onChangeText={(t) => updateService(i, { label: t })}
+                              placeholder="ex : Massage californien"
+                              maxLength={80}
+                              style={{ flex: 1 }}
+                            />
+                            <Pressable
+                              onPress={() => removeService(i)}
+                              hitSlop={10}
+                              accessibilityLabel="Retirer cette prestation"
+                              className="ml-2 p-1 active:opacity-60"
+                            >
+                              <Ionicons name="close-circle" size={22} color={colors.outline} />
+                            </Pressable>
+                          </View>
+                          <View className="flex-row gap-2 mt-2">
+                            <View className="flex-1">
+                              <Field
+                                value={sv.durationMin}
+                                onChangeText={(t) => updateService(i, { durationMin: t.replace(/\D/g, "").slice(0, 3) })}
+                                placeholder="Durée (min)"
+                                keyboardType="number-pad"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Field
+                                value={sv.price}
+                                onChangeText={(t) => updateService(i, { price: t.replace(/[^0-9.,]/g, "") })}
+                                placeholder="Prix (€)"
+                                keyboardType="decimal-pad"
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                      {wServices.length < wellness.maxServices && (
+                        <Pressable
+                          onPress={addService}
+                          className="flex-row items-center justify-center bg-primary-light rounded-full py-3 active:opacity-80"
+                        >
+                          <Ionicons name="add" size={18} color={colors.primary} />
+                          <Text className="text-primary font-bold text-sm ml-1">Ajouter une prestation</Text>
+                        </Pressable>
+                      )}
+                    </>
+                  ) : fieldSpec.core.serviceCard ? (
+                    <View className="bg-app rounded-xl px-3 py-3 mt-5">
+                      <Text className="text-on-surface-variant text-xs leading-relaxed">
+                        {wellness.onePerListingNotice}
+                      </Text>
+                      <Pressable
+                        onPress={() => router.push("/(tabs)/profile")}
+                        className="mt-2 active:opacity-70"
+                      >
+                        <Text className="text-primary text-xs font-bold">Passer en compte professionnel</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+              )}
 
               <Label className="mt-4">Description</Label>
               <Field
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Décrivez votre article (dimensions, défauts, accessoires, raison de la vente...)"
+                placeholder={DESCRIPTION_PLACEHOLDERS[fieldSpec.lexicon] ?? DESCRIPTION_PLACEHOLDERS.objet}
                 multiline
                 maxLength={10000}
                 style={{ minHeight: 140, textAlignVertical: "top" }}
@@ -733,7 +1050,7 @@ export default function PostScreen() {
                   className="flex-row items-center mt-3"
                 >
                   <View className={`w-5 h-5 rounded border-2 mr-2 items-center justify-center ${hidePhone ? "bg-primary border-primary" : "border-outline"}`}>
-                    {hidePhone && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    {hidePhone && <Ionicons name="checkmark" size={14} color={colors.white} />}
                   </View>
                   <Text className="text-on-surface text-sm">Masquer mon numéro publiquement</Text>
                 </Pressable>
@@ -745,7 +1062,7 @@ export default function PostScreen() {
           {step === 5 && (
             <View className="mt-2">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="eye" size={18} color="#2f6fb8" />
+                <Ionicons name="eye" size={18} color={colors.primary} />
                 <Text className="text-primary text-xs font-bold ml-1.5 uppercase tracking-wider">Aperçu de votre annonce</Text>
               </View>
 
@@ -765,11 +1082,11 @@ export default function PostScreen() {
 
               <Text className="text-on-surface text-2xl font-extrabold" numberOfLines={2}>{title || "Sans titre"}</Text>
               <Text className="text-primary text-2xl font-extrabold mt-1">{price ? `${price} €` : "Prix non indiqué"}</Text>
-              <View className="mt-4 bg-surface-container-low rounded-xl p-3">
+              <View className="mt-4 bg-surface rounded-xl p-3">
                 <RecapRow icon="pricetag" label="Catégorie" value={[category?.label, subcategory].filter(Boolean).join(" · ") || "—"} />
                 {(brand || model) && <RecapRow icon="ribbon" label="Marque · Modèle" value={[brand, model].filter(Boolean).join(" ")} />}
                 {year && <RecapRow icon="calendar" label="Année" value={year} />}
-                <RecapRow icon="construct" label="État" value={condition} />
+                {fieldSpec.core.condition && <RecapRow icon="construct" label="État" value={condition} />}
                 <RecapRow icon="location" label="Localisation" value={location || "—"} />
                 <RecapRow icon="images" label="Photos" value={`${images.length}`} />
                 {phone.trim() ? <RecapRow icon="call" label="Téléphone" value={hidePhone ? `${phone} (masqué)` : phone} last /> : null}
@@ -784,14 +1101,14 @@ export default function PostScreen() {
           )}
 
           {error && (
-            <View className="bg-red-50 border border-red-200 rounded-xl p-3 mt-4">
-              <Text className="text-red-700 text-sm">{error}</Text>
+            <View className="bg-danger/10 border border-danger/30 rounded-xl p-3 mt-4">
+              <Text className="text-danger text-sm">{error}</Text>
             </View>
           )}
         </ScrollView>
 
         {/* Pied : Continuer / Publier */}
-        <View className="px-4 py-3 border-t border-surface-container bg-surface">
+        <View className="px-4 py-3 border-t border-line bg-surface">
           {step < STEPS.length - 1 ? (
             <Pressable onPress={next} className="bg-primary py-4 rounded-full items-center active:opacity-90">
               <Text className="text-white font-bold text-base">Continuer</Text>
@@ -802,7 +1119,7 @@ export default function PostScreen() {
               disabled={submitting}
               className={`py-4 rounded-full items-center ${submitting ? "bg-outline" : "bg-primary"}`}
             >
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-bold text-base">Publier mon annonce</Text>}
+              {submitting ? <ActivityIndicator color={colors.white} /> : <Text className="text-white font-bold text-base">Publier mon annonce</Text>}
             </Pressable>
           )}
         </View>
@@ -828,9 +1145,9 @@ function PhotoSlotCard({
           <Image source={{ uri: displayUri(url) }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
           <Pressable
             onPress={() => onRemove(url)}
-            className="absolute top-1 right-1 bg-black/70 rounded-full w-6 h-6 items-center justify-center"
+            className="absolute top-1 right-1 bg-navy/70 rounded-full w-6 h-6 items-center justify-center"
           >
-            <Ionicons name="close" size={14} color="#fff" />
+            <Ionicons name="close" size={14} color={colors.white} />
           </Pressable>
         </View>
         <Text className="text-on-surface text-[11px] font-bold mt-1.5" numberOfLines={1}>{slot.label}</Text>
@@ -840,12 +1157,12 @@ function PhotoSlotCard({
 
   return (
     <Pressable onPress={onAdd} disabled={loading} className="w-[31%] mb-3 active:opacity-80">
-      <View className={`w-full aspect-square rounded-xl items-center justify-center border-2 border-dashed ${slot.required ? "border-primary/60 bg-primary/5" : "border-outline/40 bg-surface-container-low"}`}>
+      <View className={`w-full aspect-square rounded-xl items-center justify-center border-2 border-dashed ${slot.required ? "border-primary/60 bg-primary-light" : "border-outline/40 bg-surface"}`}>
         {loading ? (
-          <ActivityIndicator color="#2f6fb8" />
+          <ActivityIndicator color={colors.primary} />
         ) : (
           <>
-            <Ionicons name={slot.icon} size={26} color={slot.required ? "#2f6fb8" : "#94a3b8"} />
+            <Ionicons name={slot.icon} size={26} color={slot.required ? colors.primary : colors.outline} />
             {slot.required && (
               <View className="absolute top-1.5 right-1.5 bg-primary rounded-full w-4 h-4 items-center justify-center">
                 <Text className="text-white text-[9px] font-extrabold">*</Text>
@@ -862,6 +1179,31 @@ function PhotoSlotCard({
   );
 }
 
+/**
+ * Ce qu'on demande de décrire, selon ce qui est publié. Le texte historique
+ * parlait d'« article », de « défauts » et d'« accessoires » — incompréhensible
+ * pour qui publie une manucure ou une offre d'emploi.
+ */
+const DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
+  objet: "Décrivez votre article (dimensions, défauts, accessoires, raison de la vente...)",
+  prestation: "Décrivez votre prestation (ce qu'elle comprend, sa durée, où elle a lieu, votre expérience...)",
+  logement: "Décrivez le bien (agencement, surfaces, étage, chauffage, charges, quartier...)",
+  poste: "Décrivez le poste (missions, profil recherché, horaires, comment postuler...)",
+  evenement: "Décrivez l'événement (ce qui est prévu, date, horaires, lieu, à qui il s'adresse...)",
+  recherche: "Décrivez ce que vous cherchez (caractéristiques attendues, budget, secteur, délai...)",
+};
+
+function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={() => { Haptics.selectionAsync().catch(() => {}); onPress(); }}
+      className={`px-3.5 py-2 rounded-full ${active ? "bg-primary" : "bg-primary-light"}`}
+    >
+      <Text className={`text-sm font-semibold ${active ? "text-white" : "text-primary"}`}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function Label({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <Text className={`text-on-surface text-sm font-bold mb-1.5 ${className ?? ""}`}>{children}</Text>
@@ -872,7 +1214,7 @@ function Field(props: React.ComponentProps<typeof TextInput>) {
   return (
     <TextInput
       {...props}
-      placeholderTextColor="#94a3b8"
+      placeholderTextColor={colors.outline}
       className="bg-surface-container rounded-xl px-3 py-3 text-on-surface"
     />
   );
@@ -882,8 +1224,8 @@ function RecapRow({
   icon, label, value, last,
 }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; last?: boolean }) {
   return (
-    <View className={`flex-row items-center py-2 ${last ? "" : "border-b border-surface-container"}`}>
-      <Ionicons name={icon} size={16} color="#94a3b8" />
+    <View className={`flex-row items-center py-2 ${last ? "" : "border-b border-line"}`}>
+      <Ionicons name={icon} size={16} color={colors.outline} />
       <Text className="text-on-surface-variant text-sm ml-2 flex-1">{label}</Text>
       <Text className="text-on-surface text-sm font-semibold flex-1 text-right" numberOfLines={1}>{value}</Text>
     </View>

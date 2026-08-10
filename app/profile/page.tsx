@@ -162,6 +162,53 @@ export default async function ProfilePage() {
           </>
         )}
 
+        {/* Espace professionnel — la fiche, l'agenda et l'équipe.
+            Ces pages existaient sans qu'aucun lien n'y mène : un back-office
+            qu'on ne peut atteindre qu'en tapant l'URL n'existe pas. */}
+        {user.isPro && user.professionalStatus === "APPROVED" && (
+          <div className="mb-4 space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-outline px-1">
+              Espace professionnel
+            </p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              <ProfileLink
+                href="/profile/espace-pro"
+                icon="storefront"
+                title="Ma fiche établissement"
+                subtitle="Présentation, carte des prestations, tarifs"
+              />
+              <ProfileLink
+                href="/profile/espace-pro/agenda"
+                icon="calendar_month"
+                title="Agenda"
+                subtitle="Rendez-vous du jour et de la semaine"
+              />
+              <ProfileLink
+                href="/profile/espace-pro/equipe"
+                icon="group"
+                title="Équipe et horaires"
+                subtitle="Qui travaille, quand, pauses et absences"
+              />
+              <ProfileLink
+                href="/profile/espace-pro/parametres"
+                icon="tune"
+                title="Réservation"
+                subtitle="Créneaux, préavis, annulation"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Rendez-vous pris en tant que client — tout le monde, pro compris. */}
+        <div className="mb-4">
+          <ProfileLink
+            href="/mes-reservations"
+            icon="event_available"
+            title="Mes rendez-vous"
+            subtitle="Réservations chez des professionnels"
+          />
+        </div>
+
         {/* Clé API — pros uniquement */}
         {user.isPro && (
           <Link
@@ -191,5 +238,42 @@ export default async function ProfilePage() {
 
       <BottomNav active="profil" />
     </div>
+  );
+}
+
+/** Carte-lien du profil — même gabarit que la carte « Clé API » juste au-dessus. */
+function ProfileLink({
+  href,
+  icon,
+  title,
+  subtitle,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <Link
+      href={href}
+      title={title}
+      className="flex items-center gap-3 bg-white rounded-2xl border border-[#eceef0] px-5 py-4 hover:border-[#2f6fb8] hover:shadow-[0_0_0_3px_rgba(47,111,184,0.08)] transition-all group"
+    >
+      <span className="w-9 h-9 rounded-xl bg-[#2f6fb8]/10 flex items-center justify-center shrink-0">
+        <span
+          className="material-symbols-outlined text-[#2f6fb8] text-[20px]"
+          style={{ fontVariationSettings: "'FILL' 1" }}
+        >
+          {icon}
+        </span>
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-bold text-slate-800">{title}</span>
+        <span className="block text-xs text-slate-400 mt-0.5">{subtitle}</span>
+      </span>
+      <span className="material-symbols-outlined text-slate-400 group-hover:text-[#2f6fb8] transition-colors text-[20px]">
+        chevron_right
+      </span>
+    </Link>
   );
 }

@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import { colors } from "@/lib/theme";
 
 const CODE_LENGTH = 6;
 
@@ -89,11 +90,11 @@ export default function VerifyEmailScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface">
+    <SafeAreaView className="flex-1 bg-app">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View className="flex-1 px-6 pt-8">
-          <View className="w-16 h-16 rounded-full bg-primary/10 items-center justify-center mb-4">
-            <Ionicons name="mail-open" size={28} color="#2f6fb8" />
+          <View className="w-16 h-16 rounded-full bg-primary-light items-center justify-center mb-4">
+            <Ionicons name="mail-open" size={28} color={colors.primary} />
           </View>
           <Text className="text-on-surface text-3xl font-extrabold mb-2">Vérifiez votre email</Text>
           <Text className="text-on-surface-variant text-sm leading-relaxed">
@@ -118,13 +119,13 @@ export default function VerifyEmailScreen() {
                 textContentType="oneTimeCode"
                 autoComplete="sms-otp"
                 editable={!loading}
-                className={`w-12 h-14 rounded-xl text-center text-on-surface text-2xl font-extrabold border-2 ${d ? "border-primary bg-primary/5" : "border-surface-container bg-white"}`}
+                className={`w-12 h-14 rounded-xl text-center text-on-surface text-2xl font-extrabold border-2 ${d ? "border-primary bg-primary-light" : "border-line bg-surface"}`}
               />
             ))}
           </View>
 
-          {loading && <ActivityIndicator color="#2f6fb8" className="mt-2" />}
-          {error && <Text className="text-red-600 text-sm mt-2">{error}</Text>}
+          {loading && <ActivityIndicator color={colors.primary} className="mt-2" />}
+          {error && <Text className="text-danger text-sm mt-2">{error}</Text>}
 
           <View className="mt-8 flex-row items-center justify-center">
             <Text className="text-on-surface-variant text-sm">Pas reçu ? </Text>

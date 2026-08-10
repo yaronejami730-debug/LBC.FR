@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "@/lib/api";
 import { CATEGORIES, CONDITIONS } from "@/lib/categories";
+import { colors } from "@/lib/theme";
 
 export type SortKey = "recent" | "price_asc" | "price_desc";
 
@@ -132,14 +133,14 @@ export default function FilterSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+      <SafeAreaView edges={["top"]} className="flex-1 bg-app">
         <View className="items-center pt-2">
           <View className="w-10 h-1 rounded-full bg-surface-container" />
         </View>
         <View className="flex-row items-center justify-center px-4 py-3">
           <Text className="text-on-surface text-lg font-bold">Filtres</Text>
           <Pressable onPress={onClose} className="absolute right-3 p-1">
-            <Ionicons name="close" size={26} color="#1a1a1a" />
+            <Ionicons name="close" size={26} color={colors.onSurface} />
           </Pressable>
         </View>
 
@@ -223,7 +224,7 @@ export default function FilterSheet({
             value={draft.location}
             onChangeText={(v) => set("location", v)}
             placeholder="Ville ou code postal"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.outline}
             className="bg-surface-container rounded-xl px-4 py-3 text-on-surface"
           />
 
@@ -239,13 +240,13 @@ export default function FilterSheet({
           />
         </ScrollView>
 
-        <View className="flex-row gap-3 px-4 py-3 border-t border-surface-container">
+        <View className="flex-row gap-3 px-4 py-3 border-t border-line">
           <Pressable onPress={() => setDraft({ ...EMPTY_FILTERS })} className="px-5 py-3.5 rounded-full border border-primary items-center justify-center">
             <Text className="text-primary font-bold">Effacer</Text>
           </Pressable>
           <Pressable onPress={() => onApply(draft)} className="flex-1 py-3.5 rounded-full bg-primary items-center justify-center flex-row">
             {counting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.white} />
             ) : (
               <Text className="text-white font-bold">
                 Rechercher{count !== null ? ` (${count.toLocaleString("fr-FR")})` : ""}
@@ -279,9 +280,9 @@ function ChipRow({
           <Pressable
             key={o.value || "all"}
             onPress={() => onSelect(o.value)}
-            className={`px-3 py-2 rounded-full ${active ? "bg-primary" : "bg-surface-container"}`}
+            className={`px-3.5 py-2 rounded-full ${active ? "bg-primary" : "bg-primary-light"}`}
           >
-            <Text className={`text-sm font-semibold ${active ? "text-white" : "text-on-surface-variant"}`}>{o.label}</Text>
+            <Text className={`text-sm font-semibold ${active ? "text-white" : "text-primary"}`}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -300,14 +301,14 @@ function RangeRow({
     <View className="flex-row gap-3">
       <View className="flex-1 flex-row items-center bg-surface-container rounded-xl px-3">
         <TextInput
-          value={minVal} onChangeText={onMin} placeholder="Min" placeholderTextColor="#94a3b8"
+          value={minVal} onChangeText={onMin} placeholder="Min" placeholderTextColor={colors.outline}
           keyboardType={keyboard ?? "default"} className="flex-1 py-3 text-on-surface"
         />
         {unit && <Text className="text-on-surface-variant ml-1">{unit}</Text>}
       </View>
       <View className="flex-1 flex-row items-center bg-surface-container rounded-xl px-3">
         <TextInput
-          value={maxVal} onChangeText={onMax} placeholder="Max" placeholderTextColor="#94a3b8"
+          value={maxVal} onChangeText={onMax} placeholder="Max" placeholderTextColor={colors.outline}
           keyboardType={keyboard ?? "default"} className="flex-1 py-3 text-on-surface"
         />
         {unit && <Text className="text-on-surface-variant ml-1">{unit}</Text>}

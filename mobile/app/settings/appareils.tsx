@@ -3,6 +3,7 @@ import { View, Text, FlatList, ActivityIndicator, RefreshControl, Pressable, Ale
 import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
+import { colors } from "@/lib/theme";
 
 type Device = {
   id: string;
@@ -78,12 +79,12 @@ export default function Appareils() {
   };
 
   if (loading) {
-    return <View className="flex-1 bg-surface items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>;
+    return <View className="flex-1 bg-app items-center justify-center"><ActivityIndicator color={colors.primary} /></View>;
   }
 
   return (
     <FlatList
-      className="flex-1 bg-surface"
+      className="flex-1 bg-app"
       data={devices}
       keyExtractor={(d) => d.id}
       contentContainerStyle={{ padding: 16 }}
@@ -98,7 +99,7 @@ export default function Appareils() {
       }
       ListEmptyComponent={
         <View className="items-center py-12">
-          <Ionicons name="phone-portrait-outline" size={48} color="#94a3b8" />
+          <Ionicons name="phone-portrait-outline" size={48} color={colors.outline} />
           <Text className="text-on-surface-variant text-center mt-3">
             {error ?? "Aucun appareil enregistré."}
           </Text>
@@ -106,9 +107,9 @@ export default function Appareils() {
       }
       ItemSeparatorComponent={() => <View className="h-2" />}
       renderItem={({ item }) => (
-        <View className="bg-surface-container-low rounded-xl px-4 py-3 flex-row items-center">
-          <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-            <Ionicons name={iconFor(item)} size={20} color="#2f6fb8" />
+        <View className="bg-surface rounded-xl px-4 py-3 flex-row items-center">
+          <View className="w-10 h-10 rounded-full bg-primary-light items-center justify-center">
+            <Ionicons name={iconFor(item)} size={20} color={colors.primary} />
           </View>
           <View className="ml-3 flex-1">
             <Text className="text-on-surface font-bold text-sm" numberOfLines={1}>{titleFor(item)}</Text>
@@ -123,12 +124,12 @@ export default function Appareils() {
             onPress={() => revoke(item)}
             disabled={revoking === item.id}
             hitSlop={10}
-            className="px-3 py-2 rounded-full bg-red-50 active:opacity-70"
+            className="px-3 py-2 rounded-full bg-danger/10 active:opacity-70"
           >
             {revoking === item.id ? (
-              <ActivityIndicator color="#dc2626" size="small" />
+              <ActivityIndicator color={colors.danger} size="small" />
             ) : (
-              <Text className="text-red-600 text-xs font-bold">Révoquer</Text>
+              <Text className="text-danger text-xs font-bold">Révoquer</Text>
             )}
           </Pressable>
         </View>

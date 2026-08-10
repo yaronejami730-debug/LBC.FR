@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { listingExpiringEmail } from "@/lib/emails/listing-expiring";
-
-const DAYS_90 = 90 * 24 * 60 * 60 * 1000;
-const DAYS_92 = 92 * 24 * 60 * 60 * 1000;
+import { LISTING_LIFETIME_MS, LISTING_GRACE_MS } from "@/lib/listing-lifetime";
 
 export async function GET(req: Request) {
   const secret = new URL(req.url).searchParams.get("secret");
@@ -13,15 +11,15 @@ export async function GET(req: Request) {
   }
 
   const now = new Date();
-  const cutoff90 = new Date(now.getTime() - DAYS_90);
-  const cutoff92 = new Date(now.getTime() - DAYS_92);
+  const expiryCutoff = new Date(now.getTime() - LISTING_LIFETIME_MS);
+  const purgeCutoff = new Date(now.getTime() - LISTING_LIFETIME_MS - LISTING_GRACE_MS);
   const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
 
-  // ── 1. Supprimer définitivement les annonces expirées depuis +92 jours ──
+  // ── 1. Supprimer définitivement les annonces au-delà du délai de grâce ──
   const toDelete = await prisma.listing.findMany({
     where: {
       status: "APPROVED",
-      createdAt: { lte: cutoff92 },
+      createdAt: { lte: purgeCutoff },
       expiryNotifiedAt: { not: null },
     },
     select: { id: true, images: true },
@@ -40,12 +38,12 @@ export async function GET(req: Request) {
     await prisma.listing.delete({ where: { id: listing.id } });
   }
 
-  // ── 2. Notifier les annonces qui atteignent 90 jours (pas encore notifiées) ──
+  // ── 2. Notifier les annonces arrivées en fin de vie (pas encore notifiées) ──
   const toNotify = await prisma.listing.findMany({
     where: {
       status: "APPROVED",
       deletedAt: null,
-      createdAt: { lte: cutoff90 },
+      createdAt: { lte: expiryCutoff },
       expiryNotifiedAt: null,
     },
     include: {

@@ -6,6 +6,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { timeAgo } from "@/lib/format";
+import { colors } from "@/lib/theme";
 
 type SavedSearch = {
   id: string;
@@ -75,10 +76,10 @@ export default function AlertesScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-app">
         <View className="flex-1 items-center justify-center px-6">
           <View className="w-16 h-16 rounded-full bg-surface-container items-center justify-center mb-4">
-            <Ionicons name="notifications-outline" size={32} color="#2f6fb8" />
+            <Ionicons name="notifications-outline" size={32} color={colors.primary} />
           </View>
           <Text className="text-on-surface text-xl font-bold mb-2">Alertes</Text>
           <Text className="text-on-surface-variant text-sm mb-6 text-center">
@@ -93,7 +94,7 @@ export default function AlertesScreen() {
   }
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app">
       {/* Header */}
       <View className="px-4 pt-2 pb-3">
         <Text className="text-on-surface text-2xl font-extrabold">Mes alertes</Text>
@@ -103,7 +104,7 @@ export default function AlertesScreen() {
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center"><ActivityIndicator color="#2f6fb8" /></View>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={colors.primary} /></View>
       ) : (
         <FlatList
           data={searches}
@@ -114,17 +115,17 @@ export default function AlertesScreen() {
           ListEmptyComponent={
             <View className="py-12 items-center px-4">
               <View className="w-20 h-20 rounded-full bg-surface-container items-center justify-center mb-4">
-                <Ionicons name="notifications-outline" size={36} color="#2f6fb8" />
+                <Ionicons name="notifications-outline" size={36} color={colors.primary} />
               </View>
               <Text className="text-on-surface text-lg font-bold mb-1.5">Aucune alerte pour l'instant</Text>
               <Text className="text-on-surface-variant text-sm text-center mb-6">
                 Lancez une recherche, ajustez les filtres puis appuyez sur « Sauvegarder la recherche ».
               </Text>
               <Pressable onPress={() => router.push("/recherche")} className="flex-row items-center bg-primary rounded-full px-5 py-3">
-                <Ionicons name="search" size={16} color="#fff" />
+                <Ionicons name="search" size={16} color={colors.white} />
                 <Text className="text-white font-bold ml-2">Faire une recherche</Text>
               </Pressable>
-              {error && <Text className="text-red-600 text-xs mt-4">{error}</Text>}
+              {error && <Text className="text-danger text-xs mt-4">{error}</Text>}
             </View>
           }
           ListHeaderComponent={
@@ -137,18 +138,18 @@ export default function AlertesScreen() {
           renderItem={({ item }) => {
             const { chips } = describeFilters(item.filters);
             return (
-              <View className="bg-surface-container-low rounded-2xl overflow-hidden">
+              <View className="bg-surface border border-line rounded-card overflow-hidden">
                 <Pressable onPress={() => openSearch(item)} className="px-4 pt-3.5 pb-3 active:opacity-80">
                   <View className="flex-row items-center">
-                    <View className="w-9 h-9 rounded-full bg-primary/10 items-center justify-center mr-3">
-                      <Ionicons name="notifications" size={18} color="#2f6fb8" />
+                    <View className="w-9 h-9 rounded-full bg-primary-light items-center justify-center mr-3">
+                      <Ionicons name="notifications" size={18} color={colors.primary} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-on-surface font-bold text-base" numberOfLines={1}>{item.name}</Text>
                       <Text className="text-on-surface-variant text-xs mt-0.5">Créée {timeAgo(item.createdAt)}</Text>
                     </View>
                     {typeof item.matchCount === "number" && (
-                      <View className="bg-primary/10 rounded-full px-2.5 py-1 ml-2">
+                      <View className="bg-primary-light rounded-full px-2.5 py-1 ml-2">
                         <Text className="text-primary text-xs font-bold">{item.matchCount}</Text>
                       </View>
                     )}
@@ -157,8 +158,8 @@ export default function AlertesScreen() {
                   {chips.length > 0 && (
                     <View className="flex-row flex-wrap gap-1.5 mt-3">
                       {chips.map((c, i) => (
-                        <View key={i} className="bg-surface-container rounded-full px-2.5 py-1">
-                          <Text className="text-on-surface-variant text-xs font-semibold">{c}</Text>
+                        <View key={i} className="bg-primary-light rounded-full px-2.5 py-1">
+                          <Text className="text-primary text-xs font-semibold">{c}</Text>
                         </View>
                       ))}
                     </View>
@@ -166,14 +167,14 @@ export default function AlertesScreen() {
                 </Pressable>
 
                 {/* Actions */}
-                <View className="flex-row border-t border-surface-container">
+                <View className="flex-row border-t border-line">
                   <Pressable onPress={() => openSearch(item)} className="flex-1 flex-row items-center justify-center py-3 active:bg-surface-container">
-                    <Ionicons name="eye-outline" size={16} color="#2f6fb8" />
+                    <Ionicons name="eye-outline" size={16} color={colors.primary} />
                     <Text className="text-primary font-semibold text-sm ml-1.5">Voir les annonces</Text>
                   </Pressable>
-                  <View className="w-px bg-surface-container" />
+                  <View className="w-px bg-line" />
                   <Pressable onPress={() => remove(item)} className="px-5 flex-row items-center justify-center active:bg-surface-container">
-                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
                   </Pressable>
                 </View>
               </View>

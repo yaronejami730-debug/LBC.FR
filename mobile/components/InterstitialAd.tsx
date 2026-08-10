@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as SecureStore from "expo-secure-store";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
+import { colors } from "@/lib/theme";
 
 type Ad = {
   id: string;
@@ -61,19 +62,19 @@ export default function InterstitialAd() {
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={close}>
-      <View className="flex-1 bg-black/90 items-center justify-center">
+      <View className="flex-1 bg-navy/90 items-center justify-center">
         {/* Croix top right */}
         <Pressable
           onPress={close}
           hitSlop={16}
-          className="absolute top-14 right-5 w-10 h-10 rounded-full bg-white items-center justify-center z-10"
+          className="absolute top-14 right-5 w-10 h-10 rounded-full bg-surface items-center justify-center z-10"
         >
-          <Ionicons name="close" size={22} color="#1a1a1a" />
+          <Ionicons name="close" size={22} color={colors.onSurface} />
         </Pressable>
 
         {/* Carte pub */}
         <Pressable onPress={open} className="w-full" style={{ maxWidth: W }}>
-          <View className="bg-white">
+          <View className="bg-surface rounded-sheet overflow-hidden">
             <Image
               source={{ uri: imgUri }}
               style={{ width: W, height: W * 0.95 }}
@@ -82,7 +83,7 @@ export default function InterstitialAd() {
             <View className="p-5">
               <Text className="text-on-surface text-2xl font-extrabold leading-tight">{ad.title}</Text>
               <Text className="text-on-surface-variant text-sm mt-2 leading-relaxed">{ad.description}</Text>
-              <View className="bg-[#e8632a] rounded-full py-3 items-center mt-5">
+              <View className="bg-primary rounded-full py-3.5 items-center mt-5">
                 <Text className="text-white font-bold">Je découvre</Text>
               </View>
             </View>

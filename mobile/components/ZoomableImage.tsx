@@ -3,6 +3,7 @@ import { View, type ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { colors } from "@/lib/theme";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -17,7 +18,7 @@ type Props = {
 };
 
 /** Image avec pinch-to-zoom + double-tap + pan quand zoomée. */
-export function ZoomableImage({ uri, width, height, style, background = "#fff" }: Props) {
+export function ZoomableImage({ uri, width, height, style, background = colors.white }: Props) {
   // Le pan ne capture le geste QUE lorsqu'on est zoomé : sinon il bloquerait
   // le scroll vertical de la liste parente.
   const [zoomed, setZoomed] = useState(false);

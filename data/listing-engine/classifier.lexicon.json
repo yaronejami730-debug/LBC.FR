@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "note": "Ressource du moteur de catégorisation. Le score final combine lexique (nom-tête), sémantique (embeddings), indices de transaction, priors et pénalités. AUCUN candidat ne peut être retenu sans preuve — voir 'guardrails'.",
+
+  "weights": {
+    "head_noun": 0.45,
+    "semantic": 0.25,
+    "modifiers": 0.10,
+    "transaction_cue": 0.08,
+    "numeric_pattern": 0.07,
+    "user_history": 0.03,
+    "prior": 0.02,
+    "negative_penalty": -0.60
+  },
+
+  "guardrails": {
+    "require_evidence": true,
+    "evidence_rule": "Un ListingType n'est candidat que si (a) au moins un de ses head_nouns est détecté dans le texte, OU (b) son score sémantique dépasse semantic_solo_threshold. Le prior seul ne rend JAMAIS un type candidat.",
+    "semantic_solo_threshold": 0.82,
+    "min_confidence_to_autoselect": 0.72,
+    "min_margin_top1_top2": 0.15,
+    "max_suggestions": 3,
+    "fallback": "ask_user",
+    "never_suggest_across_root_without_evidence": true,
+    "explain": true,
+    "log_every_decision": true
+  },
+
+  "text_normalization": {
+    "lowercase": true,
+    "strip_accents": true,
+    "expand_abbreviations": {
+      "appart": "appartement", "apt": "appartement", "t2": "appartement 2 pièces", "t3": "appartement 3 pièces",
+      "f2": "appartement 2 pièces", "f3": "appartement 3 pièces", "sdb": "salle de bain", "cc": "charges comprises",
+      "hc": "hors charges", "km": "kilometrage", "bva": "boite automatique", "ct": "controle technique",
+      "rdc": "rez-de-chaussee", "vm": "vue mer", "loa": "location avec option d achat", "lld": "location longue duree"
+    },
+    "protect_entities": ["cities", "brands", "models"],
+    "note": "L'expansion d'abréviations s'applique APRÈS la reconnaissance d'entités, sinon 'Cannes' peut être découpé ou confondu avec une marque."
+  },
+
+  "numeric_patterns": [
+    { "regex": "(\\d+)\\s?(m2|m²|metres carres)", "field": "surface", "boosts": ["immobilier"], "penalizes": ["vehicules"] },
+    { "regex": "(\\d{2,3}\\s?\\d{3})\\s?km", "field": "kilometrage", "boosts": ["vehicules"], "penalizes": ["immobilier"] },
+    { "regex": "(\\d+)\\s?(chambres?|ch\\b)", "field": "nb_chambres", "boosts": ["immobilier"] },
+    { "regex": "(\\d+)\\s?(pieces?|p\\b)", "field": "nb_pieces", "boosts": ["immobilier"] },
+    { "regex": "(\\d+)\\s?(couchages?|personnes?|voyageurs?)", "field": "capacite_max", "boosts": ["immobilier.location-vacances"] },
+    { "regex": "(\\d+)\\s?(cv|ch)\\b", "field": "puissance", "boosts": ["vehicules"] },
+    { "regex": "(19|20)\\d{2}", "field": "annee", "boosts": ["vehicules"], "weak": true },
+    { "regex": "(\\d+[\\s.,]?\\d*)\\s?(€|eur|euros)\\s?/?\\s?(nuit|nuitee)", "field": "tarif_nuit", "boosts": ["immobilier.location-vacances"] },
+    { "regex": "(\\d+[\\s.,]?\\d*)\\s?(€|eur|euros)\\s?/?\\s?(la\\s)?(semaine|sem)", "field": "tarif_semaine", "boosts": ["immobilier.location-vacances", "materiel.location"] },
+    { "regex": "(\\d+[\\s.,]?\\d*)\\s?(€|eur|euros)\\s?/?\\s?(mois)", "field": "tarif_mois", "boosts": ["immobilier.location-longue-duree", "vehicules.loa-lld"] },
+    { "regex": "(\\d+[\\s.,]?\\d*)\\s?(€|eur|euros)\\s?/?\\s?(jour|journee)", "field": "tarif_jour", "boosts": ["materiel.location", "vehicules.voitures.location"] },
+    { "regex": "\\b([A-G])\\b\\s?(dpe|ges)", "field": "dpe", "boosts": ["immobilier"] }
+  ],
+
+  "transaction_cues": {
+    "vente":                  ["a vendre", "vends", "vente", "cede", "prix ferme", "net vendeur", "acheter", "achat"],
+    "location_longue_duree":  ["a louer", "loyer", "bail", "par mois", "/mois", "charges comprises", "longue duree", "a l annee", "libre le", "colocation", "etudiant"],
+    "location_saisonniere":   ["vacances", "saisonniere", "sejour", "a la semaine", "la semaine", "week-end", "nuit", "nuitee", "juillet", "aout", "ete", "hiver", "station", "meuble de tourisme", "courte duree", "voyageurs"],
+    "location":               ["a louer", "location", "loue", "par jour", "/jour", "a la journee", "caution", "franchise"],
+    "loa":                    ["loa", "option d achat", "location avec option"],
+    "lld":                    ["lld", "location longue duree", "sans option d achat"],
+    "leasing":                ["leasing", "credit-bail", "reprise de leasing", "transfert de contrat"],
+    "prestation":             ["je propose", "propose mes services", "prestation", "devis", "disponible pour", "j interviens", "auto-entrepreneur", "artisan"],
+    "recherche":              ["je recherche", "cherche", "recherche un", "wanted", "besoin de"],
+    "don":                    ["donne", "gratuit", "a donner", "don"]
+  },
+
+  "ambiguity_rules": [
+    {
+      "id": "immo_sans_verbe",
+      "when": "category = immobilier ET aucun transaction_cue détecté",
+      "action": "ask",
+      "question": "Que souhaitez-vous faire avec ce bien ?",
+      "options": [
+        { "label": "Le louer pour les vacances", "target": "immobilier.location-vacances.{type_bien}" },
+        { "label": "Le louer à l'année", "target": "immobilier.location-longue-duree.{type_bien}" },
+        { "label": "Le vendre", "target": "immobilier.vente.{type_bien}" },
+        { "label": "Le proposer en colocation", "target": "immobilier.colocation.chambre" }
+      ],
+      "order_by": "city_market_prior",
+      "note": "Sur les villes touristiques (Cannes, Nice, Biarritz, Chamonix…), la location de vacances remonte en tête. Ailleurs, la vente."
+    },
+    {
+      "id": "vehicule_sans_verbe",
+      "when": "category = vehicules ET aucun transaction_cue détecté",
+      "action": "ask",
+      "question": "Que souhaitez-vous faire avec ce véhicule ?",
+      "options": [
+        { "label": "Le vendre", "target": "vehicules.{sub}.vente" },
+        { "label": "Le louer", "target": "vehicules.{sub}.location" },
+        { "label": "Proposer une LOA / LLD", "target": "vehicules.{sub}.loa-lld" }
+      ]
+    },
+    {
+      "id": "materiel_vente_ou_location",
+      "when": "category = materiel ET aucun transaction_cue détecté",
+      "action": "ask",
+      "question": "Vous souhaitez le vendre ou le louer ?",
+      "options": [
+        { "label": "Le louer", "target": "materiel.location.{type}" },
+        { "label": "Le vendre", "target": "materiel.vente.{type}" }
+      ]
+    }
+  ],
+
+  "city_gazetteer_sample": {
+    "note": "À charger depuis la base communes INSEE (35 000 entrées). Le gazetteer sert à NEUTRALISER les toponymes avant le scoring lexical : une ville n'est jamais un signal de catégorie, seulement un signal de marché.",
+    "entries": [
+      { "name": "Cannes", "insee": "06029", "dept": "06", "tourism_index": 0.95, "rent_control": false, "requires_registration": true },
+      { "name": "Nice", "insee": "06088", "dept": "06", "tourism_index": 0.9, "rent_control": false, "requires_registration": true },
+      { "name": "Paris", "insee": "75056", "dept": "75", "tourism_index": 0.85, "rent_control": true, "requires_registration": true },
+      { "name": "Lille", "insee": "59350", "dept": "59", "tourism_index": 0.3, "rent_control": true, "requires_registration": false },
+      { "name": "Chamonix-Mont-Blanc", "insee": "74056", "dept": "74", "tourism_index": 0.97, "rent_control": false, "requires_registration": true },
+      { "name": "Biarritz", "insee": "64122", "dept": "64", "tourism_index": 0.92, "rent_control": false, "requires_registration": true }
+    ],
+    "collision_list": {
+      "note": "Toponymes qui collisionnent avec des marques ou des modèles : à désambiguïser par position dans la phrase et par contexte, jamais par simple correspondance de chaîne.",
+      "examples": ["Cannes / Canne", "Laguna (Renault / lagune)", "Clio", "Twingo", "Vitry / Vitry-sur-Seine", "Mans (Le Mans)", "Tourcoing", "Megane", "Kadjar", "Captur", "Tucson (Hyundai / ville US)", "Sorento", "Sedona", "Malibu", "Monterey", "Tahoe", "Sierra"]
+    }
+  },
+
+  "negative_pairs": [
+    { "if_present": ["m2", "m²", "chambres", "couchages", "dpe", "copropriete", "locataire", "loyer", "cuisine equipee", "salle de bain"], "penalize_categories": ["vehicules", "multimedia", "mode"] },
+    { "if_present": ["kilometrage", "boite automatique", "carte grise", "controle technique", "cheval fiscal", "diesel", "essence"], "penalize_categories": ["immobilier", "services", "mode"] },
+    { "if_present": ["devis", "prestation", "j interviens", "auto-entrepreneur"], "penalize_categories": ["multimedia", "mode", "maison-jardin"] }
+  ],
+
+  "test_suite": [
+    { "input": "Appartement Cannes", "expect_top": "immobilier.*.appartement", "expect_ask": "immo_sans_verbe", "forbid": ["vehicules.*"] },
+    { "input": "Appartement Cannes 2 chambres vue mer piscine 1200€ la semaine", "expect_top": "immobilier.location-vacances.appartement", "expect_confidence_min": 0.9, "expect_extracted": { "ville": "Cannes", "nb_chambres": 2, "vue": ["Mer"], "services_bien": ["Piscine"], "tarif_semaine": 1200 } },
+    { "input": "T3 Lille 750€ charges comprises libre en septembre", "expect_top": "immobilier.location-longue-duree.appartement", "forbid": ["immobilier.location-vacances.*"] },
+    { "input": "Studio à vendre Marseille 8e 145000", "expect_top": "immobilier.vente.appartement" },
+    { "input": "Clio 4 2018 87000 km diesel", "expect_top": "vehicules.voitures.vente", "forbid": ["immobilier.*"] },
+    { "input": "Peugeot 208 LOA 199€/mois apport 2000", "expect_top": "vehicules.voitures.loa-lld" },
+    { "input": "Loue Twingo 35€/jour Cannes caution 500", "expect_top": "vehicules.voitures.location", "note": "Cannes est neutralisé : le head noun 'Twingo' et le cue '/jour' décident." },
+    { "input": "Photographe mariage disponible Côte d'Azur devis gratuit", "expect_top": "services.evenementiel.photographe" },
+    { "input": "Location sono 2x1000W livrée et installée 120€ le week-end", "expect_top": "materiel.location.sonorisation" },
+    { "input": "Villa Cannes 8 personnes piscine juillet", "expect_top": "immobilier.location-vacances.villa" },
+    { "input": "Fourgon Renault Master 2016 aménagé", "expect_top": "vehicules.utilitaires.vente", "note": "Piège : 'aménagé' ne doit PAS faire basculer vers l'immobilier." },
+    { "input": "Chambre chez l'habitant Lyon 400€ mois étudiante", "expect_top": "immobilier.location-longue-duree.chambre" }
+  ]
+}

@@ -11,6 +11,7 @@
 import { getClient, LISTINGS_INDEX } from "./opensearch";
 import type { SearchParams } from "./search-where";
 import { CATEGORIES } from "./categories";
+import { inferOfferIntent } from "./offer-intent";
 
 // Mêmes ensembles de clés que buildSearchWhere — gardés en phase.
 const SUBCATEGORY_FILTER_KEYS = new Set([
@@ -23,7 +24,7 @@ const METADATA_FILTER_KEYS = new Set([
 ]);
 const SKIP_KEYS = new Set([
   "q", "category", "minPrice", "maxPrice", "location", "condition",
-  "sort", "page", "_filters",
+  "sort", "page", "_filters", "nature",
   "minKm", "maxKm", "minYear", "maxYear",
   "minSurface", "maxSurface", "minRooms", "maxRooms",
 ]);
@@ -125,6 +126,32 @@ export async function searchListings(
     }
   }
 
+  /**
+   * Intention de la requête. « manucure Marseille » cherche une prestation :
+   * remonter des vernis à ongles d'occasion en tête est le même défaut, vu du
+   * côté acheteur. Le moteur qui classe les annonces classe aussi les requêtes.
+   */
+  const queryIntent = q ? inferOfferIntent({ title: q, categoryId: params.category ?? null }) : null;
+
+  // Filtre explicite, s'il vient de l'interface.
+  if (params.nature?.trim()) {
+    filter.push({ term: { nature: params.nature.trim() } });
+  } else if (queryIntent?.nature !== "demande") {
+    // Une demande n'est pas une offre : elle ne doit pas se mélanger aux
+    // résultats de quelqu'un qui cherche à acheter. Elle reste accessible via
+    // un filtre `nature=demande` explicite.
+    filter.push({ bool: { must_not: [{ term: { nature: "demande" } }] } });
+  }
+
+  /**
+   * Préférence, pas exclusion. Un texte peut être ambigu, et vider une page de
+   * résultats pour une intention mal lue est pire que de mal les ordonner.
+   */
+  const should: object[] =
+    queryIntent && queryIntent.confidence >= 0.6
+      ? [{ term: { nature: { value: queryIntent.nature, boost: 4 } } }]
+      : [];
+
   // Clause full-text fuzzy + synonymes
   const must = q
     ? [
@@ -161,7 +188,7 @@ export async function searchListings(
   const res: any = await client.search({
     index: LISTINGS_INDEX,
     body: {
-      query: { bool: { must, filter } },
+      query: { bool: { must, filter, should, minimum_should_match: 0 } },
       sort,
       from,
       size: perPage,

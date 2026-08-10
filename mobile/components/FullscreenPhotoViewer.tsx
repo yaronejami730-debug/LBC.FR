@@ -3,6 +3,8 @@ import { Modal, View, Text, Pressable, Dimensions, FlatList, type ListRenderItem
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { ZoomableImage } from "./ZoomableImage";
+import { PhotoWatermark } from "./PhotoWatermark";
+import { colors } from "@/lib/theme";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const H_PAD = 12;
@@ -46,8 +48,8 @@ export function FullscreenPhotoViewer({ visible, images, initialIndex = 0, title
         marginHorizontal: H_PAD,
         marginBottom: GAP,
         borderRadius: 16,
-        backgroundColor: "#fff",
-        shadowColor: "#000",
+        backgroundColor: colors.white,
+        shadowColor: colors.navy,
         shadowOpacity: 0.1,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 3 },
@@ -55,14 +57,17 @@ export function FullscreenPhotoViewer({ visible, images, initialIndex = 0, title
       }}
     >
       <View style={{ borderRadius: 16, overflow: "hidden" }}>
-        <ZoomableImage uri={item} width={CARD_W} height={PHOTO_H} background="#fff" />
+        <ZoomableImage uri={item} width={CARD_W} height={PHOTO_H} background={colors.white} />
+        {/* Une signature par photo : elles défilent verticalement, un overlay
+            unique se retrouverait sur la mauvaise image. */}
+        <PhotoWatermark />
       </View>
     </View>
   );
 
   return (
     <Modal visible={visible} transparent={false} statusBarTranslucent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "#f2f3f5" }}>
+      <View style={{ flex: 1, backgroundColor: colors.surfaceContainer }}>
         <FlatList
           ref={listRef}
           data={images}
@@ -86,27 +91,27 @@ export function FullscreenPhotoViewer({ visible, images, initialIndex = 0, title
             left: 0,
             right: 0,
             paddingTop: insets.top,
-            backgroundColor: "#ffffff",
+            backgroundColor: colors.white,
             borderBottomWidth: 1,
-            borderBottomColor: "#ececef",
+            borderBottomColor: colors.line,
           }}
         >
           <View style={{ height: 52, flexDirection: "row", alignItems: "center", paddingHorizontal: 8 }}>
             <Pressable
               onPress={onClose}
               hitSlop={12}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#f2f3f5", alignItems: "center", justifyContent: "center" }}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceContainer, alignItems: "center", justifyContent: "center" }}
             >
-              <Ionicons name="close" size={22} color="#1a1a1a" />
+              <Ionicons name="close" size={22} color={colors.onSurface} />
             </Pressable>
             <Text
               numberOfLines={1}
-              style={{ flex: 1, textAlign: "center", marginHorizontal: 8, fontSize: 15, fontWeight: "800", color: "#1a1a1a" }}
+              style={{ flex: 1, textAlign: "center", marginHorizontal: 8, fontSize: 15, fontWeight: "800", color: colors.onSurface }}
             >
               {title ?? ""}
             </Text>
             <View style={{ minWidth: 48, alignItems: "flex-end", paddingRight: 6 }}>
-              <Text style={{ color: "#5b5b66", fontSize: 13, fontWeight: "700" }}>{topIndex + 1} / {images.length}</Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, fontWeight: "700" }}>{topIndex + 1} / {images.length}</Text>
             </View>
           </View>
         </View>

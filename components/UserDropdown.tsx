@@ -121,6 +121,32 @@ export default function UserDropdown({ user, isPro = false }: Props) {
 
               {/* Pied */}
               <div className="border-t border-slate-100 py-1">
+                {/* L'espace pro se pilote depuis n'importe quelle page : un
+                    salon consulte son agenda entre deux clients, il ne passe
+                    pas par son profil pour ça. */}
+                {isPro && (
+                  <>
+                    <Link href="/profile/espace-pro" onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">storefront</span>
+                      <span className="text-[14px] font-medium flex-1">Mon espace pro</span>
+                      <span className="text-[9px] font-bold bg-[#2f6fb8] text-white px-1.5 py-0.5 rounded">PRO</span>
+                    </Link>
+                    <Link href="/profile/espace-pro/agenda" onClick={() => setOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+                      <span className="text-[14px] font-medium flex-1">Agenda</span>
+                    </Link>
+                  </>
+                )}
+                <Link href="/mes-reservations" onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">event_available</span>
+                  <span className="text-[14px] font-medium flex-1">Mes rendez-vous</span>
+                </Link>
                 {isPro && (
                   <Link href="/profile/api-key" onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"

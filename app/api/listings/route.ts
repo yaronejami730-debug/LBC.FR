@@ -21,6 +21,8 @@ import { computeQualityScore } from "@/lib/quality-score";
 import { detectCategory } from "@/lib/autoCategory";
 import { extractAttributes } from "@/lib/extract-attributes";
 import { classifyWellness } from "@/lib/wellness/classify";
+import { inferOfferIntent } from "@/lib/offer-intent";
+import { fieldSetAsksCondition } from "@/lib/offer-fields";
 import {
   WELLNESS_CATEGORY_ID,
   WELLNESS_PRO_THRESHOLD,
@@ -191,6 +193,30 @@ export async function POST(req: NextRequest) {
 
     // The form sends the category label (e.g. "Véhicules"); settings are keyed by ID (e.g. "vehicules")
     const categoryId = CATEGORIES.find((c) => c.label === category)?.id ?? category;
+
+    /**
+     * Nature réelle de l'offre, recalculée ici : le client n'est pas une
+     * autorité, et l'API publique (/api/v1) comme l'import admin n'ont pas de
+     * formulaire du tout. Une prestation ne reçoit pas d'état — c'est ce qui
+     * empêchait une manucure d'être stockée « Bon état » puis de remonter dans
+     * les filtres « Neuf / Occasion ».
+     */
+    const intent = inferOfferIntent({
+      title,
+      description,
+      categoryId,
+      subcategory: subcategory ?? null,
+      price: parsedPrice,
+    });
+    const storedCondition = fieldSetAsksCondition(intent.fieldSet)
+      ? (typeof condition === "string" && condition.trim() ? condition : "Bon état")
+      : null;
+    metaObj.intent = {
+      nature: intent.nature,
+      fieldSet: intent.fieldSet,
+      confidence: intent.confidence,
+      version: intent.version,
+    };
     const categorySetting = await prisma.categorySetting.findUnique({
       where: { categoryId },
     });
@@ -231,7 +257,7 @@ export async function POST(req: NextRequest) {
         category,
         subcategory: subcategory ?? null,
         location,
-        condition: condition || "Bon état",
+        condition: storedCondition ?? "Bon état",
         images: imagesArr,
         metadata: metaObj,
         vehicleKm,
@@ -542,7 +568,7 @@ export async function POST(req: NextRequest) {
         subcategory,
         description,
         location,
-        condition: condition || "Bon état",
+        condition: storedCondition,
         images: JSON.stringify(imagesArr),
         metadata: JSON.stringify(metaObj),
         vehicleKm,

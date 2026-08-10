@@ -24,7 +24,7 @@ type Listing = {
   subcategory: string | null;
   description: string;
   location: string;
-  condition: string;
+  condition: string | null;
   images: string[];
   phone: string | null;
   hidePhone: boolean;

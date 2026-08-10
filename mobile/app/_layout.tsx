@@ -6,8 +6,16 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as Notifications from "expo-notifications";
+import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
 import { AuthProvider } from "@/lib/auth";
 import { UnreadProvider } from "@/lib/unread";
+import { TaxonomyProvider } from "@/lib/taxonomy";
+import { colors } from "@/lib/theme";
+import { interFonts, applyInterDefaults } from "@/lib/fonts";
+
+// Garde le splash jusqu'au chargement d'Inter — évite le flash en police système.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Configure handler avant tout — assure que les notifs s'affichent en foreground.
 Notifications.setNotificationHandler({
@@ -26,7 +34,7 @@ if (Platform.OS === "android") {
     importance: Notifications.AndroidImportance.HIGH,
     sound: "default",
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: "#2f6fb8",
+    lightColor: colors.primary,
   }).catch(() => {});
 }
 
@@ -81,24 +89,40 @@ function NotificationRouter() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(interFonts);
+
+  useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+    // En cas d'échec de chargement on continue en police système plutôt que
+    // de bloquer l'app sur le splash.
+    if (fontsLoaded) applyInterDefaults();
+    SplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
           <UnreadProvider>
+            <TaxonomyProvider>
             <StatusBar style="dark" />
             <NotificationRouter />
             <Stack
               screenOptions={{
                 headerShown: false,
                 headerBackTitle: "Profil",
-                headerTintColor: "#2f6fb8",
-                headerTitleStyle: { color: "#1a1a1a" },
+                headerTintColor: colors.primary,
+                headerTitleStyle: { color: colors.onSurface },
+                headerStyle: { backgroundColor: colors.surface },
+                contentStyle: { backgroundColor: colors.app },
               }}
             >
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="(auth)" options={{ presentation: "modal" }} />
               <Stack.Screen name="annonce/[id]" options={{ headerShown: true, title: "", headerBackTitle: "Retour" }} />
+              <Stack.Screen name="vendeur/[id]" options={{ headerShown: true, title: "Profil vendeur", headerBackTitle: "Retour" }} />
               <Stack.Screen name="messages/[conversationId]" options={{ headerShown: true, title: "Conversation", headerBackTitle: "Retour" }} />
               <Stack.Screen name="settings/informations-personnelles" options={{ headerShown: true, title: "Informations personnelles" }} />
               <Stack.Screen name="settings/email" options={{ headerShown: true, title: "Adresse email" }} />
@@ -109,6 +133,7 @@ export default function RootLayout() {
               <Stack.Screen name="settings/appareils" options={{ headerShown: true, title: "Appareils connectés" }} />
               <Stack.Screen name="settings/aide" options={{ headerShown: true, title: "Aide" }} />
             </Stack>
+            </TaxonomyProvider>
           </UnreadProvider>
         </AuthProvider>
       </SafeAreaProvider>

@@ -3,6 +3,12 @@ export type Category = {
   label: string;
   icon: string;
   subcategories: string[];
+  /**
+   * Ce que l'annonce vend réellement. Une prestation n'a pas d'état ni
+   * d'accessoires : demander « Neuf / Bon état » pour une manucure n'a aucun
+   * sens, et le mot « article » non plus. Le formulaire s'adapte là-dessus.
+   */
+  kind?: "bien" | "prestation";
 };
 
 /**
@@ -61,12 +67,14 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: "services",
+    kind: "prestation",
     label: "Services",
     icon: "handyman",
     subcategories: ["Services à la personne", "Réparations", "Événementiel", "Cours particuliers", "Services divers"],
   },
   {
     id: "beaute-bien-etre",
+    kind: "prestation",
     label: "Beauté & Bien-être",
     icon: "spa",
     // Prestations de salon uniquement : toute connotation sensuelle est
@@ -89,12 +97,14 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: "emploi",
+    kind: "prestation",
     label: "Emploi",
     icon: "work",
     subcategories: ["Offres d'emploi"],
   },
   {
     id: "communaute",
+    kind: "prestation",
     label: "Communauté",
     icon: "groups",
     subcategories: ["Événements", "Associations", "Rencontres"],
@@ -113,6 +123,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: "vacances",
+    kind: "prestation",
     label: "Vacances",
     icon: "beach_access",
     subcategories: ["Locations saisonnières", "Échanges de maisons", "Camping", "Séjours & circuits"],
@@ -131,4 +142,12 @@ export function getCategoryById(id: string) {
 
 export function getCategoryByLabel(label: string) {
   return CATEGORIES.find((c) => c.label === label);
+}
+
+/** Rubrique qui vend une prestation : ni état, ni vocabulaire « article ». */
+export function isPrestationCategory(idOrLabel: string | null | undefined): boolean {
+  if (!idOrLabel) return false;
+  const cat =
+    CATEGORIES.find((c) => c.id === idOrLabel) ?? CATEGORIES.find((c) => c.label === idOrLabel);
+  return cat?.kind === "prestation";
 }

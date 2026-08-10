@@ -76,14 +76,19 @@ export default function ListingCard({
         ) : null}
         <DejaVuBadge listingId={listing.id} />
       </div>
-      <div className="px-3 py-3 flex flex-col gap-1">
+      {/*
+        Le pied de carte empilait gap-1 + mt-1 sur chaque ligne : le prix se
+        retrouvait à ~16 px de la date, ce qui délitait le bloc. Un seul
+        interligne (gap-0.5) suffit, et le prix garde sa respiration au-dessus.
+      */}
+      <div className="px-3 pt-2.5 pb-2.5 flex flex-col gap-0.5">
         <p className="text-[#191c1e] font-extrabold text-[15px] leading-snug line-clamp-2 min-h-[2.5em]">
           {listing.title}
         </p>
-        <p className="text-[#2f6fb8] font-extrabold text-lg leading-none mt-1">
+        <p className="text-[#2f6fb8] font-extrabold text-lg leading-none mt-0.5">
           {listing.price.toLocaleString("fr-FR")} €
         </p>
-        <p className="text-[#777683] text-xs truncate mt-1">{listing.location}</p>
+        <p className="text-[#777683] text-xs truncate">{listing.location}</p>
         <p className="text-[#9ca3af] text-[11px]">{formatDistanceToNow(listing.createdAt)}</p>
       </div>
     </Link>

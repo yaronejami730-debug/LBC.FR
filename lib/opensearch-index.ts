@@ -10,6 +10,7 @@
 
 import { getClient, LISTINGS_INDEX } from "./opensearch";
 import { FR_SYNONYMS } from "./synonyms-fr";
+import { inferOfferIntent } from "./offer-intent";
 
 // ─────────────────────────────────────────────────────────────
 // SETTINGS / MAPPINGS
@@ -67,6 +68,12 @@ const INDEX_MAPPINGS = {
     shadowBanned: { type: "boolean" },
     detectedBrand: { type: "keyword" },
     detectedModel: { type: "keyword" },
+
+    // Nature de l'offre (lib/offer-intent.ts). Filtrable : une recherche de
+    // prestation ne doit pas ramener le matériel du métier, et une demande ne
+    // doit jamais remonter comme si c'était une offre.
+    nature: { type: "keyword" },
+    fieldSet: { type: "keyword" },
 
     // Modération — risque filtrable/triable pour les dashboards admin.
     riskScore: { type: "short" },
@@ -128,7 +135,8 @@ export type IndexableListing = {
   category: string;
   subcategory: string | null;
   location: string;
-  condition: string;
+  /** Nullable : une prestation n'a pas d'état (cf. lib/offer-intent.ts). */
+  condition: string | null;
   brand: string | null;
   price: number;
   status: string;
@@ -144,7 +152,12 @@ export type IndexableListing = {
 };
 
 /** Aplatit le JSON `metadata` en texte cherchable + extrait les attributs détectés. */
-function parseMetadata(metadata: string): { text: string; brand: string | null; model: string | null } {
+function parseMetadata(metadata: string): {
+  text: string;
+  brand: string | null;
+  model: string | null;
+  intent: { nature?: string; fieldSet?: string } | null;
+} {
   try {
     const obj = JSON.parse(metadata || "{}") as Record<string, unknown>;
     const text = Object.values(obj)
@@ -154,21 +167,38 @@ function parseMetadata(metadata: string): { text: string; brand: string | null; 
       text,
       brand: typeof obj.detectedBrand === "string" ? obj.detectedBrand : null,
       model: typeof obj.detectedModel === "string" ? obj.detectedModel : null,
+      intent:
+        obj.intent && typeof obj.intent === "object"
+          ? (obj.intent as { nature?: string; fieldSet?: string })
+          : null,
     };
   } catch {
-    return { text: "", brand: null, model: null };
+    return { text: "", brand: null, model: null, intent: null };
   }
 }
 
 export function listingToDocument(listing: IndexableListing) {
   const meta = parseMetadata(listing.metadata);
+  // L'intention est calculée à la publication et rangée dans metadata. Une
+  // annonce antérieure au moteur n'en a pas : on la recalcule ici plutôt que de
+  // l'indexer sans nature, sinon elle serait invisible à tout filtre.
+  const intent =
+    meta.intent?.nature && meta.intent?.fieldSet
+      ? meta.intent
+      : inferOfferIntent({
+          title: listing.title,
+          description: listing.description,
+          categoryId: listing.category,
+          subcategory: listing.subcategory,
+          price: listing.price,
+        });
   return {
     title: listing.title,
     description: listing.description,
     category: listing.category,
     subcategory: listing.subcategory ?? "",
     location: listing.location,
-    condition: listing.condition,
+    condition: listing.condition ?? null,
     brand: listing.brand ?? "",
     price: listing.price,
     status: listing.status,
@@ -176,6 +206,8 @@ export function listingToDocument(listing: IndexableListing) {
     metadataText: meta.text,
     detectedBrand: meta.brand,
     detectedModel: meta.model,
+    nature: intent.nature ?? null,
+    fieldSet: intent.fieldSet ?? null,
     vehicleKm: listing.vehicleKm,
     vehicleYear: listing.vehicleYear,
     immoSurface: listing.immoSurface,

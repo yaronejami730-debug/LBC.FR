@@ -1,0 +1,75 @@
+{
+  "key": "immobilier.vente.appartement",
+  "version": 1,
+  "status": "published",
+  "label": "Appartement — Vente",
+  "icon": "home",
+  "extends": ["_base.listing", "_mixin.habitation"],
+  "taxonomy": { "category": "immobilier", "subcategory": "vente", "listing_type": "appartement", "path_labels": ["Immobilier", "Vente", "Appartement"] },
+  "transaction_types": ["vente"],
+  "default_transaction_type": "vente",
+
+  "fields": [
+    { "ref": "prix_vente",      "step": "tarification", "order": 1, "required": true, "facet": true, "seo_attr": true },
+    { "ref": "prix_negociable", "step": "tarification", "order": 2 },
+    { "ref": "charges_copro",   "step": "tarification", "order": 3, "visible_if": { "==": [{ "var": "attributes.copropriete" }, true] } },
+    { "ref": "taxe_fonciere",   "step": "tarification", "order": 4 },
+    { "ref": "copropriete",     "step": "caracteristiques", "order": 1, "default": true },
+    { "ref": "nb_lots_copro",   "step": "caracteristiques", "order": 2, "visible_if": { "==": [{ "var": "attributes.copropriete" }, true] } },
+    { "ref": "loi_carrez",      "step": "caracteristiques", "order": 3 },
+    { "ref": "nb_wc",           "step": "caracteristiques", "order": 5 },
+    { "ref": "etat_bien",       "step": "caracteristiques", "order": 40, "required": true },
+    { "ref": "travaux_prevoir", "step": "caracteristiques", "order": 41, "visible_if": { "in": [{ "var": "attributes.etat_bien" }, ["À rafraîchir", "À rénover", "Gros travaux à prévoir"]] } },
+    { "ref": "dpe",             "step": "caracteristiques", "order": 50, "required": true, "facet": true, "seo_attr": true },
+    { "ref": "ges",             "step": "caracteristiques", "order": 51, "required": true },
+    { "ref": "conso_energie",   "step": "caracteristiques", "order": 52 },
+    { "ref": "disponibilite_le","step": "conditions", "order": 1 },
+    { "ref": "documents_annexes", "step": "medias", "order": 30 }
+  ],
+
+  "pricing": { "model": "single", "currency": "EUR", "negotiable": true, "charges": true, "hide_price_allowed": false, "vat_mode": "na" },
+  "availability": { "mode": "date_single" },
+
+  "display": {
+    "template": "realestate",
+    "title_pattern": "{type_bien} {nb_pieces} pièces {surface} m² à {ville}",
+    "blocks": [
+      { "type": "hero_gallery", "options": { "group_by": "space" } },
+      { "type": "price_block", "options": { "show_price_per_m2": true, "show_charges": true } },
+      { "type": "key_facts", "fields": ["surface", "nb_pieces", "nb_chambres", "nb_sdb", "etage", "exposition"] },
+      { "type": "description" },
+      { "type": "specs_table", "label": "Détails du bien" },
+      { "type": "amenities", "fields": ["exterieurs", "services_bien", "accessibilite"] },
+      { "type": "energy_diagram", "fields": ["dpe", "ges"] },
+      { "type": "floorplan" },
+      { "type": "map", "options": { "respect_precision": true, "show_poi": true } },
+      { "type": "documents" },
+      { "type": "seller_card" },
+      { "type": "similar" },
+      { "type": "cta_bar", "options": { "primary": "Demander une visite" } }
+    ],
+    "card": { "primary_price": "vente", "facts": ["surface", "nb_pieces", "nb_chambres"], "badges": ["dpe", "exterieurs"] }
+  },
+
+  "validation": [
+    { "id": "dpe_obligatoire", "severity": "error", "when": { "!": { "var": "attributes.dpe" } }, "message": "Le DPE est obligatoire dans toute annonce de vente immobilière (loi Climat).", "field": "dpe" },
+    { "id": "prix_m2_aberrant", "severity": "warning", "when": { "or": [{ "<": [{ "var": "computed.prix_m2" }, 200] }, { ">": [{ "var": "computed.prix_m2" }, 40000] }] }, "message": "Le prix au m² semble inhabituel pour ce secteur. Vérifiez le prix et la surface.", "field": "prix_vente" }
+  ],
+
+  "seo": {
+    "url_pattern": "/immobilier/vente/appartement/{city_slug}/{id}-{title_slug}",
+    "schema_org": ["Apartment", "Offer", "RealEstateListing"],
+    "title_pattern": "Appartement {nb_pieces} pièces {surface} m² à vendre à {ville} — {prix_vente} | Deal&Co",
+    "meta_description_pattern": "À vendre : appartement {nb_pieces} pièces de {surface} m² à {ville}, {nb_chambres} chambres, {etage}. DPE {dpe}. {prix_vente}.",
+    "h1_pattern": "Appartement {nb_pieces} pièces {surface} m² à vendre — {ville}",
+    "hub_pages": true
+  },
+
+  "classifier": {
+    "head_nouns": ["appartement", "appart", "studio", "t1", "t2", "t3", "t4", "t5", "f2", "f3", "f4", "loft", "duplex"],
+    "modifiers": ["copropriété", "syndic", "cave", "dpe", "notaire", "frais d'agence", "à saisir"],
+    "negative": ["utilitaire", "fourgon", "kilométrage", "boîte de vitesses"],
+    "transaction_cues": { "vente": ["à vendre", "vente", "vends", "acheter", "achat", "propriétaire vend", "prix net vendeur", "coup de cœur", "投"] },
+    "prior": 1.0
+  }
+}

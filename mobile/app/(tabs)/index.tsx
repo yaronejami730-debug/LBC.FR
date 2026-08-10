@@ -12,6 +12,9 @@ import AdCarousel from "@/components/home/AdCarousel";
 import { type Ad } from "@/components/home/AdCard";
 import InterstitialAd from "@/components/InterstitialAd";
 import type { HomeListing } from "@/components/home/ListingCard";
+import Avatar from "@/components/ui/Avatar";
+import Button from "@/components/ui/Button";
+import { colors } from "@/lib/theme";
 
 type FeedResponse = {
   featured: HomeListing[];
@@ -43,7 +46,7 @@ export default function HomeScreen() {
   const runSearch = (q: string) => {
     const trimmed = q.trim();
     if (trimmed) track("search", { q: trimmed });
-    router.push(trimmed ? `/recherche?q=${encodeURIComponent(trimmed)}` : "/recherche");
+    router.push(trimmed ? `/recherche?q=${encodeURIComponent(trimmed)}` : "/recherche?focus=1");
   };
 
   const adAt = (i: number): Ad | null => (ads.length ? ads[i % ads.length] : null);
@@ -76,28 +79,42 @@ export default function HomeScreen() {
   const hasSuggestions = (perso?.suggestions?.length ?? 0) > 0;
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app">
       <InterstitialAd />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
       >
         <View className="px-4 pt-2 pb-3">
-          <Text className="text-primary text-2xl font-extrabold mb-2">Deal&Co</Text>
-          <View className="flex-row items-center bg-surface-container rounded-full px-4 py-1">
-            <Ionicons name="search" size={18} color="#94a3b8" />
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-primary text-2xl font-extrabold">Deal&Co</Text>
+            {user ? (
+              <Pressable
+                onPress={() => router.push("/(tabs)/profile")}
+                accessibilityRole="button"
+                accessibilityLabel="Mon profil"
+                className="active:opacity-70"
+              >
+                <Avatar name={user.companyName || user.name} size={36} />
+              </Pressable>
+            ) : (
+              <Button label="Se connecter" variant="secondary" size="sm" onPress={() => router.push("/(auth)/login")} />
+            )}
+          </View>
+          <View className="flex-row items-center bg-surface border border-line rounded-full px-4 py-1">
+            <Ionicons name="search" size={18} color={colors.onSurfaceVariant} />
             <TextInput
               value={query}
               onChangeText={setQuery}
               onSubmitEditing={() => runSearch(query)}
               returnKeyType="search"
               placeholder="Rechercher sur Deal&Co"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.outline}
               className="flex-1 ml-2 py-1.5 text-on-surface"
             />
             {query.length > 0 && (
               <Pressable onPress={() => setQuery("")} className="pl-2">
-                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                <Ionicons name="close-circle" size={18} color={colors.outline} />
               </Pressable>
             )}
           </View>
@@ -109,13 +126,13 @@ export default function HomeScreen() {
         </View>
 
         {loading ? (
-          <View className="py-12 items-center"><ActivityIndicator color="#2f6fb8" /></View>
+          <View className="py-12 items-center"><ActivityIndicator color={colors.primary} /></View>
         ) : error ? (
           <View className="px-6 py-8">
-            <Text className="text-red-600 text-center">{error}</Text>
-            <Pressable onPress={load} className="self-center mt-4 bg-primary px-4 py-2 rounded-full">
-              <Text className="text-white font-semibold">Réessayer</Text>
-            </Pressable>
+            <Text className="text-danger text-center">{error}</Text>
+            <View className="items-center mt-4">
+              <Button label="Réessayer" icon="refresh" onPress={load} />
+            </View>
           </View>
         ) : data ? (
           <>
@@ -128,10 +145,10 @@ export default function HomeScreen() {
                     <Pressable
                       key={q}
                       onPress={() => runSearch(q)}
-                      className="flex-row items-center bg-surface-container-low border border-surface-container rounded-full px-4 py-2.5 active:opacity-70"
+                      className="flex-row items-center bg-primary-light rounded-full px-4 py-2.5 active:opacity-70"
                     >
-                      <Ionicons name="time-outline" size={15} color="#2f6fb8" />
-                      <Text className="text-on-surface text-sm font-semibold ml-2" numberOfLines={1}>{q}</Text>
+                      <Ionicons name="time-outline" size={15} color={colors.primary} />
+                      <Text className="text-primary text-sm font-semibold ml-2" numberOfLines={1}>{q}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -11,14 +11,14 @@ import { prisma } from "@/lib/prisma";
  * (cf. /api/cron/subscription-digest).
  */
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
+  const viewerId = await getAuthUserId(req);
+  if (!viewerId) return NextResponse.json({ error: "Connexion requise" }, { status: 401 });
 
   const { sellerId } = await req.json().catch(() => ({}));
   if (!sellerId || typeof sellerId !== "string") {
     return NextResponse.json({ error: "Vendeur manquant" }, { status: 400 });
   }
-  if (sellerId === session.user.id) {
+  if (sellerId === viewerId) {
     return NextResponse.json({ error: "Impossible de s'abonner à soi-même" }, { status: 400 });
   }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   const existing = await prisma.subscription.findUnique({
-    where: { followerId_sellerId: { followerId: session.user.id, sellerId } },
+    where: { followerId_sellerId: { followerId: viewerId, sellerId } },
     select: { id: true },
   });
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.subscription.create({
     data: {
-      followerId: session.user.id,
+      followerId: viewerId,
       sellerId,
       // Point de départ : seules les annonces publiées *après* l'abonnement
       // sont annoncées. Personne ne veut recevoir tout l'historique.
@@ -58,12 +58,12 @@ export async function GET(req: NextRequest) {
   const sellerId = req.nextUrl.searchParams.get("sellerId");
   if (!sellerId) return NextResponse.json({ error: "Vendeur manquant" }, { status: 400 });
 
-  const session = await auth();
+  const viewerId = await getAuthUserId(req);
   const [count, mine] = await Promise.all([
     prisma.subscription.count({ where: { sellerId } }),
-    session?.user?.id
+    viewerId
       ? prisma.subscription.findUnique({
-          where: { followerId_sellerId: { followerId: session.user.id, sellerId } },
+          where: { followerId_sellerId: { followerId: viewerId, sellerId } },
           select: { id: true },
         })
       : Promise.resolve(null),

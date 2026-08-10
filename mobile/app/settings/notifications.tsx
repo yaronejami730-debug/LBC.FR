@@ -5,6 +5,7 @@ import * as SecureStore from "expo-secure-store";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { registerExpoPushToken } from "@/lib/push";
+import { colors } from "@/lib/theme";
 
 const PUSH_PREF = "dealandco.pref.push";
 
@@ -93,30 +94,30 @@ export default function NotificationsScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center">
-        <ActivityIndicator color="#2f6fb8" />
+      <View className="flex-1 bg-app items-center justify-center">
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+    <ScrollView className="flex-1 bg-app" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
       {/* Device-level push toggle */}
-      <View className="bg-surface-container-low rounded-2xl px-4 py-3 mb-5 flex-row items-center">
+      <View className="bg-surface rounded-card px-4 py-3 mb-5 flex-row items-center">
         <View className="flex-1 mr-3">
           <Text className="text-on-surface font-semibold">Notifications push sur cet appareil</Text>
           <Text className="text-on-surface-variant text-xs mt-0.5">
             Désactive toutes les notifications push sur cet iPhone, peu importe les préférences ci-dessous.
           </Text>
         </View>
-        <Switch value={pushDevice} onValueChange={togglePushDevice} trackColor={{ true: "#2f6fb8" }} />
+        <Switch value={pushDevice} onValueChange={togglePushDevice} trackColor={{ true: colors.primary }} />
       </View>
 
       {SECTIONS.map((section) => (
-        <View key={section.title} className="border border-surface-container rounded-2xl mb-4 overflow-hidden">
+        <View key={section.title} className="border border-line rounded-card mb-4 overflow-hidden">
           <Text className="text-on-surface font-extrabold px-4 pt-4 pb-2">{section.title}</Text>
           {section.rows.map((row, i) => (
-            <View key={row.key} className={`px-4 py-3 ${i === section.rows.length - 1 ? "" : "border-b border-surface-container"}`}>
+            <View key={row.key} className={`px-4 py-3 ${i === section.rows.length - 1 ? "" : "border-b border-line"}`}>
               <Text className="text-on-surface text-sm font-semibold mb-2">{row.label}</Text>
               {row.channels.map((ch) => (
                 <ChannelRow
@@ -146,13 +147,13 @@ function ChannelRow({
   const isPush = channel === "push";
   return (
     <View className="flex-row items-center py-2">
-      <View className={`w-6 h-6 rounded-full items-center justify-center ${isPush ? "bg-blue-50" : "bg-pink-50"}`}>
-        <Ionicons name={isPush ? "phone-portrait" : "mail"} size={14} color={isPush ? "#2f6fb8" : "#be185d"} />
+      <View className={`w-6 h-6 rounded-full items-center justify-center ${isPush ? "bg-primary-light" : "bg-primary-light"}`}>
+        <Ionicons name={isPush ? "phone-portrait" : "mail"} size={14} color={isPush ? colors.primary : colors.navy} />
       </View>
       <Text className="text-on-surface text-sm font-semibold ml-2 flex-1">
         {isPush ? "Notifications mobile" : "E-mails"}
       </Text>
-      <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ true: "#2f6fb8" }} />
+      <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ true: colors.primary }} />
     </View>
   );
 }

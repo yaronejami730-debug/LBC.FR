@@ -1,3 +1,6 @@
+import { inferOfferIntent } from "./offer-intent";
+import { fieldSetAsksCondition } from "./offer-fields";
+
 export type FilterType = "range" | "select" | "text" | "number";
 
 export interface FilterField {
@@ -395,11 +398,25 @@ export const CATEGORY_FILTERS: Record<string, FilterGroup[]> = {
   ],
 };
 
-export function getFiltersForCategory(categoryId: string): FilterGroup[] {
+export function getFiltersForCategory(categoryId: string, query?: string | null): FilterGroup[] {
   const specific = CATEGORY_FILTERS[categoryId] ?? [];
   // Emploi already defines its own price range, skip common price for it
   const common = categoryId === "emploi"
     ? COMMON_FILTERS.filter((g) => g.label !== "Prix")
     : COMMON_FILTERS;
-  return [...specific, ...common];
+  const groups = [...specific, ...common];
+
+  // Proposer « Neuf / Bon état » à quelqu'un qui cherche une manucure n'a pas
+  // plus de sens que de le demander à celui qui la publie : le filtre disparaît
+  // quand la requête vise clairement autre chose qu'un objet.
+  if (query && query.trim().length >= 3) {
+    const intent = inferOfferIntent({ title: query, categoryId: categoryId || null });
+    if (intent.confidence >= 0.6 && !fieldSetAsksCondition(intent.fieldSet)) {
+      return groups
+        .map((g) => ({ ...g, fields: g.fields.filter((f) => f.key !== "condition") }))
+        .filter((g) => g.fields.length > 0);
+    }
+  }
+
+  return groups;
 }

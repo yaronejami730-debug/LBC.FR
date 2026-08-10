@@ -1,0 +1,123 @@
+{
+  "key": "services.evenementiel.photographe",
+  "version": 1,
+  "status": "published",
+  "label": "Photographe — Prestation événementielle",
+  "icon": "camera",
+  "extends": ["_base.listing"],
+  "taxonomy": { "category": "services", "subcategory": "evenementiel", "listing_type": "photographe", "path_labels": ["Services", "Événementiel", "Photographe"] },
+  "transaction_types": ["prestation"],
+  "default_transaction_type": "prestation",
+
+  "steps": [
+    { "key": "informations",   "label": "Votre prestation",   "order": 3 },
+    { "key": "tarification",   "label": "Vos tarifs",         "subtitle": "Forfait, journée ou horaire — au choix", "order": 4 },
+    { "key": "zone",           "label": "Zone d'intervention", "order": 5, "icon": "map" },
+    { "key": "disponibilites", "label": "Disponibilités",     "order": 6 },
+    { "key": "medias",         "label": "Portfolio",          "subtitle": "Vos meilleures réalisations", "order": 7 },
+    { "key": "credibilite",    "label": "Expérience et garanties", "order": 8, "icon": "badge-check" },
+    { "key": "conditions",     "label": "Conditions",         "order": 9 },
+    { "key": "apercu",         "label": "Aperçu et publication", "order": 10 }
+  ],
+
+  "fields": [
+    { "ref": "type_prestation",  "step": "informations", "order": 1, "required": true, "facet": true, "seo_attr": true,
+      "overrides": { "label": "Type de prestation photo", "source_filter": "audiovisuel", "options": ["Mariage", "Fiançailles", "Baptême", "Anniversaire", "Séminaire d'entreprise", "Soirée privée", "Concert", "Salon professionnel", "Portrait / book", "Grossesse", "Nouveau-né", "Famille", "Produit / e-commerce", "Immobilier", "Culinaire", "Mode"] } },
+    { "ref": "duree_prestation", "step": "informations", "order": 2, "required": true },
+    { "ref": "nb_intervenants",  "step": "informations", "order": 3, "overrides": { "label": "Nombre de photographes" } },
+
+    { "ref": "tarifs",           "step": "tarification", "order": 1, "required": true },
+    { "ref": "acompte_pct",      "step": "tarification", "order": 10 },
+    { "ref": "devis_gratuit",    "step": "tarification", "order": 11, "default": true },
+    { "ref": "frais_deplacement","step": "tarification", "order": 12, "required": true },
+
+    { "ref": "zone_intervention","step": "zone", "order": 1, "required": true, "facet": true, "seo_attr": true },
+    { "ref": "rayon_km",         "step": "zone", "order": 2 },
+
+    { "ref": "creneaux",         "step": "disponibilites", "order": 1 },
+    { "ref": "calendrier",       "step": "disponibilites", "order": 2, "overrides": { "label": "Dates déjà réservées" } },
+    { "ref": "delai_intervention","step": "disponibilites", "order": 3 },
+
+    { "ref": "portfolio",        "step": "medias", "order": 1, "required": true, "overrides": { "label": "Vos réalisations", "min": 6 } },
+    { "ref": "portfolio_url",    "step": "medias", "order": 2 },
+    { "ref": "videos",           "step": "medias", "order": 3 },
+
+    { "ref": "experience_annees","step": "credibilite", "order": 1, "required": true },
+    { "ref": "diplomes",         "step": "credibilite", "order": 2 },
+    { "ref": "assurance_rcpro",  "step": "credibilite", "order": 3, "required": true },
+    { "ref": "langues",          "step": "credibilite", "order": 4 },
+    { "ref": "clientele",        "step": "credibilite", "order": 5, "required": true },
+
+    { "ref": "materiel_fourni",  "step": "conditions", "order": 1 },
+    { "ref": "conditions_particulieres", "step": "conditions", "order": 2,
+      "overrides": { "label": "Livrables et conditions", "placeholder": "Nombre de photos retouchées, délai de livraison, galerie en ligne, droits d'utilisation…" } }
+  ],
+
+  "pricing": {
+    "model": "multi_rate",
+    "currency": "EUR",
+    "require_at_least_one_rate": true,
+    "negotiable": true,
+    "hide_price_allowed": true,
+    "vat_mode": "both",
+    "rates": [
+      { "key": "heure",    "unit": "hour",    "label": "Tarif horaire" },
+      { "key": "demi_jour","unit": "half_day","label": "Demi-journée" },
+      { "key": "jour",     "unit": "day",     "label": "Journée" },
+      { "key": "forfait",  "unit": "project", "label": "Forfait", "hint": "ex. forfait mariage complet" }
+    ],
+    "extras": [
+      { "key": "album",       "label": "Album imprimé", "unit": "unité" },
+      { "key": "retouches",   "label": "Retouches supplémentaires", "unit": "photo" },
+      { "key": "drone",       "label": "Prise de vue par drone", "unit": "prestation" },
+      { "key": "second_shooter", "label": "Second photographe", "unit": "prestation" },
+      { "key": "deplacement", "label": "Déplacement au-delà de la zone", "unit": "km", "included_toggle": true }
+    ]
+  },
+
+  "location": { "mode": "zone_list", "precision_default": "city_only", "allow_multiple_zones": true, "require_city": true },
+  "availability": { "mode": "weekly_slots", "blocked_periods": true },
+
+  "moderation": { "pro_only": false, "requires_domain_coherence": true, "requires_qualification": [] },
+
+  "display": {
+    "template": "service",
+    "title_pattern": "Photographe {type_prestation} — {zone_principale}",
+    "blocks": [
+      { "type": "hero_gallery", "label": "Portfolio", "options": { "layout": "masonry" } },
+      { "type": "rates_table", "label": "Tarifs", "options": { "only_filled": true } },
+      { "type": "key_facts", "fields": ["type_prestation", "duree_prestation", "experience_annees", "delai_intervention"] },
+      { "type": "description" },
+      { "type": "service_zone", "label": "Zone d'intervention", "options": { "show_radius": true } },
+      { "type": "calendar", "label": "Disponibilités" },
+      { "type": "conditions", "label": "Livrables et conditions" },
+      { "type": "seller_card", "options": { "show_badges": ["rc_pro", "experience", "verifie"] } },
+      { "type": "similar" },
+      { "type": "cta_bar", "options": { "primary": "Demander un devis" } }
+    ],
+    "card": { "primary_price": "forfait", "facts": ["type_prestation", "experience_annees"], "badges": ["clientele", "delai_intervention"] }
+  },
+
+  "validation": [
+    { "id": "portfolio_min", "severity": "error", "when": { "<": [{ "var": "media.portfolio_count" }, 6] }, "message": "Ajoutez au moins 6 réalisations : les prestataires avec portfolio reçoivent 5× plus de demandes.", "field": "portfolio" },
+    { "id": "tarif_ou_devis", "severity": "warning", "when": { "==": [{ "var": "pricing.filled_rates_count" }, 0] }, "message": "Sans tarif indicatif, votre annonce sera moins visible dans les résultats filtrés par budget.", "field": "tarifs" },
+    { "id": "coherence_activite_pro", "severity": "error", "when": { "==": [{ "var": "coherence.level" }, "block"] }, "message": "Cette prestation ne correspond pas à votre activité professionnelle déclarée. Ajoutez une activité secondaire justifiée pour publier.", "field": "type_prestation" }
+  ],
+
+  "seo": {
+    "url_pattern": "/services/photographe/{prestation_slug}/{city_slug}/{id}-{title_slug}",
+    "schema_org": ["Service", "ProfessionalService", "Offer"],
+    "title_pattern": "Photographe {type_prestation} à {ville} — dès {price_from} | Deal&Co",
+    "meta_description_pattern": "Photographe {type_prestation} à {ville}, {experience_annees} ans d'expérience. Tarifs dès {price_from}. Portfolio et disponibilités sur Deal&Co.",
+    "h1_pattern": "Photographe {type_prestation} — {ville}",
+    "hub_pages": true
+  },
+
+  "classifier": {
+    "head_nouns": ["photographe", "photographie", "photo", "shooting", "reportage photo", "vidéaste", "photobooth"],
+    "modifiers": ["mariage", "book", "portrait", "événement", "retouche", "portfolio", "séance"],
+    "negative": ["m²", "kilométrage", "à vendre appartement", "chambres"],
+    "transaction_cues": { "prestation": ["propose", "je propose", "prestation", "devis", "disponible pour", "service", "je réalise"] },
+    "prior": 0.9
+  }
+}

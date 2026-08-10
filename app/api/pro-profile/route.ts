@@ -7,6 +7,13 @@ export const runtime = "nodejs";
 
 const MAX_SERVICES = 120;
 
+/** Valeur numérique bornée, avec repli sur l'existant si elle est absente. */
+function clamp(raw: unknown, fallback: number, min: number, max: number): number {
+  const n = Number(raw);
+  if (raw === undefined || Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
 type ServiceInput = {
   section?: string;
   label?: string;
@@ -29,7 +36,10 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const profile = await prisma.proProfile.findUnique({
+  const profile = await prisma.proProfile.findFirst({
+    // `userId` n'est plus unique : un compte peut porter plusieurs
+    // établissements. Cette route sert la fiche courante — le sélecteur
+    // d'établissement passera par lib/pro/access.
     where: { userId: session.user.id },
     include: { services: { orderBy: { position: "asc" } } },
   });
@@ -82,9 +92,11 @@ export async function POST(req: NextRequest) {
       position: i,
     }));
 
-  const existing = await prisma.proProfile.findUnique({
+  const existing = await prisma.proProfile.findFirst({
     where: { userId: session.user.id },
-    select: { id: true, slug: true },
+    // hours / photos / coverImage sont relus pour pouvoir les conserver
+    // quand la requête ne les porte pas.
+    select: { id: true, slug: true, hours: true, photos: true, coverImage: true, coverX: true, coverY: true, coverZoom: true },
   });
 
   // Le slug ne bouge plus une fois publié : une fiche partagée doit rester
@@ -108,9 +120,26 @@ export async function POST(req: NextRequest) {
     postalCode: body.postalCode ? String(body.postalCode).slice(0, 10) : null,
     phone: body.phone ? String(body.phone).slice(0, 30) : null,
     website: body.website ? String(body.website).slice(0, 200) : null,
-    hours: JSON.stringify(body.hours ?? {}),
-    photos: JSON.stringify(Array.isArray(body.photos) ? body.photos.slice(0, 12) : []),
-    coverImage: body.coverImage ? String(body.coverImage) : null,
+    // Champ absent ≠ champ vidé. L'éditeur de fiche n'envoie ni les horaires ni
+    // les photos ; les écraser à chaque enregistrement effaçait en silence ce
+    // qui avait été saisi ailleurs (équipe et horaires, galerie).
+    hours: body.hours !== undefined ? JSON.stringify(body.hours) : (existing?.hours ?? "{}"),
+    photos:
+      body.photos !== undefined
+        ? JSON.stringify(Array.isArray(body.photos) ? body.photos.slice(0, 12) : [])
+        : (existing?.photos ?? "[]"),
+    // Ici en revanche, `null` explicite veut dire « retirer la couverture ».
+    coverImage:
+      body.coverImage === undefined
+        ? (existing?.coverImage ?? null)
+        : body.coverImage
+          ? String(body.coverImage)
+          : null,
+    // Cadrage : borné côté serveur, le client n'est pas une autorité. Un zoom
+    // négatif ou un centrage à 400 % produirait une couverture cassée.
+    coverX: clamp(body.coverX, existing?.coverX ?? 50, 0, 100),
+    coverY: clamp(body.coverY, existing?.coverY ?? 50, 0, 100),
+    coverZoom: clamp(body.coverZoom, existing?.coverZoom ?? 1, 1, 3),
     isPublished: body.isPublished !== false,
   };
 

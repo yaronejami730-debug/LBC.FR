@@ -550,10 +550,14 @@ export default async function ListingPage({
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-outline-variant/15">
-              <div className="flex flex-col gap-1">
-                <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">État</span>
-                <span className="text-on-surface font-semibold">{listing.condition}</span>
-              </div>
+              {/* Une prestation n'a pas d'état : la case disparaît au lieu
+                  d'afficher une valeur inventée. */}
+              {listing.condition && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">État</span>
+                  <span className="text-on-surface font-semibold">{listing.condition}</span>
+                </div>
+              )}
               <div className="flex flex-col gap-1">
                 <span className="text-outline text-[11px] font-semibold uppercase tracking-widest">Catégorie</span>
                 <span className="text-on-surface font-semibold">{listing.category}</span>

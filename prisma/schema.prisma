@@ -92,7 +92,12 @@ model User {
   badgeRequestedAt   DateTime?
   badgeGrantedAt     DateTime?
   proVerifiedAt      DateTime?
-  proProfile         ProProfile?
+  /// Établissements créés par ce compte. Ce n'est plus le vecteur des droits —
+  /// voir `proAccess` — mais la trace du créateur.
+  proProfiles        ProProfile[]
+  /// Entreprises que ce compte administre, avec son rôle sur chacune.
+  proAccess          ProAccess[]
+  proBookings        ProBooking[]      @relation("ProBookingCustomer")
   subscriptions      Subscription[]    @relation("SubscriptionFollower")
   subscribers        Subscription[]    @relation("SubscriptionSeller")
   proVerifications   ProVerification[] @relation("ProVerificationUser")
@@ -165,47 +170,62 @@ model Waitlist {
 }
 
 model Listing {
-  id                  String    @id @default(cuid())
+  id                  String      @id @default(cuid())
   title               String
   description         String
   price               Float
   category            String
   subcategory         String?
   location            String
-  condition           String    @default("Good")
+  /**
+   * État de l'objet. Nullable : une prestation, une offre d'emploi ou un
+   * événement n'en ont pas. Le défaut « Good » remplissait la colonne pour
+   * tout le monde et faisait remonter des manucures dans les filtres « Neuf ».
+   * Voir lib/offer-intent.ts.
+   */
+  condition           String?
   brand               String?
   material            String?
-  images              String    @default("[]")
-  isPremium           Boolean   @default(false)
-  isVerified          Boolean   @default(false)
+  images              String      @default("[]")
+  isPremium           Boolean     @default(false)
+  isVerified          Boolean     @default(false)
   userId              String
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
   deletedAt           DateTime?
-  metadata            String    @default("{}")
+  metadata            String      @default("{}")
   vehicleKm           Int?
   vehicleYear         Int?
   immoSurface         Float?
   immoRooms           Int?
   phone               String?
   phoneHash           String?
-  hidePhone           Boolean   @default(false)
+  hidePhone           Boolean     @default(false)
   /// PARTICULIER | PRO — sous quelle casquette l'annonce est publiée.
   ///
   /// Un compte converti du particulier au professionnel garde les deux usages :
   /// il vend son canapé le samedi et son stock la semaine. Le choix est fait à
   /// la publication, pas déduit du compte, parce que les deux ne suivent pas
   /// les mêmes règles — notamment sur la précision de l'adresse affichée.
-  postedAs            String    @default("PARTICULIER")
+  postedAs            String      @default("PARTICULIER")
   /// Adresse précise, réservée aux annonces professionnelles : un local
   /// commercial est une adresse publique, le domicile d'un particulier non.
   addressLine         String?
+  /// Établissement qui publie l'annonce. Nul pour un particulier.
+  ///
+  /// Indispensable dès qu'un compte porte plusieurs boutiques : « BMW Série 3 »
+  /// appartient à Simplifica Versailles, pas au compte Simplifica en général,
+  /// et c'est le téléphone et l'adresse de Versailles qu'il faut afficher.
+  /// Tant que la relation compte → établissement était bijective on pouvait la
+  /// déduire ; avec trois établissements, la déduction devient impossible.
+  establishmentId     String?
+  establishment       ProProfile? @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
   /// APPROVED | PENDING | REJECTED | REMOVED | SOLD
   ///
   /// REMOVED = retirée par la modération. Invisible publiquement (toutes les
   /// requêtes publiques filtrent sur APPROVED), mais toujours accessible à son
   /// auteur depuis son espace personnel pendant le délai de conservation.
-  status              String    @default("APPROVED")
+  status              String      @default("APPROVED")
   rejectionReason     String?
   adminNote           String?
   /// Retrait de modération : date du retrait et date de destruction définitive.
@@ -216,12 +236,12 @@ model Listing {
   expiresAt           DateTime?
   expiryNotifiedAt    DateTime?
   photoReminderSentAt DateTime?
-  viewCount           Int       @default(0)
-  phoneClickCount     Int       @default(0)
-  messageClickCount   Int       @default(0)
+  viewCount           Int         @default(0)
+  phoneClickCount     Int         @default(0)
+  messageClickCount   Int         @default(0)
   interestNotifiedAt  DateTime?
-  shadowBanned        Boolean   @default(false)
-  reviewPriority      Int       @default(0)
+  shadowBanned        Boolean     @default(false)
+  reviewPriority      Int         @default(0)
 
   // Trust & safety
   qualityScore          Int      @default(50)
@@ -335,6 +355,9 @@ model DeviceSession {
   ipHash      String
   uaHash      String
   fingerprint String?
+  /// Libellé lisible dérivé du User-Agent (« Chrome sur macOS »). Le
+  /// User-Agent brut n'est pas conservé.
+  deviceName  String?
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id])
@@ -472,16 +495,16 @@ model BanRegistry {
 /// une trace vérifiable (qui, quoi, combien, quand) sans réintroduire les
 /// données qu'elle vient justement d'effacer.
 model AdminAuditLog {
-  id         String   @id @default(cuid())
-  action     String // PERMANENT_DELETE_BANNED_ACCOUNTS, PERMANENT_DELETE_LISTING, WATCH_ACCOUNT…
-  adminId    String
-  adminName  String?
-  targetType String? // "user" | "listing"
-  targetId   String?
-  count      Int      @default(1)
-  reason     String?
-  detailsJson String  @default("{}")
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  action      String // PERMANENT_DELETE_BANNED_ACCOUNTS, PERMANENT_DELETE_LISTING, WATCH_ACCOUNT…
+  adminId     String
+  adminName   String?
+  targetType  String? // "user" | "listing"
+  targetId    String?
+  count       Int      @default(1)
+  reason      String?
+  detailsJson String   @default("{}")
+  createdAt   DateTime @default(now())
 
   @@index([action, createdAt])
   @@index([adminId, createdAt])
@@ -899,7 +922,7 @@ model ProVerification {
   /// DIRECT_PROFESSIONAL (inscription pro) | CONVERT_FROM_PRIVATE (conversion)
   requestType String @default("CONVERT_FROM_PRIVATE")
 
-  siret            String
+  siret                 String
   /// Ce SIRET a déjà servi à un compte banni.
   ///
   /// Ce n'est pas une charge contre le demandeur — c'est souvent l'inverse. Un
@@ -909,12 +932,12 @@ model ProVerification {
   /// Le drapeau sert à faire examiner le dossier avec attention, jamais à le
   /// refuser d'office.
   siretPreviouslyBanned Boolean @default(false)
-  siren            String?
-  companyName      String
-  commercialName   String?
-  businessAddress  String?
-  businessActivity String?
-  businessCategory String?
+  siren                 String?
+  companyName           String
+  commercialName        String?
+  businessAddress       String?
+  businessActivity      String?
+  businessCategory      String?
 
   responsibleFirstName String?
   responsibleLastName  String?
@@ -980,10 +1003,83 @@ model ProVerificationLog {
 /// prestations. Il crée un espace, y range sa carte, et ses annonces renvoient
 /// dessus. Réservé aux comptes professionnels vérifiés (cf. ProVerification) :
 /// c'est ce qui distingue une fiche d'établissement d'une petite annonce.
+/// L'entreprise — la personne morale, pas le lieu.
+///
+/// Une même société porte un ou plusieurs établissements : « SARL Beauty
+/// Group » exploite le Salon Paris 17e, le Salon Neuilly et le Salon
+/// Levallois. Sans ce niveau, chaque nouvelle boutique demanderait un compte
+/// et une adresse email de plus.
+///
+/// `User.siret` et `User.companyName` restent en place : la vérification
+/// professionnelle, le registre anti-réinscription et la détection de fraude
+/// s'appuient dessus. Ici, c'est la source de vérité de ce qui est *affiché* et
+/// facturé ; là-bas, celle de l'habilitation.
+model ProCompany {
+  id String @id @default(cuid())
+
+  /// Raison sociale — « SARL Dupont ».
+  legalName String
+  /// Nom commercial du groupe, quand il diffère — « Beauty Group ».
+  tradeName String?
+  siret     String?
+  /// SARL, SAS, auto-entrepreneur…
+  legalForm String?
+  vatNumber String?
+
+  billingEmail   String?
+  billingAddress String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  establishments ProProfile[]
+  access         ProAccess[]
+
+  @@index([siret])
+}
+
+/// Qui a le droit d'administrer quoi.
+///
+/// ⚠️ À ne pas confondre avec `ProMember`, qui est la personne qu'on *planifie*
+/// (Corinne, souvent sans compte Deal&Co). `ProAccess` est le compte qui
+/// *administre*. Une même personne peut être propriétaire de sa société et
+/// salariée d'une autre : ce sont alors deux lignes, sans cas particulier.
+model ProAccess {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   ProCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// OWNER   toute l'entreprise, légal et facturation compris
+  /// ADMIN   toute l'entreprise, sauf légal et facturation
+  /// MANAGER restreint aux établissements listés dans `establishmentIds`
+  role String @default("OWNER")
+
+  /// Périmètre d'un MANAGER (JSON, ids d'établissements). Vide pour OWNER et
+  /// ADMIN, dont la portée est l'entreprise entière.
+  establishmentIds String @default("[]")
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@index([companyId, role])
+}
+
+/// L'établissement : le lieu que le client voit, avec son adresse, son équipe
+/// et son agenda. Le nom du modèle dit « profil » pour des raisons
+/// historiques — c'est bien un point de vente.
 model ProProfile {
   id     String @id @default(cuid())
-  userId String @unique
+  /// Créateur de la fiche. N'est plus l'autorité : les droits passent par
+  /// `ProAccess`. Conservé parce que les fiches d'avant le multi-établissement
+  /// n'ont pas d'autre trace de leur propriétaire.
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Nullable le temps du remplissage, puis obligatoire.
+  companyId String?
+  company   ProCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   /// Nom commercial affiché — « Barber Turbigo », « Beauty Studio Paris 3 ».
   name        String
@@ -998,6 +1094,14 @@ model ProProfile {
   phone       String?
   website     String?
 
+  /// Cadrage de la couverture, façon Facebook : la photo est rarement cadrée
+  /// pour un bandeau très large, et sans réglage la devanture se retrouve
+  /// coupée. `coverX`/`coverY` sont exprimés en pourcentage (0-100) et
+  /// alimentent `object-position` ; `coverZoom` échelonne l'image.
+  coverX    Float @default(50)
+  coverY    Float @default(50)
+  coverZoom Float @default(1)
+
   /// Horaires par jour (JSON) : { "lundi": "09:00-19:00", … }
   hours      String  @default("{}")
   /// Photos de l'établissement (JSON, URLs).
@@ -1008,7 +1112,23 @@ model ProProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  services ProService[]
+  /// Métier déclaré — un id de domaine du catalogue `data/pro-catalog`
+  /// (`beaute`, `automobile`, `loisirs`…). Détermine les capacités par défaut
+  /// et le vocabulaire de l'interface. Porté par l'établissement et non par
+  /// l'entreprise : un groupe peut exploiter un salon *et* un garage.
+  activityType String?
+  /// Capacités effectives (JSON), initialisées depuis le métier puis
+  /// modifiables : ["listings","offerings","services","activities","staff","bookings"].
+  capabilities String  @default("[]")
+
+  services        ProService[]
+  members         ProMember[]
+  memberLinks     ProMemberEstablishment[]
+  workingHours    ProWorkingHours[]
+  breaks          ProBreak[]
+  listings        Listing[]
+  bookings        ProBooking[]
+  bookingSettings ProBookingSettings?
 
   @@index([isPublished, city])
 }
@@ -1028,5 +1148,255 @@ model ProService {
   priceNote   String?
   position    Int     @default(0)
 
+  /// Retirée de la carte sans être supprimée — les réservations passées
+  /// gardent leur référence.
+  isActive   Boolean @default(true)
+  /// Réservable en ligne. Une ligne « sur devis » reste affichée mais ne
+  /// produit aucun créneau : sans `durationMin`, le moteur ne sait pas
+  /// combien de temps bloquer.
+  isBookable Boolean @default(true)
+
+  members  ProMemberService[]
+  bookings ProBooking[]
+
   @@index([profileId, position])
+}
+
+/// Un membre de l'équipe : « Corinne », « Nathalie ».
+///
+/// Ce n'est pas un `User`. Une coiffeuse n'a pas forcément de compte Deal&Co,
+/// et le salon doit pouvoir gérer son planning dès le premier jour. Le jour où
+/// elle en veut un, on ajoutera un `userId` optionnel — pas avant.
+model ProMember {
+  id        String     @id @default(cuid())
+  profileId String
+  profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  displayName String
+  /// Intitulé affiché sous le nom : « Coloriste », « Barbier ».
+  role        String?
+  avatar      String?
+
+  // ── Accès personnel au planning ──────────────────────────────────────
+  //
+  // Un membre d'équipe n'est pas un `User` : il n'a ni annonces, ni favoris,
+  // ni fiche. Il a seulement besoin de voir les rendez-vous qui lui sont
+  // attribués. D'où des identifiants portés par la ligne d'équipe, générés par
+  // la responsable — le salarié ne s'inscrit pas, on lui remet un accès.
+  //
+  // S'il veut vendre ses affaires personnelles, il se crée un compte Deal&Co
+  // ordinaire, sans rapport avec le salon.
+  /// Identifiant de connexion généré, ex. « corinne-4821 ».
+  loginId            String?   @unique
+  passwordHash       String?
+  /// Mot de passe remis en clair : à changer à la première connexion.
+  mustChangePassword Boolean   @default(true)
+  lastLoginAt        DateTime?
+  /// Accès coupé sans supprimer le membre — l'historique des rendez-vous reste.
+  accessRevokedAt    DateTime?
+  /// Couleur de la pastille dans l'agenda (hex).
+  color              String    @default("#2f6fb8")
+  isActive           Boolean   @default(true)
+  position           Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services       ProMemberService[]
+  establishments ProMemberEstablishment[]
+  workingHours   ProWorkingHours[]
+  breaks         ProBreak[]
+  timeOff        ProTimeOff[]
+  bookings       ProBooking[]
+
+  @@index([profileId, isActive, position])
+}
+
+/// Les établissements où travaille un membre.
+///
+/// Nathalie officie à Paris et à Neuilly. Il serait tentant de la dupliquer,
+/// un `ProMember` par salon — c'est un piège : la contrainte d'exclusion
+/// PostgreSQL porte sur `memberId`, donc deux lignes distinctes la laisseraient
+/// être réservée à 14h00 dans les deux salons à la fois. Un seul membre,
+/// rattaché à plusieurs établissements, garde la garantie intacte.
+model ProMemberEstablishment {
+  id        String     @id @default(cuid())
+  memberId  String
+  member    ProMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  profileId String
+  profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, profileId])
+  @@index([profileId])
+}
+
+/// Qui sait faire quoi. Sans cette ligne, le membre n'est jamais proposé pour
+/// la prestation — c'est ce qui alimente l'étape 2 du parcours client.
+model ProMemberService {
+  id        String     @id @default(cuid())
+  memberId  String
+  member    ProMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   ProService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, serviceId])
+  @@index([serviceId])
+}
+
+/// Horaires de travail récurrents, par membre et par jour de semaine.
+///
+/// Les minutes depuis minuit, pas des chaînes « 09:00 ». `ProProfile.hours`
+/// reste le texte affiché sur la fiche ; ici c'est ce que le moteur calcule.
+/// Deux plages le même jour = deux lignes (matin, après-midi).
+model ProWorkingHours {
+  id       String    @id @default(cuid())
+  memberId String
+  member   ProMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// Établissement concerné. Nathalie peut être lundi-mercredi à Paris et
+  /// jeudi-vendredi à Neuilly : sans cette colonne, ses horaires seraient les
+  /// mêmes partout. Nullable le temps du remplissage.
+  profileId String?
+  profile   ProProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  /// 0 = dimanche … 6 = samedi (aligné sur `Date.getDay()`).
+  weekday  Int
+  startMin Int
+  endMin   Int
+
+  @@index([memberId, weekday])
+  @@index([profileId, weekday])
+}
+
+/// Pause récurrente : la coupure déjeuner, typiquement.
+model ProBreak {
+  id       String    @id @default(cuid())
+  memberId String
+  member   ProMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  /// Même raison que pour les horaires : la coupure déjeuner d'un salon n'est
+  /// pas celle de l'autre.
+  profileId String?
+  profile   ProProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  weekday  Int
+  startMin Int
+  endMin   Int
+  label    String?
+
+  @@index([memberId, weekday])
+  @@index([profileId, weekday])
+}
+
+/// Absence ponctuelle : congés, formation, rendez-vous personnel.
+/// Datée, contrairement à `ProBreak` qui se répète chaque semaine.
+model ProTimeOff {
+  id       String    @id @default(cuid())
+  memberId String
+  member   ProMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  startAt DateTime
+  endAt   DateTime
+  reason  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId, startAt, endAt])
+}
+
+/// Un rendez-vous.
+///
+/// `priceSnapshot` / `durationSnapshot` figent la prestation au moment de la
+/// réservation : le salon qui augmente ses tarifs demain ne doit pas réécrire
+/// le prix d'un rendez-vous déjà pris.
+///
+/// Le client peut ne pas avoir de compte — d'où `customerId` optionnel et les
+/// coordonnées stockées en clair sur la ligne.
+model ProBooking {
+  id        String     @id @default(cuid())
+  profileId String
+  profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  memberId String
+  member   ProMember @relation(fields: [memberId], references: [id])
+
+  serviceId String
+  service   ProService @relation(fields: [serviceId], references: [id])
+
+  customerId String?
+  customer   User?   @relation("ProBookingCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+
+  startAt DateTime
+  endAt   DateTime
+
+  firstName String
+  lastName  String
+  phone     String
+  email     String
+  note      String?
+
+  priceSnapshot    Float
+  durationSnapshot Int
+  /// Libellé figé, pour que l'historique reste lisible si la ligne de carte
+  /// est renommée ou supprimée.
+  labelSnapshot    String
+
+  /// D'où vient le rendez-vous.
+  ///
+  /// ONLINE  le client a réservé lui-même, site ou application
+  /// PHONE   le professionnel l'a saisi pendant un appel
+  /// MANUAL  le professionnel l'a saisi sans appel (passage, report…)
+  ///
+  /// Purement informatif : les trois passent par le même moteur et les mêmes
+  /// règles de disponibilité. C'est ce qui permettra de dire « 45 en ligne,
+  /// 32 par téléphone » sans avoir deux systèmes à réconcilier.
+  source String @default("ONLINE")
+
+  /// PENDING | CONFIRMED | IN_PROGRESS | COMPLETED | CANCELLED | NO_SHOW
+  ///
+  /// Les quatre premiers occupent le créneau ; CANCELLED et NO_SHOW le
+  /// libèrent. La contrainte d'exclusion PostgreSQL applique exactement cette
+  /// règle (cf. migration).
+  status String @default("PENDING")
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  confirmedAt  DateTime?
+  cancelledAt  DateTime?
+  cancelReason String?
+  /// Qui a annulé : CUSTOMER | PRO | SYSTEM.
+  cancelledBy  String?
+
+  @@index([profileId, startAt])
+  @@index([memberId, startAt])
+  @@index([customerId, startAt])
+  @@index([status, startAt])
+}
+
+/// Règles de réservation de l'établissement. Une ligne par fiche pro.
+/// Toutes les valeurs par défaut correspondent à un salon classique : on doit
+/// pouvoir publier sans rien régler.
+model ProBookingSettings {
+  id        String     @id @default(cuid())
+  profileId String     @unique
+  profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  /// Pas de la grille de créneaux proposés (15 min → 14h00, 14h15, 14h30…).
+  slotGranularityMin Int @default(15)
+  /// Battement ajouté après chaque rendez-vous (remise en état du poste).
+  bufferMin          Int @default(0)
+  /// Délai mini avant le début : on ne réserve pas pour dans 5 minutes.
+  minNoticeMin       Int @default(120)
+  /// Horizon maxi de réservation.
+  maxAdvanceDays     Int @default(60)
+
+  /// CONFIRMED d'emblée, ou PENDING en attente de validation du pro.
+  autoConfirm       Boolean @default(true)
+  allowCancel       Boolean @default(true)
+  allowReschedule   Boolean @default(true)
+  /// Fenêtre en deçà de laquelle le client ne peut plus annuler seul.
+  cancelDeadlineMin Int     @default(1440)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import BottomNav from "@/components/BottomNav";
 import ProfileEditor from "./ProfileEditor";
+import ProNav from "./ProNav";
 
 export const metadata = { title: "Mon espace professionnel" };
 export const dynamic = "force-dynamic";
@@ -24,7 +25,19 @@ export default async function EspaceProPage() {
     select: {
       companyName: true,
       professionalStatus: true,
-      proProfile: { include: { services: { orderBy: { position: "asc" } } } },
+      // Le logo de la fiche est l'avatar du compte : une seule image à tenir
+      // à jour, la même partout où le professionnel apparaît.
+      avatar: true,
+      proProfiles: {
+        // Un seul établissement pour l'instant : la sélection multi-boutique
+        // n'existe pas encore côté interface.
+        take: 1,
+        orderBy: { createdAt: "asc" },
+        include: {
+          services: { orderBy: { position: "asc" } },
+          members: { where: { isActive: true }, select: { id: true } },
+        },
+      },
     },
   });
 
@@ -56,12 +69,26 @@ export default async function EspaceProPage() {
     );
   }
 
-  const profile = user.proProfile;
+  const profile = user.proProfiles[0];
 
   return (
     <div className="bg-surface min-h-screen mb-24 md:mb-0">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-3xl mx-auto">
+        <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">
+          Mon espace professionnel
+        </h1>
+        <ProNav current="/profile/espace-pro" slug={profile?.slug} />
+
+        {profile && profile.members.length === 0 && (
+          // Sans équipe, le moteur n'a personne à qui attribuer un rendez-vous :
+          // la fiche reste une vitrine et le bouton « Réserver » n'apparaît pas.
+          <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Votre carte est en ligne, mais la réservation est fermée : ajoutez au moins une personne
+            dans <Link href="/profile/espace-pro/equipe" title="Équipe et horaires" className="font-bold underline">Équipe et horaires</Link>.
+          </div>
+        )}
+
         <ProfileEditor
           initial={{
             name: profile?.name ?? user.companyName ?? "",
@@ -73,6 +100,11 @@ export default async function EspaceProPage() {
             phone: profile?.phone ?? "",
             website: profile?.website ?? "",
             isPublished: profile?.isPublished ?? true,
+            coverImage: profile?.coverImage ?? null,
+            avatar: user.avatar ?? null,
+            coverX: profile?.coverX ?? 50,
+            coverY: profile?.coverY ?? 50,
+            coverZoom: profile?.coverZoom ?? 1,
             services:
               profile?.services.map((s) => ({
                 section: s.section,

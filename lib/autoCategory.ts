@@ -7,6 +7,7 @@ import { AdClassifier } from "./classifier";
 import { classifyWellness } from "./wellness/classify";
 import categoriesData from "./categories-classifier.json";
 import { expandAbbreviations } from "./normalize-fr";
+import { stripCities } from "./listing-engine/gazetteer";
 
 // ─────────────────────────────────────────────────────────────
 // Mapping JSON → IDs de l'application
@@ -151,12 +152,46 @@ export function detectCategory(title: string, description = ""): DetectResult | 
     };
   }
 
-  // Expansion des abréviations FR avant classification ("pc av" → "pare-chocs avant")
+  /**
+   * Neutralisation des toponymes avant scoring.
+   *
+   * Sans elle, 24 des 154 villes de `lib/cities.ts` décidaient seules d'une
+   * catégorie, uniquement par correspondance approximative : « Lyon » → « Leon »
+   * (modèle Seat), « Fort-de-France » → « Ford », « Nice » → « Nike ». Deux
+   * d'entre elles sortaient en catégorie Véhicules — c'est le bug « ville →
+   * utilitaire » rapporté par les utilisateurs.
+   *
+   * Une ville n'est jamais une preuve de catégorie. Aucune règle nominative
+   * n'est écrite ici : on retire les entités reconnues, c'est tout.
+   *
+   * Le moteur de remplacement (`lib/listing-engine/`) fait cela nativement ;
+   * ce garde-fou protège le chemin de publication en attendant la bascule.
+   */
   const result = classifier.classify(
-    expandAbbreviations(title),
-    expandAbbreviations(description),
+    expandAbbreviations(stripCities(title).text),
+    expandAbbreviations(stripCities(description).text),
   );
   if (!result.success || !result.category || !result.subcategory) return null;
+
+  /**
+   * Une correspondance approximative ne prouve rien à elle seule. « brive » à un
+   * caractère de « bride » n'est pas une annonce d'équitation. Il faut au moins
+   * une preuve exacte pour retenir une catégorie.
+   */
+  const hasExactEvidence = result.matches.some((m) => m.source !== "fuzzy");
+  if (!hasExactEvidence) return null;
+
+  /**
+   * Deux catégories au coude à coude ne se départagent pas en silence.
+   *
+   * `AdClassifier` tranche les égalités par un ordre de priorité fixe, où
+   * VEHICULES est premier : « Canapé cuir » — « canapé » pour Maison, « cuir »
+   * pour Voitures — sortait donc en véhicule. Ce n'est pas une décision, c'est
+   * un tirage au sort déguisé. Sans marge suffisante, on préfère ne rien
+   * suggérer : le formulaire demandera.
+   */
+  const runnerUp = result.alternatives.find((a) => a.category !== result.category);
+  if (runnerUp && runnerUp.score > result.score * 0.85) return null;
 
   const catMap = CATEGORY_MAP[result.category];
   if (!catMap) return null;

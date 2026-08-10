@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, type Href } from "expo-router";
 import ListingCard, { type HomeListing } from "./ListingCard";
 import AdCard, { type Ad } from "./AdCard";
+import { colors } from "@/lib/theme";
 
 type Props = {
   title: string;
@@ -30,7 +31,7 @@ export default function ListingRow({ title, subtitle, listings, badge, seeAllHre
         {seeAllHref && (
           <Pressable onPress={() => router.push(seeAllHref)} className="flex-row items-center active:opacity-70 ml-2">
             <Text className="text-primary font-semibold text-sm">Voir tout</Text>
-            <Ionicons name="chevron-forward" size={16} color="#2f6fb8" />
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
           </Pressable>
         )}
       </View>

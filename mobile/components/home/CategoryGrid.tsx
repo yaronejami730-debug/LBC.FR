@@ -22,7 +22,7 @@ export default function CategoryGrid() {
           <Pressable
             key={c.id}
             onPress={() => router.push("/recherche")}
-            className="bg-surface-container-low border border-surface-container rounded-2xl px-4 py-3 active:opacity-70"
+            className="bg-surface border border-line rounded-card px-4 py-3 active:opacity-70"
             style={{ width: "48%" }}
           >
             <Text className="text-on-surface font-semibold">{c.label}</Text>

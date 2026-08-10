@@ -1,0 +1,90 @@
+{
+  "key": "vehicules.voitures.location",
+  "version": 1,
+  "status": "published",
+  "label": "Voiture — Location",
+  "icon": "car-front",
+  "extends": ["_base.listing", "_mixin.vehicule"],
+  "taxonomy": { "category": "vehicules", "subcategory": "voitures", "listing_type": "location", "path_labels": ["Véhicules", "Voitures", "Location"] },
+  "transaction_types": ["location"],
+  "default_transaction_type": "location",
+
+  "fields": [
+    { "ref": "tarifs",              "step": "tarification", "order": 1, "required": true },
+    { "ref": "caution",             "step": "tarification", "order": 10, "required": true },
+    { "ref": "franchise",           "step": "tarification", "order": 11 },
+    { "ref": "km_inclus_jour",      "step": "tarification", "order": 12, "required": true },
+    { "ref": "km_supplementaire",   "step": "tarification", "order": 13 },
+    { "ref": "assurance_incluse",   "step": "conditions",   "order": 1, "required": true },
+    { "ref": "age_minimum",         "step": "conditions",   "order": 2, "required": true },
+    { "ref": "permis_anciennete",   "step": "conditions",   "order": 3 },
+    { "ref": "duree_min_location",  "step": "conditions",   "order": 4, "required": true },
+    { "ref": "piece_identite_exigee","step": "conditions",  "order": 5 },
+    { "ref": "livraison_vehicule",  "step": "conditions",   "order": 6 },
+    { "ref": "calendrier",          "step": "disponibilites", "order": 1, "required": true },
+    { "ref": "controle_technique",  "step": "caracteristiques", "order": 30 }
+  ],
+
+  "pricing": {
+    "model": "multi_rate",
+    "currency": "EUR",
+    "require_at_least_one_rate": true,
+    "deposit": true,
+    "negotiable": false,
+    "hide_price_allowed": false,
+    "rates": [
+      { "key": "jour",     "unit": "day",     "label": "Par jour" },
+      { "key": "week_end", "unit": "weekend", "label": "Week-end" },
+      { "key": "semaine",  "unit": "week",    "label": "Par semaine" },
+      { "key": "mois",     "unit": "month",   "label": "Par mois" }
+    ],
+    "extras": [
+      { "key": "conducteur_sup", "label": "Conducteur supplémentaire", "unit": "location" },
+      { "key": "siege_bebe",     "label": "Siège bébé", "unit": "jour" },
+      { "key": "gps",            "label": "GPS", "unit": "jour" },
+      { "key": "livraison",      "label": "Livraison du véhicule", "unit": "location", "included_toggle": true }
+    ]
+  },
+
+  "availability": { "mode": "calendar", "blocked_periods": true, "period_pricing": true, "instant_booking": true },
+
+  "display": {
+    "template": "vehicle",
+    "title_pattern": "{marque} {modele} en location à {ville}",
+    "blocks": [
+      { "type": "hero_gallery" },
+      { "type": "rates_table", "label": "Tarifs de location", "options": { "only_filled": true } },
+      { "type": "key_facts", "fields": ["carburant", "boite_vitesse", "nb_places", "km_inclus_jour", "caution"] },
+      { "type": "calendar", "label": "Véhicule disponible" },
+      { "type": "description" },
+      { "type": "amenities", "fields": ["equipements_vehicule"] },
+      { "type": "conditions", "label": "Conditions de location", "fields": ["age_minimum", "permis_anciennete", "assurance_incluse", "franchise", "caution", "duree_min_location", "km_inclus_jour", "km_supplementaire", "piece_identite_exigee"] },
+      { "type": "map" },
+      { "type": "seller_card" },
+      { "type": "similar" },
+      { "type": "cta_bar", "options": { "primary": "Vérifier les disponibilités" } }
+    ],
+    "card": { "primary_price": "jour", "facts": ["boite_vitesse", "carburant", "nb_places"] }
+  },
+
+  "validation": [
+    { "id": "tarif_obligatoire", "severity": "error", "when": { "==": [{ "var": "pricing.filled_rates_count" }, 0] }, "message": "Indiquez au moins un tarif de location.", "field": "tarifs" },
+    { "id": "assurance_precisee", "severity": "error", "when": { "and": [{ "==": [{ "var": "attributes.assurance_incluse" }, false] }, { "!": { "var": "attributes.conditions_particulieres" } }] }, "message": "Si l'assurance n'est pas incluse, précisez ce que le locataire doit fournir.", "field": "conditions_particulieres" }
+  ],
+
+  "seo": {
+    "url_pattern": "/vehicules/location-voiture/{marque_slug}/{modele_slug}/{city_slug}/{id}-{title_slug}",
+    "schema_org": ["Car", "RentalCarReservation", "Offer"],
+    "title_pattern": "Location {marque} {modele} à {ville} — dès {price_from} | Deal&Co",
+    "h1_pattern": "Louer une {marque} {modele} à {ville}",
+    "hub_pages": true
+  },
+
+  "classifier": {
+    "head_nouns": ["voiture", "auto", "citadine", "suv", "berline", "van", "utilitaire", "fourgon", "camion"],
+    "modifiers": ["km inclus", "caution", "franchise", "conducteur", "kilométrage illimité"],
+    "negative": ["m²", "chambres", "couchages", "dpe", "copropriété"],
+    "transaction_cues": { "location": ["à louer", "location", "loue", "par jour", "/jour", "week-end", "à la journée", "sans chauffeur", "avec chauffeur"] },
+    "prior": 0.8
+  }
+}

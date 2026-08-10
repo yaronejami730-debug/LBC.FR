@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
+import { listingNature, type OfferNature } from "@/lib/offer-intent";
 
 const LISTING_SELECT = {
   id: true,
@@ -12,6 +13,17 @@ const LISTING_SELECT = {
   isPremium: true,
   category: true,
 } as const;
+
+/** Champs supplémentaires nécessaires au calcul de nature, retirés ensuite. */
+const RANKING_SELECT = {
+  ...LISTING_SELECT,
+  description: true,
+  subcategory: true,
+  metadata: true,
+} as const;
+
+/** Candidats tirés avant reclassement par nature. */
+const SUGGESTION_POOL = 30;
 
 const APPROVED = { status: "APPROVED" as const, deletedAt: null, shadowBanned: false };
 
@@ -60,9 +72,10 @@ export async function GET(req: NextRequest) {
   const topViewed = viewedIds.slice(0, 12);
 
   // Récemment vu : on ne garde que les annonces encore en ligne, ordre préservé.
-  const viewedRows = topViewed.length
-    ? await prisma.listing.findMany({ where: { id: { in: topViewed }, ...APPROVED }, select: LISTING_SELECT })
+  const viewedPool = topViewed.length
+    ? await prisma.listing.findMany({ where: { id: { in: topViewed }, ...APPROVED }, select: RANKING_SELECT })
     : [];
+  const viewedRows = viewedPool.map(({ description: _d, subcategory: _s, metadata: _m, ...rest }) => rest);
   const byId = new Map(viewedRows.map((l) => [l.id, l]));
   const recentlyViewed = topViewed.map((id) => byId.get(id)).filter(Boolean);
 
@@ -75,12 +88,38 @@ export async function GET(req: NextRequest) {
 
   let suggestions: typeof viewedRows = [];
   if (filterValue) {
-    suggestions = await prisma.listing.findMany({
+    const pool = await prisma.listing.findMany({
       where: { ...APPROVED, ...catFilter, id: { notIn: topViewed.length ? topViewed : ["_none_"] } },
       orderBy: { createdAt: "desc" },
-      take: 10,
-      select: LISTING_SELECT,
+      take: SUGGESTION_POOL,
+      select: RANKING_SELECT,
     });
+
+    /**
+     * Ce qu'on a regardé dit ce qu'on cherche, et la catégorie ne le dit pas :
+     * quelqu'un qui vient de consulter trois prestations de beauté ne veut pas
+     * un lot de faux ongles, même si les quatre annonces partagent la rubrique.
+     *
+     * La nature dominante se déduit des annonces réellement consultées — aucun
+     * signal inventé, on ne lit que ce qui est déjà en base.
+     */
+    const natureCount = new Map<OfferNature, number>();
+    for (const row of viewedPool) {
+      const n = listingNature(row);
+      natureCount.set(n, (natureCount.get(n) ?? 0) + 1);
+    }
+    const dominant = [...natureCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+    suggestions = pool
+      .map((row) => ({ row, same: dominant ? listingNature(row) === dominant : true }))
+      // Tri stable : les annonces d'une autre nature passent derrière plutôt
+      // que d'être écartées, pour ne pas vider la section.
+      .sort((a, b) => Number(b.same) - Number(a.same))
+      .slice(0, 10)
+      .map(({ row }) => {
+        const { description: _d, subcategory: _s, metadata: _m, ...rest } = row;
+        return rest;
+      });
   }
 
   return NextResponse.json({

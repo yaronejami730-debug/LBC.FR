@@ -7,6 +7,7 @@
  * hachages non réversibles calculés après normalisation. On peut reconnaître
  * une réinscription sans conserver la moindre donnée personnelle lisible.
  *
+ * 
  * Bloquer sur l'email seul ne sert à rien : une adresse jetable se crée en
 
 

@@ -41,7 +41,7 @@ export type PreviewData = {
   price: string | number;
   description: string;
   location: string;
-  condition: string;
+  condition: string | null;
   category: string;
   subcategory?: string;
   brand?: string;

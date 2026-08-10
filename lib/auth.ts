@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { authConfig } from "@/auth.config";
+import { recordDeviceSession } from "@/lib/device-session";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -14,7 +15,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         if (!credentials?.email || !credentials?.password) return null;
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
@@ -28,6 +29,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!valid) return null;
         // Mettre à jour lastLoginAt — fire and forget
         prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date(), reengagementSentAt: null } }).catch(() => {});
+        // Trace l'appareil pour « Appareils connectés » — sans ça une session
+        // navigateur reste invisible dans la liste. Jamais bloquant.
+        const headers = request instanceof Request ? request.headers : new Headers();
+        recordDeviceSession({ userId: user.id, headers }).catch(() => {});
         return { id: user.id, email: user.email, name: user.name };
       },
     }),

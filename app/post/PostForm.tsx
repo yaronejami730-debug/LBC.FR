@@ -1,15 +1,37 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { CATEGORIES } from "@/lib/categories";
 import { detectCategory } from "@/lib/autoCategory";
 import BrandPicker from "@/components/BrandPicker";
+import {
+  WELLNESS_DURATIONS,
+  WELLNESS_PRICE_UNITS,
+  WELLNESS_TARIFF_TYPES,
+  WELLNESS_PLACES,
+} from "@/lib/wellness/publish-fields";
+import { inferOfferIntent } from "@/lib/offer-intent";
+import { FIELD_SETS } from "@/lib/offer-fields";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const CONDITIONS = ["Neuf", "Très bon état", "Bon état", "État correct", "Pour pièces"];
+
+/**
+ * Ce qu'on demande de décrire, selon ce qui est publié. Le placeholder
+ * historique parlait d'« article », d'« état » et d'« accessoires inclus » —
+ * incompréhensible pour qui publie une manucure ou une offre d'emploi.
+ */
+const DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
+  objet: "Décrivez votre article :\n— son état précis\n— son âge, son usage\n— les accessoires inclus\n— la raison de la vente",
+  prestation: "Décrivez votre prestation :\n— ce qu'elle comprend exactement\n— sa durée et son déroulé\n— où elle a lieu\n— votre expérience",
+  logement: "Décrivez le bien :\n— agencement et surfaces\n— étage, exposition, extérieur\n— chauffage et charges\n— quartier et transports",
+  poste: "Décrivez le poste :\n— missions principales\n— profil recherché\n— conditions et horaires\n— comment postuler",
+  evenement: "Décrivez l'événement :\n— ce qui est prévu\n— date et horaires\n— lieu précis\n— à qui il s'adresse",
+  recherche: "Décrivez ce que vous cherchez :\n— caractéristiques attendues\n— votre budget\n— votre secteur\n— sous quel délai",
+};
 const FUELS      = ["Essence", "Diesel", "Hybride", "Électrique", "GPL", "Autre"];
 const TRANSMISSIONS = ["Manuelle", "Automatique"];
 const VEHICLE_TYPES = ["Véhicule de tourisme", "Berline", "SUV / 4x4", "Coupé", "Cabriolet / Roadster", "Break", "Monospace", "Pick-up", "Utilitaire", "Camping-car", "Moto", "Scooter", "Autre"];
@@ -231,32 +253,6 @@ const inputCls =
   "w-full bg-surface-container-low rounded-xl px-4 py-3 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all placeholder:text-outline-variant/60";
 
 /** Options des champs bien-être — valeurs stockées telles quelles en metadata. */
-const WELLNESS_DURATIONS = [
-  { value: "30", label: "30 min" },
-  { value: "45", label: "45 min" },
-  { value: "60", label: "1 h" },
-  { value: "90", label: "1 h 30" },
-  { value: "120", label: "2 h" },
-  { value: "240", label: "Demi-journée" },
-  { value: "480", label: "Journée" },
-];
-const WELLNESS_PRICE_UNITS = [
-  { value: "seance", label: "La séance" },
-  { value: "heure", label: "De l'heure" },
-  { value: "personne", label: "Par personne" },
-  { value: "demi_journee", label: "La demi-journée" },
-  { value: "journee", label: "La journée" },
-  { value: "mois", label: "Par mois" },
-];
-const WELLNESS_TARIFF_TYPES = [
-  { value: "fixe", label: "Prix fixe" },
-  { value: "par_heure", label: "Prix / heure" },
-  { value: "par_personne", label: "Prix / personne" },
-  { value: "par_seance", label: "Prix / séance" },
-  { value: "a_partir_de", label: "À partir de" },
-  { value: "forfait", label: "Forfait" },
-];
-const WELLNESS_PLACES = ["En institut", "À domicile", "Les deux"];
 
 const pillCls = (active: boolean) =>
   `px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
@@ -328,6 +324,36 @@ export default function PostForm() {
   });
   const setW = (k: keyof typeof wellness, v: string) =>
     setWellness((prev) => ({ ...prev, [k]: v }));
+
+  /**
+   * Ce que l'annonce vend réellement, déduit du titre autant que de la
+   * rubrique. C'est ce qui décide des champs affichés : demander « État du
+   * produit » pour une manucure était le défaut d'origine — une prestation n'a
+   * pas d'état, et le mot « article » n'a pas de sens non plus.
+   */
+  const intent = useMemo(
+    () =>
+      inferOfferIntent({
+        title,
+        description,
+        categoryId,
+        subcategory,
+        price: price ? parseFloat(price) : null,
+        isPro,
+      }),
+    [title, description, categoryId, subcategory, price, isPro],
+  );
+  /**
+   * L'annonceur garde le dernier mot. Le moteur propose un régime de champs,
+   * un clic le ramène au régime « objet » — sans quoi une détection ratée
+   * enferme quelqu'un dans un formulaire qui ne lui convient pas.
+   */
+  const [regimeOverride, setRegimeOverride] = useState<"bien" | null>(null);
+  const fieldSpec = FIELD_SETS[regimeOverride ?? intent.fieldSet];
+
+  /** Valeurs des champs déclarés en données par le régime (metadata.fields). */
+  const [extraFields, setExtraFields] = useState<Record<string, string>>({});
+  const setExtra = (id: string, v: string) => setExtraFields((prev) => ({ ...prev, [id]: v }));
 
   const [vehicle, setVehicle] = useState<VehicleFields>({
     marque: "", modele: "", nomModele: "", annee: "", kilometrage: "",
@@ -733,14 +759,19 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
         body: JSON.stringify({
           title, price: parseFloat(price),
           category: cat?.label || "Divers", subcategory,
-          description, location, condition, postedAs,
+          description, location, postedAs,
+          // L'état n'est envoyé que s'il a un sens. Sur une prestation, le
+          // laisser passer réintroduirait la valeur fausse en base — le serveur
+          // le rejette aussi, mais autant ne pas la fabriquer.
+          ...(fieldSpec.core.condition ? { condition } : {}),
           images: images.filter(Boolean),
-          metadata: categoryId === "beaute-bien-etre"
+          metadata: fieldSpec.core.serviceDetails
             ? JSON.stringify({
                 durationMin: wellness.durationMin || null,
                 priceUnit: wellness.priceUnit || null,
                 tariffType: wellness.tariffType,
                 place: wellness.place || null,
+                ...(Object.keys(extraFields).length > 0 ? { fields: extraFields } : {}),
               })
             : categoryId === "vehicules"
             ? JSON.stringify({ ...vehicle })
@@ -768,7 +799,10 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 prixHonorairesExclus: immo.prixHonorairesExclus,
                 honorairesAcquereur: immo.honorairesAcquereur,
                 taxeFonciere: immo.taxeFonciere,
+                ...(Object.keys(extraFields).length > 0 ? { fields: extraFields } : {}),
               })
+            : Object.keys(extraFields).length > 0
+            ? JSON.stringify({ fields: extraFields })
             : "{}",
           phone: phone.trim() || null, hidePhone,
         }),
@@ -1374,7 +1408,9 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
               {/* Prix */}
               <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Prix de vente *</label>
+                {/* « Prix de vente » n'a pas de sens pour un loyer, un tarif
+                    horaire ou un salaire — le libellé suit le régime. */}
+                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">{fieldSpec.labels.price} *</label>
                 <div className="flex items-center gap-2">
                   <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" autoFocus
                     className="flex-1 bg-transparent border-none p-0 text-3xl font-extrabold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
@@ -1423,10 +1459,33 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               )}
             </div>
 
-            {/* Champs bien-être — ce que le texte libre ne dit jamais de façon
-                fiable : ce que le prix couvre, pour combien de temps et pour
-                combien de personnes. */}
-            {categoryId === "beaute-bien-etre" && (
+            {/* Le moteur annonce ce qu'il a compris plutôt que de changer le
+                formulaire en silence. Sous 0,6 de confiance il se tait : mieux
+                vaut ne rien dire que d'affirmer à tort. */}
+            {!regimeOverride && intent.confidence >= 0.6 && intent.nature !== "bien" && (
+              <div className="flex items-start gap-2.5 bg-primary-light/60 border border-primary/20 rounded-2xl px-4 py-3">
+                <span className="material-symbols-outlined text-primary text-lg shrink-0">auto_awesome</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-primary">
+                    Annonce reconnue comme «&nbsp;{fieldSpec.label.toLowerCase()}&nbsp;»
+                  </p>
+                  <p className="text-[11px] text-outline leading-snug mt-0.5">
+                    {intent.signals.slice(0, 2).join(" · ")} — les champs sont adaptés.
+                  </p>
+                </div>
+                <button type="button" onClick={() => setRegimeOverride("bien")}
+                  className="text-[11px] font-bold text-primary shrink-0 underline">
+                  Ce n&apos;est pas ça
+                </button>
+              </div>
+            )}
+
+            {/* Détails de prestation — ce que le texte libre ne dit jamais de
+                façon fiable : ce que le prix couvre, pour combien de temps et
+                où. Affichés dès que l'intention est « prestation », quelle que
+                soit la rubrique : un dépannage publié dans « Divers » a les
+                mêmes questions à répondre qu'un massage. */}
+            {fieldSpec.core.serviceDetails && (
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-6">
                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Détails de la prestation</p>
 
@@ -1471,14 +1530,54 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 {/* La carte complète des prestations vit sur la fiche
                     professionnelle (/profile/espace-pro), pas dans une annonce :
                     un salon ne doit pas publier une annonce par prestation. */}
-                <p className="text-xs text-outline leading-relaxed bg-surface-container-low rounded-xl px-3 py-2.5">
-                  Une annonce = une prestation. Vous en proposez plusieurs&nbsp;?{" "}
-                  <a href="/profile" className="font-bold text-primary hover:underline">
-                    Passez en compte professionnel
-                  </a>{" "}
-                  et présentez votre carte complète sur une seule fiche.
-                </p>
+                {fieldSpec.core.serviceCard && (
+                  <p className="text-xs text-outline leading-relaxed bg-surface-container-low rounded-xl px-3 py-2.5">
+                    Une annonce = une prestation. Vous en proposez plusieurs&nbsp;?{" "}
+                    <a href="/profile" className="font-bold text-primary hover:underline">
+                      Passez en compte professionnel
+                    </a>{" "}
+                    et présentez votre carte complète sur une seule fiche.
+                  </p>
+                )}
 
+              </div>
+            )}
+
+            {/* Champs propres au régime, déclarés en données dans
+                lib/offer-fields.ts — caution d'une location, type de contrat
+                d'une offre d'emploi. Rendus génériquement pour qu'un ajout ne
+                demande aucune modification d'écran, ici comme sur mobile. */}
+            {fieldSpec.extra.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                  {fieldSpec.label}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {fieldSpec.extra.map((f) => (
+                    <div key={f.id} className="space-y-2">
+                      <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">
+                        {f.label}{f.required && " *"}
+                      </label>
+                      {f.type === "select" ? (
+                        <select value={extraFields[f.id] ?? ""} onChange={(e) => setExtra(f.id, e.target.value)} className={inputCls}>
+                          <option value="">Non précisé</option>
+                          {f.options?.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={f.type === "number" ? "number" : "text"}
+                          inputMode={f.type === "number" ? "decimal" : undefined}
+                          value={extraFields[f.id] ?? ""}
+                          onChange={(e) => setExtra(f.id, e.target.value)}
+                          placeholder={f.placeholder}
+                          className={inputCls}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -1796,7 +1895,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
         {/* ══ STEP 3 : DESCRIPTION & ÉTAT ═══════════════════════════════════ */}
         {formStep === 3 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-extrabold">Description & État</h2>
+            <h2 className="text-2xl font-extrabold">{fieldSpec.labels.descriptionStep}</h2>
 
             {/* AI assist button */}
             <button
@@ -1821,17 +1920,22 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
 
             {/* Une seule carte — pas de vide entre état et description */}
             <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
-              <div className="px-5 py-4 space-y-3">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">État du produit</label>
-                <div className="flex flex-wrap gap-2">
-                  {CONDITIONS.map((c) => <button key={c} type="button" onClick={() => setCondition(c)} className={pillCls(condition === c)}>{c}</button>)}
+              {/* L'état ne se demande que d'un objet. Une prestation, un poste
+                  ou un événement n'en ont pas — la question était absurde et la
+                  réponse partait quand même en base. */}
+              {fieldSpec.core.condition && (
+                <div className="px-5 py-4 space-y-3">
+                  <label className="text-[10px] font-bold text-primary uppercase tracking-widest">État du produit</label>
+                  <div className="flex flex-wrap gap-2">
+                    {CONDITIONS.map((c) => <button key={c} type="button" onClick={() => setCondition(c)} className={pillCls(condition === c)}>{c}</button>)}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="px-5 py-4 space-y-2">
                 <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Description *</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={7} autoFocus
                   className="w-full bg-transparent border-none p-0 text-base text-on-surface placeholder:text-slate-300 focus:ring-0 leading-relaxed resize-none outline-none"
-                  placeholder={"Décrivez votre article :\n— son état précis\n— son âge, son usage\n— les accessoires inclus\n— la raison de la vente"} />
+                  placeholder={DESCRIPTION_PLACEHOLDERS[fieldSpec.lexicon]} />
                 <p className="text-xs text-outline text-right tabular-nums">{description.length} caractères</p>
               </div>
             </div>
@@ -1909,16 +2013,18 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
 
               {/* État + Description */}
               <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
-                <div className="flex items-center justify-between px-5 py-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">État</p>
-                    <p className="font-semibold text-sm text-on-surface">{condition}</p>
+                {fieldSpec.core.condition && (
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">État</p>
+                      <p className="font-semibold text-sm text-on-surface">{condition}</p>
+                    </div>
+                    <button type="button" onClick={() => setFormStep(3)}
+                      className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
+                      <span className="material-symbols-outlined text-sm">edit</span>Modifier
+                    </button>
                   </div>
-                  <button type="button" onClick={() => setFormStep(3)}
-                    className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
-                    <span className="material-symbols-outlined text-sm">edit</span>Modifier
-                  </button>
-                </div>
+                )}
                 <div className="px-5 py-4">
                   <div className="flex items-start justify-between mb-2">
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Description</p>

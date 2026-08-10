@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import PrestationFields from "@/components/wellness/PrestationFields";
-import { WELLNESS_FORMS, summarizeWellnessValues } from "@/lib/wellness/form-schema";
+import BrandImages from "./BrandImages";
+import ServiceComposer, { type DraftService } from "./ServiceComposer";
 
-type Service = { section: string; label: string; durationMin: string; price: string };
+type Service = { section: string; label: string; durationMin: string; price: string; priceNote?: string };
 
 type Initial = {
   name: string;
@@ -16,10 +16,13 @@ type Initial = {
   phone: string;
   website: string;
   isPublished: boolean;
+  coverImage: string | null;
+  avatar: string | null;
+  coverX: number;
+  coverY: number;
+  coverZoom: number;
   services: Service[];
 };
-
-const SUBCATEGORIES = Object.keys(WELLNESS_FORMS);
 
 const input =
   "w-full bg-surface-container-low rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-primary/50 border border-transparent focus:border-primary/30";
@@ -38,25 +41,32 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
-  // Formulaire d'ajout — une rubrique, des champs qui s'adaptent, un prix.
   const [openAdd, setOpenAdd] = useState(false);
-  const [sub, setSub] = useState(SUBCATEGORIES[0]);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [price, setPrice] = useState("");
 
   const set = (k: keyof Initial, v: string | boolean) => setFiche((p) => ({ ...p, [k]: v }));
 
-  function addService() {
-    const label = summarizeWellnessValues(sub, values) || sub;
-    const amount = parseFloat(price.replace(",", "."));
+  /** Repli du logo, identique à celui de la fiche publique. */
+  const monogram = fiche.name
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
+  function addService(draft: DraftService) {
+    const amount = parseFloat(draft.price.replace(",", "."));
     if (!amount || amount < 0) return;
     setServices((prev) => [
       ...prev,
-      { section: sub, label, durationMin: values.durationMin ?? "", price: String(amount) },
+      {
+        section: draft.section,
+        label: draft.label.trim(),
+        durationMin: draft.durationMin,
+        price: String(amount),
+        priceNote: draft.priceNote || undefined,
+      },
     ]);
-    setValues({});
-    setPrice("");
-    setOpenAdd(false);
+    // Le panneau reste ouvert : on ajoute rarement une seule ligne à une carte.
   }
 
   async function save() {
@@ -68,11 +78,15 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...fiche,
+          // `photos` est renvoyé tel quel par l'API si absent : on ne le
+          // transmet pas ici, l'éditeur ne le gère pas encore.
+          coverImage: fiche.coverImage,
           services: services.map((s) => ({
             section: s.section,
             label: s.label,
             durationMin: s.durationMin ? parseInt(s.durationMin) : null,
             price: parseFloat(s.price),
+            priceNote: s.priceNote ?? null,
           })),
         }),
       });
@@ -98,6 +112,14 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
           Une fiche, une carte. Vos prestations ne deviennent pas des annonces séparées.
         </p>
       </div>
+
+      <BrandImages
+        coverImage={fiche.coverImage}
+        avatar={fiche.avatar}
+        framing={{ coverX: fiche.coverX, coverY: fiche.coverY, coverZoom: fiche.coverZoom }}
+        monogram={monogram}
+        onChange={(next) => setFiche((p) => ({ ...p, ...next }))}
+      />
 
       <section className="bg-white rounded-2xl border border-slate-100 p-6 space-y-4">
         <h2 className="text-[10px] font-bold text-primary uppercase tracking-widest">
@@ -178,66 +200,7 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
           </button>
         </div>
 
-        {openAdd && (
-          <div className="rounded-xl bg-surface-container-low p-4 mb-4 space-y-4">
-            <div>
-              <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1.5">
-                Rubrique
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {SUBCATEGORIES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => {
-                      setSub(s);
-                      setValues({});
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                      sub === s
-                        ? "bg-primary text-white border-primary"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-primary/40"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <PrestationFields
-              subcategory={sub}
-              values={values}
-              onChange={(id, v) => setValues((prev) => ({ ...prev, [id]: v }))}
-              compact
-            />
-
-            <div>
-              <label className="text-[10px] text-outline uppercase font-bold tracking-wider block mb-1.5">
-                Prix
-              </label>
-              <div className="relative max-w-[160px]">
-                <input
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, "").slice(0, 7))}
-                  inputMode="decimal"
-                  placeholder="60"
-                  className={input + " pr-8 text-right"}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-outline">€</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={addService}
-              disabled={!price.trim()}
-              className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-            >
-              Ajouter à ma carte
-            </button>
-          </div>
-        )}
+        {openAdd && <ServiceComposer onAdd={addService} onCancel={() => setOpenAdd(false)} />}
 
         {services.length === 0 ? (
           <p className="text-sm text-outline">Aucune prestation. Ajoutez la première ci-dessus.</p>

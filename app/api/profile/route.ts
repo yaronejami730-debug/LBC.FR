@@ -101,7 +101,26 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "URL avatar invalide" }, { status: 400 });
   }
 
-  // Autoriser seulement les URLs de nos sources de confiance
+  /**
+   * Chemin relatif servi par nous-mêmes.
+   *
+   * `/api/upload` bascule sur le disque local quand `BLOB_READ_WRITE_TOKEN`
+   * est absent — c'est le cas en développement — et renvoie alors
+   * « /uploads/xxx.jpg ». `new URL()` échouait dessus, et toute tentative
+   * d'envoyer un logo répondait « URL avatar invalide ». Un chemin de même
+   * origine est strictement plus sûr qu'une URL distante : c'est le cas le
+   * plus simple à autoriser, pas le plus risqué.
+   */
+  if (avatar.startsWith("/uploads/") && !avatar.includes("..")) {
+    const local = await prisma.user.update({
+      where: { id: session.user.id },
+      data: { avatar },
+      select: { id: true, avatar: true },
+    });
+    return NextResponse.json(local);
+  }
+
+  // Sinon : URL absolue, restreinte à nos sources de confiance.
   let parsedAvatar: URL;
   try {
     parsedAvatar = new URL(avatar);

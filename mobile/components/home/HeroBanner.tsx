@@ -16,15 +16,26 @@ type Banner = {
   showText: boolean;
 };
 
-const DEFAULT_TITLE = "Petites annonces gratuites entre particuliers";
-const DEFAULT_SUBTITLE = "Publiez en 2 minutes. Sans commission, contact direct.";
+/**
+ * Pas de bannière par défaut.
+ *
+ * Le composant affichait un bloc bleu « Petites annonces gratuites entre
+ * particuliers » avec un bouton Publier, d'abord pendant le chargement, puis en
+ * permanence quand aucune bannière n'était active. Deux défauts en un : un
+ * clignotement à chaque ouverture de l'accueil, et une bannière que
+ * l'administrateur n'a jamais demandée qui s'affichait précisément quand il
+ * avait choisi de n'en activer aucune.
+ *
+ * La règle est maintenant simple : on n'affiche que ce qui est réellement
+ * configuré et actif. Rien d'autre.
+ */
 
 function PublishButton({ color }: { color: string }) {
   const router = useRouter();
   return (
     <Pressable
       onPress={() => router.push("/(tabs)/post")}
-      className="bg-white px-5 py-2.5 rounded-full active:opacity-80 self-start mt-4"
+      className="bg-surface px-5 py-2.5 rounded-full active:opacity-80 self-start mt-4"
     >
       <Text className="font-bold text-sm" style={{ color }}>
         Publier mon annonce
@@ -43,7 +54,12 @@ export default function HeroBanner() {
       .catch(() => setBanner(null));
   }, []);
 
-  const bgImageUri = banner?.bgImage
+  // Tant qu'on ne sait pas, on n'affiche rien : mieux vaut un espace vide une
+  // fraction de seconde qu'un bandeau qui apparaît puis se fait remplacer.
+  // Aucune bannière active ⇒ rien non plus, l'accueil commence aux catégories.
+  if (!banner) return null;
+
+  const bgImageUri = banner.bgImage
     ? banner.bgImage.startsWith("http")
       ? banner.bgImage
       : `${API_BASE_URL}${banner.bgImage}`
@@ -52,7 +68,7 @@ export default function HeroBanner() {
   // Variante photo : l'image dicte le ratio ; texte superposé si showText.
   if (bgImageUri) {
     return (
-      <View className="rounded-2xl overflow-hidden mt-2">
+      <View className="rounded-card overflow-hidden mt-2">
         <Image
           source={{ uri: bgImageUri }}
           style={{ width: "100%", aspectRatio: ratio }}
@@ -62,8 +78,8 @@ export default function HeroBanner() {
             if (width && height) setRatio(width / height);
           }}
         />
-        {banner?.showText && (
-          <View className="absolute inset-0 bg-black/35 p-5 justify-end">
+        {banner.showText && (
+          <View className="absolute inset-0 bg-navy/45 p-5 justify-end">
             <Text className="text-white text-2xl font-extrabold leading-tight" style={{ color: banner.textColor }}>
               {banner.title}
             </Text>
@@ -79,19 +95,19 @@ export default function HeroBanner() {
     );
   }
 
-  // Variante dégradé.
-  const title = banner?.title ?? DEFAULT_TITLE;
-  const subtitle = banner ? banner.subtitle : DEFAULT_SUBTITLE;
-  const textColor = banner?.textColor ?? "#ffffff";
-  const from = banner?.bgFrom ?? "#2f6fb8";
-  const to = banner?.bgTo ?? "#1a5a9e";
+  // Variante dégradé — sans image de fond. Une bannière sans texte à afficher
+  // n'aurait rien à montrer : on la laisse de côté plutôt que de peindre un
+  // rectangle de couleur vide.
+  if (!banner.showText && !banner.title) return null;
+
+  const { title, subtitle, textColor, bgFrom: from, bgTo: to } = banner;
 
   return (
     <LinearGradient
       colors={[from, to]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      className="rounded-2xl overflow-hidden mt-2"
+      className="rounded-card overflow-hidden mt-2"
     >
       <View className="p-5">
         <Text className="text-2xl font-extrabold leading-tight" style={{ color: textColor }}>

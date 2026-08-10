@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import { getToken } from "@/lib/tokenStore";
+import { colors } from "@/lib/theme";
 
 async function uploadAvatarAsync(uri: string): Promise<string> {
   const token = await getToken();
@@ -69,20 +70,20 @@ export default function ProfileScreen() {
   };
 
   if (loading) {
-    return <SafeAreaView className="flex-1 bg-surface"><View className="flex-1" /></SafeAreaView>;
+    return <SafeAreaView className="flex-1 bg-app"><View className="flex-1" /></SafeAreaView>;
   }
 
   if (!user) {
     return (
-      <SafeAreaView className="flex-1 bg-surface">
+      <SafeAreaView className="flex-1 bg-app">
         <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 }}>
           <View className="items-center pt-8 pb-4">
             <Image source={require("@/assets/logo.png")} style={{ width: 180, height: 60 }} contentFit="contain" />
           </View>
 
-          <View className="bg-primary/5 border border-primary/20 rounded-3xl p-6 mt-4">
+          <View className="bg-primary-light border border-primary/20 rounded-sheet p-6 mt-4">
             <View className="w-14 h-14 rounded-full bg-primary items-center justify-center mb-3">
-              <Ionicons name="person" size={26} color="#fff" />
+              <Ionicons name="person" size={26} color={colors.white} />
             </View>
             <Text className="text-on-surface text-2xl font-extrabold mb-1">Bienvenue !</Text>
             <Text className="text-on-surface-variant text-sm mb-5 leading-relaxed">
@@ -117,7 +118,7 @@ export default function ProfileScreen() {
   const avatar = (user.image as string | null | undefined) ?? null;
 
   return (
-    <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app">
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={
@@ -129,14 +130,14 @@ export default function ProfileScreen() {
         </View>
 
         <View className="px-4 pt-2 pb-3">
-          <View className="bg-surface-container-low rounded-2xl p-5">
+          <View className="bg-surface rounded-card p-5">
             <View className="flex-row items-center gap-3">
               <Pressable
                 onPress={changeAvatar}
                 className="w-16 h-16 rounded-full bg-surface-container overflow-hidden items-center justify-center"
               >
                 {savingAvatar ? (
-                  <ActivityIndicator color="#2f6fb8" />
+                  <ActivityIndicator color={colors.primary} />
                 ) : avatar ? (
                   <Image source={{ uri: avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                 ) : (
@@ -152,11 +153,11 @@ export default function ProfileScreen() {
             {!user.emailVerified && (
               <Pressable
                 onPress={() => router.push("/(auth)/verify-email")}
-                className="mt-3 bg-amber-100 px-3 py-2.5 rounded-lg flex-row items-center active:opacity-80"
+                className="mt-3 bg-primary-light px-3 py-2.5 rounded-xl flex-row items-center active:opacity-80"
               >
-                <Ionicons name="mail-unread" size={16} color="#92400e" />
-                <Text className="text-amber-900 text-xs ml-2 flex-1 font-semibold">Email non vérifié — entrer mon code</Text>
-                <Ionicons name="chevron-forward" size={16} color="#92400e" />
+                <Ionicons name="mail-unread" size={16} color={colors.primary} />
+                <Text className="text-primary text-xs ml-2 flex-1 font-semibold">Email non vérifié — entrer mon code</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </Pressable>
             )}
           </View>
@@ -187,8 +188,8 @@ export default function ProfileScreen() {
         </View>
 
         <View className="px-4 mt-6">
-          <Pressable onPress={logout} className="bg-red-50 border border-red-200 rounded-xl py-3 items-center">
-            <Text className="text-red-600 font-semibold">Se déconnecter</Text>
+          <Pressable onPress={logout} className="bg-danger/10 border border-danger/30 rounded-xl py-3 items-center">
+            <Text className="text-danger font-semibold">Se déconnecter</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -199,8 +200,8 @@ export default function ProfileScreen() {
 function Benefit({ icon, title, desc }: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }) {
   return (
     <View className="flex-row items-center py-2.5">
-      <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-        <Ionicons name={icon} size={18} color="#2f6fb8" />
+      <View className="w-10 h-10 rounded-full bg-primary-light items-center justify-center">
+        <Ionicons name={icon} size={18} color={colors.primary} />
       </View>
       <View className="ml-3 flex-1">
         <Text className="text-on-surface font-semibold text-sm">{title}</Text>
@@ -214,7 +215,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
   return (
     <View className="mb-4">
       <Text className="text-on-surface-variant text-xs font-bold uppercase tracking-wider px-4 mb-1.5">{title}</Text>
-      <View className="bg-surface-container-low rounded-2xl mx-4 overflow-hidden">{children}</View>
+      <View className="bg-surface rounded-card mx-4 overflow-hidden">{children}</View>
     </View>
   );
 }
@@ -233,11 +234,11 @@ function SettingsRow({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center px-4 py-3.5 active:bg-surface-container ${last ? "" : "border-b border-surface-container"}`}
+      className={`flex-row items-center px-4 py-3.5 active:bg-surface-container ${last ? "" : "border-b border-line"}`}
     >
-      <Ionicons name={icon} size={20} color="#2f6fb8" />
+      <Ionicons name={icon} size={20} color={colors.primary} />
       <Text className="text-on-surface flex-1 ml-3 font-medium">{label}</Text>
-      <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+      <Ionicons name="chevron-forward" size={18} color={colors.outline} />
     </Pressable>
   );
 }

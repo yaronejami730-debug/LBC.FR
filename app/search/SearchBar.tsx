@@ -131,7 +131,7 @@ export default function SearchBar({ q, category, searchParams }: Props) {
   }
 
   // filter groups for selected category
-  const filterGroups = getFiltersForCategory(drawerCategory);
+  const filterGroups = getFiltersForCategory(drawerCategory, values.q);
 
   // Only count explicit filter refinements — NOT q, NOT category
   // (a simple keyword search shouldn't light up the filter button)

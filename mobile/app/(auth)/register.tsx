@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/lib/auth";
+import { colors } from "@/lib/theme";
 
 type AccountType = "particulier" | "pro";
 
@@ -47,7 +48,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-app" edges={["bottom"]}>
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 8 }} keyboardShouldPersistTaps="handled">
           <Text className="text-on-surface text-3xl font-extrabold mb-2">Créer un compte</Text>
@@ -79,8 +80,8 @@ export default function RegisterScreen() {
                 value={companyName}
                 onChangeText={setCompanyName}
                 placeholder="ex : Auto Garage SARL"
-                placeholderTextColor="#9ca3af"
-                className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-4 bg-white"
+                placeholderTextColor={colors.outline}
+                className="border border-line rounded-xl px-4 py-3 text-on-surface mb-4 bg-surface"
               />
               <Text className="text-on-surface text-sm font-semibold mb-2">SIRET *</Text>
               <TextInput
@@ -88,9 +89,9 @@ export default function RegisterScreen() {
                 onChangeText={(t) => setSiret(t.replace(/[^\d]/g, "").slice(0, 14))}
                 keyboardType="number-pad"
                 placeholder="14 chiffres"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.outline}
                 maxLength={14}
-                className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-4 bg-white"
+                className="border border-line rounded-xl px-4 py-3 text-on-surface mb-4 bg-surface"
               />
             </>
           )}
@@ -102,8 +103,8 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={setName}
             placeholder={accountType === "pro" ? "Prénom Nom du responsable" : "Votre nom"}
-            placeholderTextColor="#9ca3af"
-            className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-4 bg-white"
+            placeholderTextColor={colors.outline}
+            className="border border-line rounded-xl px-4 py-3 text-on-surface mb-4 bg-surface"
           />
 
           <Text className="text-on-surface text-sm font-semibold mb-2">Email *</Text>
@@ -113,8 +114,8 @@ export default function RegisterScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             placeholder="vous@exemple.com"
-            placeholderTextColor="#9ca3af"
-            className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-4 bg-white"
+            placeholderTextColor={colors.outline}
+            className="border border-line rounded-xl px-4 py-3 text-on-surface mb-4 bg-surface"
           />
 
           <Text className="text-on-surface text-sm font-semibold mb-2">Mot de passe *</Text>
@@ -123,19 +124,19 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             secureTextEntry
             placeholder="Au moins 8 caractères"
-            placeholderTextColor="#9ca3af"
-            className="border border-surface-container rounded-xl px-4 py-3 text-on-surface mb-4 bg-white"
+            placeholderTextColor={colors.outline}
+            className="border border-line rounded-xl px-4 py-3 text-on-surface mb-4 bg-surface"
           />
 
           <View className="flex-row items-center justify-between mb-6">
             <Text className="text-on-surface-variant text-sm flex-1 pr-3">J'accepte de recevoir les actualités Deal&Co</Text>
-            <Switch value={marketing} onValueChange={setMarketing} trackColor={{ true: "#2f6fb8" }} />
+            <Switch value={marketing} onValueChange={setMarketing} trackColor={{ true: colors.primary }} />
           </View>
 
-          {error && <Text className="text-red-600 text-sm mb-3">{error}</Text>}
+          {error && <Text className="text-danger text-sm mb-3">{error}</Text>}
 
           <Pressable onPress={submit} disabled={loading} className="bg-primary py-3.5 rounded-full items-center active:opacity-80">
-            {loading ? <ActivityIndicator color="#ffffff" /> : <Text className="text-white font-bold text-base">Créer mon compte</Text>}
+            {loading ? <ActivityIndicator color={colors.white} /> : <Text className="text-white font-bold text-base">Créer mon compte</Text>}
           </Pressable>
 
           <View className="flex-row justify-center mt-6">
@@ -164,16 +165,16 @@ function AccountCard({
   return (
     <Pressable
       onPress={onPress}
-      className={`flex-1 border-2 rounded-2xl p-4 ${active ? "border-primary bg-primary/5" : "border-surface-container bg-white"}`}
+      className={`flex-1 border-2 rounded-card p-4 ${active ? "border-primary bg-primary-light" : "border-line bg-surface"}`}
     >
       <View className={`w-10 h-10 rounded-full items-center justify-center mb-2 ${active ? "bg-primary" : "bg-surface-container"}`}>
-        <Ionicons name={icon} size={18} color={active ? "#fff" : "#94a3b8"} />
+        <Ionicons name={icon} size={18} color={active ? colors.white : colors.outline} />
       </View>
       <Text className={`font-bold text-sm ${active ? "text-primary" : "text-on-surface"}`}>{label}</Text>
       <Text className="text-on-surface-variant text-[11px] mt-1 leading-tight">{hint}</Text>
       {active && (
         <View className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full items-center justify-center">
-          <Ionicons name="checkmark" size={12} color="#fff" />
+          <Ionicons name="checkmark" size={12} color={colors.white} />
         </View>
       )}
     </Pressable>

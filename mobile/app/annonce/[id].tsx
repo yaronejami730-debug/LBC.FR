@@ -14,7 +14,13 @@ import { useAuth } from "@/lib/auth";
 import { formatPrice, timeAgo, allImages, firstImage } from "@/lib/format";
 import { Skeleton } from "@/components/Skeleton";
 import { FullscreenPhotoViewer } from "@/components/FullscreenPhotoViewer";
+import { PhotoWatermark } from "@/components/PhotoWatermark";
 import { buildSpecs, buildEquipment } from "@/lib/listingSpecs";
+import { colors } from "@/lib/theme";
+import GlassBadge from "@/components/ui/GlassBadge";
+import BackButton from "@/components/ui/BackButton";
+import Button from "@/components/ui/Button";
+import { useGoBack } from "@/lib/navigation";
 
 const SITE_URL = "https://www.dealandcompany.fr";
 const SCREEN_W = Dimensions.get("window").width;
@@ -71,6 +77,7 @@ function trackAd(id: string, type: "click" | "impression") {
 export default function AnnonceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const goBack = useGoBack();
   const { user } = useAuth();
 
   const [listing, setListing] = useState<Listing | null>(null);
@@ -298,7 +305,7 @@ export default function AnnonceScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-surface">
+      <View className="flex-1 bg-app">
         <Skeleton width={SCREEN_W} height={SCREEN_W} borderRadius={0} />
         <View className="p-4">
           <Skeleton width={120} height={16} />
@@ -316,11 +323,9 @@ export default function AnnonceScreen() {
   }
   if (error || !listing) {
     return (
-      <View className="flex-1 bg-surface items-center justify-center px-6">
-        <Text className="text-red-600 text-center mb-4">{error ?? "Annonce introuvable"}</Text>
-        <Pressable onPress={() => router.back()} className="bg-primary px-4 py-2 rounded-full">
-          <Text className="text-white font-semibold">Retour</Text>
-        </Pressable>
+      <View className="flex-1 bg-app items-center justify-center px-6">
+        <Text className="text-danger text-center mb-4">{error ?? "Annonce introuvable"}</Text>
+        <Button label="Retour" icon="arrow-back" onPress={goBack} />
       </View>
     );
   }
@@ -347,20 +352,21 @@ export default function AnnonceScreen() {
         options={{
           title: "",
           headerBackTitle: "Retour",
+          headerLeft: () => <BackButton />,
           headerRight: () => (
             <View className="flex-row items-center">
-              <Pressable onPress={openShare} className="px-2"><Ionicons name="share-outline" size={22} color="#1a1a1a" /></Pressable>
+              <Pressable onPress={openShare} className="px-2"><Ionicons name="share-outline" size={22} color={colors.onSurface} /></Pressable>
               {!isMine && (
                 <Pressable onPress={toggleFav} disabled={favBusy} className="px-2 flex-row items-center">
                   <Text className="text-on-surface text-sm font-bold mr-1.5">{favCount}</Text>
-                  <Ionicons name={isFav ? "heart" : "heart-outline"} size={22} color={isFav ? "#ef4444" : "#1a1a1a"} />
+                  <Ionicons name={isFav ? "heart" : "heart-outline"} size={22} color={isFav ? colors.danger : colors.onSurface} />
                 </Pressable>
               )}
             </View>
           ),
         }}
       />
-      <ScrollView className="flex-1 bg-surface" contentContainerStyle={{ paddingBottom: 140 }}>
+      <ScrollView className="flex-1 bg-app" contentContainerStyle={{ paddingBottom: 140 }}>
         {/* Galerie : swipe horizontal TOUTES les photos, tap = ouvre visionneuse */}
         {images.length > 0 ? (
           <View>
@@ -385,15 +391,28 @@ export default function AnnonceScreen() {
                 </Pressable>
               ))}
             </ScrollView>
-            {/* Compteur photo bas-droite */}
-            <View className="absolute right-3 bottom-3 bg-black/70 px-3 py-1.5 rounded-full flex-row items-center">
-              <Ionicons name="images" size={12} color="#fff" />
-              <Text className="text-white text-xs font-bold ml-1.5">{galleryIndex + 1} / {images.length}</Text>
-            </View>
+            {/* Le carrousel est paginé sur une fenêtre fixe : une seule
+                signature suffit, elle reste en place d'une photo à l'autre —
+                même principe que le compteur ci-dessous. */}
+            <PhotoWatermark />
+
+            {/* Overlays glassmorphism sur l'image */}
+            <GlassBadge
+              icon="images"
+              label={`${galleryIndex + 1} / ${images.length}`}
+              style={{ position: "absolute", right: 12, bottom: 12 }}
+            />
+            {favCount > 0 && (
+              <GlassBadge
+                icon="heart"
+                label={`${favCount} ${favCount > 1 ? "intéressés" : "intéressé"}`}
+                style={{ position: "absolute", left: 12, bottom: 12 }}
+              />
+            )}
           </View>
         ) : (
           <View style={{ width: SCREEN_W, height: SCREEN_W }} className="bg-surface-container items-center justify-center">
-            <Ionicons name="image-outline" size={40} color="#94a3b8" />
+            <Ionicons name="image-outline" size={40} color={colors.outline} />
             <Text className="text-outline mt-2">Aucune photo</Text>
           </View>
         )}
@@ -423,9 +442,9 @@ export default function AnnonceScreen() {
                 <View className="flex-row flex-wrap -mx-1">
                   {visibleSpecs.map((sp, i) => (
                     <View key={`${sp.label}-${i}`} className="w-1/2 px-1 mb-2">
-                      <View className="bg-surface-container-low rounded-xl p-3 flex-row items-center">
-                        <View className="w-9 h-9 rounded-full bg-white items-center justify-center">
-                          <Ionicons name={(sp.icon ?? "ellipse-outline") as keyof typeof Ionicons.glyphMap} size={16} color="#2f6fb8" />
+                      <View className="bg-surface rounded-xl p-3 flex-row items-center">
+                        <View className="w-9 h-9 rounded-full bg-surface items-center justify-center">
+                          <Ionicons name={(sp.icon ?? "ellipse-outline") as keyof typeof Ionicons.glyphMap} size={16} color={colors.primary} />
                         </View>
                         <View className="ml-2.5 flex-1">
                           <Text className="text-on-surface-variant text-[11px] font-medium" numberOfLines={1}>{sp.label}</Text>
@@ -455,8 +474,8 @@ export default function AnnonceScreen() {
               {equipExpanded ? (
                 <View className="flex-row flex-wrap gap-2">
                   {equipment.map((opt, i) => (
-                    <View key={`${opt}-${i}`} className="flex-row items-center bg-surface-container-low rounded-full px-3 py-1.5">
-                      <Ionicons name="checkmark" size={14} color="#16a34a" />
+                    <View key={`${opt}-${i}`} className="flex-row items-center bg-surface rounded-full px-3 py-1.5">
+                      <Ionicons name="checkmark" size={14} color={colors.success} />
                       <Text className="text-on-surface text-xs font-semibold ml-1.5">{opt}</Text>
                     </View>
                   ))}
@@ -467,14 +486,14 @@ export default function AnnonceScreen() {
               ) : (
                 <Pressable
                   onPress={() => setEquipExpanded(true)}
-                  className="bg-surface-container-low rounded-2xl px-4 py-3 flex-row items-center active:opacity-80"
+                  className="bg-surface rounded-card px-4 py-3 flex-row items-center active:opacity-80"
                 >
-                  <Ionicons name="options" size={18} color="#2f6fb8" />
+                  <Ionicons name="options" size={18} color={colors.primary} />
                   <Text className="text-on-surface text-sm font-semibold ml-3 flex-1">
                     {equipment.length} équipement{equipment.length > 1 ? "s" : ""} et option{equipment.length > 1 ? "s" : ""}
                   </Text>
                   <Text className="text-primary text-sm font-bold mr-2">Voir plus</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                  <Ionicons name="chevron-forward" size={16} color={colors.outline} />
                 </Pressable>
               )}
             </>
@@ -504,17 +523,17 @@ export default function AnnonceScreen() {
           )}
 
           <SectionTitle>Questions fréquentes</SectionTitle>
-          <View className="bg-surface-container-low rounded-2xl overflow-hidden">
+          <View className="bg-surface rounded-card overflow-hidden">
             {faq.map((item, i) => {
               const open = openFaq === i;
               return (
-                <View key={i} className={i < faq.length - 1 ? "border-b border-surface-container" : ""}>
+                <View key={i} className={i < faq.length - 1 ? "border-b border-line" : ""}>
                   <Pressable
                     onPress={() => setOpenFaq(open ? null : i)}
                     className="flex-row items-center px-4 py-4 active:bg-surface-container"
                   >
                     <Text className="text-on-surface text-sm font-semibold flex-1 pr-3">{item.q}</Text>
-                    <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color="#94a3b8" />
+                    <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={colors.outline} />
                   </Pressable>
                   {open && (
                     <View className="px-4 pb-4">
@@ -528,8 +547,8 @@ export default function AnnonceScreen() {
 
           <SectionTitle>Localisation</SectionTitle>
           <Text className="text-on-surface text-lg font-extrabold mb-3">{postalLabel || listing.location}</Text>
-          <View className="rounded-2xl overflow-hidden bg-surface-container-low border border-surface-container">
-            <View style={{ height: 240, backgroundColor: "#e5e7eb" }}>
+          <View className="rounded-card overflow-hidden bg-surface border border-line">
+            <View style={{ height: 240, backgroundColor: colors.line }}>
               {coords ? (
                 <MapView
                   provider={PROVIDER_DEFAULT}
@@ -548,7 +567,7 @@ export default function AnnonceScreen() {
                       <Polygon
                         key={i}
                         coordinates={ring}
-                        strokeColor="#0e2742"
+                        strokeColor={colors.navy}
                         fillColor="rgba(47,111,184,0.18)"
                         strokeWidth={2}
                       />
@@ -557,7 +576,7 @@ export default function AnnonceScreen() {
                     <Circle
                       center={{ latitude: coords.lat, longitude: coords.lon }}
                       radius={2000}
-                      strokeColor="#0e2742"
+                      strokeColor={colors.navy}
                       fillColor="rgba(47,111,184,0.18)"
                       strokeWidth={2}
                     />
@@ -570,10 +589,10 @@ export default function AnnonceScreen() {
               )}
               <Pressable
                 onPress={openMap}
-                className="absolute top-3 right-3 bg-white rounded-full w-10 h-10 items-center justify-center"
-                style={{ shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}
+                className="absolute top-3 right-3 bg-surface rounded-full w-10 h-10 items-center justify-center"
+                style={{ shadowColor: colors.navy, shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}
               >
-                <Ionicons name="expand" size={18} color="#2f6fb8" />
+                <Ionicons name="expand" size={18} color={colors.primary} />
               </Pressable>
             </View>
           </View>
@@ -581,14 +600,14 @@ export default function AnnonceScreen() {
           {/* Vendeur — après localisation */}
           <SectionTitle>{listing.user.isPro ? "Vendeur professionnel" : "Vendeur"}</SectionTitle>
           <Pressable
-            onPress={() => Alert.alert("Profil vendeur", "L'écran profil vendeur arrive bientôt.")}
-            className="bg-surface-container-low rounded-2xl p-4 flex-row items-center active:opacity-80"
+            onPress={() => router.push(`/vendeur/${listing.userId}`)}
+            className="bg-surface rounded-card p-4 flex-row items-center active:opacity-80"
           >
             <View className="w-14 h-14 rounded-full overflow-hidden bg-surface-container">
               {listing.user.avatar ? (
                 <Image source={{ uri: listing.user.avatar }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
               ) : (
-                <View className="flex-1 items-center justify-center"><Ionicons name="person" size={24} color="#94a3b8" /></View>
+                <View className="flex-1 items-center justify-center"><Ionicons name="person" size={24} color={colors.outline} /></View>
               )}
             </View>
             <View className="flex-1 ml-3">
@@ -602,7 +621,7 @@ export default function AnnonceScreen() {
               </View>
               {listing.user.verified && (
                 <View className="flex-row items-center mt-0.5">
-                  <Ionicons name="checkmark-circle" size={12} color="#2f6fb8" />
+                  <Ionicons name="checkmark-circle" size={12} color={colors.primary} />
                   <Text className="text-primary text-xs font-semibold ml-1">Vendeur vérifié</Text>
                 </View>
               )}
@@ -610,13 +629,13 @@ export default function AnnonceScreen() {
                 Membre depuis {memberYear(listing.user.memberSince)} · {listing.user.listingsCount} annonce{listing.user.listingsCount > 1 ? "s" : ""}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+            <Ionicons name="chevron-forward" size={18} color={colors.outline} />
           </Pressable>
 
           {/* Conseil sécurité — compact */}
-          <View className="mt-3 bg-blue-50 border border-blue-100 rounded-xl p-3 flex-row items-start">
-            <Ionicons name="shield-checkmark" size={16} color="#2563eb" />
-            <Text className="text-blue-800 text-xs ml-2 flex-1 leading-relaxed">
+          <View className="mt-3 bg-primary-light border border-primary-light rounded-xl p-3 flex-row items-start">
+            <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+            <Text className="text-primary text-xs ml-2 flex-1 leading-relaxed">
               Rencontrez-vous dans un lieu public. Ne payez jamais avant d'avoir vu l'article.
             </Text>
           </View>
@@ -624,7 +643,7 @@ export default function AnnonceScreen() {
           {ad && (
             <Pressable
               onPress={() => { trackAd(ad.id, "click"); Linking.openURL(ad.destinationUrl).catch(() => {}); }}
-              className="mt-6 bg-surface-container-low border border-surface-container rounded-2xl overflow-hidden flex-row active:opacity-90"
+              className="mt-6 bg-surface border border-line rounded-card overflow-hidden flex-row active:opacity-90"
               style={{ height: 88 }}
             >
               {adImgAbs && (
@@ -672,13 +691,13 @@ export default function AnnonceScreen() {
       {/* CTA flottant — Voir le numéro + Message (style Leboncoin) */}
       {!isMine && (
         <View
-          className="absolute bottom-0 left-0 right-0 bg-white border-t border-surface-container px-4 pt-3 pb-7 flex-row gap-2"
-          style={{ shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 6 }}
+          className="absolute bottom-0 left-0 right-0 bg-surface border-t border-line px-4 pt-3 pb-7 flex-row gap-2"
+          style={{ shadowColor: colors.navy, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: -2 }, elevation: 6 }}
         >
           {listing.phone && !listing.hidePhone ? (
             <Pressable
               onPress={callSeller}
-              className="flex-1 h-12 rounded-full items-center justify-center border-2 border-primary bg-white active:opacity-70"
+              className="flex-1 h-12 rounded-full items-center justify-center border-2 border-primary bg-surface active:opacity-70"
             >
               <Text className="text-primary font-bold text-base" numberOfLines={1}>
                 {phoneShown ? listing.phone : "Voir le numéro"}
@@ -688,11 +707,11 @@ export default function AnnonceScreen() {
             <Pressable
               onPress={toggleFav}
               disabled={favBusy}
-              className={`flex-1 h-12 rounded-full items-center justify-center border-2 ${isFav ? "bg-red-50 border-red-200" : "bg-white border-primary"} active:opacity-70`}
+              className={`flex-1 h-12 rounded-full items-center justify-center border-2 ${isFav ? "bg-danger/10 border-danger/30" : "bg-surface border-primary"} active:opacity-70`}
             >
               <View className="flex-row items-center">
-                <Ionicons name={isFav ? "heart" : "heart-outline"} size={18} color={isFav ? "#ef4444" : "#2f6fb8"} />
-                <Text className={`font-bold text-base ml-2 ${isFav ? "text-red-600" : "text-primary"}`}>
+                <Ionicons name={isFav ? "heart" : "heart-outline"} size={18} color={isFav ? colors.danger : colors.primary} />
+                <Text className={`font-bold text-base ml-2 ${isFav ? "text-danger" : "text-primary"}`}>
                   {isFav ? "Sauvegardé" : "Sauvegarder"}
                 </Text>
               </View>
@@ -704,7 +723,7 @@ export default function AnnonceScreen() {
             className="flex-1 bg-primary h-12 rounded-full flex-row items-center justify-center active:opacity-90"
           >
             {contactBusy ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.white} />
             ) : (
               <Text className="text-white font-bold text-base">Message</Text>
             )}
@@ -741,7 +760,7 @@ function RelatedRow({
               key={l.id}
               onPress={() => onPress(l)}
               style={{ width: 160 }}
-              className="bg-surface-container-low rounded-xl overflow-hidden active:opacity-80"
+              className="bg-surface rounded-xl overflow-hidden active:opacity-80"
             >
               <View style={{ width: "100%", aspectRatio: 1 }} className="bg-surface-container">
                 {img && <Image source={{ uri: img }} style={{ width: "100%", height: "100%" }} contentFit="cover" />}

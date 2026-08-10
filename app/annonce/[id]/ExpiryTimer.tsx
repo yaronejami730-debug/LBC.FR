@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { listingExpiresAt } from "@/lib/listing-lifetime";
 
 function formatCountdown(ms: number) {
   if (ms <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
@@ -22,7 +23,7 @@ export default function ExpiryTimer({
   listingId: string;
   createdAt: string;
 }) {
-  const expiresAt = new Date(new Date(createdAt).getTime() + 90 * 24 * 60 * 60 * 1000);
+  const expiresAt = listingExpiresAt(createdAt);
   const [countdown, setCountdown] = useState(formatCountdown(expiresAt.getTime() - Date.now()));
 
   useEffect(() => {

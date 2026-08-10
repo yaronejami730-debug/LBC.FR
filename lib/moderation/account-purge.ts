@@ -111,7 +111,7 @@ export async function purgeBannedAccount(
   const [listings, listingImages, proProfile, petService, proVerifications] = await Promise.all([
     prisma.listing.findMany({ where: { userId }, select: { id: true, images: true } }),
     prisma.listingImage.findMany({ where: { listing: { userId } }, select: { url: true } }),
-    prisma.proProfile.findUnique({ where: { userId }, select: { photos: true, coverImage: true } }),
+    prisma.proProfile.findFirst({ where: { userId }, select: { photos: true, coverImage: true } }),
     prisma.petProService.findUnique({ where: { userId }, select: { id: true, photos: true } }),
     prisma.proVerification.findMany({
       where: { userId },

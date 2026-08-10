@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUnread } from "@/lib/unread";
+import { colors } from "@/lib/theme";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -19,11 +20,11 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#2f6fb8",
-        tabBarInactiveTintColor: "#777683",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.onSurfaceVariant,
         tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopColor: "#eceef0",
+          backgroundColor: colors.surface,
+          borderTopColor: colors.line,
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom - 4 : 8,
           paddingTop: 8,
@@ -40,7 +41,7 @@ export default function TabsLayout() {
           title: "Messages",
           tabBarIcon: makeIcon("chatbubble"),
           tabBarBadge: count > 0 ? (count > 99 ? "99+" : count) : undefined,
-          tabBarBadgeStyle: { backgroundColor: "#ef4444", color: "#ffffff", fontSize: 10 },
+          tabBarBadgeStyle: { backgroundColor: colors.danger, color: colors.white, fontSize: 10 },
         }}
       />
       <Tabs.Screen name="profile" options={{ title: "Profil", tabBarIcon: makeIcon("person") }} />

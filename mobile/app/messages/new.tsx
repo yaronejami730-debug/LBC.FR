@@ -5,6 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { apiFetch } from "@/lib/api";
 import { Skeleton } from "@/components/Skeleton";
+import { colors } from "@/lib/theme";
+import { useGoBack } from "@/lib/navigation";
 
 /**
  * Écran transitoire ouvert depuis le bouton "Message" d'une annonce.
@@ -13,11 +15,12 @@ import { Skeleton } from "@/components/Skeleton";
  */
 export default function NewMessageScreen() {
   const router = useRouter();
+  const goBack = useGoBack();
   const { listingId, sellerId } = useLocalSearchParams<{ listingId?: string; sellerId?: string }>();
 
   useEffect(() => {
     if (!listingId || !sellerId) {
-      router.back();
+      goBack();
       return;
     }
     let cancelled = false;
@@ -31,7 +34,7 @@ export default function NewMessageScreen() {
         router.replace(`/messages/${conv.id}`);
       } catch (e) {
         if (cancelled) return;
-        router.back();
+        goBack();
         console.error("[messages/new]", e);
       }
     })();
@@ -39,11 +42,11 @@ export default function NewMessageScreen() {
   }, [listingId, sellerId, router]);
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["top"]}>
-      <View className="flex-row items-center px-3 py-3 border-b border-surface-container">
-        <Ionicons name="chevron-back" size={26} color="#1a1a1a" />
+    <SafeAreaView className="flex-1 bg-app" edges={["top"]}>
+      <View className="flex-row items-center px-3 py-3 border-b border-line">
+        <Ionicons name="chevron-back" size={26} color={colors.onSurface} />
         <Text className="text-on-surface text-base font-extrabold ml-2 flex-1">Nouvelle conversation</Text>
-        <ActivityIndicator color="#2f6fb8" size="small" />
+        <ActivityIndicator color={colors.primary} size="small" />
       </View>
       <View className="p-4">
         <Skeleton width="60%" height={18} />

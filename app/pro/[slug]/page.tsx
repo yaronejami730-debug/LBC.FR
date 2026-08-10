@@ -17,7 +17,12 @@ const getProfile = (slug: string) =>
     .findUnique({
       where: { slug },
       include: {
-        services: { orderBy: { position: "asc" } },
+        services: { where: { isActive: true }, orderBy: { position: "asc" } },
+        members: {
+          where: { isActive: true },
+          orderBy: { position: "asc" },
+          include: { services: { select: { serviceId: true } } },
+        },
         user: {
           select: {
             id: true,
@@ -118,6 +123,27 @@ export default async function ProProfilePage({
     return acc;
   }, {});
 
+  // Une ligne sans durée ne produit aucun créneau : sans prestation réservable
+  // ni équipe, le bouton « Réserver » mènerait à un tunnel vide.
+  const bookableCount = profile.services.filter(
+    (s) => s.isBookable && s.durationMin && s.durationMin > 0,
+  ).length;
+  const canBook = bookableCount > 0 && profile.members.length > 0;
+
+  /** Couverture : image dédiée, sinon la première photo, sinon le dégradé. */
+  const coverImage = profile.coverImage ?? photos[0] ?? null;
+
+  /**
+   * Monogramme de repli pour le logo. Deux initiales au maximum : « Salon de
+   * coiffure Paris 17ème » donne « SC », pas une bouillie de lettres.
+   */
+  const monogram = profile.name
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "HealthAndBeautyBusiness",
@@ -157,7 +183,55 @@ export default async function ProProfilePage({
       <Navbar />
 
       <main className="pt-28 md:pt-36 pb-12 px-4 max-w-4xl mx-auto space-y-6">
-        <header className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_8px_24px_rgba(21,21,125,0.04)]">
+        {/* `overflow-hidden` est porté par la couverture seule, pas par
+            l'en-tête : sur l'en-tête, il rognait le logo qui déborde vers le
+            haut. Les coins arrondis de la couverture sont donc redéclarés ici. */}
+        <header className="bg-white rounded-2xl border border-slate-100 shadow-[0_8px_24px_rgba(21,21,125,0.04)]">
+          {/* Bandeau de couverture. À défaut d'image dédiée, la première photo
+              de l'établissement fait l'affaire — c'est presque toujours la
+              devanture ou la salle. Sans aucune photo, un dégradé de marque
+              plutôt qu'un vide : la fiche doit avoir une tête même neuve. */}
+          <div className="relative h-40 sm:h-56 rounded-t-2xl overflow-hidden bg-gradient-to-br from-primary to-[#1a5a9e]">
+            {coverImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={coverImage}
+                alt={`${profile.name} — devanture`}
+                className="absolute inset-0 h-full w-full object-cover"
+                // Cadrage choisi par l'établissement dans son espace : sans lui,
+                // le recadrage automatique coupe au centre et décapite
+                // l'enseigne une fois sur deux.
+                style={{
+                  objectPosition: `${profile.coverX}% ${profile.coverY}%`,
+                  transform: `scale(${profile.coverZoom})`,
+                }}
+              />
+            )}
+            {/* Voile bas : le rond du logo et son ombre restent lisibles quelle
+                que soit la photo. */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
+          </div>
+
+          <div className="px-6 pb-6">
+            {/* Logo rond, à cheval sur la couverture. */}
+            <div className="relative z-10 -mt-12 mb-4 flex items-end gap-4">
+              <div className="h-24 w-24 shrink-0 rounded-full border-4 border-white bg-white shadow-[0_6px_20px_rgba(21,21,125,0.12)] overflow-hidden grid place-items-center">
+                {profile.user.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.user.avatar}
+                    alt={`Logo ${profile.name}`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  // Pas de logo : un monogramme vaut mieux qu'un rond gris. Il
+                  // reste stable dans le temps, contrairement à une icône
+                  // générique que l'œil ne rattache à rien.
+                  <span className="text-2xl font-extrabold text-primary font-['Manrope']">{monogram}</span>
+                )}
+              </div>
+            </div>
+
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope']">{profile.name}</h1>
@@ -181,13 +255,28 @@ export default async function ProProfilePage({
             </p>
           )}
 
+          <div className="mt-4 flex flex-wrap gap-2">
+            {/* La réservation prime sur le téléphone : c'est ce que
+                l'établissement gagne à être ici plutôt que sur un annuaire. */}
+            {canBook && (
+              <Link
+                href={`/pro/${profile.slug}/reserver`}
+                title={`Réserver chez ${profile.name}`}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-white shadow-[0_6px_16px_rgba(47,111,184,0.25)]"
+              >
+                <span className="material-symbols-outlined text-[18px]">event_available</span>
+                Réserver
+              </Link>
+            )}
+          </div>
+
           {(profile.phone || profile.website) && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {profile.phone && (
                 <a
                   href={`tel:${profile.phone}`}
                   title={`Appeler ${profile.name}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2.5 text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary"
                 >
                   <span className="material-symbols-outlined text-[18px]">call</span>
                   {profile.phone}
@@ -207,6 +296,7 @@ export default async function ProProfilePage({
               )}
             </div>
           )}
+          </div>
         </header>
 
         {photos.length > 0 && (
@@ -235,28 +325,71 @@ export default async function ProProfilePage({
                     {section}
                   </h3>
                   <ul className="divide-y divide-slate-100">
-                    {items.map((s) => (
-                      <li key={s.id} className="flex items-baseline gap-3 py-2.5">
-                        <span className="font-semibold">{s.label}</span>
-                        {s.durationMin ? (
-                          <span className="text-xs text-outline shrink-0">
-                            {formatDuration(s.durationMin)}
+                    {items.map((s) => {
+                      // Une ligne sans durée ferme ne produit aucun créneau :
+                      // le moteur ne saurait pas combien de temps bloquer. Elle
+                      // reste affichée, mais renvoie vers le téléphone.
+                      const lineBookable =
+                        canBook && s.isBookable && !!s.durationMin && s.durationMin > 0;
+                      return (
+                        <li key={s.id} className="flex items-baseline gap-3 py-2.5">
+                          <span className="font-semibold">{s.label}</span>
+                          {s.durationMin ? (
+                            <span className="text-xs text-outline shrink-0">
+                              {formatDuration(s.durationMin)}
+                            </span>
+                          ) : null}
+                          <span
+                            className="flex-1 border-b border-dotted border-slate-200 translate-y-[-3px]"
+                            aria-hidden
+                          />
+                          <span className="font-extrabold text-primary shrink-0">
+                            {s.priceNote ? `${s.priceNote} ` : ""}
+                            {s.price.toLocaleString("fr-FR")} €
                           </span>
-                        ) : null}
-                        <span
-                          className="flex-1 border-b border-dotted border-slate-200 translate-y-[-3px]"
-                          aria-hidden
-                        />
-                        <span className="font-extrabold text-primary shrink-0">
-                          {s.priceNote ? `${s.priceNote} ` : ""}
-                          {s.price.toLocaleString("fr-FR")} €
-                        </span>
-                      </li>
-                    ))}
+                          {/* Réserver depuis la ligne : le client a choisi sa
+                              prestation en la lisant, lui redemander de la
+                              sélectionner au début du tunnel est une étape de
+                              trop. */}
+                          {lineBookable && (
+                            <Link
+                              href={`/pro/${profile.slug}/reserver?service=${s.id}`}
+                              title={`Réserver « ${s.label} »`}
+                              className="shrink-0 rounded-full border border-primary/30 px-3 py-1 text-[11px] font-bold text-primary hover:bg-primary hover:text-white transition-colors"
+                            >
+                              Réserver
+                            </Link>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {profile.members.length > 0 && (
+          <section className="bg-white rounded-2xl border border-slate-100 p-6">
+            <h2 className="text-lg font-extrabold tracking-tight font-['Manrope'] mb-4">L&apos;équipe</h2>
+            <ul className="flex flex-wrap gap-4">
+              {profile.members.map((m) => (
+                <li key={m.id} className="flex items-center gap-3">
+                  <span
+                    className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-extrabold"
+                    style={{ backgroundColor: m.color }}
+                    aria-hidden
+                  >
+                    {m.displayName.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span>
+                    <span className="font-bold text-sm block">{m.displayName}</span>
+                    {m.role && <span className="text-xs text-outline">{m.role}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

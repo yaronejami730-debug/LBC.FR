@@ -1,0 +1,89 @@
+{
+  "key": "vehicules.voitures.loa-lld",
+  "version": 1,
+  "status": "published",
+  "label": "Voiture — LOA / LLD / Leasing",
+  "icon": "file-signature",
+  "extends": ["_base.listing", "_mixin.vehicule"],
+  "taxonomy": { "category": "vehicules", "subcategory": "voitures", "listing_type": "loa-lld", "path_labels": ["Véhicules", "Voitures", "LOA / LLD"] },
+  "transaction_types": ["loa", "lld", "leasing"],
+  "default_transaction_type": "loa",
+
+  "steps": [
+    { "key": "type", "label": "Type de financement", "subtitle": "LOA, LLD ou leasing : les champs s'adaptent", "order": 2 }
+  ],
+
+  "fields": [
+    { "ref": "apport",            "step": "tarification", "order": 1, "required": true, "overrides": { "label": "Apport / premier loyer" } },
+    { "ref": "mensualite",        "step": "tarification", "order": 2, "required": true, "facet": true, "seo_attr": true },
+    { "ref": "duree_contrat_mois","step": "tarification", "order": 3, "required": true, "facet": true },
+    { "ref": "km_annuel",         "step": "tarification", "order": 4, "required": true, "facet": true },
+    { "ref": "option_achat",      "step": "tarification", "order": 5,
+      "required_if": { "==": [{ "var": "transaction_type" }, "loa"] },
+      "visible_if": { "in": [{ "var": "transaction_type" }, ["loa", "leasing"]] },
+      "overrides": { "help": "Montant du rachat en fin de contrat. Sans objet en LLD." } },
+    { "ref": "garantie_mois",     "step": "caracteristiques", "order": 34 },
+    { "ref": "mise_en_circulation","step": "informations",    "order": 7 },
+    { "ref": "controle_technique","step": "caracteristiques", "order": 30 }
+  ],
+
+  "pricing": {
+    "model": "installment",
+    "currency": "EUR",
+    "negotiable": false,
+    "hide_price_allowed": false,
+    "vat_mode": "both",
+    "extras": [
+      { "key": "entretien",  "label": "Entretien inclus", "included_toggle": true },
+      { "key": "assurance",  "label": "Assurance incluse", "included_toggle": true },
+      { "key": "pneus",      "label": "Pneumatiques inclus", "included_toggle": true },
+      { "key": "assistance", "label": "Assistance incluse", "included_toggle": true }
+    ]
+  },
+
+  "availability": { "mode": "date_single" },
+
+  "display": {
+    "template": "vehicle",
+    "title_pattern": "{marque} {modele} en {transaction_label} — {mensualite}/mois",
+    "blocks": [
+      { "type": "hero_gallery" },
+      { "type": "price_block", "options": { "layout": "installment", "primary": "mensualite", "secondary": ["apport", "duree_contrat_mois", "km_annuel"], "show_total_cost": true } },
+      { "type": "key_facts", "fields": ["mensualite", "apport", "duree_contrat_mois", "km_annuel", "option_achat"] },
+      { "type": "description" },
+      { "type": "specs_table", "label": "Fiche technique" },
+      { "type": "amenities", "label": "Prestations incluses", "fields": ["pricing.extras"] },
+      { "type": "conditions", "label": "Conditions du contrat" },
+      { "type": "documents" },
+      { "type": "seller_card" },
+      { "type": "similar" },
+      { "type": "cta_bar", "options": { "primary": "Étudier ce financement" } }
+    ],
+    "card": { "primary_price": "mensualite", "facts": ["duree_contrat_mois", "km_annuel", "apport"], "badges": ["transaction_type"] }
+  },
+
+  "validation": [
+    { "id": "oa_lld", "severity": "error", "when": { "and": [{ "==": [{ "var": "transaction_type" }, "lld"] }, { "!!": { "var": "attributes.option_achat" } }] }, "message": "Une LLD ne comporte pas d'option d'achat. Choisissez LOA si le véhicule peut être racheté.", "field": "option_achat" },
+    { "id": "cout_total", "severity": "info", "when": true, "message": "Coût total affiché automatiquement : apport + (mensualité × durée){option_achat_suffix}.", "field": "mensualite" }
+  ],
+
+  "seo": {
+    "url_pattern": "/vehicules/loa-lld/{marque_slug}/{modele_slug}/{id}-{title_slug}",
+    "schema_org": ["Car", "Offer", "LoanOrCredit"],
+    "title_pattern": "{marque} {modele} en {transaction_label} — {mensualite}/mois sur {duree_contrat_mois} mois | Deal&Co",
+    "h1_pattern": "{marque} {modele} en {transaction_label}",
+    "hub_pages": true
+  },
+
+  "classifier": {
+    "head_nouns": ["voiture", "auto", "suv", "berline", "citadine", "utilitaire"],
+    "modifiers": ["mensualité", "apport", "loyer", "36 mois", "48 mois", "reprise de leasing", "transfert de contrat", "km/an"],
+    "negative": ["m²", "chambres", "dpe"],
+    "transaction_cues": {
+      "loa": ["loa", "location avec option d'achat", "option d'achat", "rachat en fin"],
+      "lld": ["lld", "location longue durée véhicule", "sans option d'achat"],
+      "leasing": ["leasing", "crédit-bail", "reprise de leasing"]
+    },
+    "prior": 0.5
+  }
+}

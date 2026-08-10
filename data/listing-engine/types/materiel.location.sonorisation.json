@@ -1,0 +1,125 @@
+{
+  "key": "materiel.location.sonorisation",
+  "version": 1,
+  "status": "published",
+  "label": "Sonorisation — Location de matériel",
+  "icon": "speaker",
+  "extends": ["_base.listing"],
+  "taxonomy": { "category": "materiel", "subcategory": "location", "listing_type": "sonorisation", "path_labels": ["Matériel", "Location", "Sonorisation"] },
+  "transaction_types": ["location"],
+  "default_transaction_type": "location",
+
+  "steps": [
+    { "key": "informations",   "label": "Le matériel",      "order": 3 },
+    { "key": "tarification",   "label": "Tarifs de location", "order": 4 },
+    { "key": "logistique",     "label": "Retrait, livraison, installation", "order": 5, "icon": "truck" },
+    { "key": "disponibilites", "label": "Disponibilités",   "order": 6 },
+    { "key": "medias",         "label": "Photos du matériel", "order": 7 },
+    { "key": "conditions",     "label": "Conditions et caution", "order": 8 },
+    { "key": "apercu",         "label": "Aperçu et publication", "order": 9 }
+  ],
+
+  "fields": [
+    { "ref": "categorie_materiel", "step": "informations", "order": 1, "required": true, "facet": true, "seo_attr": true, "default": "Sonorisation" },
+    { "ref": "quantite",           "step": "informations", "order": 2, "required": true },
+    { "ref": "etat",               "step": "informations", "order": 3, "required": true, "facet": true },
+    { "ref": "puissance_materiel", "step": "informations", "order": 4, "overrides": { "label": "Puissance", "placeholder": "ex. 2 × 1 000 W RMS" } },
+    { "ref": "caracteristiques_tech", "step": "informations", "order": 5, "required": true,
+      "overrides": { "placeholder": "Marque, modèle, composition du pack (enceintes, caisson, table de mixage, micros, câbles, pieds)…" } },
+
+    { "ref": "tarifs",             "step": "tarification", "order": 1, "required": true },
+    { "ref": "caution",            "step": "tarification", "order": 2, "required": true },
+    { "ref": "duree_min_location", "step": "tarification", "order": 3, "required": true },
+
+    { "ref": "livraison",          "step": "logistique", "order": 1, "required": true, "facet": true },
+    { "ref": "frais_livraison",    "step": "logistique", "order": 2, "visible_if": { "==": [{ "var": "attributes.livraison" }, "Livraison possible"] } },
+    { "ref": "rayon_km",           "step": "logistique", "order": 3, "visible_if": { "!=": [{ "var": "attributes.livraison" }, "Retrait sur place uniquement"] }, "overrides": { "label": "Rayon de livraison" } },
+    { "ref": "installation",       "step": "logistique", "order": 4, "required": true },
+    { "ref": "frais_installation", "step": "logistique", "order": 5, "visible_if": { "==": [{ "var": "attributes.installation" }, "En option"] } },
+
+    { "ref": "calendrier",         "step": "disponibilites", "order": 1, "required": true },
+
+    { "ref": "assurance_materiel", "step": "conditions", "order": 1, "required": true },
+    { "ref": "piece_identite_exigee", "step": "conditions", "order": 2, "default": true },
+    { "ref": "conditions_particulieres", "step": "conditions", "order": 3, "overrides": { "label": "Conditions d'utilisation", "placeholder": "Usage intérieur/extérieur, restitution, pénalités de retard, matériel manquant…" } }
+  ],
+
+  "pricing": {
+    "model": "multi_rate",
+    "currency": "EUR",
+    "require_at_least_one_rate": true,
+    "deposit": true,
+    "negotiable": true,
+    "hide_price_allowed": false,
+    "vat_mode": "both",
+    "rates": [
+      { "key": "heure",     "unit": "hour",     "label": "À l'heure" },
+      { "key": "demi_jour", "unit": "half_day", "label": "Demi-journée" },
+      { "key": "jour",      "unit": "day",      "label": "À la journée" },
+      { "key": "week_end",  "unit": "weekend",  "label": "Week-end" },
+      { "key": "semaine",   "unit": "week",     "label": "À la semaine" },
+      { "key": "mois",      "unit": "month",    "label": "Au mois" }
+    ],
+    "extras": [
+      { "key": "livraison",    "label": "Livraison", "unit": "location", "included_toggle": true },
+      { "key": "installation", "label": "Installation et réglages", "unit": "location", "included_toggle": true },
+      { "key": "technicien",   "label": "Technicien sur place", "unit": "heure" },
+      { "key": "assurance",    "label": "Assurance casse", "unit": "location", "included_toggle": true }
+    ]
+  },
+
+  "media": {
+    "images": {
+      "min": 2, "max": 20, "recommended": 6, "cover_required": true,
+      "groups": [
+        { "key": "ensemble",   "label": "Le pack complet", "recommended": true },
+        { "key": "detail",     "label": "Détail du matériel" },
+        { "key": "connectique","label": "Connectique" },
+        { "key": "en_situation","label": "En situation / installé" }
+      ]
+    }
+  },
+
+  "location": { "mode": "point", "precision_default": "approx", "require_city": true },
+  "availability": { "mode": "calendar", "min_duration_field": "duree_min_location", "blocked_periods": true, "instant_booking": true },
+
+  "display": {
+    "template": "rental_gear",
+    "title_pattern": "Location {categorie_materiel} {puissance_materiel} — {ville}",
+    "blocks": [
+      { "type": "hero_gallery" },
+      { "type": "rates_table", "label": "Tarifs de location", "options": { "only_filled": true } },
+      { "type": "key_facts", "fields": ["categorie_materiel", "puissance_materiel", "etat", "quantite", "duree_min_location", "caution"] },
+      { "type": "description" },
+      { "type": "specs_table", "label": "Caractéristiques techniques", "fields": ["caracteristiques_tech"] },
+      { "type": "calendar", "label": "Disponibilités" },
+      { "type": "conditions", "label": "Retrait, livraison et conditions", "fields": ["livraison", "frais_livraison", "installation", "frais_installation", "assurance_materiel", "caution", "piece_identite_exigee"] },
+      { "type": "map" },
+      { "type": "seller_card" },
+      { "type": "similar" },
+      { "type": "cta_bar", "options": { "primary": "Réserver ces dates" } }
+    ],
+    "card": { "primary_price": "jour", "facts": ["categorie_materiel", "etat"], "badges": ["livraison", "installation"] }
+  },
+
+  "validation": [
+    { "id": "caution_obligatoire", "severity": "error", "when": { "!": { "var": "attributes.caution" } }, "message": "Indiquez une caution : elle protège votre matériel et rassure les loueurs sérieux.", "field": "caution" },
+    { "id": "contenu_pack", "severity": "warning", "when": { "<": [{ "var": "attributes.caracteristiques_tech.length" }, 60] }, "message": "Détaillez la composition exacte du pack pour éviter les litiges à la restitution.", "field": "caracteristiques_tech" }
+  ],
+
+  "seo": {
+    "url_pattern": "/materiel/location/{categorie_slug}/{city_slug}/{id}-{title_slug}",
+    "schema_org": ["Product", "Offer", "RentAction"],
+    "title_pattern": "Location {categorie_materiel} à {ville} — dès {price_from} | Deal&Co",
+    "h1_pattern": "Location de {categorie_materiel} à {ville}",
+    "hub_pages": true
+  },
+
+  "classifier": {
+    "head_nouns": ["sono", "sonorisation", "enceinte", "enceintes", "caisson", "table de mixage", "micro", "pack son", "système son", "matériel son"],
+    "modifiers": ["watt", "rms", "dj", "soirée", "mariage", "événement", "installé", "livré"],
+    "negative": ["m²", "chambres", "kilométrage", "dpe"],
+    "transaction_cues": { "location": ["à louer", "location", "loue", "par jour", "week-end", "à la journée"] },
+    "prior": 0.7
+  }
+}
