@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { BookingError } from "@/lib/booking/engine";
 import { bookingErrorResponse, requireOwnedMember, requireProProfile } from "@/lib/booking/http";
 import { OCCUPYING_STATUSES } from "@/lib/booking/status";
+import { memberDisplayName } from "@/lib/pro-member-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,15 +13,36 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   try {
     const { id } = await ctx.params;
     const { profile } = await requireProProfile(req, "staff");
-    await requireOwnedMember(profile.id, id);
+    const current = await requireOwnedMember(profile.id, id);
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+
+    // Le libellé public suit le prénom tant que la responsable ne l'a pas
+    // réécrit à la main : renommer « Corinne » en « Corine » ne doit pas
+    // obliger à corriger deux champs, et un libellé personnalisé (« Corinne D. »
+    // pour la distinguer de sa collègue) ne doit pas être écrasé.
+    const renamed =
+      body.firstName !== undefined || body.lastName !== undefined
+        ? memberDisplayName(
+            String(body.firstName ?? current.firstName ?? ""),
+            String(body.lastName ?? current.lastName ?? ""),
+          )
+        : null;
+
     const member = await prisma.proMember.update({
       where: { id },
       data: {
+        ...(body.firstName !== undefined
+          ? { firstName: String(body.firstName).trim().slice(0, 80) || null }
+          : {}),
+        ...(body.lastName !== undefined
+          ? { lastName: String(body.lastName).trim().slice(0, 80) || null }
+          : {}),
         ...(body.displayName !== undefined
           ? { displayName: String(body.displayName).trim().slice(0, 80) }
-          : {}),
+          : renamed
+            ? { displayName: renamed }
+            : {}),
         ...(body.role !== undefined ? { role: body.role ? String(body.role).slice(0, 80) : null } : {}),
         ...(body.avatar !== undefined ? { avatar: body.avatar ? String(body.avatar) : null } : {}),
         ...(body.color !== undefined ? { color: String(body.color).slice(0, 9) } : {}),

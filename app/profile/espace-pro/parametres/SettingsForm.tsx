@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ToggleField } from "@/components/ui/Toggle";
 
 export type BookingSettings = {
   slotGranularityMin: number;
@@ -187,18 +188,5 @@ function Toggle({
   checked: boolean;
   onChange: (value: boolean) => void;
 }) {
-  return (
-    <label className="flex items-start gap-3 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 mt-0.5 accent-primary"
-      />
-      <span>
-        <span className="text-sm font-bold block">{label}</span>
-        {hint && <span className="text-xs text-outline">{hint}</span>}
-      </span>
-    </label>
-  );
+  return <ToggleField checked={checked} onChange={onChange} label={label} description={hint} />;
 }

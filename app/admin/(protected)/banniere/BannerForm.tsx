@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { ToggleField } from "@/components/ui/Toggle";
 
 const PRESETS = [
   { label: "Été 🏖️",     from: "#f97316", to: "#ea580c", title: "C'est l'été sur Deal & Co !", subtitle: "Maillots, lunettes, mobilier de jardin… les bonnes affaires de la saison" },
@@ -177,17 +178,13 @@ export default function BannerForm() {
               si une photo est sélectionnée — sans photo le texte s'affiche
               toujours sur le dégradé). */}
           {bgImage && (
-            <label className="mt-3 flex items-center gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showText}
-                onChange={(e) => setShowText(e.target.checked)}
-                className="w-4 h-4 accent-[#2f6fb8]"
-              />
-              <span className="text-[13px] text-[#191c1e]">
-                Afficher le titre et le sous-titre sur la photo
-              </span>
-            </label>
+            <ToggleField
+              checked={showText}
+              onChange={setShowText}
+              size="sm"
+              label="Afficher le titre et le sous-titre sur la photo"
+              className="mt-3 select-none"
+            />
           )}
         </div>
 

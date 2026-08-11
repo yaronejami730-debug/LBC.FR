@@ -1172,6 +1172,12 @@ model ProMember {
   profileId String
   profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
+  /// État civil, interne au salon. Deux Nathalie se distinguent ici.
+  firstName   String?
+  lastName    String?
+  /// Libellé public, dérivé du prénom : « Corinne », ou « Corinne D. » s'il
+  /// faut lever une ambiguïté. Le nom complet n'a rien à faire sur une page
+  /// indexée — un salarié n'a pas choisi d'être référencé.
   displayName String
   /// Intitulé affiché sous le nom : « Coloriste », « Barbier ».
   role        String?

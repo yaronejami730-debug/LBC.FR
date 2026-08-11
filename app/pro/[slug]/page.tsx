@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import { formatDuration } from "@/lib/wellness/classify";
 import { listingUrl } from "@/lib/listing-slug";
+import { normalizeWebsite, websiteLabel } from "@/lib/pro/website";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -138,6 +139,10 @@ export default async function ProProfilePage({
     (s) => s.isBookable && s.durationMin && s.durationMin > 0,
   ).length;
   const canBook = bookableCount > 0 && profile.members.length > 0;
+
+  // Les fiches enregistrées avant la normalisation portent encore des adresses
+  // sans schéma (« monsalon.fr ») : on les rend cliquables à l'affichage.
+  const websiteUrl = normalizeWebsite(profile.website);
 
   /** Couverture : image dédiée, sinon la première photo, sinon le dégradé. */
   const coverImage = profile.coverImage ?? photos[0] ?? null;
@@ -279,7 +284,7 @@ export default async function ProProfilePage({
             )}
           </div>
 
-          {(profile.phone || profile.website) && (
+          {(profile.phone || websiteUrl) && (
             <div className="mt-3 flex flex-wrap gap-2">
               {profile.phone && (
                 <a
@@ -291,16 +296,19 @@ export default async function ProProfilePage({
                   {profile.phone}
                 </a>
               )}
-              {profile.website && (
+              {websiteUrl && (
+                // Le domaine plutôt que « Site web » : le visiteur voit où il
+                // va avant de cliquer, et reconnaît l'enseigne qu'il connaît.
                 <a
-                  href={profile.website}
+                  href={websiteUrl}
                   target="_blank"
                   rel="noreferrer nofollow"
-                  title="Site de l'établissement"
+                  title={`Ouvrir ${websiteLabel(websiteUrl)} dans un nouvel onglet`}
                   className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-5 py-2.5 text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary"
                 >
                   <span className="material-symbols-outlined text-[18px]">language</span>
-                  Site web
+                  {websiteLabel(websiteUrl)}
+                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
               )}
             </div>
@@ -385,13 +393,24 @@ export default async function ProProfilePage({
             <ul className="flex flex-wrap gap-4">
               {profile.members.map((m) => (
                 <li key={m.id} className="flex items-center gap-3">
-                  <span
-                    className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-extrabold"
-                    style={{ backgroundColor: m.color }}
-                    aria-hidden
-                  >
-                    {m.displayName.slice(0, 1).toUpperCase()}
-                  </span>
+                  {m.avatar ? (
+                    // Un visage plutôt qu'une initiale : le client qui demande
+                    // « avec Corinne » choisit une personne.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.avatar}
+                      alt={m.displayName}
+                      className="w-11 h-11 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span
+                      className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-extrabold"
+                      style={{ backgroundColor: m.color }}
+                      aria-hidden
+                    >
+                      {m.displayName.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
                   <span>
                     <span className="font-bold text-sm block">{m.displayName}</span>
                     {m.role && <span className="text-xs text-outline">{m.role}</span>}

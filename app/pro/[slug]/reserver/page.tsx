@@ -118,6 +118,7 @@ export default async function ReserverPage({
             id: m.id,
             displayName: m.displayName,
             role: m.role,
+            avatar: m.avatar,
             color: m.color,
             serviceIds: m.services.map((link) => link.serviceId),
           }))}

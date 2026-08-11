@@ -145,7 +145,7 @@ export default function UserDropdown({ user, isPro = false }: Props) {
                   className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[20px]">event_available</span>
-                  <span className="text-[14px] font-medium flex-1">Mes rendez-vous</span>
+                  <span className="text-[14px] font-medium flex-1">Mes réservations</span>
                 </Link>
                 {isPro && (
                   <Link href="/profile/api-key" onClick={() => setOpen(false)}

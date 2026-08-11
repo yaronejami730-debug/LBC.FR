@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { updateListingByAdmin, deleteListingByAdmin } from "@/app/admin/actions";
 import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
+import { InlineToggle } from "@/components/ui/Toggle";
 
 // Modale d'aperçu (450 L) chargée à la demande — utile seulement au clic.
 const ListingPreviewModal = dynamic(
@@ -452,15 +453,12 @@ function EditForm({
             placeholder="06 12 34 56 78"
             className="w-full px-4 py-3 rounded-xl border border-[#eceef0] bg-white text-[#191c1e] text-sm focus:outline-none focus:ring-2 focus:ring-[#2f6fb8]/30 focus:border-[#2f6fb8] transition-all"
           />
-          <label className="flex items-center gap-2 mt-2 text-xs text-[#777683]">
-            <input
-              type="checkbox"
-              checked={hidePhone}
-              onChange={(e) => setHidePhone(e.target.checked)}
-              className="w-4 h-4 accent-[#2f6fb8]"
-            />
-            Masquer le téléphone dans l'annonce
-          </label>
+          <InlineToggle
+            checked={hidePhone}
+            onChange={setHidePhone}
+            label="Masquer le téléphone dans l'annonce"
+            className="mt-2"
+          />
         </div>
 
         {error && (

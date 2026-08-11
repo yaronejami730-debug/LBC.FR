@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getMemberSession } from "@/lib/pro-member-auth";
 import MemberAgendaHeader from "./MemberAgendaHeader";
+import MemberNewBooking from "./MemberNewBooking";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ export default async function MemberAgendaPage({
       id: true,
       displayName: true,
       role: true,
+      avatar: true,
       isActive: true,
       accessRevokedAt: true,
       mustChangePassword: true,
@@ -115,10 +117,15 @@ export default async function MemberAgendaPage({
         displayName={member.displayName}
         role={member.role}
         salon={member.profile.name}
+        avatar={member.avatar}
         mustChangePassword={member.mustChangePassword || nouveau === "1"}
       />
 
       <main className="px-4 pb-16 max-w-2xl mx-auto space-y-5">
+        {/* En tête de page : un appel arrive pendant qu'on regarde son planning,
+            pas après l'avoir parcouru jusqu'en bas. */}
+        <MemberNewBooking />
+
         {bookings.length === 0 ? (
           <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center">
             <span className="material-symbols-outlined text-[32px] text-outline">event_busy</span>

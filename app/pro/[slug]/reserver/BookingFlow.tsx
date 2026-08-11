@@ -18,6 +18,7 @@ export type FlowMember = {
   id: string;
   displayName: string;
   role: string | null;
+  avatar: string | null;
   color: string;
   serviceIds: string[];
 };
@@ -316,6 +317,7 @@ export default function BookingFlow({
                 title={m.displayName}
                 subtitle={m.role ?? undefined}
                 color={m.color}
+                avatar={m.avatar}
               />
             ))}
             {eligible.length === 0 && (
@@ -526,12 +528,15 @@ function Choice({
   title,
   subtitle,
   color,
+  avatar,
 }: {
   selected: boolean;
   onClick: () => void;
   title: string;
   subtitle?: string;
   color?: string;
+  /** Photo du praticien quand elle existe ; sinon l'initiale colorée. */
+  avatar?: string | null;
 }) {
   return (
     <button
@@ -541,12 +546,17 @@ function Choice({
         selected ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-300"
       }`}
     >
-      <span
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-extrabold shrink-0"
-        style={{ backgroundColor: color ?? "#94a3b8" }}
-      >
-        {title.slice(0, 1).toUpperCase()}
-      </span>
+      {avatar ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+      ) : (
+        <span
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-extrabold shrink-0"
+          style={{ backgroundColor: color ?? "#94a3b8" }}
+        >
+          {title.slice(0, 1).toUpperCase()}
+        </span>
+      )}
       <span>
         <span className="font-bold text-sm block">{title}</span>
         {subtitle && <span className="text-xs text-outline">{subtitle}</span>}

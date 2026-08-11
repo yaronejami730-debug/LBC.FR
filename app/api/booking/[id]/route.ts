@@ -43,7 +43,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       serviceId?: string;
       contact?: Record<string, string>;
     };
-    if (body.action !== "cancel" && body.action !== "reschedule" && body.action !== "edit") {
+    const ACTIONS = ["cancel", "reschedule", "edit", "confirm", "refuse"] as const;
+    if (!(ACTIONS as readonly string[]).includes(body.action ?? "")) {
       throw new BookingError("Action non supportée.", 400, "UNSUPPORTED_ACTION");
     }
 
@@ -63,6 +64,66 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     if (!isOccupying(booking.status)) {
       throw new BookingError("Ce rendez-vous est déjà clos.", 409, "ALREADY_CLOSED");
+    }
+
+    // ── Acceptation / refus ────────────────────────────────────────────
+    //
+    // Le moteur garantit qu'un créneau n'est pas pris deux fois ; il ne
+    // garantit pas que l'établissement *veuille* de ce rendez-vous. Un client
+    // qui n'est pas venu trois fois, une prestation qu'on ne fait plus, une
+    // journée qu'on préfère garder libre : la décision reste humaine. D'où
+    // deux gestes explicites sur les demandes en attente, distincts de
+    // l'annulation d'un rendez-vous déjà accepté.
+    if (body.action === "confirm" || body.action === "refuse") {
+      if (!isOwner) throw new BookingError("Rendez-vous introuvable.", 404, "BOOKING_NOT_FOUND");
+      if (booking.status !== "PENDING") {
+        throw new BookingError(
+          "Cette demande a déjà été traitée.",
+          409,
+          "NOT_PENDING",
+        );
+      }
+
+      if (body.action === "confirm") {
+        const confirmed = await prisma.proBooking.update({
+          where: { id },
+          data: { status: "CONFIRMED", confirmedAt: new Date() },
+          select: { id: true, status: true, profileId: true, email: true, customerId: true },
+        });
+
+        await emit({
+          type: "booking.confirmed",
+          bookingId: confirmed.id,
+          profileId: confirmed.profileId,
+          customerEmail: confirmed.email,
+          customerId: confirmed.customerId,
+        });
+
+        return NextResponse.json({ booking: { id: confirmed.id, status: confirmed.status } });
+      }
+
+      // Refuser libère le créneau : le statut CANCELLED sort de la contrainte
+      // d'exclusion, donc la place redevient réservable immédiatement.
+      const refused = await prisma.proBooking.update({
+        where: { id },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancelledBy: "PRO",
+          cancelReason: body.reason?.slice(0, 500) || "Demande refusée par l'établissement",
+        },
+        select: { id: true, status: true, profileId: true, email: true, customerId: true },
+      });
+
+      await emit({
+        type: "booking.cancelled",
+        bookingId: refused.id,
+        profileId: refused.profileId,
+        customerEmail: refused.email,
+        customerId: refused.customerId,
+      });
+
+      return NextResponse.json({ booking: { id: refused.id, status: refused.status } });
     }
 
     // ── Correction des coordonnées ─────────────────────────────────────

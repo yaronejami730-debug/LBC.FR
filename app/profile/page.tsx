@@ -183,16 +183,10 @@ export default async function ProfilePage() {
                 subtitle="Rendez-vous du jour et de la semaine"
               />
               <ProfileLink
-                href="/profile/espace-pro/equipe"
-                icon="group"
-                title="Équipe et horaires"
-                subtitle="Qui travaille, quand, pauses et absences"
-              />
-              <ProfileLink
-                href="/profile/espace-pro/parametres"
-                icon="tune"
-                title="Réservation"
-                subtitle="Créneaux, préavis, annulation"
+                href="/profile/espace-pro/configuration"
+                icon="settings"
+                title="Configuration"
+                subtitle="Horaires, équipe, plannings, réservation"
               />
             </div>
           </div>
@@ -203,7 +197,7 @@ export default async function ProfilePage() {
           <ProfileLink
             href="/mes-reservations"
             icon="event_available"
-            title="Mes rendez-vous"
+            title="Mes réservations"
             subtitle="Réservations chez des professionnels"
           />
         </div>

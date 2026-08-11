@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import NewBookingDialog, { type DialogService } from "./NewBookingDialog";
 import BookingSheet from "./BookingSheet";
+import CalendarGrid from "./CalendarGrid";
 
 type AgendaBooking = {
   id: string;
@@ -41,6 +42,14 @@ const card = "bg-white rounded-2xl border border-slate-100 p-5";
 export default function AgendaBoard({ initialDay }: { initialDay: string }) {
   const [anchor, setAnchor] = useState(initialDay);
   const [view, setView] = useState<"day" | "week">("week");
+  /**
+   * Grille horaire par défaut.
+   *
+   * C'est la question qu'on pose à un agenda : « quand suis-je libre ». La
+   * liste reste disponible — elle répond mieux à « qui vient aujourd'hui »,
+   * et elle porte les actions (annuler, prix, statut) sur une seule ligne.
+   */
+  const [layout, setLayout] = useState<"grid" | "list">("grid");
   const [bookings, setBookings] = useState<AgendaBooking[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [memberFilter, setMemberFilter] = useState<string>("all");
@@ -48,7 +57,9 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
   const [error, setError] = useState<string | null>(null);
   const [services, setServices] = useState<DialogService[]>([]);
   /** Ouverture du formulaire d'ajout, éventuellement préremplie. */
-  const [adding, setAdding] = useState<null | { day?: string; memberId?: string }>(null);
+  const [adding, setAdding] = useState<null | { day?: string; memberId?: string; time?: string }>(
+    null,
+  );
   /** Rendez-vous ouvert pour correction, déplacement ou annulation. */
   const [opened, setOpened] = useState<AgendaBooking | null>(null);
 
@@ -129,6 +140,22 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
           ))}
         </div>
 
+        <div className="flex rounded-full bg-surface-container-low p-0.5">
+          {(["grid", "list"] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              onClick={() => setLayout(l)}
+              title={l === "grid" ? "Vue calendrier" : "Vue liste"}
+              className={`rounded-full px-3 py-1.5 grid place-items-center ${layout === l ? "bg-primary text-white" : "text-outline"}`}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {l === "grid" ? "calendar_view_week" : "view_list"}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => setAnchor(shift(anchor, view === "day" ? -1 : -7))} className="w-9 h-9 rounded-full bg-surface-container-low grid place-items-center" title="Précédent">
             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -186,7 +213,27 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
       {error && <div className="rounded-xl bg-rose-50 border border-rose-100 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {loading && <div className={`${card} text-sm text-outline`}>Chargement de l&apos;agenda…</div>}
 
+      {!loading && layout === "grid" && (
+        <CalendarGrid
+          days={days}
+          bookings={visible}
+          today={initialDay}
+          onPick={(day, startMin) =>
+            setAdding({
+              day,
+              memberId: memberFilter !== "all" ? memberFilter : undefined,
+              time: `${String(Math.floor(startMin / 60)).padStart(2, "0")}:${String(startMin % 60).padStart(2, "0")}`,
+            })
+          }
+          onOpen={(id) => {
+            const found = bookings.find((b) => b.id === id);
+            if (found) setOpened(found);
+          }}
+        />
+      )}
+
       {!loading &&
+        layout === "list" &&
         days.map((day) => {
           const dayBookings = visible.filter((b) => b.day === day).sort((a, b) => a.time.localeCompare(b.time));
           return (

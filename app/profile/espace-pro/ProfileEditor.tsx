@@ -3,6 +3,7 @@
 import { useState } from "react";
 import BrandImages from "./BrandImages";
 import ServiceComposer, { type DraftService } from "./ServiceComposer";
+import { normalizeWebsite, websiteLabel } from "@/lib/pro/website";
 
 type Service = { section: string; label: string; durationMin: string; price: string; priceNote?: string };
 
@@ -43,6 +44,9 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
   const [openAdd, setOpenAdd] = useState(false);
 
   const set = (k: keyof Initial, v: string | boolean) => setFiche((p) => ({ ...p, [k]: v }));
+
+  /** Lien tel qu'il apparaîtra sur la fiche publique — ou `null` si inexploitable. */
+  const websitePreview = normalizeWebsite(fiche.website);
 
   /** Repli du logo, identique à celui de la fiche publique. */
   const monogram = fiche.name
@@ -89,15 +93,31 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
           })),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) setMessage({ ok: false, text: data.error ?? "Enregistrement impossible" });
-      else
+      // Une panne serveur ne renvoie pas toujours du JSON. Parser sans filet
+      // faisait tomber l'échec dans le `catch` réseau : le professionnel lisait
+      // « Erreur réseau » alors que sa connexion allait très bien.
+      const raw = await res.text();
+      let data: { error?: string; slug?: string; services?: number } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok)
+        setMessage({
+          ok: false,
+          text: data.error ?? `Enregistrement impossible (erreur ${res.status})`,
+        });
+      else {
         setMessage({
           ok: true,
-          text: `Fiche enregistrée · ${data.services} prestation${data.services > 1 ? "s" : ""} · /pro/${data.slug}`,
+          text: `Fiche enregistrée · ${data.services} prestation${(data.services ?? 0) > 1 ? "s" : ""} · /pro/${data.slug}`,
         });
+        if (data.slug) setFiche((p) => ({ ...p, slug: data.slug ?? p.slug }));
+      }
     } catch {
-      setMessage({ ok: false, text: "Erreur réseau, réessayez" });
+      setMessage({ ok: false, text: "Connexion interrompue, réessayez" });
     } finally {
       setSaving(false);
     }
@@ -164,12 +184,35 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
             placeholder="Téléphone"
             className={input}
           />
-          <input
-            value={fiche.website}
-            onChange={(e) => set("website", e.target.value)}
-            placeholder="Site web"
-            className={input}
-          />
+          <div>
+            <input
+              value={fiche.website}
+              onChange={(e) => set("website", e.target.value)}
+              // La complétion se fait en quittant le champ, pas à la frappe :
+              // préfixer pendant la saisie empêcherait de taper l'adresse.
+              onBlur={(e) => set("website", normalizeWebsite(e.target.value) ?? e.target.value.trim())}
+              placeholder="Site web (monsalon.fr)"
+              inputMode="url"
+              className={input}
+            />
+            {fiche.website.trim() &&
+              (websitePreview ? (
+                <a
+                  href={websitePreview}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Ouvrir le site dans un nouvel onglet"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+                >
+                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                  Vos clients verront « {websiteLabel(websitePreview)} », cliquable
+                </a>
+              ) : (
+                <p className="mt-1.5 text-xs font-semibold text-[#ba1a1a]">
+                  Adresse non reconnue : indiquez un domaine complet, par exemple monsalon.fr
+                </p>
+              ))}
+          </div>
         </div>
       </section>
 

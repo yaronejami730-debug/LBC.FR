@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ProNav from "../ProNav";
+import BackToConfig from "../BackToConfig";
 import TeamManager from "./TeamManager";
 import { resolveProContext } from "@/lib/pro/access";
 
@@ -69,11 +70,12 @@ export default async function EquipePage({
     <div className="bg-surface min-h-screen">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-3xl mx-auto">
+        <BackToConfig etab={etab} />
         <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">
           {context.lexicon.staff} et horaires
         </h1>
         <ProNav
-          current="/profile/espace-pro/equipe"
+          current="/profile/espace-pro/configuration"
           slug={profile.slug}
           modules={context.modules}
           establishments={context.establishments}
@@ -90,8 +92,11 @@ export default async function EquipePage({
           }))}
           initialMembers={members.map((m) => ({
             id: m.id,
+            firstName: m.firstName,
+            lastName: m.lastName,
             displayName: m.displayName,
             role: m.role,
+            avatar: m.avatar,
             color: m.color,
             isActive: m.isActive,
             serviceIds: m.services.map((link) => link.serviceId),

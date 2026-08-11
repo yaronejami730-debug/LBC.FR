@@ -18,8 +18,8 @@ export type ProModuleId =
   | "prestations"
   | "activites"
   | "agenda"
-  | "equipe"
-  | "reservation"
+  | "reservations"
+  | "configuration"
   | "statistiques";
 
 type ModuleDef = {
@@ -48,6 +48,16 @@ const REGISTRY: ModuleDef[] = [
     label: () => "Agenda",
   },
   {
+    // L'agenda montre le temps ; les réservations montrent les décisions à
+    // prendre. Une demande en attente est invisible dans une grille horaire —
+    // elle y occupe déjà sa place — alors qu'elle attend un oui ou un non.
+    id: "reservations",
+    href: "/profile/espace-pro/reservations",
+    icon: "event_available",
+    requires: ["bookings"],
+    label: () => "Mes réservations",
+  },
+  {
     id: "annonces",
     href: "/profile/espace-pro/annonces",
     icon: "sell",
@@ -69,18 +79,15 @@ const REGISTRY: ModuleDef[] = [
     label: (lex) => `Mes ${lex.activities.toLowerCase()}`,
   },
   {
-    id: "equipe",
-    href: "/profile/espace-pro/equipe",
-    icon: "group",
-    requires: ["staff"],
-    label: (lex) => `${lex.staff} et horaires`,
-  },
-  {
-    id: "reservation",
-    href: "/profile/espace-pro/parametres",
-    icon: "tune",
-    requires: ["bookings"],
-    label: () => "Réservation",
+    // Équipe, plannings et règles de réservation ne sont plus des onglets
+    // séparés : ce sont des réglages, réunis derrière une seule porte. Ce
+    // qu'elle contient se décide dans `configuration.ts`, à partir des mêmes
+    // capacités.
+    id: "configuration",
+    href: "/profile/espace-pro/configuration",
+    icon: "settings",
+    requires: [],
+    label: () => "Configuration",
   },
   {
     id: "statistiques",

@@ -1,13 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import WeekHoursEditor, {
+  EMPTY_WEEK,
+  rowsFromWeek,
+  weekFromRows,
+  type WeekHours,
+} from "@/components/pro/WeekHoursEditor";
 
 export type ManagedService = { id: string; label: string; section: string; durationMin: number | null };
 
 export type ManagedMember = {
   id: string;
+  /** État civil, interne au salon : il distingue deux Nathalie. */
+  firstName?: string | null;
+  lastName?: string | null;
+  /** Ce que voit le client : le prénom, jamais le nom complet. */
   displayName: string;
   role: string | null;
+  /** Photo de profil, affichée sur la fiche publique et dans l'agenda. */
+  avatar: string | null;
   color: string;
   isActive: boolean;
   serviceIds: string[];
@@ -58,8 +70,17 @@ export default function TeamManager({
   const [selectedId, setSelectedId] = useState<string | null>(initialMembers[0]?.id ?? null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
 
-  const [hours, setHours] = useState<Schedule[]>([]);
+  /**
+   * Les horaires travaillés vivent sous forme de grille, pas de lignes.
+   *
+   * Reconvertir à chaque rendu re-trierait les plages entre deux frappes : le
+   * champ qu'on est en train de corriger changerait de place dès que l'heure
+   * saisie passe avant la précédente. La grille est donc l'état, et les lignes
+   * ne réapparaissent qu'au chargement et à l'enregistrement.
+   */
+  const [week, setWeek] = useState<WeekHours>(EMPTY_WEEK);
   const [breaks, setBreaks] = useState<Schedule[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
 
@@ -75,7 +96,7 @@ export default function TeamManager({
     const res = await fetch(`/api/pro/members/${memberId}/hours`);
     if (!res.ok) return;
     const data = await res.json();
-    setHours(data.workingHours ?? []);
+    setWeek(weekFromRows(data.workingHours ?? []));
     setBreaks(data.breaks ?? []);
   }, []);
 
@@ -93,21 +114,24 @@ export default function TeamManager({
   }, [loadTimeOff]);
 
   /* --- Actions ---------------------------------------------------------- */
-  async function addMember() {
-    const displayName = window.prompt("Nom du membre (ex. Corinne)")?.trim();
-    if (!displayName) return;
+  async function addMember(firstName: string, lastName: string, role: string) {
     setBusy(true);
     const res = await fetch("/api/pro/members", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName }),
+      body: JSON.stringify({ firstName, lastName, role: role || null }),
     });
     const data = await res.json();
     setBusy(false);
     if (!res.ok) return notify(false, data.error ?? "Ajout impossible");
     setMembers((prev) => [...prev, { ...data.member, serviceIds: [] }]);
     setSelectedId(data.member.id);
-    notify(true, `${displayName} ajouté·e. Renseignez ses horaires pour ouvrir ses créneaux.`);
+    setAdding(false);
+    notify(
+      true,
+      `${data.member.displayName} ajouté·e. Renseignez ses horaires pour ouvrir ses créneaux, ` +
+        `puis créez son accès personnel au planning.`,
+    );
   }
 
   async function patchMember(id: string, patch: Partial<ManagedMember>) {
@@ -210,7 +234,7 @@ export default function TeamManager({
     const res = await fetch(`/api/pro/members/${selectedId}/hours`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workingHours: hours, breaks }),
+      body: JSON.stringify({ workingHours: rowsFromWeek(week), breaks }),
     });
     const data = await res.json();
     setBusy(false);
@@ -277,13 +301,15 @@ export default function TeamManager({
           <h2 className="text-base font-extrabold font-['Manrope']">L&apos;équipe</h2>
           <button
             type="button"
-            onClick={addMember}
+            onClick={() => setAdding((v) => !v)}
             disabled={busy}
             className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
           >
-            + Ajouter
+            {adding ? "Annuler" : "+ Ajouter"}
           </button>
         </div>
+
+        {adding && <AddMemberForm busy={busy} onAdd={addMember} />}
 
         {members.length === 0 ? (
           <p className="text-sm text-outline">
@@ -299,12 +325,7 @@ export default function TeamManager({
                 } ${m.isActive ? "" : "opacity-50"}`}
               >
                 <button type="button" onClick={() => setSelectedId(m.id)} className="flex items-center gap-3 flex-1 text-left">
-                  <span
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-extrabold shrink-0"
-                    style={{ backgroundColor: m.color }}
-                  >
-                    {m.displayName.slice(0, 1).toUpperCase()}
-                  </span>
+                  <MemberAvatar member={m} size={36} />
                   <span className="min-w-0">
                     <span className="font-bold text-sm block truncate">{m.displayName}</span>
                     <span className="text-xs text-outline">
@@ -385,6 +406,15 @@ export default function TeamManager({
 
       {selected && (
         <>
+          {/* Identité du membre : photo, nom, intitulé, couleur d'agenda */}
+          <MemberIdentity
+            key={selected.id}
+            member={selected}
+            busy={busy}
+            onSave={(patch) => patchMember(selected.id, patch)}
+            onError={(text) => notify(false, text)}
+          />
+
           {/* Prestations du membre */}
           <section className={card}>
             <h2 className="text-base font-extrabold font-['Manrope'] mb-1">
@@ -423,15 +453,15 @@ export default function TeamManager({
               Horaires de {selected.displayName}
             </h2>
             <p className="text-xs text-outline mb-3">
-              Une ligne par plage. Deux plages le même jour pour une coupure longue ; sinon utilisez les pauses.
+              Même grille que les horaires d&apos;ouverture : un jour est travaillé ou non, avec
+              une coupure si la journée est en deux temps.
             </p>
 
-            <ScheduleTable
-              rows={hours}
-              onChange={(i, patch) => setRow(hours, setHours, i, patch)}
-              onRemove={(i) => setHours(hours.filter((_, x) => x !== i))}
-              onAdd={() => setHours([...hours, { weekday: 2, startMin: 600, endMin: 1140 }])}
-              addLabel="+ Ajouter une plage"
+            <WeekHoursEditor
+              value={week}
+              onChange={setWeek}
+              maxRangesPerDay={3}
+              closedLabel="Ne travaille pas"
             />
 
             <h3 className="text-sm font-bold mt-5 mb-2">Pauses</h3>
@@ -508,6 +538,281 @@ export default function TeamManager({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Pastille d'un membre : sa photo si elle existe, son initiale sinon.
+ *
+ * L'initiale colorée reste le repli — c'est elle qui tient l'agenda lisible
+ * quand personne n'a encore envoyé de portrait, et elle ne doit jamais
+ * disparaître au profit d'un rond gris.
+ */
+function MemberAvatar({ member, size }: { member: ManagedMember; size: number }) {
+  const style = { width: size, height: size };
+  if (member.avatar) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={member.avatar}
+        alt=""
+        style={style}
+        className="rounded-full object-cover shrink-0 ring-2 ring-white"
+      />
+    );
+  }
+  return (
+    <span
+      style={{ ...style, backgroundColor: member.color }}
+      className="rounded-full flex items-center justify-center text-white text-xs font-extrabold shrink-0"
+    >
+      {member.displayName.slice(0, 1).toUpperCase()}
+    </span>
+  );
+}
+
+/** Couleurs d'agenda : un jeu court, lisible côte à côte sur une semaine. */
+const PALETTE = ["#2f6fb8", "#7c3aed", "#db2777", "#059669", "#d97706", "#dc2626", "#0891b2", "#4b5563"];
+
+/**
+ * Photo, nom et intitulé d'un membre.
+ *
+ * La photo compte : un client qui choisit « avec Corinne » choisit une
+ * personne, pas une ligne de planning. Elle part sur `/api/upload` comme
+ * n'importe quelle image de la plateforme — même traitement, même stockage —
+ * et n'est enregistrée sur le membre qu'une fois l'URL obtenue.
+ */
+/**
+ * Ajout d'un membre : prénom, nom, intitulé.
+ *
+ * Le prénom seul deviendra le libellé public — c'est ainsi qu'un client choisit
+ * « Corinne ». Le nom reste interne : il sert à distinguer deux homonymes dans
+ * le carnet et à retrouver la bonne personne, il n'a pas à se retrouver sur une
+ * page indexée par Google.
+ */
+function AddMemberForm({
+  busy,
+  onAdd,
+}: {
+  busy: boolean;
+  onAdd: (firstName: string, lastName: string, role: string) => void;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState("");
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onAdd(firstName.trim(), lastName.trim(), role.trim());
+      }}
+      className="mb-4 rounded-xl border border-slate-200 bg-surface-container-low p-4 space-y-3"
+    >
+      <div className="grid sm:grid-cols-2 gap-3">
+        <label className="block text-xs font-semibold text-outline">
+          Prénom
+          <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className={input}
+            placeholder="Corinne"
+            required
+            autoFocus
+          />
+        </label>
+        <label className="block text-xs font-semibold text-outline">
+          Nom
+          <input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className={input}
+            placeholder="Deschamps"
+          />
+        </label>
+      </div>
+      <label className="block text-xs font-semibold text-outline">
+        Intitulé (facultatif)
+        <input
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className={input}
+          placeholder="Coloriste"
+        />
+      </label>
+      <p className="text-[11px] text-outline leading-relaxed">
+        Sur la page publique, seul le prénom apparaît. Une fois la personne ajoutée, créez son
+        accès personnel : elle verra son planning, et rien d&apos;autre.
+      </p>
+      <button
+        type="submit"
+        disabled={busy || !firstName.trim()}
+        className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+      >
+        Ajouter à l&apos;équipe
+      </button>
+    </form>
+  );
+}
+
+function MemberIdentity({
+  member,
+  busy,
+  onSave,
+  onError,
+}: {
+  member: ManagedMember;
+  busy: boolean;
+  onSave: (patch: Partial<ManagedMember>) => void;
+  onError: (text: string) => void;
+}) {
+  const [firstName, setFirstName] = useState(member.firstName ?? "");
+  const [lastName, setLastName] = useState(member.lastName ?? "");
+  const [displayName, setDisplayName] = useState(member.displayName);
+  const [role, setRole] = useState(member.role ?? "");
+  const [uploading, setUploading] = useState(false);
+
+  async function upload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      onError("Choisissez une image (JPEG, PNG, WebP).");
+      return;
+    }
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? `Erreur ${res.status}`);
+      onSave({ avatar: data.url });
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Envoi impossible.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <section className={card}>
+      <h2 className="text-base font-extrabold font-['Manrope'] mb-1">Fiche de {member.displayName}</h2>
+      <p className="text-xs text-outline mb-4">
+        Photo, nom et intitulé tels qu&apos;ils apparaissent sur votre page publique et au moment de
+        choisir un praticien.
+      </p>
+
+      <div className="flex items-start gap-4">
+        <MemberAvatar member={member} size={72} />
+
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              className={`inline-flex items-center gap-1.5 rounded-full bg-surface-container-low px-4 py-2 text-xs font-bold cursor-pointer hover:bg-slate-100 ${
+                uploading ? "opacity-50 pointer-events-none" : ""
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+              {uploading ? "Envoi…" : member.avatar ? "Remplacer la photo" : "Ajouter une photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void upload(file);
+                }}
+              />
+            </label>
+            {member.avatar && (
+              <button
+                type="button"
+                onClick={() => onSave({ avatar: null })}
+                className="text-xs font-bold text-outline hover:text-rose-600"
+              >
+                Retirer la photo
+              </button>
+            )}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label className="block text-xs font-semibold text-outline">
+              Prénom
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className={input}
+                placeholder="Corinne"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-outline">
+              Nom
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className={input}
+                placeholder="Deschamps"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-outline">
+              Nom affiché publiquement
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className={input}
+                placeholder="Corinne"
+              />
+              <span className="block mt-1 font-normal text-[11px] text-outline leading-relaxed">
+                Vu par les clients. Le nom de famille reste interne.
+              </span>
+            </label>
+            <label className="block text-xs font-semibold text-outline">
+              Intitulé
+              <input
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className={input}
+                placeholder="Coloriste"
+              />
+            </label>
+          </div>
+
+          <div>
+            <span className="block text-xs font-semibold text-outline mb-1.5">Couleur dans l&apos;agenda</span>
+            <div className="flex flex-wrap gap-2">
+              {PALETTE.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => onSave({ color })}
+                  aria-label={`Couleur ${color}`}
+                  aria-pressed={member.color.toLowerCase() === color}
+                  style={{ backgroundColor: color }}
+                  className={`w-7 h-7 rounded-full ${
+                    member.color.toLowerCase() === color ? "ring-2 ring-offset-2 ring-slate-400" : ""
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={busy || !displayName.trim()}
+            onClick={() =>
+              onSave({
+                firstName: firstName.trim() || null,
+                lastName: lastName.trim() || null,
+                displayName: displayName.trim(),
+                role: role.trim() || null,
+              })
+            }
+            className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          >
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 

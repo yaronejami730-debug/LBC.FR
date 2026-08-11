@@ -6,6 +6,7 @@ import { createListingForClient } from "@/app/admin/actions";
 import { CATEGORIES } from "@/lib/categories";
 import BrandPicker from "@/components/BrandPicker";
 import PhotoSortableGrid from "@/components/admin/PhotoSortableGrid";
+import { InlineToggle } from "@/components/ui/Toggle";
 
 // Idem : modale d'aperçu lazy-loadée.
 const ListingPreviewModal = dynamic(
@@ -1024,25 +1025,17 @@ export default function AdminListingForm({
           </div>
 
           {/* Booleans */}
-          <div className="flex gap-4 flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={immo.vueMer}
-                onChange={(e) => setI("vueMer", e.target.checked)}
-                className="w-4 h-4 rounded accent-[#2f6fb8]"
-              />
-              <span className="text-sm font-medium text-[#191c1e]">Vue sur mer</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={!immo.visAVis}
-                onChange={(e) => setI("visAVis", !e.target.checked)}
-                className="w-4 h-4 rounded accent-[#2f6fb8]"
-              />
-              <span className="text-sm font-medium text-[#191c1e]">Pas de vis-à-vis</span>
-            </label>
+          <div className="flex gap-6 flex-wrap">
+            <InlineToggle
+              checked={immo.vueMer}
+              onChange={(next) => setI("vueMer", next)}
+              label="Vue sur mer"
+            />
+            <InlineToggle
+              checked={!immo.visAVis}
+              onChange={(next) => setI("visAVis", !next)}
+              label="Pas de vis-à-vis"
+            />
           </div>
 
           {/* Caractéristiques */}
@@ -1096,15 +1089,7 @@ export default function AdminListingForm({
             />
           </div>
           <div className="flex items-end pb-1">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={hidePhone}
-                onChange={(e) => setHidePhone(e.target.checked)}
-                className="w-4 h-4 rounded accent-[#2f6fb8]"
-              />
-              <span className="text-sm text-[#464652] font-medium">Masquer le numéro</span>
-            </label>
+            <InlineToggle checked={hidePhone} onChange={setHidePhone} label="Masquer le numéro" />
           </div>
         </div>
       </Section>

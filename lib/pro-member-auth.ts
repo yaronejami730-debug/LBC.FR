@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual, randomInt } from "node:crypto";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Session d'un membre d'équipe.
@@ -63,6 +64,73 @@ export const MEMBER_COOKIE_OPTIONS = {
   path: "/",
   maxAge: LIFETIME_SECONDS,
 };
+
+/**
+ * Membre connecté, vérifié en base — la seule porte d'entrée des routes
+ * `/equipe`.
+ *
+ * Le jeton est signé pour douze heures : sans relecture en base, un accès
+ * retiré à 9 h resterait valable jusqu'au soir. Un salarié qui part du salon
+ * doit perdre le carnet de rendez-vous immédiatement, et un salon suspendu ne
+ * doit plus ouvrir à personne — d'où les quatre conditions réunies ici plutôt
+ * que recopiées dans chaque route.
+ */
+export async function requireActiveMember() {
+  const session = await getMemberSession();
+  if (!session) return null;
+
+  const member = await prisma.proMember.findUnique({
+    where: { id: session.memberId },
+    select: {
+      id: true,
+      profileId: true,
+      firstName: true,
+      lastName: true,
+      displayName: true,
+      role: true,
+      avatar: true,
+      color: true,
+      isActive: true,
+      accessRevokedAt: true,
+      mustChangePassword: true,
+      profile: {
+        select: {
+          id: true,
+          name: true,
+          city: true,
+          isPublished: true,
+          user: { select: { bannedAt: true, professionalStatus: true } },
+        },
+      },
+    },
+  });
+
+  if (
+    !member ||
+    !member.isActive ||
+    member.accessRevokedAt ||
+    member.profile.user.bannedAt ||
+    member.profile.user.professionalStatus !== "APPROVED"
+  ) {
+    return null;
+  }
+
+  return member;
+}
+
+/**
+ * Libellé public d'un membre : prénom seul.
+ *
+ * Un client choisit « Corinne », pas « Corinne Deschamps » — et la fiche est
+ * indexée. Le nom de famille n'apparaît qu'en interne, sauf initiale ajoutée à
+ * la main par la responsable quand deux prénoms se confondent.
+ */
+export function memberDisplayName(firstName: string, lastName?: string | null): string {
+  const first = firstName.trim();
+  const last = (lastName ?? "").trim();
+  if (!first) return last.slice(0, 80);
+  return (last ? `${first} ${last[0].toUpperCase()}.` : first).slice(0, 80);
+}
 
 // ─────────────────────────────────────────────────────────────
 // Génération des identifiants

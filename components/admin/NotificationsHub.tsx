@@ -3,6 +3,7 @@
 import { useState } from "react";
 import CampaignForm from "./CampaignForm";
 import BroadcastPushForm from "./BroadcastPushForm";
+import { ToggleTrack } from "@/components/ui/Toggle";
 
 type Counts = React.ComponentProps<typeof CampaignForm>["counts"];
 type PushAudience = { devices: number; users: number };
@@ -154,16 +155,16 @@ function ChannelToggle({
   icon: string; disabled?: boolean; note?: string;
 }) {
   return (
-    <label className={`flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition ${
-      checked ? "border-[#2f6fb8] bg-[#2f6fb8]/5" : "border-slate-200 bg-white"
-    } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 w-5 h-5 accent-[#2f6fb8]"
-      />
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`group/toggle w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition outline-none focus-visible:ring-[3px] focus-visible:ring-[#2f6fb8]/35 focus-visible:ring-offset-2 ${
+        checked ? "border-[#2f6fb8] bg-[#2f6fb8]/5" : "border-slate-200 bg-white"
+      } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+    >
       <div className="flex-1">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[#2f6fb8] text-xl">{icon}</span>
@@ -172,7 +173,8 @@ function ChannelToggle({
         </div>
         <p className="text-xs text-slate-500 mt-1">{sub}</p>
       </div>
-    </label>
+      <ToggleTrack checked={checked} />
+    </button>
   );
 }
 

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { BookingError } from "@/lib/booking/engine";
 import { bookingErrorResponse, requireProProfile } from "@/lib/booking/http";
+import { memberDisplayName } from "@/lib/pro-member-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,12 +44,19 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-    const displayName = String(body.displayName ?? "").trim();
-    if (!displayName) throw new BookingError("Le nom est requis.", 400, "MISSING_NAME");
+    const firstName = String(body.firstName ?? "").trim();
+    const lastName = String(body.lastName ?? "").trim();
+    // `displayName` reste accepté tel quel s'il est fourni — l'application
+    // mobile et les intégrations existantes n'envoient que lui.
+    const explicit = String(body.displayName ?? "").trim();
+    const displayName = explicit || memberDisplayName(firstName, lastName);
+    if (!displayName) throw new BookingError("Le prénom est requis.", 400, "MISSING_NAME");
 
     const member = await prisma.proMember.create({
       data: {
         profileId: profile.id,
+        firstName: firstName.slice(0, 80) || null,
+        lastName: lastName.slice(0, 80) || null,
         displayName: displayName.slice(0, 80),
         role: body.role ? String(body.role).slice(0, 80) : null,
         avatar: body.avatar ? String(body.avatar) : null,

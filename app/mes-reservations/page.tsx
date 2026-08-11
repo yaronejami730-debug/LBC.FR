@@ -7,7 +7,7 @@ import { dayKey, formatMinutes, minutesOfDay } from "@/lib/booking/time";
 import CancelBookingButton from "./CancelBookingButton";
 import { loadBookingPolicy } from "@/lib/booking/queries";
 
-export const metadata = { title: "Mes rendez-vous" };
+export const metadata = { title: "Mes réservations" };
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -55,7 +55,7 @@ export default async function MesReservationsPage() {
     <div className="bg-surface min-h-screen">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-2xl mx-auto space-y-6">
-        <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope']">Mes rendez-vous</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope']">Mes réservations</h1>
 
         <section>
           <h2 className="text-sm font-bold uppercase tracking-wider text-outline mb-3">À venir</h2>

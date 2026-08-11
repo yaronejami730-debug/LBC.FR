@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import ProNav from "../ProNav";
+import BackToConfig from "../BackToConfig";
 import SettingsForm from "./SettingsForm";
 import { loadBookingPolicy } from "@/lib/booking/queries";
 import { resolveProContext } from "@/lib/pro/access";
@@ -33,11 +34,12 @@ export default async function ParametresPage({
     <div className="bg-surface min-h-screen">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-3xl mx-auto">
+        <BackToConfig etab={etab} />
         <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">
           Paramètres de réservation
         </h1>
         <ProNav
-          current="/profile/espace-pro/parametres"
+          current="/profile/espace-pro/configuration"
           slug={context.establishment.slug}
           modules={context.modules}
           establishments={context.establishments}

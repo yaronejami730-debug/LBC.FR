@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listingSlug } from "@/lib/listing-slug";
 import { ProAccessError, resolveProScope } from "@/lib/pro/access";
+import { syncProServices } from "@/lib/pro/services-sync";
+import { normalizeWebsite } from "@/lib/pro/website";
 
 export const runtime = "nodejs";
 
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest) {
     slug: string;
     hours: string;
     photos: string;
+    categories: string;
     coverImage: string | null;
     coverX: number;
     coverY: number;
@@ -122,6 +125,7 @@ export async function POST(req: NextRequest) {
         slug: true,
         hours: true,
         photos: true,
+        categories: true,
         coverImage: true,
         coverX: true,
         coverY: true,
@@ -155,13 +159,20 @@ export async function POST(req: NextRequest) {
   const data = {
     name: name.slice(0, 120),
     slug,
-    categories: JSON.stringify(Array.isArray(body.categories) ? body.categories.slice(0, 6) : []),
+    // Même règle que `hours` / `photos` : un champ absent de la requête n'est
+    // pas un champ vidé. L'éditeur de fiche n'envoie pas les catégories.
+    categories:
+      body.categories !== undefined
+        ? JSON.stringify(Array.isArray(body.categories) ? body.categories.slice(0, 6) : [])
+        : (existing?.categories ?? "[]"),
     description: body.description ? String(body.description).slice(0, 4000) : null,
     addressLine: body.addressLine ? String(body.addressLine).slice(0, 200) : null,
     city: body.city ? String(body.city).slice(0, 100) : null,
     postalCode: body.postalCode ? String(body.postalCode).slice(0, 10) : null,
     phone: body.phone ? String(body.phone).slice(0, 30) : null,
-    website: body.website ? String(body.website).slice(0, 200) : null,
+    // Normalisée une fois ici : sans schéma, le lien de la fiche publique est
+    // relatif et mène à /pro/<domaine> au lieu du site de l'établissement.
+    website: normalizeWebsite(body.website),
     // Champ absent ≠ champ vidé. L'éditeur de fiche n'envoie ni les horaires ni
     // les photos ; les écraser à chaque enregistrement effaçait en silence ce
     // qui avait été saisi ailleurs (équipe et horaires, galerie).
@@ -189,15 +200,22 @@ export async function POST(req: NextRequest) {
     isPublished: existing?.isPublished ?? true,
   };
 
-  const profile = existing
-    ? await prisma.proProfile.update({ where: { id: existing.id }, data })
-    : await prisma.proProfile.create({ data: { ...data, userId: session.user.id } });
+  // Une exception non rattrapée renvoie ici un corps vide : l'éditeur, qui
+  // attend du JSON, affichait alors « Erreur réseau » pour une panne serveur.
+  // On répond toujours en JSON, quitte à dire « enregistrement impossible ».
+  let profile: { id: string; slug: string };
+  try {
+    profile = existing
+      ? await prisma.proProfile.update({ where: { id: existing.id }, data })
+      : await prisma.proProfile.create({ data: { ...data, userId: session.user.id } });
 
-  await prisma.proService.deleteMany({ where: { profileId: profile.id } });
-  if (services.length > 0) {
-    await prisma.proService.createMany({
-      data: services.map((s) => ({ ...s, profileId: profile.id })),
-    });
+    await syncProServices(profile.id, services);
+  } catch (e) {
+    console.error("[pro-profile] enregistrement impossible", e);
+    return NextResponse.json(
+      { error: "Enregistrement impossible pour le moment. Réessayez dans un instant." },
+      { status: 500 },
+    );
   }
 
   // Tarifs et prestations sont rendus côté serveur : sans purge, la fiche

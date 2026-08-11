@@ -110,7 +110,10 @@ export default function RootLayout({
             rendu, puis un script la repasse en `all` une fois arrivée. En 3G,
             un stylesheet Google bloquant coûtait un aller-retour DNS + TLS +
             téléchargement avant le premier pixel. Contrepartie assumée : les
-            icônes apparaissent juste après le texte. */}
+            icônes apparaissent juste après le texte.
+
+            `suppressHydrationWarning` : le script repasse `media` à `all` avant
+            l'hydratation, donc l'attribut du DOM diffère du HTML serveur. */}
         <link
           rel="preload"
           as="style"
@@ -121,6 +124,7 @@ export default function RootLayout({
           rel="stylesheet"
           media="print"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
+          suppressHydrationWarning
         />
         <script
           dangerouslySetInnerHTML={{

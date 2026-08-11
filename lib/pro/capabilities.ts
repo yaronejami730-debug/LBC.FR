@@ -115,6 +115,39 @@ export function has(caps: Capability[], capability: Capability): boolean {
 }
 
 /**
+ * Nom lisible d'une capacité, pour expliquer un verrou.
+ *
+ * « Cette section demande la capacité `staff` » ne veut rien dire pour un
+ * coiffeur. Ce qu'il comprend, c'est qu'il lui faut « Équipe et plannings ».
+ */
+export const CAPABILITY_LABELS: Record<Capability, string> = {
+  listings: "Annonces sur la marketplace",
+  offerings: "Vitrine de services",
+  services: "Prestations réservables",
+  activities: "Sorties et cours collectifs",
+  staff: "Équipe et plannings",
+  bookings: "Réservation en ligne",
+};
+
+/**
+ * Capacités qu'il faut activer *en même temps* qu'une capacité demandée.
+ *
+ * `normalize()` retire une capacité incohérente sans le dire — ce qui est
+ * juste au moment de lire la base, mais faux au moment où quelqu'un clique
+ * « Activer ». Un salon qui demandait la réservation en ligne voyait son
+ * choix disparaître en silence, faute de `services` : le bouton semblait
+ * mort. On complète donc la demande au lieu de la vider.
+ */
+export function prerequisitesFor(capability: Capability, current: Capability[]): Capability[] {
+  if (capability !== "bookings") return [];
+  if (current.includes("services") || current.includes("activities")) return [];
+  // Réserver, c'est réserver *quelque chose*. `services` est le choix par
+  // défaut : une prestation datée et tarifée, ce que fait la grande majorité
+  // des établissements qui ouvrent un agenda.
+  return ["services"];
+}
+
+/**
  * `bookings` sans `services` ni `activities` n'a rien à proposer : la
  * réservation resterait affichée sur un catalogue vide. On la retire plutôt
  * que d'afficher un tunnel sans issue.

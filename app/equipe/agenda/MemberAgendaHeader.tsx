@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import MemberPhoto from "./MemberPhoto";
 
 /**
  * En-tête du planning : qui je suis, où je travaille, et la sortie.
@@ -15,11 +16,13 @@ export default function MemberAgendaHeader({
   displayName,
   role,
   salon,
+  avatar,
   mustChangePassword,
 }: {
   displayName: string;
   role: string | null;
   salon: string;
+  avatar: string | null;
   mustChangePassword: boolean;
 }) {
   const router = useRouter();
@@ -62,6 +65,7 @@ export default function MemberAgendaHeader({
     <header className="bg-white border-b border-slate-100 mb-5">
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="flex items-center gap-3">
+          <MemberPhoto avatar={avatar} displayName={displayName} />
           <div>
             <p className="text-xl font-extrabold font-['Manrope'] leading-tight">{displayName}</p>
             <p className="text-xs text-outline">

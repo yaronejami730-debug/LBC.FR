@@ -66,7 +66,12 @@ export default async function EspaceProPage({
   // `?etab=`, le cookie, ou à défaut le premier accessible.
   const profile = context?.establishment ?? null;
   const services = profile
-    ? await prisma.proService.findMany({ where: { profileId: profile.id }, orderBy: { position: "asc" } })
+    ? await prisma.proService.findMany({
+        // Une prestation retirée de la carte mais conservée pour l'historique
+        // des rendez-vous ne doit pas réapparaître dans l'éditeur.
+        where: { profileId: profile.id, isActive: true },
+        orderBy: { position: "asc" },
+      })
     : [];
   const memberCount = profile
     ? await prisma.proMember.count({ where: { profileId: profile.id, isActive: true } })
@@ -98,6 +103,25 @@ export default async function EspaceProPage({
             establishmentId={profile.id}
             canToggle={canManageEstablishments(context?.role ?? "MANAGER")}
           />
+        )}
+
+        {profile && (
+          // La fiche décrit l'établissement ; tout ce qui se règle — horaires,
+          // équipe, plannings, réservation — vit derrière une seule porte.
+          <Link
+            href="/profile/espace-pro/configuration"
+            title="Configurer horaires, équipe et réservation"
+            className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary transition-colors"
+          >
+            <span className="material-symbols-outlined text-primary text-[22px]">settings</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold">Configuration</span>
+              <span className="block text-xs text-outline">
+                Horaires d&apos;ouverture, équipe et photos, plannings, règles de réservation.
+              </span>
+            </span>
+            <span className="material-symbols-outlined text-outline text-[20px]">chevron_right</span>
+          </Link>
         )}
 
         {profile && profile.isPublished && memberCount === 0 && context?.capabilities.includes("bookings") && (

@@ -104,7 +104,7 @@ function normalize(input: SlotInput[], field: string) {
   if (!Array.isArray(input)) throw new BookingError(`\`${field}\` doit être une liste.`, 400, "INVALID_SCHEDULE");
   if (input.length > 100) throw new BookingError(`\`${field}\` : trop d'entrées.`, 400, "INVALID_SCHEDULE");
 
-  return input.map((raw) => {
+  const slots = input.map((raw) => {
     const weekday = Number(raw.weekday);
     const startMin = Number(raw.startMin);
     const endMin = Number(raw.endMin);
@@ -126,4 +126,53 @@ function normalize(input: SlotInput[], field: string) {
       label: raw.label ? String(raw.label).slice(0, 60) : null,
     };
   });
+
+  assertNoOverlap(slots, field);
+  return slots;
+}
+
+const DAY_LABELS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+
+/** `545` → « 09h05 ». Pour une erreur qui se lit sans conversion mentale. */
+function hhmm(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}h${String(min % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Refuse deux plages qui se recouvrent le même jour.
+ *
+ * « 09:00–13:00 » puis « 12:00–18:00 » saisis pour le mardi ne sont pas une
+ * journée continue : le moteur génère les créneaux plage par plage, il
+ * proposerait donc deux fois 12h15. Le rendez-vous en double serait ensuite
+ * refusé par la contrainte d'exclusion PostgreSQL — c'est-à-dire au pire
+ * moment, devant le client. Autant le dire ici, où la correction coûte un
+ * clic.
+ *
+ * Deux plages qui se touchent (13:00 puis 13:00) sont acceptées : c'est une
+ * journée continue saisie en deux fois, pas un conflit.
+ */
+function assertNoOverlap(slots: { weekday: number; startMin: number; endMin: number }[], field: string) {
+  const byDay = new Map<number, { startMin: number; endMin: number }[]>();
+  for (const slot of slots) {
+    const day = byDay.get(slot.weekday) ?? [];
+    day.push(slot);
+    byDay.set(slot.weekday, day);
+  }
+
+  const what = field === "breaks" ? "pauses" : "plages horaires";
+
+  for (const [weekday, day] of byDay) {
+    const sorted = [...day].sort((a, b) => a.startMin - b.startMin);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].startMin < sorted[i - 1].endMin) {
+        throw new BookingError(
+          `Deux ${what} se chevauchent le ${DAY_LABELS[weekday]} : ` +
+            `${hhmm(sorted[i - 1].startMin)}–${hhmm(sorted[i - 1].endMin)} et ` +
+            `${hhmm(sorted[i].startMin)}–${hhmm(sorted[i].endMin)}.`,
+          409,
+          "OVERLAPPING_SCHEDULE",
+        );
+      }
+    }
+  }
 }
