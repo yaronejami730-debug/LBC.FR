@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ToggleField } from "@/components/ui/Toggle";
 
 interface PrivacySectionProps {
   marketingConsent: boolean;
@@ -19,15 +20,15 @@ export default function PrivacySection({ marketingConsent: initialMarketing, con
   const [deleting, setDeleting] = useState(false);
   const [deleteStep, setDeleteStep] = useState<"confirm" | "password">("confirm");
 
-  async function toggleMarketing() {
+  async function toggleMarketing(next: boolean) {
     setSavingMarketing(true);
     try {
       await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ marketingConsent: !marketing }),
+        body: JSON.stringify({ marketingConsent: next }),
       });
-      setMarketing((v) => !v);
+      setMarketing(next);
     } finally {
       setSavingMarketing(false);
     }
@@ -90,29 +91,16 @@ export default function PrivacySection({ marketingConsent: initialMarketing, con
         </div>
 
         {/* Préférence marketing */}
-        <div className="px-5 py-4 flex items-center gap-3">
-          <span className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-primary text-[18px]">mail</span>
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-on-surface">E-mails promotionnels</p>
-            <p className="text-xs text-outline mt-0.5">Nouveautés, offres et actualités Deal&amp;Co</p>
-          </div>
-          <button
-            onClick={toggleMarketing}
-            disabled={savingMarketing}
-            aria-label={marketing ? "Désactiver les e-mails promotionnels" : "Activer les e-mails promotionnels"}
-            className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
-              marketing ? "bg-primary" : "bg-outline/30"
-            } ${savingMarketing ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                marketing ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </button>
-        </div>
+        <ToggleField
+          checked={marketing}
+          onChange={toggleMarketing}
+          loading={savingMarketing}
+          icon="mail"
+          label="E-mails promotionnels"
+          description="Nouveautés, offres et actualités Deal&Co"
+          title={marketing ? "Désactiver les e-mails promotionnels" : "Activer les e-mails promotionnels"}
+          className="px-5 py-4"
+        />
 
         {/* Droits RGPD */}
         <div className="px-5 py-4 flex items-start gap-3">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Toggle } from "@/components/ui/Toggle";
 
 /**
  * Interrupteur « en ligne / hors ligne » de la fiche publique.
@@ -93,13 +94,14 @@ export default function VisibilitySwitch({
           </p>
         </div>
 
-        <button
-          type="button"
-          role="switch"
-          aria-checked={isPublished}
-          aria-label={isPublished ? "Mettre la fiche hors ligne" : "Mettre la fiche en ligne"}
-          onClick={toggle}
-          disabled={saving || !canToggle}
+        <Toggle
+          checked={isPublished}
+          onChange={toggle}
+          size="lg"
+          tone="emerald"
+          loading={saving}
+          disabled={!canToggle}
+          label={isPublished ? "Mettre la fiche hors ligne" : "Mettre la fiche en ligne"}
           title={
             canToggle
               ? isPublished
@@ -107,16 +109,7 @@ export default function VisibilitySwitch({
                 : "Mettre en ligne"
               : "Réservé au responsable de l'établissement"
           }
-          className={`shrink-0 w-14 h-8 rounded-full transition-colors relative disabled:opacity-40 ${
-            isPublished ? "bg-emerald-500" : "bg-slate-300"
-          }`}
-        >
-          <span
-            className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${
-              isPublished ? "translate-x-7" : "translate-x-1"
-            }`}
-          />
-        </button>
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

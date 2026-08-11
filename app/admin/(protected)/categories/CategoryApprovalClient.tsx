@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateCategoryApproval } from "@/app/admin/actions";
 import { CATEGORIES } from "@/lib/categories";
+import { Toggle } from "@/components/ui/Toggle";
 
 type Setting = { categoryId: string; approvalMode: string };
 
@@ -12,18 +13,20 @@ export default function CategoryApprovalClient({ settings }: { settings: Setting
     for (const s of settings) map[s.categoryId] = s.approvalMode;
     return map;
   });
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   function getMode(categoryId: string) {
     return optimistic[categoryId] ?? "AUTO";
   }
 
-  function toggle(categoryId: string) {
-    const current = getMode(categoryId);
-    const next = current === "AUTO" ? "MANUAL" : "AUTO";
+  function toggle(categoryId: string, manual: boolean) {
+    const next = manual ? "MANUAL" : "AUTO";
     setOptimistic((prev) => ({ ...prev, [categoryId]: next }));
+    setSavingId(categoryId);
     startTransition(async () => {
-      await updateCategoryApproval(categoryId, next as "AUTO" | "MANUAL");
+      await updateCategoryApproval(categoryId, next);
+      setSavingId(null);
     });
   }
 
@@ -55,18 +58,14 @@ export default function CategoryApprovalClient({ settings }: { settings: Setting
             </div>
 
             {/* Toggle */}
-            <button
-              onClick={() => toggle(cat.id)}
-              disabled={pending}
-              className={`relative w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2f6fb8] ${
-                isManual ? "bg-amber-400" : "bg-emerald-400"
-              }`}
+            <Toggle
+              checked={isManual}
+              onChange={(next) => toggle(cat.id, next)}
+              loading={savingId === cat.id}
+              tone="amber"
+              label={`Approbation manuelle pour ${cat.label}`}
               title={isManual ? "Passer en auto-approuvé" : "Passer en approbation manuelle"}
-            >
-              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                isManual ? "translate-x-6" : "translate-x-0.5"
-              }`} />
-            </button>
+            />
           </div>
         );
       })}

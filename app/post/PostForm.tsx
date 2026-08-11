@@ -7,6 +7,7 @@ import { useSession, signIn } from "next-auth/react";
 import { CATEGORIES } from "@/lib/categories";
 import { detectCategory } from "@/lib/autoCategory";
 import BrandPicker from "@/components/BrandPicker";
+import { ToggleField } from "@/components/ui/Toggle";
 import {
   WELLNESS_DURATIONS,
   WELLNESS_PRICE_UNITS,
@@ -1788,28 +1789,31 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
 
                 <div className="space-y-2">
                   <label className="text-[10px] text-outline uppercase font-bold tracking-wider block">Vue & environnement</label>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setI("vueMer", !immo.vueMer)}>
-                      <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${immo.vueMer ? "bg-primary" : "bg-slate-200"}`}>
-                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${immo.vueMer ? "translate-x-5" : "translate-x-0.5"}`} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-outline" style={immo.vueMer ? { fontVariationSettings: "'FILL' 1", color: "var(--color-primary)" } : {}}>water</span>
-                        <span className="text-sm font-semibold text-on-surface">Vue sur mer</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setI("visAVis", !immo.visAVis)}>
-                      <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${!immo.visAVis ? "bg-emerald-500" : "bg-slate-200"}`}>
-                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${!immo.visAVis ? "translate-x-5" : "translate-x-0.5"}`} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-outline" style={!immo.visAVis ? { fontVariationSettings: "'FILL' 1", color: "#22c55e" } : {}}>visibility_off</span>
-                        <span className="text-sm font-semibold text-on-surface">
+                  <div className="flex flex-col gap-1">
+                    <ToggleField
+                      checked={immo.vueMer}
+                      onChange={(next) => setI("vueMer", next)}
+                      icon="water"
+                      label="Vue sur mer"
+                      className="py-1.5"
+                    />
+                    <ToggleField
+                      checked={!immo.visAVis}
+                      onChange={(next) => setI("visAVis", !next)}
+                      tone="emerald"
+                      icon="visibility_off"
+                      label={
+                        <span className="flex items-center gap-2">
                           {immo.visAVis ? "Vis-à-vis présent" : "Pas de vis-à-vis"}
+                          {!immo.visAVis && (
+                            <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">
+                              Atout
+                            </span>
+                          )}
                         </span>
-                        {!immo.visAVis && <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Atout</span>}
-                      </div>
-                    </div>
+                      }
+                      className="py-1.5"
+                    />
                   </div>
                 </div>
               </div>
@@ -2163,15 +2167,14 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                     placeholder="06 12 34 56 78" />
                 </div>
                 {phone.trim() && (
-                  <div className="flex items-center gap-3 pt-2 cursor-pointer" onClick={() => setHidePhone((v) => !v)}>
-                    <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${hidePhone ? "bg-primary" : "bg-slate-200"}`}>
-                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hidePhone ? "translate-x-5" : "translate-x-0.5"}`} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-on-surface">Masquer mon numéro</p>
-                      <p className="text-xs text-outline">{hidePhone ? "Messagerie uniquement" : "Numéro visible sur l'annonce"}</p>
-                    </div>
-                  </div>
+                  <ToggleField
+                    checked={hidePhone}
+                    onChange={setHidePhone}
+                    icon="visibility_off"
+                    label="Masquer mon numéro"
+                    description={hidePhone ? "Messagerie uniquement" : "Numéro visible sur l'annonce"}
+                    className="pt-2"
+                  />
                 )}
               </div>
             </div>
