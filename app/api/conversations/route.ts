@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
+import { guardRate } from "@/lib/rate-limit-guard";
 
 export async function GET(req: NextRequest) {
   const userId = await getAuthUserId(req);
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = guardRate("conversationCreate", userId);
+  if (limited) return limited;
 
   const { listingId, sellerId } = await req.json();
   const buyerId = userId;

@@ -13,6 +13,8 @@ import { NextResponse } from "next/server";
 import { detectCategory } from "@/lib/autoCategory";
 import { extractAttributes } from "@/lib/extract-attributes";
 import { expandAbbreviations } from "@/lib/normalize-fr";
+import { guardRate } from "@/lib/rate-limit-guard";
+import { getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -23,6 +25,9 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
+
+  const limited = guardRate("compute", getClientIp(req));
+  if (limited) return limited;
 
   const { title, description } = (body ?? {}) as { title?: unknown; description?: unknown };
   const titleStr = typeof title === "string" ? title : "";

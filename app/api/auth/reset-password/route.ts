@@ -3,12 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { passwordChangedEmail } from "@/lib/emails/password-changed";
 import bcrypt from "bcryptjs";
+import { guardRate } from "@/lib/rate-limit-guard";
+import { getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const { token, password } = await req.json();
   if (!token || !password) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
+
+  // Le jeton est devinable en theorie : on empeche de le brute-forcer.
+  const limited = guardRate("credential", getClientIp(req));
+  if (limited) return limited;
 
   const record = await prisma.passwordResetToken.findUnique({ where: { token } });
 

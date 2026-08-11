@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/listing-purge",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/seo-queue",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/seo-snapshot",
+      "schedule": "30 6 * * *"
     }
   ]
 }

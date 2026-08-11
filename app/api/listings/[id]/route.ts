@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
-import { pingIndexNow } from "@/lib/indexnow";
+import { onListingUpdated, onListingRemoved } from "@/lib/seo/lifecycle";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { listingSlug } from "@/lib/listing-slug";
 import { indexListing, deleteListingFromIndex } from "@/lib/opensearch-sync";
@@ -138,6 +138,10 @@ export async function PATCH(
     console.error("[OpenSearch] indexListing (PATCH) échec:", err),
   );
 
+  // Recalcule le verdict SEO : une modification peut faire entrer l'annonce
+  // dans l'index (photos ajoutées) comme l'en faire sortir (texte raccourci).
+  onListingUpdated(id).catch(() => {});
+
   sendPushNotification({
     userId: updated.userId,
     template: "listing_pending",
@@ -173,8 +177,9 @@ export async function DELETE(
     console.error("[OpenSearch] deleteListingFromIndex échec:", err),
   );
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
-  pingIndexNow([`${baseUrl}/annonce/${id}/${listingSlug(listing.title)}`]).catch(() => {});
+  // L'URL sort du sitemap et passe en GONE dans la file. Pas de ping IndexNow :
+  // la page répond désormais 404, ce qui est le signal correct et suffisant.
+  onListingRemoved(id).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

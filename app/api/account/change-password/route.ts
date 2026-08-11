@@ -3,12 +3,17 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getAuthUserId } from "@/lib/auth-unified";
 import { sendPushNotification } from "@/lib/notifications/send";
+import { guardRate } from "@/lib/rate-limit-guard";
 
 export async function POST(req: NextRequest) {
   const userId = await getAuthUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
+
+  // Le mot de passe actuel est verifie plus bas : on borne le tatonnement.
+  const limited = guardRate("credential", userId);
+  if (limited) return limited;
 
   const { currentPassword, newPassword } = await req.json();
 

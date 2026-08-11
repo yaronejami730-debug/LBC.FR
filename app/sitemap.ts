@@ -11,10 +11,24 @@
  * unique, mis en cache 6 h, partagé avec les pages. Un crawler qui martèle
  * `/sitemap.xml` ne déclenche aucune requête supplémentaire.
  *
- * Règle d'inclusion : **seules les URL réellement indexables entrent ici.** Une
- * page de liste sous le seuil `MIN_INDEXABLE_LISTINGS` est en `noindex` côté
- * page ; l'annoncer dans le sitemap enverrait un signal contradictoire à Google
- * et gaspillerait du budget d'exploration.
+ * ── Règle unique, sans exception ──────────────────────────────────────────
+ *
+ * **Une URL n'entre ici que si elle répond 200 et s'indexe.** Le crawl du
+ * 11/08 avait mesuré l'inverse : sur 362 URL annoncées, 28 renvoyaient 404 et
+ * 161 répondaient `noindex`. Un sitemap n'est pas un inventaire du site, c'est
+ * une liste de recommandations. Y placer une page qui refuse l'index revient à
+ * demander à Google d'ignorer nos propres recommandations — et il en tient
+ * compte pour tout le domaine.
+ *
+ * Les trois filtres correspondants :
+ *   - annonces  → juge d'indexabilité (`lib/seo/indexability.ts`)
+ *   - listes    → seuil de stock (`isIndexable`)
+ *   - éditorial → éligibilité réelle (`lib/seo/editorial.ts`), car ces pages
+ *                 appellent `notFound()` sous leur seuil
+ *
+ * `lastmod` ne porte que des dates réelles. Un `lastmod` fabriqué — la date du
+ * jour recopiée sur 91 URL, comme c'était le cas — n'accélère rien : Google
+ * apprend simplement à ne plus faire confiance au champ.
  */
 
 import type { MetadataRoute } from "next";
@@ -22,12 +36,8 @@ import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES } from "@/lib/cities";
 import { getAllArticles } from "@/lib/blog";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
-import {
-  COMPARATIF_SLUGS,
-  STATIC_PAGES,
-  VOITURE_BUDGET_SLUGS,
-  VOITURE_CLUSTER_SLUGS,
-} from "@/lib/seo/static-routes";
+import { getEditorialEligibility } from "@/lib/seo/editorial";
+import { STATIC_PAGES } from "@/lib/seo/static-routes";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -35,17 +45,29 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 21600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const inv = await getSeoInventory();
+  const [inv, editorial] = await Promise.all([
+    getSeoInventory(),
+    getEditorialEligibility(),
+  ]);
+
   const now = new Date();
-  const globalLastMod = inv.total > 0 ? inv.lastModified : now;
+  /**
+   * `lastmod` des pages de liste : la dernière modification d'annonce connue.
+   * C'est une date vraie — une page de catégorie change effectivement quand une
+   * annonce de cette catégorie change. À défaut de stock, on n'invente rien.
+   */
+  const stockLastMod = inv.total > 0 ? inv.lastModified : now;
 
   const entries: MetadataRoute.Sitemap = [];
 
   // --- Pages permanentes -------------------------------------------------
+  //
+  // Pas de `lastmod` : ces pages ne changent qu'à l'occasion d'un déploiement,
+  // et prétendre le contraire chaque jour est précisément l'abus que Google
+  // pénalise en ignorant le champ.
   for (const page of STATIC_PAGES) {
     entries.push({
       url: page.path === "/" ? BASE : `${BASE}${page.path}`,
-      lastModified: page.priority >= 0.8 ? globalLastMod : now,
       changeFrequency: page.changeFrequency,
       priority: page.priority,
     });
@@ -61,27 +83,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // --- Pages éditoriales à slug fixe --------------------------------------
-  for (const slug of COMPARATIF_SLUGS) {
+  // --- Pages éditoriales : uniquement celles qui ont le stock pour s'afficher
+  for (const slug of editorial.comparatif) {
     entries.push({
       url: `${BASE}/comparatif/${slug}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "weekly",
       priority: 0.7,
     });
   }
-  for (const slug of VOITURE_CLUSTER_SLUGS) {
+  for (const slug of editorial.clusters) {
     entries.push({
       url: `${BASE}/voiture/${slug}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "weekly",
       priority: 0.7,
     });
   }
-  for (const slug of VOITURE_BUDGET_SLUGS) {
+  for (const slug of editorial.budgets) {
     entries.push({
       url: `${BASE}/voiture-budget/${slug}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "weekly",
       priority: 0.7,
     });
@@ -92,7 +114,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!isIndexable(inv.byCategory[cat.id] ?? 0)) continue;
     entries.push({
       url: `${BASE}/annonces/${cat.id}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.8,
     });
@@ -102,17 +124,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!isIndexable(count)) continue;
     entries.push({
       url: `${BASE}/annonces/${key}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.7,
     });
   }
 
+  // Catégorie × ville et catégorie × sous-catégorie × ville.
+  //
+  // Sous `vehicules`, ces URL sont interceptées par le dossier statique des
+  // marques (`app/annonces/vehicules/[marque]`) : elles renvoyaient 404 malgré
+  // leur présence ici. Les routes marque délèguent désormais à la page
+  // générique dès que le segment est une ville connue, donc ces URL répondent
+  // 200 et retrouvent leur place au sitemap.
   for (const [key, count] of Object.entries(inv.byCategoryCity)) {
     if (!isIndexable(count)) continue;
     entries.push({
       url: `${BASE}/annonces/${key}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.7,
     });
@@ -122,7 +151,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!isIndexable(count)) continue;
     entries.push({
       url: `${BASE}/annonces/${key}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.6,
     });
@@ -133,7 +162,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!isIndexable(count) || !cityBySlug.has(slug)) continue;
     entries.push({
       url: `${BASE}/ville/${slug}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.7,
     });
@@ -143,7 +172,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!isIndexable(count)) continue;
     entries.push({
       url: `${BASE}/annonces/vehicules/${slug}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.7,
     });
@@ -153,7 +182,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (!isIndexable(count)) continue;
     entries.push({
       url: `${BASE}/annonces/vehicules/${key}`,
-      lastModified: globalLastMod,
+      lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.6,
     });
@@ -169,17 +198,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${BASE}${pro.path}`,
       lastModified: pro.lastModified,
       changeFrequency: "weekly",
-      priority: 0.8,
+      priority: pro.priority,
     });
   }
 
-  // --- Annonces ------------------------------------------------------------
+  // --- Annonces indexables --------------------------------------------------
+  //
+  // `inv.listings` ne contient que celles qui passent le juge d'indexabilité :
+  // les autres sont dans `inv.excluded` et n'ont rien à faire ici.
   for (const listing of inv.listings) {
     entries.push({
       url: `${BASE}${listing.path}`,
       lastModified: listing.lastModified,
       changeFrequency: "weekly",
-      priority: 0.6,
+      priority: listing.priority,
     });
   }
 

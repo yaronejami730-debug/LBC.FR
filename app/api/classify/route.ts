@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { classifyListing } from "@/lib/listing-engine/classify";
+import { guardRate } from "@/lib/rate-limit-guard";
+import { getClientIp } from "@/lib/rate-limit";
 
 /**
  * Classification d'un texte libre en type d'annonce.
@@ -24,6 +26,9 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Corps JSON invalide" }, { status: 400 });
   }
+
+  const limited = guardRate("compute", getClientIp(req));
+  if (limited) return limited;
 
   const text = [body.text ?? body.title ?? "", body.description ?? ""].join(" ").trim();
   if (text.length < 3) {

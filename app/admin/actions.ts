@@ -12,7 +12,7 @@ import { baseEmail } from "@/lib/emails/base";
 import { syncSource, parseSourceUrl } from "@/lib/external-sync";
 import { normalizePhone, hashPhone } from "@/lib/moderation/phone";
 import { deletionDateFrom } from "@/lib/moderation/removal";
-import { pingIndexNow } from "@/lib/indexnow";
+import { onListingPublished, onListingRemoved } from "@/lib/seo/lifecycle";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { sendExpoPush } from "@/lib/expo-push";
 import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
@@ -85,16 +85,9 @@ export async function approveListing(id: string) {
   revalidatePath("/annonces", "layout");
   revalidatePath(`/annonce/${listing.id}`);
 
-  const listingPublicUrl = `${baseUrl}/annonce/${listing.id}/${listingSlug(listing.title)}`;
-  const catId = CATEGORIES.find((c) => c.label === (listing as any).category)?.id;
-  const villeSlug = listing.location
-    ? citySlug(listing.location.split(/[,(]/)[0]?.trim() ?? listing.location)
-    : "";
-  const urls = [listingPublicUrl, baseUrl, `${baseUrl}/nouveautes`];
-  if (catId) urls.push(`${baseUrl}/annonces/${catId}`);
-  if (villeSlug) urls.push(`${baseUrl}/ville/${villeSlug}`);
-  if (catId && villeSlug) urls.push(`${baseUrl}/annonces/${catId}/${villeSlug}`);
-  pingIndexNow(urls).catch(() => {});
+  // Verdict SEO, entrée en file, invalidation du sitemap, et signalement
+  // IndexNow seulement si la page s'indexe réellement.
+  await onListingPublished(listing.id);
 }
 
 /**
@@ -136,6 +129,11 @@ export async function rejectListing(id: string, reason: string) {
     template: "listing_rejected",
     variables: { listingTitle: listing.title, listingId: listing.id },
   }).catch(() => {});
+
+  // Sortie du sitemap et passage en GONE dans la file d'indexation. Une annonce
+  // refusée restait annoncée à Google jusqu'au prochain recalcul de
+  // l'instantané, soit jusqu'à six heures.
+  await onListingRemoved(id);
 
   revalidatePath("/admin/listings");
   revalidatePath("/admin/securite");

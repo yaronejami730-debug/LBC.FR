@@ -12,7 +12,7 @@ import { listingRejectedEmail } from "@/lib/emails/listing-rejected";
 import { CATEGORIES } from "@/lib/categories";
 import { moderateListing } from "@/lib/moderation";
 import { detectSpam, applySpamRestriction } from "@/lib/spam-detector";
-import { pingIndexNow } from "@/lib/indexnow";
+import { onListingPublished } from "@/lib/seo/lifecycle";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
 import { listingSlug } from "@/lib/listing-slug";
@@ -50,6 +50,7 @@ import {
   addressLineFor,
 } from "@/lib/listing-location";
 import crypto from "crypto";
+import { guardRate } from "@/lib/rate-limit-guard";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -107,6 +108,14 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Publication en masse : c'est ainsi qu'on fabrique des pages de spam sur
+    // une marketplace, et c'est le domaine entier qui en paie le prix côté
+    // référencement. Le plafond est haut — un vide-grenier n'atteint pas
+    // vingt annonces à l'heure.
+    const limited = guardRate("listingCreate", userId);
+    if (limited) return limited;
+
     const session = { user: { id: userId } } as { user: { id: string } };
 
     const currentUser = await prisma.user.findUnique({
@@ -764,14 +773,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (listingStatus === "APPROVED") {
-      const listingPublicUrl = `${baseUrl}/annonce/${listing.id}/${listingSlug(title)}`;
-      const catId = CATEGORIES.find((c) => c.label === category)?.id;
-      const villeSlug = location ? citySlug(location.split(/[,(]/)[0]?.trim() ?? location) : "";
-      const urls = [listingPublicUrl, baseUrl, `${baseUrl}/nouveautes`];
-      if (catId) urls.push(`${baseUrl}/annonces/${catId}`);
-      if (villeSlug) urls.push(`${baseUrl}/ville/${villeSlug}`);
-      if (catId && villeSlug) urls.push(`${baseUrl}/annonces/${catId}/${villeSlug}`);
-      pingIndexNow(urls).catch(() => {});
+      // Score, entrée en file, invalidation du sitemap et signalement IndexNow —
+      // ce dernier uniquement si la page s'indexe. L'ancien code signalait toute
+      // annonce approuvée, y compris celles marquées `noindex` deux lignes plus
+      // loin dans `generateMetadata`.
+      onListingPublished(listing.id).catch(() => {});
     }
 
     return NextResponse.json(

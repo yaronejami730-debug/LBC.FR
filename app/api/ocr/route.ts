@@ -15,6 +15,7 @@ import { auth } from "@/lib/auth";
 import { preprocessForOcr } from "@/lib/ocr-preprocess";
 import { runOcr } from "@/lib/ocr";
 import { extractReferences } from "@/lib/ocr-references";
+import { guardRate } from "@/lib/rate-limit-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,6 +27,10 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // OCR = CPU soutenu. Sans plafond, une boucle sature l'instance pour tout le monde.
+  const limited = guardRate("compute", session.user.id);
+  if (limited) return limited;
 
   let body: unknown;
   try {

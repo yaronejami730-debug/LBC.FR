@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
+import { guardRate } from "@/lib/rate-limit-guard";
+import { getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const token = process.env.PLATE_RECOGNIZER_TOKEN;
   if (!token) return NextResponse.json({ boxes: [] });
+
+  // Route non authentifiee qui appelle une API tierce facturee : on borne par IP.
+  const limited = guardRate("compute", getClientIp(req));
+  if (limited) return limited;
 
   let fileBlob: Blob;
   let filename = "image.jpg";

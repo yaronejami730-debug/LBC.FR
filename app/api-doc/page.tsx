@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "API",
   description:
     "Publiez des annonces automobiles et immobilières depuis votre logiciel via l'API REST Deal&Co.",
-};
+  path: "/api-doc",
+});
 
 const CODE = {
   auth: `Authorization: Bearer dc_live_xxxxxxxxxxxxxxxxxxxxxxxx

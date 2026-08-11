@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { earlyAdopterConfirmationEmail } from "@/lib/emails/early-adopter-confirmation";
+import { guardRate } from "@/lib/rate-limit-guard";
+import { getClientIp } from "@/lib/rate-limit";
 
 export async function GET() {
   const count = await prisma.earlyAdopter.count();
@@ -14,6 +16,10 @@ export async function POST(req: NextRequest) {
   if (!companyName || !managerFirstName || !email) {
     return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
   }
+
+  // Formulaire public sans compte : la seule identite disponible est l'IP.
+  const limited = guardRate("publicForm", getClientIp(req));
+  if (limited) return limited;
 
   const normalizedEmail = email.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {

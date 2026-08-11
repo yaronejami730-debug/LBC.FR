@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 
 interface PhotoGalleryProps {
   images: string[];
@@ -26,15 +27,27 @@ function PhotoCell({
       className="relative overflow-hidden cursor-pointer group rounded-xl bg-slate-200"
       onClick={onClick}
     >
-      {/* Photo — cover pour remplir la cellule sans zone noire */}
-      <img
+      {/*
+        Photo — cover pour remplir la cellule sans zone noire.
+
+        `next/image` plutôt qu'une balise brute : les photos viennent d'agences
+        (`webgest.agenceauto.com`, `staticlbi.com`…) et arrivent en JPEG pleine
+        résolution, parfois plusieurs mégaoctets pour une vignette de 400 px.
+        L'optimiseur les sert en WebP à la taille réellement affichée. C'est
+        l'image principale d'une fiche, donc l'élément LCP de la page.
+
+        Dimensions et priorité conservées à l'identique : `badge` marque la
+        première photo, la seule à précharger.
+      */}
+      <Image
         src={src}
         alt={alt}
-        loading={badge ? "eager" : "lazy"}
-        fetchPriority={badge ? "high" : "low"}
-        decoding="async"
         width={800}
         height={800}
+        priority={!!badge}
+        loading={badge ? undefined : "lazy"}
+        quality={75}
+        sizes="(max-width: 768px) 100vw, 50vw"
         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
       />
       {/* Logo — bottom-left of each cell */}
@@ -202,8 +215,14 @@ export default function PhotoGallery({ images, title }: PhotoGalleryProps) {
                       : "border-transparent opacity-40 hover:opacity-70"
                   }`}
                 >
+                  {/* Fond flouté purement décoratif : `alt=""` est correct,
+                      il ne doit pas être annoncé deux fois. */}
                   <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm scale-110 opacity-70" />
-                  <img src={img} alt="" className="relative w-full h-full object-contain" />
+                  <img
+                    src={img}
+                    alt={`${title} — photo ${i + 1} sur ${images.length}`}
+                    className="relative w-full h-full object-contain"
+                  />
                 </button>
               ))}
             </div>

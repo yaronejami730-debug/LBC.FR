@@ -14,7 +14,7 @@
  */
 
 import { google } from "googleapis";
-import type { webmasters_v3 } from "googleapis";
+import type { webmasters_v3, searchconsole_v1 } from "googleapis";
 
 /** Scope lecture seule — on ne fait que consommer la donnée. */
 const SCOPE = "https://www.googleapis.com/auth/webmasters.readonly";
@@ -52,6 +52,90 @@ export function getSearchConsole(): webmasters_v3.Webmasters {
 
   cachedClient = google.webmasters({ version: "v3", auth });
   return cachedClient;
+}
+
+let cachedInspector: searchconsole_v1.Searchconsole | null = null;
+
+/** Client Search Console v1 — porte l'API URL Inspection. */
+function getInspector(): searchconsole_v1.Searchconsole {
+  if (cachedInspector) return cachedInspector;
+
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY manquant");
+
+  let credentials: { client_email: string; private_key: string };
+  try {
+    credentials = JSON.parse(raw);
+  } catch {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY n'est pas un JSON valide");
+  }
+
+  const auth = new google.auth.GoogleAuth({ credentials, scopes: [SCOPE] });
+  cachedInspector = google.searchconsole({ version: "v1", auth });
+  return cachedInspector;
+}
+
+/**
+ * Ce que Google sait réellement d'une URL.
+ *
+ * C'est la **seule** source légitime pour les statuts DISCOVERED / CRAWLED /
+ * INDEXED de notre file. Aucune autre API ne renseigne l'état d'indexation, et
+ * aucune ne permet de le forcer : l'Indexing API est restreinte aux types
+ * `JobPosting` et `BroadcastEvent`, et l'utiliser hors de ce cadre expose la
+ * propriété à une suspension.
+ *
+ * Quotas de l'API URL Inspection : 2 000 requêtes par jour et 600 par minute et
+ * par propriété. Le cron respecte les deux (voir `lib/seo/inspection.ts`).
+ */
+export type UrlInspection = {
+  /** PASS | PARTIAL | FAIL | NEUTRAL | VERDICT_UNSPECIFIED */
+  verdict: string | null;
+  /** Texte brut de Google : « Submitted and indexed », « Crawled - currently not indexed »… */
+  coverageState: string | null;
+  robotsTxtState: string | null;
+  indexingState: string | null;
+  /** Canonique choisie par Google — peut différer de celle que nous déclarons. */
+  googleCanonical: string | null;
+  userCanonical: string | null;
+  lastCrawlTime: string | null;
+  /** Comment Google a trouvé l'URL (sitemap, référents). */
+  referringUrls: string[];
+  sitemaps: string[];
+};
+
+export async function inspectUrl(url: string): Promise<UrlInspection> {
+  if (!SITE_URL) throw new Error("SEARCH_CONSOLE_SITE_URL manquant");
+
+  const res = await getInspector().urlInspection.index.inspect({
+    requestBody: { inspectionUrl: url, siteUrl: SITE_URL, languageCode: "fr" },
+  });
+
+  const r = res.data.inspectionResult?.indexStatusResult;
+  return {
+    verdict: r?.verdict ?? null,
+    coverageState: r?.coverageState ?? null,
+    robotsTxtState: r?.robotsTxtState ?? null,
+    indexingState: r?.indexingState ?? null,
+    googleCanonical: r?.googleCanonical ?? null,
+    userCanonical: r?.userCanonical ?? null,
+    lastCrawlTime: r?.lastCrawlTime ?? null,
+    referringUrls: r?.referringUrls ?? [],
+    sitemaps: r?.sitemap ?? [],
+  };
+}
+
+/** État déclaré des sitemaps côté Search Console (dernier téléchargement, erreurs). */
+export async function listSitemaps() {
+  if (!SITE_URL) throw new Error("SEARCH_CONSOLE_SITE_URL manquant");
+  const res = await getSearchConsole().sitemaps.list({ siteUrl: SITE_URL });
+  return (res.data.sitemap ?? []).map((s) => ({
+    path: s.path ?? "",
+    lastSubmitted: s.lastSubmitted ?? null,
+    lastDownloaded: s.lastDownloaded ?? null,
+    warnings: Number(s.warnings ?? 0),
+    errors: Number(s.errors ?? 0),
+    isPending: !!s.isPending,
+  }));
 }
 
 export type SearchAnalyticsRow = {

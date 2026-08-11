@@ -57,7 +57,10 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: `${BASE}/annonces/${cat.id}` },
+    // Auto-référent, page 2 comprise. Marquer une page `noindex` tout en la
+    // rattachant à une autre URL envoie deux ordres contradictoires ; Google
+    // demande explicitement de ne pas combiner les deux.
+    alternates: { canonical },
     robots: listingPageRobots(total, page),
     openGraph: {
       title,

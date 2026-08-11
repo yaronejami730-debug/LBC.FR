@@ -1123,7 +1123,6 @@ model ProProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-
   /// Métier déclaré — un id de domaine du catalogue `data/pro-catalog`
   /// (`beaute`, `automobile`, `loisirs`…). Détermine les capacités par défaut
   /// et le vocabulaire de l'interface. Porté par l'établissement et non par
@@ -1387,7 +1386,6 @@ model ProBooking {
   /// règle (cf. migration).
   status String @default("PENDING")
 
-
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   confirmedAt  DateTime?
@@ -1395,7 +1393,6 @@ model ProBooking {
   cancelReason String?
   /// Qui a annulé : CUSTOMER | PRO | SYSTEM.
   cancelledBy  String?
-
 
   @@index([profileId, startAt])
   @@index([memberId, startAt])
@@ -1429,4 +1426,109 @@ model ProBookingSettings {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// File d'indexation SEO — une ligne par URL publique connue du site.
+///
+/// Pourquoi cette table existe : l'état d'indexation n'était mesuré nulle part.
+/// L'outil externe branché sur le sitemap affichait « 362 pages en file
+/// d'attente, 0 soumise » depuis des semaines, sans que rien dans le produit ne
+/// puisse dire pourquoi. Le crawl du 11/08 a donné la réponse — 28 URL en 404,
+/// 161 en `noindex`, 191 déclarant l'accueil comme canonique — mais il a fallu
+/// le faire à la main.
+///
+/// Cette table rend l'état permanent et interrogeable : chaque URL porte son
+/// score, son verdict, ses motifs d'exclusion et ce que Google en dit.
+///
+/// Distinction volontaire, qui structure toute la colonne `status` :
+///
+///   DÉCOUVERTE  — Google connaît l'URL (sitemap, lien). Nous la contrôlons.
+///   EXPLORATION — Googlebot l'a téléchargée. Nous ne la contrôlons pas.
+///   INDEXATION  — Google a décidé de la garder. Nous ne la contrôlons pas.
+///   CLASSEMENT  — hors périmètre de cette table.
+///
+/// Aucun mécanisme ne permet d'imposer l'indexation d'une URL à Google :
+/// l'Indexing API officielle est restreinte aux types `JobPosting` et
+/// `BroadcastEvent`. `submittedAt` ne concerne donc qu'IndexNow (Bing, Yandex),
+/// et les états DISCOVERED / CRAWLED / INDEXED proviennent en lecture seule de
+/// l'API URL Inspection de Search Console. Rien n'est déduit ni supposé.
+model SeoUrl {
+  id   String @id @default(cuid())
+  /// URL absolue, canonique, sans paramètre.
+  url  String @unique
+  /// Chemin seul, pour les jointures et l'affichage.
+  path String
+
+  /// LISTING | CATEGORY | SUBCATEGORY | CITY | CATEGORY_CITY | BRAND | PRO | EDITORIAL | BLOG | STATIC
+  type     String
+  /// Identifiant de l'entité source quand il y en a une (id d'annonce, slug pro).
+  entityId String?
+
+  /// Score SEO 0-100 issu de `lib/seo/indexability.ts`.
+  score            Int     @default(0)
+  /// CRITIQUE | HAUTE | NORMALE | BASSE
+  priorityBand     String  @default("NORMALE")
+  /// Verdict local : la page s'indexe-t-elle de notre côté ?
+  indexable        Boolean @default(false)
+  /// Motifs d'exclusion sérialisés (tableau JSON de `ExclusionReason`).
+  exclusionReasons String  @default("[]")
+  /// L'URL est-elle effectivement annoncée au sitemap ?
+  inSitemap        Boolean @default(false)
+
+  /// PENDING | ELIGIBLE | EXCLUDED | SUBMITTED | DISCOVERED | CRAWLED | INDEXED | NOT_INDEXED | ERROR | GONE
+  status String @default("PENDING")
+
+  /// Dernier code HTTP observé lors d'une vérification.
+  httpStatus Int?
+  /// Canonical déclaré par la page, tel que lu.
+  canonical  String?
+
+  attempts      Int       @default(0)
+  lastError     String?
+  lastCheckedAt DateTime?
+
+  /// Envoi IndexNow (Bing/Yandex). Jamais Google — l'API ne l'accepte pas.
+  submittedAt     DateTime?
+  /// Renseignés uniquement depuis l'API URL Inspection de Search Console.
+  discoveredAt    DateTime?
+  indexedAt       DateTime?
+  /// `coverageState` brut renvoyé par Google, conservé mot pour mot.
+  coverageState   String?
+  /// Canonique retenue par Google, qui peut différer de la nôtre.
+  googleCanonical String?
+
+  /// Dernière modification du contenu source — alimente `lastmod`.
+  contentUpdatedAt DateTime?
+  firstSeenAt      DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([type, status])
+  @@index([indexable, score])
+  @@index([lastCheckedAt])
+  @@index([inSitemap])
+}
+
+/// Journal d'exécution des travaux SEO — sert aussi de verrou.
+///
+/// Deux passages simultanés du même travail produiraient des écritures
+/// concurrentes sur `SeoUrl` et un décompte faux. Une exécution en cours et
+/// récente bloque la suivante ; au-delà du délai de péremption, on considère
+/// que le processus précédent est mort et on repart.
+model SeoJobRun {
+  id  String @id @default(cuid())
+  /// queue-sync | url-inspection
+  job String
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+
+  /// Nombre d'URL traitées sur ce passage.
+  processed   Int     @default(0)
+  /// Décompte détaillé (créées, mises à jour, exclues…), sérialisé.
+  summaryJson String  @default("{}")
+  error       String?
+
+  @@index([job, startedAt])
 }

@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { CAR_BRANDS } from "@/lib/carBrands";
 import { listingUrl } from "@/lib/listing-slug";
 import { brandMetadataFilter, parseVehicleMeta } from "@/lib/vehicle-meta";
-import { listingPageRobots } from "@/lib/seo/inventory";
+import { listingPageRobots, paginatedCanonical } from "@/lib/seo/inventory";
+import { slugToCity } from "@/lib/cities";
+import { slugToSubcategoryLabel } from "@/lib/seo-content";
+import GeoListingPage, {
+  generateMetadata as geoGenerateMetadata,
+} from "@/app/annonces/[categorie]/[...slug]/page";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
@@ -26,6 +31,21 @@ function slugify(str: string): string {
 
 function slugToMarqueLabel(slug: string): string | null {
   return CAR_BRANDS.find((b) => slugify(b.name) === slug)?.name ?? null;
+}
+
+/**
+ * Le dossier statique `vehicules` capture aussi les URL sous-catégorie × ville
+ * (`/annonces/vehicules/voitures/rennes`), qui devraient revenir à la route
+ * générique `[categorie]/[...slug]`. Sans ce garde-fou, elles renvoient 404 —
+ * c'était le cas des quatre variantes « voitures d'occasion à Rennes »
+ * annoncées au sitemap le 11/08.
+ *
+ * On ne délègue que si le premier segment est une sous-catégorie véhicule
+ * connue *et* le second une ville du référentiel : deux conditions strictes,
+ * pour ne jamais détourner une vraie URL marque/modèle.
+ */
+function subCityDelegate(marque: string, modele: string): boolean {
+  return !!slugToSubcategoryLabel("vehicules", marque) && !!slugToCity(modele);
 }
 
 const getListings = cache(
@@ -69,13 +89,19 @@ export async function generateMetadata({
   const { marque, modele } = await params;
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  if (subCityDelegate(marque, modele)) {
+    return geoGenerateMetadata({
+      params: Promise.resolve({ categorie: "vehicules", slug: [marque, modele] }),
+      searchParams: Promise.resolve({ page: pageParam }),
+    });
+  }
   const marqueLabel = slugToMarqueLabel(marque);
   if (!marqueLabel) return {};
 
   const rows = await getListings(marqueLabel, modele);
   const sampleModel = rows.map((l) => parseVehicleMeta(l.metadata).modele).find(Boolean) ?? modele;
 
-  const canonical = `${BASE}/annonces/vehicules/${marque}/${modele}`;
+  const canonical = paginatedCanonical(`${BASE}/annonces/vehicules/${marque}/${modele}`, page);
   const title = `${marqueLabel} ${sampleModel} occasion — ${rows.length} annonce${rows.length > 1 ? "s" : ""} entre particuliers`;
   const description = `${rows.length} ${marqueLabel} ${sampleModel} d'occasion entre particuliers. Sans commission, contact direct vendeur. Comparez les prix sur Deal&Co.`;
 
@@ -107,6 +133,13 @@ export default async function ModelePage({
 }) {
   const { marque, modele } = await params;
   const { page: pageParam } = await searchParams;
+
+  if (subCityDelegate(marque, modele)) {
+    return GeoListingPage({
+      params: Promise.resolve({ categorie: "vehicules", slug: [marque, modele] }),
+      searchParams: Promise.resolve({ page: pageParam }),
+    });
+  }
 
   const marqueLabel = slugToMarqueLabel(marque);
   if (!marqueLabel) notFound();

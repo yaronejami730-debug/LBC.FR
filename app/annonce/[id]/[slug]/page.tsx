@@ -29,6 +29,10 @@ import { CATEGORIES } from "@/lib/categories";
 import { listingSlug, listingUrl } from "@/lib/listing-slug";
 import ShareListing from "@/components/ShareListing";
 import { RemovedNotice } from "@/components/listing/RemovedNotice";
+import { evaluateListing } from "@/lib/seo/indexability";
+import { displayCity, resolveCity } from "@/lib/seo/city";
+import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
+import { subcategoryToSlug } from "@/lib/seo-content";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -51,6 +55,20 @@ export async function generateMetadata({
 
   const ld = listing as any;
 
+  const pageUrl = `${BASE}/annonce/${id}/${listingSlug(listing.title)}`;
+
+  /**
+   * Le canonical est posé **avant** toute décision d'indexation, et il est
+   * auto-référent dans tous les cas.
+   *
+   * Les branches `noindex` renvoyaient jusqu'ici un objet ne contenant que
+   * `robots`. Elles héritaient donc du canonical du layout racine, qui pointait
+   * vers la page d'accueil : 160 annonces déclaraient à Google être un
+   * duplicata de la racine tout en lui demandant de les ignorer. Deux ordres
+   * contradictoires, et le plus dommageable des deux qui l'emporte.
+   */
+  const selfCanonical = { canonical: pageUrl } as const;
+
   // Une annonce qui n'est pas en ligne ne s'indexe pas, quelle que soit la
   // raison : en attente de modération, refusée, retirée, vendue, supprimée.
   //
@@ -61,43 +79,51 @@ export async function generateMetadata({
   // visiteurs non propriétaires — mais `generateMetadata` s'exécute avant, et
   // un signal d'indexation ne doit jamais dépendre de qui consulte la page.
   if (listing.status !== "APPROVED" || ld.shadowBanned || ld.deletedAt) {
-    return { robots: { index: false, follow: false } };
+    return { alternates: selfCanonical, robots: { index: false, follow: false } };
   }
-  // Annonces importées depuis une source externe — `noindex` pour éviter la
-  // pénalité « duplicate content » côté Google / AdSense (l'original existe
-  // ailleurs). L'annonce reste visible aux visiteurs.
-  try {
-    const meta = JSON.parse(ld.metadata ?? "{}");
-    if (meta?.importedVia === "external_api" || meta?.externalId) {
-      return { robots: { index: false, follow: true } };
-    }
-  } catch {
-    /* metadata JSON malformé — ignoré */
-  }
-  // Quality bar — stricter for non-pro to avoid soft-duplicate / thin pages.
-  const imgsCount = (() => {
-    try { return (JSON.parse(ld.images) as string[]).length; } catch { return 0; }
-  })();
-  const isPro = !!ld.user?.isPro;
-  const minDesc = isPro ? 180 : 250;
-  const minImgs = isPro ? 2 : 3;
-  const minQuality = isPro ? 40 : 50;
-  if (
-    (ld.qualityScore != null && ld.qualityScore < minQuality) ||
-    (ld.reportCount != null && ld.reportCount >= 3) ||
-    !ld.description ||
-    ld.description.length < minDesc ||
-    imgsCount < minImgs
-  ) {
-    return { robots: { index: false, follow: true } };
+
+  /**
+   * Verdict d'indexabilité — même fonction que celle qui construit le sitemap.
+   *
+   * Cette page appliquait sa propre copie des seuils, et le sitemap n'en tenait
+   * aucun compte : 160 des 213 annonces annoncées répondaient `noindex`. Les
+   * deux lisent désormais `evaluateListing`, donc la contradiction ne peut plus
+   * réapparaître par dérive de l'un ou de l'autre.
+   */
+  const verdict = evaluateListing({
+    id: listing.id,
+    title: listing.title,
+    description: listing.description,
+    images: listing.images,
+    metadata: ld.metadata ?? null,
+    price: listing.price,
+    category: listing.category,
+    subcategory: listing.subcategory,
+    location: listing.location,
+    condition: listing.condition,
+    status: listing.status,
+    shadowBanned: !!ld.shadowBanned,
+    deletedAt: ld.deletedAt ?? null,
+    qualityScore: ld.qualityScore ?? null,
+    reportCount: ld.reportCount ?? null,
+    imageDupCount: ld.imageDupCount ?? null,
+    createdAt: listing.createdAt,
+    updatedAt: listing.updatedAt,
+    isPro: !!ld.user?.isPro,
+  });
+
+  if (!verdict.indexable) {
+    // `follow` : les liens sortants (catégorie, ville, annonces similaires)
+    // restent suivis. La page ne s'indexe pas, mais elle continue de faire
+    // circuler le signal vers celles qui le méritent.
+    return { alternates: selfCanonical, robots: { index: false, follow: true } };
   }
 
   const priceLabel = listing.price && listing.price > 0
     ? listing.price.toLocaleString("fr-FR") + " €"
     : "Prix à débattre";
   const priceStr = priceLabel;
-  const pageUrl = `${BASE}/annonce/${id}/${listingSlug(listing.title)}`;
-  const cityShort = listing.location?.split(/[,(]/)[0]?.trim() ?? listing.location ?? "";
+  const cityShort = displayCity(listing.location) || (listing.location ?? "");
 
   const SUFFIX = " | Deal&Co";
   const CAP = 60;
@@ -235,7 +261,11 @@ export default async function ListingPage({
   const pageUrl = `${BASE}/annonce/${listing.id}/${correctSlug}`;
   const cat = CATEGORIES.find((c) => c.label === listing.category);
 
-  const cityShort = listing.location?.split(/[,(]/)[0]?.trim() ?? listing.location ?? "";
+  // Nom de ville lisible, débarrassé du code postal. Alimente l'adresse des
+  // données structurées, la carte et l'affichage : les trois doivent dire la
+  // même chose que le fil d'Ariane, sinon le `PostalAddress` annonce
+  // « 59162 Ostricourt » là où la page affiche « Ostricourt ».
+  const cityShort = displayCity(listing.location) || (listing.location ?? "");
 
   const baseOffer = {
     "@type": "Offer",
@@ -343,15 +373,44 @@ export default async function ListingPage({
         ...(listing.brand ? { brand: { "@type": "Brand", name: listing.brand } } : {}),
       };
 
-  const cityShortForCrumb = cityShort;
-  const cityCrumbSlug = cityShortForCrumb
-    ? cityShortForCrumb
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-    : "";
+  /**
+   * Fil d'Ariane — un lien n'est émis que si sa cible existe et s'indexe.
+   *
+   * L'ancienne version slugifiait le premier segment brut de `location`. Sur
+   * « 59162 Ostricourt » elle produisait `/annonces/immobilier/59162-ostricourt`,
+   * sur « 75001 » elle produisait `/annonces/vehicules/75001` : deux 404. Le
+   * comptage du 11/08 en a trouvé **180 sur 213 annonces**, à la fois dans le
+   * fil visible et dans le `BreadcrumbList` JSON-LD, où un `item` non résolu
+   * invalide la donnée structurée.
+   *
+   * Trois conditions cumulatives, désormais :
+   *   1. la localisation se résout vers une ville du référentiel ;
+   *   2. la page catégorie × ville existe dans l'inventaire ;
+   *   3. elle franchit le seuil d'indexation.
+   *
+   * Sinon le fil s'arrête à la catégorie. Une marche en moins vaut mieux qu'une
+   * marche dans le vide.
+   */
+  const crumbCity = resolveCity(listing.location);
+  const inventory = await getSeoInventory();
+  const cityCrumb =
+    cat && crumbCity && isIndexable(inventory.byCategoryCity[`${cat.id}/${crumbCity.slug}`] ?? 0)
+      ? { slug: crumbCity.slug, name: crumbCity.name }
+      : null;
+
+  /**
+   * Marche sous-catégorie, absente jusqu'ici.
+   *
+   * Elle relie l'annonce à l'intention réellement tapée — « appartements » plutôt
+   * que « immobilier » — et donne à la page de liste correspondante un lien
+   * entrant depuis chacune de ses annonces. Sans elle, les pages sous-catégorie
+   * ne recevaient aucun lien depuis le contenu qu'elles listent.
+   */
+  const subSlug = listing.subcategory ? subcategoryToSlug(listing.subcategory) : null;
+  const subCrumb =
+    cat && subSlug && isIndexable(inventory.byCategorySub[`${cat.id}/${subSlug}`] ?? 0)
+      ? { slug: subSlug, name: listing.subcategory as string }
+      : null;
 
   const breadcrumbItems: Array<Record<string, unknown>> = [
     { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
@@ -360,12 +419,20 @@ export default async function ListingPage({
   if (cat) {
     breadcrumbItems.push({ "@type": "ListItem", position: pos++, name: cat.label, item: `${BASE}/annonces/${cat.id}` });
   }
-  if (cat && cityCrumbSlug) {
+  if (cat && subCrumb) {
     breadcrumbItems.push({
       "@type": "ListItem",
       position: pos++,
-      name: cityShortForCrumb,
-      item: `${BASE}/annonces/${cat.id}/${cityCrumbSlug}`,
+      name: subCrumb.name,
+      item: `${BASE}/annonces/${cat.id}/${subCrumb.slug}`,
+    });
+  }
+  if (cat && cityCrumb) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: pos++,
+      name: cityCrumb.name,
+      item: `${BASE}/annonces/${cat.id}/${cityCrumb.slug}`,
     });
   }
   breadcrumbItems.push({ "@type": "ListItem", position: pos, name: listing.title, item: pageUrl });
@@ -479,14 +546,25 @@ export default async function ListingPage({
               </Link>
             </>
           )}
-          {cat && cityCrumbSlug && (
+          {cat && subCrumb && (
             <>
               <span className="text-slate-300">›</span>
               <Link
-                href={`/annonces/${cat.id}/${cityCrumbSlug}`}
+                href={`/annonces/${cat.id}/${subCrumb.slug}`}
                 className="hover:text-primary transition-colors"
               >
-                {cityShortForCrumb}
+                {subCrumb.name}
+              </Link>
+            </>
+          )}
+          {cat && cityCrumb && (
+            <>
+              <span className="text-slate-300">›</span>
+              <Link
+                href={`/annonces/${cat.id}/${cityCrumb.slug}`}
+                className="hover:text-primary transition-colors"
+              >
+                {cityCrumb.name}
               </Link>
             </>
           )}

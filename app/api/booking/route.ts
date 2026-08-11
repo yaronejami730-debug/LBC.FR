@@ -5,6 +5,8 @@ import { ANY_MEMBER, BookingError } from "@/lib/booking/engine";
 import { bookingErrorResponse } from "@/lib/booking/http";
 import { emit } from "@/lib/booking/notify";
 import { dayKey, formatMinutes, minutesOfDay } from "@/lib/booking/time";
+import { guardRate } from "@/lib/rate-limit-guard";
+import { getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +38,11 @@ export async function POST(req: NextRequest) {
     // rattache la réservation à son compte, mais les coordonnées du formulaire
     // font foi (on réserve souvent pour un proche).
     const customerId = await getAuthUserId(req);
+
+    // Reservation possible sans compte : l'identite retombe alors sur l'IP.
+    // Un creneau bloque par un automate est un creneau vole a un vrai client.
+    const limited = guardRate("bookingCreate", customerId ?? getClientIp(req));
+    if (limited) return limited;
 
     const booking = await createBooking({
       serviceId,

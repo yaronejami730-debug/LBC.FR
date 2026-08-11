@@ -127,7 +127,8 @@ export async function generateMetadata({
     title,
     description: content.metaDescription,
     keywords: content.keywords,
-    alternates: { canonical: baseUrl },
+    // Auto-référent, page 2 comprise — voir `paginatedCanonical`.
+    alternates: { canonical },
     // noindex si page > 1 (pagination) ou page vide (aucune annonce).
     robots: listingPageRobots(total, page),
     openGraph: {

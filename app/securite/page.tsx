@@ -1,3 +1,4 @@
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 import { TrustHero } from "@/components/trust/TrustHero";
 import { TrustStrip } from "@/components/trust/TrustStrip";
 import { TrustCard } from "@/components/trust/TrustCard";
@@ -5,11 +6,27 @@ import { TrustBadge } from "@/components/trust/TrustBadge";
 import { TrustLockNote } from "@/components/trust/TrustLockNote";
 import { TrustFooter } from "@/components/trust/TrustFooter";
 
-export const metadata = {
-  title: "Sécurité & Confiance — Deal & Co",
-  description:
-    "Hébergement européen, chiffrement TLS, conformité RGPD. Découvrez comment Deal & Co protège vos données.",
-};
+/**
+ * ⚠️ Cette page n'est pas une page publique : c'est la galerie des composants
+ * de confiance (TrustStrip, TrustCard, TrustBadge…), avec ses variantes, ses
+ * libellés de démonstration et un faux formulaire d'inscription.
+ *
+ * Elle était pourtant indexable **et** annoncée au sitemap avec une priorité de
+ * 0,5. Google la présentait donc comme la page « Sécurité & Confiance » de
+ * Deal&Co, sous un titre rassurant, avec pour contenu « Variantes — TrustStrip »
+ * et « Mock — Formulaire inscription ». Sur un domaine jeune, c'est le genre de
+ * page qui fait douter de tout le reste — et un champ mot de passe factice sur
+ * une page nommée « sécurité » est un mauvais signal pour l'internaute autant
+ * que pour le moteur.
+ *
+ * `noindex` en attendant qu'une vraie page de confiance soit écrite. Le jour où
+ * elle existe : repasser en `buildPageMetadata` et réinscrire `/securite` dans
+ * `STATIC_PAGES`.
+ */
+export const metadata = buildPrivateMetadata(
+  "Composants de confiance",
+  "Galerie interne des composants de confiance Deal&Co.",
+);
 
 function Section({
   title,

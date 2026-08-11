@@ -35,7 +35,18 @@ export const metadata: Metadata = {
     "Achetez et vendez d'occasion près de chez vous sur Deal&Co. Voitures, immobilier, mode, électronique — petites annonces gratuites entre particuliers partout en France.",
   metadataBase: new URL("https://www.dealandcompany.fr"),
   alternates: {
-    canonical: "https://www.dealandcompany.fr",
+    // Volontairement **pas** de `canonical` ici.
+    //
+    // Un canonical posé au niveau du layout est hérité par toute page qui n'en
+    // déclare pas — et les branches `noindex` de `generateMetadata` n'en
+    // déclaraient pas. Le crawl du 11/08 a compté **191 URL sur 362** annonçant
+    // la page d'accueil comme leur version canonique : chaque page mince, chaque
+    // 404 et chaque annonce importée se présentait à Google comme un duplicata
+    // de la racine. C'est le signal de duplication le plus destructeur qu'un
+    // domaine puisse émettre sur lui-même.
+    //
+    // Chaque page pose désormais son propre canonical auto-référent. La page
+    // d'accueil le fait dans `app/page.tsx`.
     languages: {
       "fr-FR": "https://www.dealandcompany.fr",
       "x-default": "https://www.dealandcompany.fr",

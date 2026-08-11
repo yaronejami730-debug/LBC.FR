@@ -8,12 +8,37 @@ import { slugToSubcategoryLabel, subcategoryToSlug } from "@/lib/seo-content";
 import { listingUrl } from "@/lib/listing-slug";
 import { brandMetadataFilter, parseVehicleMeta } from "@/lib/vehicle-meta";
 import { getSeoInventory, isIndexable, listingPageRobots, slugifyValue } from "@/lib/seo/inventory";
+import { slugToCity } from "@/lib/cities";
+import GeoListingPage, {
+  generateMetadata as geoGenerateMetadata,
+} from "@/app/annonces/[categorie]/[...slug]/page";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 
 const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 3600;
+
+/**
+ * `vehicules` est un dossier statique dans l'arborescence des routes. Next lui
+ * donne la priorité sur `[categorie]`, donc **toute** URL de la forme
+ * `/annonces/vehicules/<x>` atterrit ici — y compris les villes, qui n'ont
+ * jamais rien à voir avec une marque.
+ *
+ * Conséquence mesurée le 11/08 : `/annonces/vehicules/rennes` renvoyait 404
+ * alors que 36 annonces véhicules y étaient rattachées, de même que Paris et
+ * Colmar. Véhicules représente 129 des 213 annonces publiées : la catégorie qui
+ * porte le site n'avait plus une seule page locale vivante.
+ *
+ * Plutôt que de déplacer les routes marque (leurs URL sont déjà indexées, les
+ * casser coûterait plus cher que le bug), on rend ici la page générique
+ * catégorie × ville. C'est la même page qu'à `/annonces/immobilier/cannes`, au
+ * segment près — un composant de page n'est qu'une fonction, l'appeler depuis
+ * une autre route est légitime et évite de dupliquer 500 lignes de rendu.
+ */
+function cityDelegate(slug: string): string | null {
+  return slugToCity(slug) ? slug : null;
+}
 
 /**
  * Slug → marque, par table de correspondance.
@@ -54,6 +79,15 @@ export async function generateMetadata({
   const brand = BRAND_BY_SLUG.get(marqueSlug);
 
   if (!brand) {
+    // Ville du référentiel : la page générique catégorie × ville produit sa
+    // propre metadata, canonical compris.
+    const city = cityDelegate(marqueSlug);
+    if (city) {
+      return geoGenerateMetadata({
+        params: Promise.resolve({ categorie: "vehicules", slug: [city] }),
+        searchParams: Promise.resolve({ page: pageParam }),
+      });
+    }
     // Sous-catégorie véhicule (Motos, Caravaning, Utilitaires, Équipements auto).
     const subLabel = slugToSubcategoryLabel("vehicules", marqueSlug);
     if (!subLabel) return {};
@@ -108,9 +142,18 @@ export default async function MarquePage({
   const brand = BRAND_BY_SLUG.get(marqueSlug);
 
   // La route /annonces/vehicules/<slug> capture aussi les sous-catégories
-  // (Motos, Caravaning, Utilitaires, Équipements auto). Si le slug n'est pas
-  // une marque mais correspond à une sous-catégorie connue, on rend la page
-  // dédiée à la sous-catégorie plutôt que de 404.
+  // (Motos, Caravaning, Utilitaires, Équipements auto) et les villes. Si le
+  // slug n'est pas une marque mais correspond à l'une des deux, on rend la page
+  // correspondante plutôt que de 404.
+  if (!brand) {
+    const city = cityDelegate(marqueSlug);
+    if (city) {
+      return GeoListingPage({
+        params: Promise.resolve({ categorie: "vehicules", slug: [city] }),
+        searchParams: Promise.resolve({ page: pageParam }),
+      });
+    }
+  }
   const subLabel = !brand ? slugToSubcategoryLabel("vehicules", marqueSlug) : null;
   if (!brand && !subLabel) notFound();
 

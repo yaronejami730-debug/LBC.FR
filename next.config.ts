@@ -3,6 +3,51 @@ import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
+/**
+ * Content-Security-Policy — phase d'observation.
+ *
+ * Envoyée en `Report-Only` : le navigateur ne bloque rien, il signale à
+ * `/api/csp-report`. C'est délibéré. Le site charge AdSense, Google Analytics,
+ * Google Fonts, des cartes Google et les CDN d'une dizaine d'agences ; une
+ * politique écrite de mémoire puis activée d'un coup coupe la publicité ou les
+ * photos d'annonces sans que personne ne s'en aperçoive avant plusieurs jours.
+ *
+ * Les directives ci-dessous couvrent tout ce que l'inventaire du code a
+ * remonté. Elles restent volontairement larges là où le risque est faible
+ * (`img-src https:` — les régies servent des visuels depuis des domaines
+ * imprévisibles) et strictes là où il ne l'est pas (`object-src 'none'`,
+ * `base-uri 'self'` qui empêche un `<base>` injecté de détourner tous les
+ * liens relatifs de la page).
+ *
+ * `'unsafe-inline'` sur les scripts est un compromis assumé de cette phase :
+ * Next injecte ses propres scripts en ligne, et le passage aux nonces demande
+ * de traverser le rendu. À faire une fois les rapports stabilisés — c'est ce
+ * qui donnera à la CSP sa vraie valeur contre l'injection.
+ */
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  // Régies et mesure d'audience.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://va.vercel-scripts.com",
+  // Google Fonts + styles en ligne (attributs `style` de React, next/image).
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  // Les créations publicitaires viennent de domaines arbitraires : restreindre
+  // ici couperait la monétisation pour un gain de sécurité quasi nul, une image
+  // n'exécutant rien.
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.googlesyndication.com https://*.doubleclick.net https://vitals.vercel-insights.com https://exp.host",
+  // Cartes Google sur les fiches d'annonces + cadres publicitaires.
+  "frame-src 'self' https://maps.google.com https://www.google.com https://*.googlesyndication.com https://*.doubleclick.net",
+  "media-src 'self' blob: data:",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "report-uri /api/csp-report",
+  "report-to csp",
+].join("; ");
+
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
@@ -10,8 +55,13 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  // Pas de CSP strict pour éviter de casser les ressources externes (Google Fonts, images ads…)
-  // Les headers ci-dessus suffisent pour les protections essentielles
+  { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
+  // Canal moderne de signalement ; `report-uri` reste pour les navigateurs
+  // qui ne l'implémentent pas encore.
+  {
+    key: "Reporting-Endpoints",
+    value: 'csp="/api/csp-report"',
+  },
 ];
 
 const nextConfig: NextConfig = {
@@ -38,11 +88,40 @@ const nextConfig: NextConfig = {
     imageSizes: [128, 256, 384],
     // Qualité 70 : invisible sur des photos d'annonces, ~25% plus léger.
     qualities: [70, 75],
-    // Annonces importées de sources externes (agences) → photos hébergées sur
-    // des CDN/domaines arbitraires et imprévisibles. On autorise donc tout host
-    // HTTPS plutôt que d'énumérer chaque agence. next/image ne charge que des
-    // images et les ré-encode — surface limitée.
-    remotePatterns: [{ protocol: "https", hostname: "**" }],
+    /**
+     * Hôtes autorisés pour l'optimiseur d'images.
+     *
+     * `hostname: "**"` ouvrait `/_next/image?url=…` à n'importe quelle adresse :
+     * le serveur allait chercher l'URL fournie par l'appelant et en renvoyait
+     * le contenu ré-encodé. C'est un proxy de récupération gratuit — bande
+     * passante offerte à qui la demande, et fenêtre de reconnaissance sur tout
+     * ce que le serveur peut joindre.
+     *
+     * L'argument d'origine (« les CDN d'agences sont imprévisibles ») était
+     * juste sur le principe et faux en pratique : un inventaire des 318 annonces
+     * et de toutes les fiches pro donne **10 hôtes distincts**, tous connus. Les
+     * jokers portent donc sur les sous-domaines, pas sur le domaine.
+     *
+     * ⚠️ Ajouter une source externe (`ExternalSource`) hébergée ailleurs impose
+     * d'ajouter son hôte ici, sinon ses photos ne s'afficheront pas.
+     */
+    remotePatterns: [
+      // Notre propre stockage.
+      { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+      { protocol: "https", hostname: "**.supabase.co" },
+      // Agences automobiles.
+      { protocol: "https", hostname: "agenceauto.com" },
+      { protocol: "https", hostname: "**.agenceauto.com" },
+      { protocol: "https", hostname: "**.auto-gestion.net" },
+      { protocol: "https", hostname: "**.simplicicar.com" },
+      // Agences immobilières.
+      { protocol: "https", hostname: "**.staticlbi.com" },
+      { protocol: "https", hostname: "bskimmobilier.com" },
+      { protocol: "https", hostname: "**.bskimmobilier.com" },
+      { protocol: "https", hostname: "**.paruvendu.fr" },
+      // CDN public mutualisé utilisé par plusieurs sources importées.
+      { protocol: "https", hostname: "**.cloudfront.net" },
+    ],
   },
   async headers() {
     return [

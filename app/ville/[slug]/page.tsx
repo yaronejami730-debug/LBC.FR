@@ -47,6 +47,7 @@ export async function generateMetadata({
   const countLabel = `${total.toLocaleString("fr-FR")} annonce${total > 1 ? "s" : ""}`;
   const title = `Annonces à ${city.name} (${city.departmentCode}) — ${countLabel} gratuites`;
   const description = `${countLabel} entre particuliers à ${city.name}, ${city.department}. Voitures, immobilier, mode, électroménager — vendez et achetez près de chez vous gratuitement sur Deal&Co.`;
+  // Page non paginée : le canonical est trivialement auto-référent.
   const canonical = `${BASE}/ville/${city.slug}`;
 
   const ogImage = `${BASE}/ville/${city.slug}/opengraph-image`;

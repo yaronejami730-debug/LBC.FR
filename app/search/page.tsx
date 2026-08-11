@@ -46,10 +46,16 @@ export async function generateMetadata({
     alternates: {
       canonical: `https://www.dealandcompany.fr/search${category ? `?category=${encodeURIComponent(category)}` : q ? `?q=${encodeURIComponent(q)}` : ""}`,
     },
-    // Index only the bare /search index page (no filters). Any filtered view
-    // duplicates /annonces/{cat} or /ville/{slug} variants → noindex to keep
-    // crawl budget on the canonical SEO routes.
-    robots: { index: !q && !category && !location, follow: true },
+    // Aucune variante de `/search` n'entre dans l'index, filtres ou non.
+    //
+    // Les vues filtrées dupliquent `/annonces/{cat}` et `/ville/{slug}`. La vue
+    // nue, elle, est une page de résultats de recherche interne : Google demande
+    // explicitement de ne pas les indexer, et `/annonces` couvre déjà la même
+    // intention avec un contenu éditorialisé et un maillage propre.
+    //
+    // `follow` reste actif : la page reste un point de passage utile pour
+    // atteindre les annonces.
+    robots: { index: false, follow: true },
   };
 }
 

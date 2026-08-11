@@ -57,7 +57,8 @@ export const STATIC_PAGES = [
   { path: "/comparatif", changeFrequency: "weekly", priority: 0.7 },
   { path: "/voiture-budget", changeFrequency: "weekly", priority: 0.7 },
   { path: "/a-propos", changeFrequency: "monthly", priority: 0.6 },
-  { path: "/securite", changeFrequency: "monthly", priority: 0.5 },
+  // `/securite` retiré : la page est une galerie de composants, pas un contenu
+  // publiable. Voir le commentaire en tête de `app/securite/page.tsx`.
   { path: "/contact", changeFrequency: "yearly", priority: 0.4 },
   { path: "/api-doc", changeFrequency: "monthly", priority: 0.4 },
   { path: "/mentions-legales", changeFrequency: "yearly", priority: 0.2 },
