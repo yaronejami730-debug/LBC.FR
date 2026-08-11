@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -60,13 +60,16 @@ export default async function ReserverPage({
   const { slug } = await params;
   const profile = await getProfile(slug);
 
-  if (
-    !profile ||
-    !profile.isPublished ||
-    profile.user.professionalStatus !== "APPROVED" ||
-    profile.user.bannedAt
-  ) {
+  if (!profile || profile.user.professionalStatus !== "APPROVED" || profile.user.bannedAt) {
     notFound();
+  }
+
+  // Fiche mise hors ligne pendant que quelqu'un avait le tunnel ouvert, ou lien
+  // de réservation partagé tel quel : on renvoie sur la fiche, qui explique
+  // sous le nom de l'établissement qu'elle est en cours de mise à jour. Un 404
+  // ici laisserait croire que la boutique a fermé.
+  if (!profile.isPublished) {
+    redirect(`/pro/${profile.slug}`);
   }
 
   return (

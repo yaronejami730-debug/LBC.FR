@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ProfileEditor from "./ProfileEditor";
 import ProNav from "./ProNav";
-import { resolveProContext } from "@/lib/pro/access";
+import VisibilitySwitch from "./VisibilitySwitch";
+import { canManageEstablishments, resolveProContext } from "@/lib/pro/access";
 
 export const metadata = { title: "Mon espace professionnel" };
 export const dynamic = "force-dynamic";
@@ -87,7 +88,19 @@ export default async function EspaceProPage({
           canBook={context?.capabilities.includes("bookings") ?? false}
         />
 
-        {profile && memberCount === 0 && context?.capabilities.includes("bookings") && (
+        {profile?.slug && (
+          // Au-dessus du formulaire : décider qui voit la fiche est une
+          // question d'exploitation quotidienne, pas d'édition de contenu.
+          <VisibilitySwitch
+            slug={profile.slug}
+            name={profile.name}
+            initial={profile.isPublished}
+            establishmentId={profile.id}
+            canToggle={canManageEstablishments(context?.role ?? "MANAGER")}
+          />
+        )}
+
+        {profile && profile.isPublished && memberCount === 0 && context?.capabilities.includes("bookings") && (
           // Sans équipe, le moteur n'a personne à qui attribuer un rendez-vous :
           // la fiche reste une vitrine et le bouton « Réserver » n'apparaît pas.
           <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -106,7 +119,6 @@ export default async function EspaceProPage({
             postalCode: profile?.postalCode ?? "",
             phone: profile?.phone ?? "",
             website: profile?.website ?? "",
-            isPublished: profile?.isPublished ?? true,
             coverImage: profile?.coverImage ?? null,
             avatar: user.avatar ?? null,
             coverX: profile?.coverX ?? 50,

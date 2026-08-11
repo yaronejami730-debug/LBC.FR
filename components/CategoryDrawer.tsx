@@ -22,6 +22,10 @@ import { CATEGORIES } from "@/lib/categories";
 const PRIMARY = [
   { href: "/search", label: "Recherche", icon: "search", title: "Rechercher une annonce" },
   { href: "/post", label: "Déposer une annonce", icon: "add_circle", title: "Déposer une annonce gratuite" },
+  // Troisième, pas premier : on ouvre le menu pour aller quelque part, et le
+  // logo en tête ramène déjà à l'accueil. Le lien reste pour ceux qui le
+  // cherchent nommément.
+  { href: "/", label: "Accueil", icon: "home", title: "Accueil Deal&Co" },
 ];
 
 const PERSONAL = [

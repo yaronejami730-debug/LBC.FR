@@ -15,7 +15,6 @@ type Initial = {
   postalCode: string;
   phone: string;
   website: string;
-  isPublished: boolean;
   coverImage: string | null;
   avatar: string | null;
   coverX: number;
@@ -172,15 +171,6 @@ export default function ProfileEditor({ initial }: { initial: Initial }) {
             className={input}
           />
         </div>
-        <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant">
-          <input
-            type="checkbox"
-            checked={fiche.isPublished}
-            onChange={(e) => set("isPublished", e.target.checked)}
-            className="w-4 h-4 accent-[#2f6fb8]"
-          />
-          Fiche visible publiquement
-        </label>
       </section>
 
       <section className="bg-white rounded-2xl border border-slate-100 p-6">

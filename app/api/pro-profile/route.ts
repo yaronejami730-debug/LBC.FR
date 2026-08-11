@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { listingSlug } from "@/lib/listing-slug";
+import { ProAccessError, resolveProScope } from "@/lib/pro/access";
 
 export const runtime = "nodejs";
 
@@ -32,15 +34,18 @@ type ServiceInput = {
  * La carte est enregistrée par remplacement complet : le client envoie l'état
  * final: pas de diff à réconcilier, pas de ligne fantôme.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const profile = await prisma.proProfile.findFirst({
-    // `userId` n'est plus unique : un compte peut porter plusieurs
-    // établissements. Cette route sert la fiche courante — le sélecteur
-    // d'établissement passera par lib/pro/access.
-    where: { userId: session.user.id },
+  // `userId` n'est plus unique : un compte peut porter plusieurs
+  // établissements. La fiche servie est celle du contexte courant — `?etab=`,
+  // sinon le cookie, sinon la première accessible.
+  const scope = await resolveProScope(req).catch(() => null);
+  if (!scope) return NextResponse.json({ profile: null });
+
+  const profile = await prisma.proProfile.findUnique({
+    where: { id: scope.establishment.id },
     include: { services: { orderBy: { position: "asc" } } },
   });
 
@@ -92,12 +97,49 @@ export async function POST(req: NextRequest) {
       position: i,
     }));
 
-  const existing = await prisma.proProfile.findFirst({
-    where: { userId: session.user.id },
-    // hours / photos / coverImage sont relus pour pouvoir les conserver
-    // quand la requête ne les porte pas.
-    select: { id: true, slug: true, hours: true, photos: true, coverImage: true, coverX: true, coverY: true, coverZoom: true },
-  });
+  // La fiche modifiée est celle de l'établissement actif, pas la première du
+  // compte : sans cela, un gérant de trois salons éditant la boutique B
+  // réécrivait silencieusement la boutique A.
+  let existing: {
+    id: string;
+    slug: string;
+    hours: string;
+    photos: string;
+    coverImage: string | null;
+    coverX: number;
+    coverY: number;
+    coverZoom: number;
+    isPublished: boolean;
+  } | null = null;
+  try {
+    const scope = await resolveProScope(req, body.establishmentId ?? null);
+    existing = await prisma.proProfile.findUnique({
+      where: { id: scope.establishment.id },
+      // hours / photos / coverImage sont relus pour pouvoir les conserver
+      // quand la requête ne les porte pas.
+      select: {
+        id: true,
+        slug: true,
+        hours: true,
+        photos: true,
+        coverImage: true,
+        coverX: true,
+        coverY: true,
+        coverZoom: true,
+        isPublished: true,
+      },
+    });
+  } catch (e) {
+    // Aucun établissement encore créé : c'est le cas normal du premier
+    // enregistrement, tout autre refus reste un refus.
+    if (!(e instanceof ProAccessError) || e.code !== "NO_ESTABLISHMENT") {
+      const err = e instanceof ProAccessError ? e : null;
+      return NextResponse.json(
+        { error: err?.message ?? "Enregistrement impossible" },
+        { status: err?.status ?? 500 },
+      );
+    }
+  }
 
   // Le slug ne bouge plus une fois publié : une fiche partagée doit rester
   // atteignable même si l'enseigne est renommée.
@@ -140,7 +182,11 @@ export async function POST(req: NextRequest) {
     coverX: clamp(body.coverX, existing?.coverX ?? 50, 0, 100),
     coverY: clamp(body.coverY, existing?.coverY ?? 50, 0, 100),
     coverZoom: clamp(body.coverZoom, existing?.coverZoom ?? 1, 1, 3),
-    isPublished: body.isPublished !== false,
+    // La mise en ligne se pilote depuis `PATCH /api/pro-profile/visibility`.
+    // Un enregistrement de fiche ne la republie donc jamais tout seul : une
+    // correction de tarif faite pendant une fermeture n'a pas à rouvrir la
+    // vitrine. Une fiche neuve, elle, naît en ligne.
+    isPublished: existing?.isPublished ?? true,
   };
 
   const profile = existing
@@ -153,6 +199,11 @@ export async function POST(req: NextRequest) {
       data: services.map((s) => ({ ...s, profileId: profile.id })),
     });
   }
+
+  // Tarifs et prestations sont rendus côté serveur : sans purge, la fiche
+  // publique afficherait l'ancienne carte jusqu'à expiration du cache.
+  revalidatePath(`/pro/${profile.slug}`);
+  revalidatePath(`/pro/${profile.slug}/reserver`);
 
   return NextResponse.json({ ok: true, slug: profile.slug, services: services.length });
 }
