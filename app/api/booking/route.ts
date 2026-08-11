@@ -52,8 +52,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Toujours `booking.created`, même quand l'auto-acceptation a déjà
+    // confirmé : c'est une création, et c'est le seul événement qui prévient
+    // le professionnel. Le message envoyé au client se choisit dans `notify`
+    // selon le statut — demande envoyée, ou confirmée automatiquement.
     await emit({
-      type: booking.status === "CONFIRMED" ? "booking.confirmed" : "booking.created",
+      type: "booking.created",
       bookingId: booking.id,
       profileId: booking.profileId,
       customerEmail: booking.email,

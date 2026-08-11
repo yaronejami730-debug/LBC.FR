@@ -1,4 +1,18 @@
 import Link from "next/link";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+
+/**
+ * Porte d'entrée de la verticale Pet. Elle n'avait aucune metadata : ni titre
+ * propre, ni description, ni Open Graph — donc invisible en recherche et
+ * illisible au partage, alors que c'est la page qui doit capter « garde
+ * d'animaux », « pet-sitter » et leurs variantes.
+ */
+export const metadata = buildPageMetadata({
+  title: "Garde d'animaux et pet-sitting près de chez vous",
+  description:
+    "Trouvez un pet-sitter de confiance pour garder votre chien ou votre chat : garde à domicile, hébergement, visites, promenades. Réservation et paiement sécurisés sur Deal&Co.",
+  path: "/pet",
+});
 
 const SERVICES = [
   { icon: "home", label: "Garde à domicile", desc: "Votre animal reste chez vous ou chez le pet-sitter.", href: "/pet/recherche?service=GARDE_DOMICILE" },

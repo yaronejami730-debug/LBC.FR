@@ -9,9 +9,14 @@ export const metadata: Metadata = {
   },
   description:
     "Trouvez un pet-sitter, un éleveur ou un toiletteur de confiance près de chez vous. Réservation et paiement sécurisés sur Deal&Co Pet.",
-  alternates: {
-    canonical: "https://pet.dealandcompany.fr",
-  },
+  // Pas de `alternates.canonical` ici.
+  //
+  // Un canonical posé sur un layout est hérité tel quel par toutes les pages
+  // qui n'en déclarent pas : `/pet/comment-ca-marche` et `/pet/recherche`
+  // annonçaient donc la racine `pet.dealandcompany.fr` comme leur URL
+  // canonique. C'est l'ordre « n'indexe pas cette page, indexe l'accueil à la
+  // place » — envoyé à chaque sous-page de la verticale. Chaque page pose
+  // maintenant son propre canonical via `buildPageMetadata()`.
   openGraph: {
     title: "Deal&Co Pet — Mise en relation animaux",
     description: "Plateforme de mise en relation 100% animaux : pet-sitters, éleveurs, toiletteurs vérifiés.",

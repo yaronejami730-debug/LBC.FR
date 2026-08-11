@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Mot de passe oublié — Deal&Co",
-  robots: { index: false, follow: false },
-};
+export const metadata = buildPrivateMetadata(
+  "Mot de passe oublié",
+  "Recevez un lien de réinitialisation de votre mot de passe Deal&Co.",
+);
 
 export default function ForgotPasswordLayout({ children }: { children: React.ReactNode }) {
   return children;

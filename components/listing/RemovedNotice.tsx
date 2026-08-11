@@ -24,17 +24,25 @@ export function RemovedNotice({
   permanentDeletionAt?: Date | string | null;
   compact?: boolean;
 }) {
-  if (status !== "REMOVED" && status !== "REJECTED") return null;
+  if (status !== "REMOVED" && status !== "REJECTED" && status !== "UNDER_REVIEW") return null;
 
   const deadline = permanentDeletionAt ? new Date(permanentDeletionAt) : null;
   const days = daysUntilDeletion(deadline);
   const removed = status === "REMOVED";
+  // Mise en revue : ni sanction ni suppression programmée. Le bandeau change
+  // donc de couleur et de vocabulaire — parler de « retrait » à quelqu'un à
+  // qui on demande juste de renommer son annonce le fait paniquer pour rien.
+  const inReview = status === "UNDER_REVIEW";
 
   if (compact) {
     return (
-      <div className="rounded-xl bg-rose-50 border border-rose-200 px-3 py-2">
-        <p className="text-xs font-bold text-rose-800">
-          {removed ? "Annonce retirée" : "Annonce refusée"}
+      <div
+        className={`rounded-xl border px-3 py-2 ${
+          inReview ? "bg-amber-50 border-amber-200" : "bg-rose-50 border-rose-200"
+        }`}
+      >
+        <p className={`text-xs font-bold ${inReview ? "text-amber-900" : "text-rose-800"}`}>
+          {inReview ? "Correction demandée" : removed ? "Annonce retirée" : "Annonce refusée"}
         </p>
         {days !== null && (
           <p className="text-[11px] text-rose-700/90 mt-0.5">
@@ -48,20 +56,32 @@ export function RemovedNotice({
   }
 
   return (
-    <div className="mx-4 md:mx-6 mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-5">
+    <div
+      className={`mx-4 md:mx-6 mt-4 rounded-2xl border p-5 ${
+        inReview ? "border-amber-200 bg-amber-50" : "border-rose-200 bg-rose-50"
+      }`}
+    >
       <div className="flex items-start gap-3">
         <span
-          className="material-symbols-outlined text-rose-600 text-[22px] shrink-0"
+          className={`material-symbols-outlined text-[22px] shrink-0 ${
+            inReview ? "text-amber-600" : "text-rose-600"
+          }`}
           style={{ fontVariationSettings: "'FILL' 1" }}
         >
-          visibility_off
+          {inReview ? "rate_review" : "visibility_off"}
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="font-extrabold text-rose-900">
-            {removed ? "Annonce retirée" : "Annonce non publiée"}
+          <h2 className={`font-extrabold ${inReview ? "text-amber-900" : "text-rose-900"}`}>
+            {inReview
+              ? "Une correction est demandée"
+              : removed
+                ? "Annonce retirée"
+                : "Annonce non publiée"}
           </h2>
-          <p className="text-sm text-rose-800/90 mt-1">
-            Cette annonce n'est actuellement pas visible sur Deal&Co.
+          <p className={`text-sm mt-1 ${inReview ? "text-amber-900/90" : "text-rose-800/90"}`}>
+            {inReview
+              ? "Votre annonce est en pause le temps que vous la modifiiez. Aucune suppression n'est programmée."
+              : "Cette annonce n'est actuellement pas visible sur Deal&Co."}
           </p>
 
           {reason && (

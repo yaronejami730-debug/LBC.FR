@@ -101,8 +101,16 @@ export default async function MemberAgendaPage({
       durationSnapshot: true,
       priceSnapshot: true,
       status: true,
+      // Où le rendez-vous a lieu. Corinne peut travailler lundi à Paris 17e et
+      // jeudi à Neuilly : sans cette colonne, son planning lui dirait quand
+      // venir mais pas où.
+      profile: { select: { id: true, name: true, city: true } },
     },
   });
+
+  // Un seul lieu dans la journée de travail : inutile de le répéter à chaque
+  // ligne. Deux ou plus : il devient l'information la plus importante.
+  const multiSite = new Set(bookings.map((b) => b.profile.id)).size > 1;
 
   // Regroupement par jour : c'est ainsi qu'on lit un planning, pas en liste plate.
   const byDay = bookings.reduce<Record<string, typeof bookings>>((acc, b) => {
@@ -157,6 +165,14 @@ export default async function MemberAgendaPage({
                           {status.label}
                         </span>
                       </div>
+
+                      {multiSite && (
+                        <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-surface-container-low px-2.5 py-0.5 text-[11px] font-bold text-on-surface-variant">
+                          <span className="material-symbols-outlined text-[14px]">storefront</span>
+                          {b.profile.name}
+                          {b.profile.city ? ` · ${b.profile.city}` : ""}
+                        </p>
+                      )}
 
                       <p className="mt-1.5 font-bold">{b.labelSnapshot}</p>
                       <p className="text-sm text-on-surface-variant">

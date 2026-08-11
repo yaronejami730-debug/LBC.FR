@@ -15,12 +15,26 @@ export async function GET(req: NextRequest) {
   try {
     const { profile } = await requireProProfile(req, "staff");
     const members = await prisma.proMember.findMany({
-      where: { profileId: profile.id },
+      // Ceux d'ici, plus ceux que le groupe y détache : une personne partagée
+      // entre deux boutiques doit apparaître dans les deux équipes.
+      where: {
+        OR: [{ profileId: profile.id }, { establishments: { some: { profileId: profile.id } } }],
+      },
       orderBy: { position: "asc" },
-      include: { services: { select: { serviceId: true } } },
+      include: {
+        services: { select: { serviceId: true } },
+        establishments: { select: { profileId: true } },
+      },
     });
     return NextResponse.json({
-      members: members.map((m) => ({ ...m, serviceIds: m.services.map((s) => s.serviceId) })),
+      members: members.map((m) => ({
+        ...m,
+        serviceIds: m.services.map((s) => s.serviceId),
+        // Établissement d'origine compris : c'est la liste des lieux où la
+        // personne travaille, telle que l'interface la coche.
+        establishmentIds: [m.profileId, ...m.establishments.map((e) => e.profileId)],
+        homeProfileId: m.profileId,
+      })),
     });
   } catch (error) {
     return bookingErrorResponse(error);

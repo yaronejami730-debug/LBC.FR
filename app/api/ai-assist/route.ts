@@ -1,14 +1,45 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getAuthUserId } from "@/lib/auth-unified";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+/**
+ * Quota par compte : de quoi rédiger une dizaine d'annonces d'affilée, pas de
+ * quoi boucler. La clé est l'identifiant du compte et non l'IP — l'IP change
+ * en mobile, et c'est le compte qui engage la dépense.
+ */
+const DAILY_LIMIT = 30;
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Assistance à la rédaction d'annonce.
+ *
+ * Chaque appel consomme du budget Anthropic facturé au projet. La route était
+ * ouverte : sans session ni quota, n'importe qui pouvait la boucler et faire
+ * grimper la note. D'où deux verrous — un compte connecté, un plafond
+ * journalier — et une image restreinte à nos propres domaines, la récupération
+ * d'une URL arbitraire côté serveur étant un SSRF.
+ */
 export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
+  }
+
+  const userId = await getAuthUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Connectez-vous pour utiliser l'assistant." }, { status: 401 });
+  }
+
+  if (!rateLimit(`ai-assist:${userId}`, DAILY_LIMIT, WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Limite quotidienne atteinte pour l'assistant de rédaction." },
+      { status: 429 },
+    );
   }
 
   const { title, category, subcategory, imageUrl } = await req.json();
@@ -22,7 +53,7 @@ export async function POST(req: Request) {
 
   const content: ContentBlock[] = [];
 
-  if (imageUrl) {
+  if (imageUrl && isAllowedImageHost(imageUrl)) {
     try {
       const imgRes = await fetch(imageUrl, { signal: AbortSignal.timeout(8000) });
       if (imgRes.ok) {
@@ -75,5 +106,30 @@ Réponds UNIQUEMENT avec le JSON valide, aucun autre texte.`,
     return NextResponse.json(parsed);
   } catch {
     return NextResponse.json({ error: "JSON parse error", raw: text.slice(0, 300) }, { status: 502 });
+  }
+}
+
+/**
+ * L'image doit venir de notre propre stockage.
+ *
+ * Le client envoie l'URL d'une photo qu'il vient de téléverser ; elle est donc
+ * toujours sur Supabase ou sur notre domaine. Accepter n'importe quelle URL
+ * ferait de cette route un émetteur de requêtes contrôlé de l'extérieur —
+ * capable d'atteindre un service interne invisible depuis Internet.
+ */
+function isAllowedImageHost(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return false;
+    const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+      : null;
+    return (
+      url.hostname === supabaseHost ||
+      url.hostname === "www.dealandcompany.fr" ||
+      url.hostname.endsWith(".supabase.co")
+    );
+  } catch {
+    return false;
   }
 }

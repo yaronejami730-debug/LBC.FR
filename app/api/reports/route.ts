@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { removeListing } from "@/lib/moderation/removal";
 
 const VALID_CATEGORIES = new Set([
   "scam",
@@ -15,7 +16,22 @@ const VALID_CATEGORIES = new Set([
   "other",
 ]);
 
-const FLAG_THRESHOLD = 3;
+/**
+ * Seuils de signalement.
+ *
+ * `ATTENTION_THRESHOLD` ne retire rien : il fait remonter l'annonce en tête de
+ * la file de modération. Trois personnes ne décident pas d'un retrait — c'était
+ * pourtant le cas avant, l'annonce basculait en `PENDING`, donc hors ligne :
+ * trois comptes complices suffisaient à faire tomber un concurrent.
+ *
+ * `AUTO_REMOVE_THRESHOLD` retire, lui. Vingt signalements *ouverts*, c'est-à-dire
+ * accumulés depuis la dernière décision d'un administrateur : si celui-ci a
+ * tranché « on laisse en ligne », le compteur repart de zéro et il faut vingt
+ * nouveaux signalements pour revenir le déranger. L'humain garde le dernier mot,
+ * l'automatisme n'est qu'un filet pour la nuit et le week-end.
+ */
+const ATTENTION_THRESHOLD = 3;
+const AUTO_REMOVE_THRESHOLD = 20;
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -100,17 +116,44 @@ export async function POST(req: NextRequest) {
     data: { totalReportsAgainst: { increment: 1 } } as any,
   }).catch(() => {});
 
-  // Auto-flag listing when threshold reached and currently approved
-  if (
-    updatedListing.reportCount >= FLAG_THRESHOLD &&
-    updatedListing.status === "APPROVED"
-  ) {
+  // Signalements encore ouverts, donc postérieurs à la dernière décision
+  // d'un administrateur. C'est ce compteur-là qui pilote les seuils, pas
+  // `reportCount`, qui est un cumul historique et ne redescend jamais.
+  const openReports = await prisma.report.count({
+    where: { listingId, status: "OPEN" },
+  });
+
+  if (updatedListing.status === "APPROVED" && openReports >= AUTO_REMOVE_THRESHOLD) {
+    // Retrait automatique. L'annonce part dans « Retirées » côté admin, avec
+    // ses 21 jours habituels : l'auteur peut la corriger, l'administrateur
+    // peut la remettre en ligne d'un clic si le signalement était concerté.
+    await removeListing({
+      listingId,
+      reason:
+        `Cette annonce a été signalée ${openReports} fois par des utilisateurs différents. ` +
+        `Elle est retirée le temps d'une vérification. Si vous estimez que c'est une erreur, ` +
+        `modifiez-la pour demander une nouvelle validation.`,
+      actor: "system:reports",
+    }).catch((err) => console.error("[reports] retrait automatique impossible:", err));
+
+    await prisma.moderationEvent.create({
+      data: {
+        listingId,
+        userId: listing.userId,
+        actor: "system",
+        action: "report_auto_removed",
+        reason: `${openReports} signalements ouverts (seuil ${AUTO_REMOVE_THRESHOLD})`,
+        flagsJson: JSON.stringify([{ category }]),
+      } as any,
+    }).catch(() => {});
+  } else if (updatedListing.status === "APPROVED" && openReports >= ATTENTION_THRESHOLD) {
+    // Ni retrait ni dépublication : l'annonce reste en ligne, elle passe
+    // simplement devant dans la file. La décision appartient à un humain.
     await prisma.listing.update({
       where: { id: listingId },
       data: {
-        status: "PENDING",
-        adminNote: `[AUTO_FLAGGED] ${updatedListing.reportCount} signalements`,
-        reviewPriority: 7,
+        adminNote: `[SIGNALEE] ${openReports} signalements ouverts`,
+        reviewPriority: Math.min(50, 7 + openReports),
       } as any,
     }).catch(() => {});
 
@@ -120,7 +163,7 @@ export async function POST(req: NextRequest) {
         userId: listing.userId,
         actor: "system",
         action: "report_flagged",
-        reason: `Reached ${FLAG_THRESHOLD}+ reports`,
+        reason: `${openReports} signalements ouverts`,
         flagsJson: JSON.stringify([{ category }]),
       } as any,
     }).catch(() => {});

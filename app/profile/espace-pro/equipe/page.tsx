@@ -60,9 +60,17 @@ export default async function EquipePage({
       orderBy: { position: "asc" },
     }),
     prisma.proMember.findMany({
-      where: { profileId: profile.id },
+      // L'équipe d'ici, plus les personnes que les autres boutiques du groupe
+      // y détachent : une coiffeuse partagée doit figurer dans les deux
+      // plannings, avec les horaires propres à chacun.
+      where: {
+        OR: [{ profileId: profile.id }, { establishments: { some: { profileId: profile.id } } }],
+      },
       orderBy: { position: "asc" },
-      include: { services: { select: { serviceId: true } } },
+      include: {
+        services: { select: { serviceId: true } },
+        establishments: { select: { profileId: true } },
+      },
     }),
   ]);
 
@@ -103,7 +111,12 @@ export default async function EquipePage({
             // L'identifiant est affiché ; le mot de passe, jamais — seule son
             // empreinte existe en base.
             loginId: m.accessRevokedAt ? null : m.loginId,
+            // Boutiques du groupe où cette personne exerce, la sienne comprise.
+            establishmentIds: [m.profileId, ...m.establishments.map((e) => e.profileId)],
+            homeProfileId: m.profileId,
           }))}
+          establishments={context.establishments.map((e) => ({ id: e.id, name: e.name }))}
+          currentEstablishmentId={profile.id}
         />
       </main>
     </div>

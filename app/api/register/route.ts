@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/email";
 import { verifyEmail } from "@/lib/emails/verify-email";
+import {
+  linkMembershipsToUser,
+  membershipNotice,
+  membershipsForEmail,
+} from "@/lib/pro/memberships";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   checkBanRegistry,
@@ -17,7 +22,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Trop de tentatives. Réessayez dans quelques minutes." }, { status: 429 });
   }
 
-  const { name, email, password, isPro, siret, companyName, marketingConsent } = await req.json();
+  const { name, email, password, isPro, siret, companyName, marketingConsent, confirmMembership } =
+    await req.json();
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "All fields required" }, { status: 400 });
@@ -70,6 +76,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  /**
+   * Cette adresse est-elle déjà celle d'un membre d'équipe ?
+   *
+   * Corinne reçoit un identifiant de son salon pour consulter son planning.
+   * Le jour où elle s'inscrit sur Deal&Co avec la même adresse, elle doit
+   * savoir ce qui va se passer — sinon un agenda de salon apparaît dans son
+   * espace personnel sans explication. On s'arrête donc pour lui poser la
+   * question, et on ne crée le compte qu'après un oui explicite.
+   */
+  const memberships = await membershipsForEmail(email);
+  if (memberships.length > 0 && confirmMembership !== true) {
+    return NextResponse.json(
+      {
+        code: "PRO_MEMBER_EXISTS",
+        notice: membershipNotice(memberships),
+        memberships: memberships.map((m) => ({
+          role: m.role,
+          establishmentName: m.establishmentName,
+          city: m.city,
+        })),
+      },
+      { status: 409 },
+    );
+  }
+
   const earlyAdopter = await prisma.earlyAdopter.findUnique({
     where: { email: email.trim().toLowerCase() },
   });
@@ -91,6 +122,14 @@ export async function POST(req: NextRequest) {
       ...(earlyAdopter ? { earlyAdopterDiscount: true } : {}),
     },
   });
+
+  // Rattachement des lignes d'équipe portant cette adresse. Le compte gagne
+  // un onglet « Mon agenda » ; le salon, lui, ne gagne aucun droit dessus.
+  if (memberships.length > 0) {
+    await linkMembershipsToUser(user.id, email).catch((err) =>
+      console.error("[REGISTER] rattachement équipe:", err),
+    );
+  }
 
   if (earlyAdopter && !earlyAdopter.claimedAt) {
     prisma.earlyAdopter.update({

@@ -1,10 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Comment ça marche",
-  description: "Le fonctionnement de Deal&Co Pet : recherche, réservation, paiement sécurisé et commission 10%.",
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: "Comment ça marche — garde d'animaux Deal&Co",
+  description:
+    "Le fonctionnement de Deal&Co Pet : recherche d'un pet-sitter, réservation des dates, paiement sécurisé par Stripe et commission de 10%.",
+  path: "/pet/comment-ca-marche",
+});
 
 const CLIENT_STEPS = [
   { icon: "search", title: "Trouvez un pet-sitter", desc: "Recherchez par service et par ville parmi les profils vérifiés." },

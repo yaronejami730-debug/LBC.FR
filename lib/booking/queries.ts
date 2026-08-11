@@ -49,8 +49,28 @@ export async function loadBookingPolicy(profileId: string): Promise<BookingPolic
  * Un membre désactivé n'est jamais proposé, même s'il garde ses compétences.
  */
 export async function loadEligibleMembers(serviceId: string) {
+  const service = await prisma.proService.findUnique({
+    where: { id: serviceId },
+    select: { profileId: true },
+  });
+  if (!service) return [];
+
   const links = await prisma.proMemberService.findMany({
-    where: { serviceId, member: { isActive: true } },
+    where: {
+      serviceId,
+      member: {
+        isActive: true,
+        // Le membre doit exercer dans l'établissement de la prestation : soit
+        // il y est rattaché d'origine, soit il y est prêté par le groupe
+        // (`ProMemberEstablishment`). Sans ce filtre, une coiffeuse partagée
+        // entre deux boutiques serait proposée dans celle où elle ne vient
+        // jamais.
+        OR: [
+          { profileId: service.profileId },
+          { establishments: { some: { profileId: service.profileId } } },
+        ],
+      },
+    },
     include: { member: true },
     orderBy: { member: { position: "asc" } },
   });
@@ -69,15 +89,31 @@ export async function loadMembersAvailability(
   memberIds: string[],
   fromDay: string,
   toDay: string,
+  /**
+   * Établissement pour lequel on calcule. Les horaires et les pauses lui sont
+   * propres — Nathalie est lundi-mercredi à Paris et jeudi-vendredi à Neuilly,
+   * et sans ce filtre elle serait réservable partout tous les jours.
+   *
+   * Facultatif : les plannings enregistrés avant le multi-établissement n'ont
+   * pas de `profileId`, ils valent alors pour l'établissement d'origine.
+   */
+  profileId?: string,
 ): Promise<Map<string, MemberAvailability>> {
   if (memberIds.length === 0) return new Map();
 
   const windowStart = instantFromLocal(addDays(fromDay, -1), 0);
   const windowEnd = instantFromLocal(addDays(toDay, 1), MINUTES_PER_DAY);
 
+  // Les rendez-vous, eux, ne sont jamais filtrés par établissement : une
+  // personne ne peut pas être à deux endroits à la fois, et un créneau pris
+  // dans une boutique doit bloquer l'autre.
+  const scopedToProfile = profileId
+    ? { OR: [{ profileId }, { profileId: null }] }
+    : {};
+
   const [hours, breaks, timeOff, bookings] = await Promise.all([
-    prisma.proWorkingHours.findMany({ where: { memberId: { in: memberIds } } }),
-    prisma.proBreak.findMany({ where: { memberId: { in: memberIds } } }),
+    prisma.proWorkingHours.findMany({ where: { memberId: { in: memberIds }, ...scopedToProfile } }),
+    prisma.proBreak.findMany({ where: { memberId: { in: memberIds }, ...scopedToProfile } }),
     prisma.proTimeOff.findMany({
       where: { memberId: { in: memberIds }, startAt: { lt: windowEnd }, endAt: { gt: windowStart } },
     }),

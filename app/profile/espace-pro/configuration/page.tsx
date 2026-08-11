@@ -24,12 +24,12 @@ export const dynamic = "force-dynamic";
 export default async function ConfigurationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ etab?: string }>;
+  searchParams: Promise<{ etab?: string; activer?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=/profile/espace-pro/configuration");
 
-  const { etab } = await searchParams;
+  const { etab, activer } = await searchParams;
   const context = await resolveProContext(undefined, etab ?? null).catch(() => null);
   if (!context) redirect("/profile/espace-pro");
 
@@ -99,6 +99,15 @@ export default async function ConfigurationPage({
           activeEstablishmentId={profile.id}
           canBook={context.capabilities.includes("bookings")}
         />
+
+        {/* On arrive ici depuis « Agenda » quand la réservation n'est pas
+            activée : il faut dire pourquoi, sinon le clic ressemble à un bug. */}
+        {activer === "bookings" && !context.capabilities.includes("bookings") && (
+          <div className="mb-5 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <strong className="font-bold">L&apos;agenda n&apos;est pas encore ouvert</strong> pour{" "}
+            {profile.name}. Activez la réservation en ligne ci-dessous pour y accéder.
+          </div>
+        )}
 
         {/* L'état de la vitrine se lit avant d'entrer dans les réglages : une
             fiche hors ligne rend la plupart d'entre eux sans effet visible. */}

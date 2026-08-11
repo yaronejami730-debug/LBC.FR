@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateLoginId, generateTempPassword } from "@/lib/pro-member-auth";
+import { sendEmail } from "@/lib/email";
+import { memberAccessEmail } from "@/lib/emails/member-access";
 
 export const runtime = "nodejs";
 
@@ -19,8 +21,25 @@ export const runtime = "nodejs";
 async function ownedMember(userId: string, memberId: string) {
   return prisma.proMember.findFirst({
     where: { id: memberId, profile: { userId } },
-    select: { id: true, displayName: true, loginId: true },
+    select: {
+      id: true,
+      displayName: true,
+      loginId: true,
+      email: true,
+      profile: { select: { name: true } },
+    },
   });
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function loginUrl(): string {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000");
+  return `${base.replace(/\/$/, "")}/equipe/connexion`;
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -52,6 +71,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // Adresse d'envoi : celle qu'on vient de saisir, sinon la dernière connue.
+  // Elle est mémorisée pour que renvoyer un accès ne demande pas de la
+  // ressaisir six mois plus tard.
+  const body = (await req.json().catch(() => ({}))) as { email?: unknown };
+  const typed = String(body.email ?? "").trim().toLowerCase();
+  if (typed && !EMAIL_RE.test(typed)) {
+    return NextResponse.json({ error: "Adresse e-mail invalide." }, { status: 400 });
+  }
+  const recipient = typed || member.email || null;
+
   const password = generateTempPassword();
   await prisma.proMember.update({
     where: { id: member.id },
@@ -60,15 +89,44 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       passwordHash: await bcrypt.hash(password, 12),
       mustChangePassword: true,
       accessRevokedAt: null,
+      ...(typed ? { email: typed } : {}),
     },
   });
+
+  // L'envoi ne conditionne pas la génération : si la boîte du salarié rebondit,
+  // l'accès existe quand même et reste affiché à l'écran pour être recopié.
+  let sentTo: string | null = null;
+  if (recipient) {
+    try {
+      await sendEmail({
+        to: recipient,
+        toName: member.displayName,
+        subject: `Votre accès au planning — ${member.profile.name}`,
+        html: memberAccessEmail({
+          displayName: member.displayName,
+          proName: member.profile.name,
+          loginId,
+          password,
+          loginUrl: loginUrl(),
+        }),
+        adSource: "admin-member-access",
+      });
+      sentTo = recipient;
+    } catch (e) {
+      console.error("[members/credentials] envoi impossible", e);
+    }
+  }
 
   return NextResponse.json({
     loginId,
     // Seule et unique fois où il transite en clair.
     password,
-    notice:
-      "Notez ce mot de passe : il ne sera plus affiché. Le membre devra le changer à sa première connexion.",
+    loginUrl: loginUrl(),
+    email: recipient,
+    sentTo,
+    notice: sentTo
+      ? `Accès envoyé à ${sentTo}. Notez-les quand même : le mot de passe ne sera plus affiché.`
+      : "Notez ce mot de passe : il ne sera plus affiché. Le membre devra le changer à sa première connexion.",
   });
 }
 

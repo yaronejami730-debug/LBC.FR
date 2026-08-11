@@ -6,8 +6,19 @@ import Navbar from "@/components/Navbar";
 import { dayKey, formatMinutes, minutesOfDay } from "@/lib/booking/time";
 import CancelBookingButton from "./CancelBookingButton";
 import { loadBookingPolicy } from "@/lib/booking/queries";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 
-export const metadata = { title: "Mes réservations" };
+/**
+ * Espace personnel : rendez-vous du compte connecté.
+ *
+ * `noindex` explicite. La page redirige déjà les visiteurs anonymes, mais une
+ * redirection n'est pas une directive d'indexation : l'URL circulait dans les
+ * partages et les référents, et rien n'interdisait à Google de la retenir.
+ */
+export const metadata = buildPrivateMetadata(
+  "Mes réservations",
+  "Vos rendez-vous à venir et passés chez les professionnels Deal&Co.",
+);
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = {

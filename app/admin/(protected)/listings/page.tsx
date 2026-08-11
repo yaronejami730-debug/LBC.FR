@@ -13,6 +13,7 @@ const STATUS_OPTIONS = [
   { value: "REJECTED", label: "Refusées", icon: "remove_circle", color: "text-[#ba1a1a] bg-[#fff8f7]" },
   { value: "REMOVED", label: "Retirées", icon: "visibility_off", color: "text-rose-700 bg-rose-50" },
   { value: "PENDING",  label: "En attente", icon: "pending_actions", color: "text-amber-600 bg-amber-50" },
+  { value: "UNDER_REVIEW", label: "En revue", icon: "rate_review", color: "text-amber-800 bg-amber-50" },
 ];
 
 export default async function ListingsPage({
@@ -24,7 +25,7 @@ export default async function ListingsPage({
 
   // Refusées et retirées portent toutes deux un motif : la colonne s'affiche
   // pour les deux, sinon elle disparaîtrait là où elle est la plus utile.
-  const showsReason = status === "REJECTED" || status === "REMOVED";
+  const showsReason = status === "REJECTED" || status === "REMOVED" || status === "UNDER_REVIEW";
   // Seules les annonces en ligne courent vers leur retrait automatique.
   const showsExpiry = status === "APPROVED";
   const emptyLabel =
@@ -34,7 +35,9 @@ export default async function ListingsPage({
         ? "refusée"
         : status === "REMOVED"
           ? "retirée"
-          : "en attente";
+          : status === "UNDER_REVIEW"
+            ? "en revue"
+            : "en attente";
 
   const [listings, counts] = await Promise.all([
     prisma.listing.findMany({

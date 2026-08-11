@@ -57,8 +57,17 @@ export async function requireProProfile(req: NextRequest, capability?: Capabilit
  * pas secrets.
  */
 export async function requireOwnedMember(profileId: string, memberId: string) {
-  const member = await prisma.proMember.findUnique({ where: { id: memberId } });
-  if (!member || member.profileId !== profileId) {
+  const member = await prisma.proMember.findUnique({
+    where: { id: memberId },
+    include: { establishments: { select: { profileId: true } } },
+  });
+  // Rattaché d'origine, ou prêté à cet établissement par le groupe. Le second
+  // cas est celui de la personne qui travaille dans deux boutiques : son
+  // planning doit être modifiable depuis les deux.
+  const worksHere =
+    member?.profileId === profileId ||
+    member?.establishments.some((e) => e.profileId === profileId) === true;
+  if (!member || !worksHere) {
     throw new BookingError("Membre introuvable.", 404, "MEMBER_NOT_FOUND");
   }
   return member;

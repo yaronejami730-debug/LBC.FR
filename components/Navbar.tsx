@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { membershipsOf } from "@/lib/pro/memberships";
 import Link from "next/link";
 import CategoryDrawer from "./CategoryDrawer";
 import UserDropdown from "./UserDropdown";
@@ -34,6 +35,7 @@ export default async function Navbar({
 
   // Récupérer isPro pour le menu API
   let isPro = false;
+  let membershipCount = 0;
   if (user?.id) {
     const { prisma } = await import("@/lib/prisma");
     const dbUser = await prisma.user.findUnique({
@@ -41,6 +43,10 @@ export default async function Navbar({
       select: { isPro: true },
     }).catch(() => null);
     isPro = dbUser?.isPro ?? false;
+    // Appartenances d'équipe encore vivantes : c'est ce qui fait apparaître
+    // « Mon agenda » chez une salariée, et le fait disparaître le jour où le
+    // salon lui retire son accès.
+    membershipCount = (await membershipsOf(user.id).catch(() => [])).length;
   }
 
   return (
@@ -73,7 +79,7 @@ export default async function Navbar({
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
-            <UserDropdown user={user} isPro={isPro} />
+            <UserDropdown user={user} isPro={isPro} membershipCount={membershipCount} />
           </div>
         </div>
 

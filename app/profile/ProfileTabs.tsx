@@ -147,6 +147,13 @@ export default function ProfileTabs({ listings }: { listings: Listing[] }) {
                         Retirée
                       </span>
                     )}
+                    {/* En revue : pastille ambre, pas rouge. L'annonce n'est
+                        pas sanctionnée, elle attend une correction. */}
+                    {listing.status === "UNDER_REVIEW" && (
+                      <span className="absolute top-2 right-2 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        À corriger
+                      </span>
+                    )}
                   </div>
                   <div className="p-2.5 flex flex-col gap-0.5">
                     <p className="text-on-surface font-semibold text-sm leading-snug line-clamp-2">
@@ -162,6 +169,17 @@ export default function ProfileTabs({ listings }: { listings: Listing[] }) {
 
                     {/* Retrait : sans date limite affichée, la suppression au
                         bout de 21 jours passerait pour une perte de données. */}
+                    {/* Motif de mise en revue : pas de compte à rebours, donc
+                        pas de bloc rouge — juste ce qu'il faut corriger. */}
+                    {listing.status === "UNDER_REVIEW" && listing.rejectionReason && (
+                      <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1.5">
+                        <p className="text-[10px] font-bold text-amber-900">À corriger</p>
+                        <p className="text-[10px] text-amber-900/90 line-clamp-3">
+                          {listing.rejectionReason}
+                        </p>
+                      </div>
+                    )}
+
                     {(listing.status === "REMOVED" || listing.status === "REJECTED") &&
                       (() => {
                         const left = daysLeft(listing.permanentDeletionAt);

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { SERVICE_ICONS, SERVICE_LABELS, euros, unitLabel } from "@/lib/pet/services";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,23 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const pro = await getPro(slug);
-  if (!pro) return { title: "Pet-sitter introuvable" };
-  return {
+  if (!pro) return { title: "Pet-sitter introuvable", robots: { index: false, follow: false } };
+
+  const photos = JSON.parse(pro.photos || "[]") as string[];
+
+  return buildPageMetadata({
     title: `${pro.displayName} — Pet-sitter à ${pro.city}`,
-    description: pro.bio.slice(0, 160),
-  };
+    description:
+      pro.bio.trim().slice(0, 160) ||
+      `${pro.displayName}, pet-sitter à ${pro.city}. Garde, hébergement et promenade — réservation sécurisée sur Deal&Co.`,
+    path: `/pet/pro/${slug}`,
+    // La photo du profil sert d'aperçu au partage : une fiche de pet-sitter
+    // partagée dans une conversation doit montrer la personne, pas le logo.
+    image: photos[0] ?? null,
+    // Une fiche dépubliée est en `notFound()` plus bas ; on aligne le signal
+    // pour le cas où elle serait atteinte pendant une transition.
+    noindex: !pro.isPublished,
+  });
 }
 
 export default async function ProProfilePage({

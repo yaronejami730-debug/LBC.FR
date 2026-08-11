@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { daysUntilDeletion, REMOVAL_RETENTION_DAYS } from "@/lib/moderation/removal";
 import { TrustBadge, TrustGauge } from "./TrustGauge";
 import {
+  KeepOnlineButton,
   RemoveListingButton,
   RestoreListingButton,
   PurgeListingButton,
@@ -170,7 +171,10 @@ export async function ReportsTab() {
                 </td>
                 <td className={`${TD} whitespace-nowrap text-slate-500`}>{fmtDateTime(r.createdAt)}</td>
                 <td className={`${TD} text-right`}>
+                  {/* Trois issues, dans l'ordre du plus fréquent au plus
+                      grave : garder, retirer, bannir. */}
                   <div className="flex justify-end gap-2 flex-wrap">
+                    {r.listing && <KeepOnlineButton listingId={r.listing.id} />}
                     {r.listing && r.listing.status !== "REMOVED" && (
                       <RemoveListingButton listingId={r.listing.id} />
                     )}

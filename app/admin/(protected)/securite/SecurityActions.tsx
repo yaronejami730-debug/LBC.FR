@@ -11,6 +11,7 @@ import {
   banAccountAction,
   unbanAccountAction,
   purgeBannedAccountsAction,
+  keepListingOnlineAction,
 } from "./actions";
 
 /**
@@ -91,6 +92,44 @@ const REMOVAL_REASONS = [
   "Activité professionnelle depuis un compte particulier",
   "Doublon d'une annonce existante",
 ];
+
+/**
+ * Troisième décision possible sur un signalement : ne rien faire.
+ *
+ * Elle mérite un bouton au même titre que les deux autres. Sans elle, un
+ * administrateur qui juge le signalement infondé n'a d'autre choix que de
+ * laisser la ligne traîner dans la liste, et le compteur continue de monter
+ * vers le retrait automatique — l'automatisme finirait par décider à sa place.
+ */
+export function KeepOnlineButton({ listingId }: { listingId: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+
+  return (
+    <>
+      <button
+        onClick={() => {
+          setError(null);
+          start(async () => {
+            try {
+              await keepListingOnlineAction(listingId);
+              router.refresh();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Échec");
+            }
+          });
+        }}
+        disabled={pending}
+        title="Classer les signalements et maintenir l'annonce en ligne"
+        className={`${btn} bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50`}
+      >
+        <Icon name="check_circle" /> {pending ? "…" : "Laisser en ligne"}
+      </button>
+      {error && <span className="text-[11px] text-rose-600">{error}</span>}
+    </>
+  );
+}
 
 export function RemoveListingButton({ listingId }: { listingId: string }) {
   const [open, setOpen] = useState(false);

@@ -4,6 +4,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import ApiKeyManager from "./ApiKeyManager";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata(
+  "Ma clé API",
+  "Gérez vos clés d'accès à l'API Deal&Co.",
+);
 
 export default async function ApiKeyPage() {
   const session = await auth();

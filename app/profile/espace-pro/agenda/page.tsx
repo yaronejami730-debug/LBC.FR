@@ -21,10 +21,14 @@ export default async function AgendaPage({
   const { etab } = await searchParams;
   const context = await resolveProContext(undefined, etab ?? null).catch(() => null);
 
-  // Un établissement sans réservation n'a pas d'agenda. On renvoie sur la
-  // fiche plutôt que d'afficher un calendrier qui ne se remplira jamais.
-  if (!context || !context.capabilities.includes("bookings")) {
-    redirect("/profile/espace-pro");
+  if (!context) redirect("/profile/espace-pro");
+
+  // Un établissement sans réservation n'a pas d'agenda — mais le renvoyer sur
+  // sa fiche ne lui apprend rien : il a cliqué « Agenda » et il retombe sur
+  // autre chose sans explication. On l'envoie là où la réservation s'active,
+  // c'est-à-dire là où le problème se règle.
+  if (!context.capabilities.includes("bookings")) {
+    redirect("/profile/espace-pro/configuration?activer=bookings");
   }
 
   return (

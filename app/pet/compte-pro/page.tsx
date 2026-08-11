@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 import {
   createOffering,
   createProProfile,
@@ -12,6 +13,11 @@ import {
 } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = buildPrivateMetadata(
+  "Mon compte pet-sitter",
+  "Gérez vos prestations, vos tarifs et vos disponibilités de pet-sitter.",
+);
 
 const SERVICE_LABELS: Record<string, string> = {
   GARDE_DOMICILE: "Garde à domicile",

@@ -5,6 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { SERVICE_LABELS, euros, unitLabel } from "@/lib/pet/services";
 import { platformFee, payoutAmount } from "@/lib/pet/stripe";
 import { createBooking } from "./actions";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata(
+  "Réserver une garde",
+  "Choisissez vos dates et réservez votre pet-sitter.",
+);
+
 
 export const dynamic = "force-dynamic";
 

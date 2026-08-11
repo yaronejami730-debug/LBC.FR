@@ -25,10 +25,13 @@ export type ManagedMember = {
   serviceIds: string[];
   /** Identifiant d'accès au planning, `null` tant qu'aucun n'a été généré. */
   loginId?: string | null;
+  /** Toutes les boutiques où la personne travaille, origine comprise. */
+  establishmentIds?: string[];
+  /** Boutique qui l'a créée : elle porte son historique et ne se décoche pas. */
+  homeProfileId?: string;
   hasAccess?: boolean;
 };
 
-type Schedule = { weekday: number; startMin: number; endMin: number; label?: string | null };
 type TimeOff = { id: string; memberId: string; startAt: string; endAt: string; reason: string | null };
 
 const WEEKDAYS = [
@@ -62,9 +65,15 @@ const toMin = (value: string) => {
 export default function TeamManager({
   initialMembers,
   services,
+  establishments = [],
+  currentEstablishmentId,
 }: {
   initialMembers: ManagedMember[];
   services: ManagedService[];
+  /** Boutiques du groupe que ce compte administre. Vide ou seule : pas de choix à faire. */
+  establishments?: { id: string; name: string }[];
+  /** Établissement ouvert en ce moment — celui dont on règle les horaires. */
+  currentEstablishmentId: string;
 }) {
   const [members, setMembers] = useState(initialMembers);
   const [selectedId, setSelectedId] = useState<string | null>(initialMembers[0]?.id ?? null);
@@ -81,7 +90,9 @@ export default function TeamManager({
    * ne réapparaissent qu'au chargement et à l'enregistrement.
    */
   const [week, setWeek] = useState<WeekHours>(EMPTY_WEEK);
-  const [breaks, setBreaks] = useState<Schedule[]>([]);
+  // Les pauses sont une grille hebdomadaire comme les horaires : c'est la
+  // même question posée à l'utilisateur, elle mérite le même écran.
+  const [breakWeek, setBreakWeek] = useState<WeekHours>(EMPTY_WEEK);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
 
   const selected = members.find((m) => m.id === selectedId) ?? null;
@@ -97,7 +108,7 @@ export default function TeamManager({
     if (!res.ok) return;
     const data = await res.json();
     setWeek(weekFromRows(data.workingHours ?? []));
-    setBreaks(data.breaks ?? []);
+    setBreakWeek(weekFromRows(data.breaks ?? []));
   }, []);
 
   useEffect(() => {
@@ -160,22 +171,54 @@ export default function TeamManager({
     displayName: string;
     loginId: string;
     password: string;
+    loginUrl: string;
+    /** Adresse réellement servie par l'envoi, `null` si rien n'est parti. */
+    sentTo: string | null;
   } | null>(null);
 
-  async function generateAccess(m: ManagedMember) {
-    const res = await fetch(`/api/pro/members/${m.id}/credentials`, { method: "POST" });
-    const data = (await res.json()) as { loginId?: string; password?: string; error?: string };
+  /** Membre pour lequel on demande une adresse d'envoi. */
+  const [askingAccessFor, setAskingAccessFor] = useState<ManagedMember | null>(null);
+
+  /**
+   * Crée l'accès, et l'envoie si une adresse est donnée.
+   *
+   * L'adresse est facultative : dans un salon, l'identifiant se transmet
+   * souvent de vive voix. Quand elle est fournie, la personne reçoit tout
+   * directement et le salon n'a rien à recopier.
+   */
+  async function generateAccess(m: ManagedMember, email?: string) {
+    setBusy(true);
+    const res = await fetch(`/api/pro/members/${m.id}/credentials`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(email ? { email } : {}),
+    });
+    const data = (await res.json()) as {
+      loginId?: string;
+      password?: string;
+      loginUrl?: string;
+      sentTo?: string | null;
+      notice?: string;
+      error?: string;
+    };
+    setBusy(false);
+
     if (!res.ok || !data.loginId || !data.password) {
       notify(false, data.error ?? "Génération impossible.");
       return;
     }
+
+    setAskingAccessFor(null);
+    setMembers((prev) => prev.map((x) => (x.id === m.id ? { ...x, loginId: data.loginId } : x)));
     setFreshCredentials({
       memberId: m.id,
       displayName: m.displayName,
       loginId: data.loginId,
       password: data.password,
+      loginUrl: data.loginUrl ?? "/equipe/connexion",
+      sentTo: data.sentTo ?? null,
     });
-    notify(true, `Accès créé pour ${m.displayName}. Notez le mot de passe, il ne sera plus affiché.`);
+    notify(true, data.notice ?? `Accès créé pour ${m.displayName}.`);
   }
 
   async function revokeAccess(m: ManagedMember) {
@@ -206,6 +249,42 @@ export default function TeamManager({
     }
   }
 
+  /**
+   * Détache ou rattache une personne à une autre boutique du groupe.
+   *
+   * Rien n'est dupliqué : c'est la même ligne d'équipe, donc le même
+   * identifiant de connexion et le même historique. Seuls changent les lieux
+   * où elle est proposée à la réservation.
+   */
+  async function toggleEstablishment(member: ManagedMember, profileId: string) {
+    const current = member.establishmentIds ?? [currentEstablishmentId];
+    const next = current.includes(profileId)
+      ? current.filter((id) => id !== profileId)
+      : [...current, profileId];
+
+    setBusy(true);
+    setMembers((prev) =>
+      prev.map((m) => (m.id === member.id ? { ...m, establishmentIds: next } : m)),
+    );
+
+    const res = await fetch(`/api/pro/members/${member.id}/establishments`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profileIds: next }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+
+    if (!res.ok) {
+      setMembers((prev) =>
+        prev.map((m) => (m.id === member.id ? { ...m, establishmentIds: current } : m)),
+      );
+      notify(false, data.error ?? "Affectation refusée");
+      return;
+    }
+    notify(true, "Affectation enregistrée");
+  }
+
   async function toggleService(memberId: string, serviceId: string) {
     const member = members.find((m) => m.id === memberId);
     if (!member) return;
@@ -234,7 +313,10 @@ export default function TeamManager({
     const res = await fetch(`/api/pro/members/${selectedId}/hours`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workingHours: rowsFromWeek(week), breaks }),
+      body: JSON.stringify({
+        workingHours: rowsFromWeek(week),
+        breaks: rowsFromWeek(breakWeek),
+      }),
     });
     const data = await res.json();
     setBusy(false);
@@ -278,10 +360,6 @@ export default function TeamManager({
     setBusy(false);
     void loadTimeOff();
   }
-
-  /* --- Édition locale du planning --------------------------------------- */
-  const setRow = (list: Schedule[], setList: (v: Schedule[]) => void, index: number, patch: Partial<Schedule>) =>
-    setList(list.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   return (
     <div className="space-y-5">
@@ -346,7 +424,7 @@ export default function TeamManager({
                     demande à personne de s'inscrire. */}
                 <button
                   type="button"
-                  onClick={() => (m.loginId ? revokeAccess(m) : generateAccess(m))}
+                  onClick={() => (m.loginId ? revokeAccess(m) : setAskingAccessFor(m))}
                   title={m.loginId ? "Couper l'accès au planning" : "Créer un accès au planning"}
                   className="text-xs font-bold text-outline hover:text-primary px-2 whitespace-nowrap"
                 >
@@ -364,43 +442,55 @@ export default function TeamManager({
             ))}
           </ul>
         )}
-        {freshCredentials && (
-          <div className="mt-4 rounded-xl border-2 border-primary/30 bg-[#f5f9ff] p-4">
-            <p className="text-sm font-extrabold text-primary">
-              Accès de {freshCredentials.displayName}
-            </p>
+        {/* Demande d'adresse avant génération : c'est le moment naturel pour
+            dire où envoyer les accès, plutôt qu'un champ de plus dans la fiche. */}
+        {askingAccessFor && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const value = String(new FormData(e.currentTarget).get("email") ?? "").trim();
+              void generateAccess(askingAccessFor, value || undefined);
+            }}
+            className="mt-4 rounded-xl border border-slate-200 bg-surface-container-low p-4"
+          >
+            <p className="text-sm font-bold">Accès de {askingAccessFor.displayName}</p>
             <p className="text-[11px] text-outline mt-1 leading-relaxed">
-              Transmettez-les à la personne concernée. Le mot de passe n&apos;est affiché
-              qu&apos;une fois : s&apos;il est perdu, il faudra en générer un nouveau.
+              Indiquez son adresse e-mail : identifiant et mot de passe lui seront envoyés
+              directement. Sans adresse, ils s&apos;affichent ici pour être recopiés.
             </p>
-            <dl className="mt-3 space-y-2">
-              <div className="flex items-baseline gap-3">
-                <dt className="text-[10px] uppercase font-bold tracking-wider text-outline w-24 shrink-0">
-                  Identifiant
-                </dt>
-                <dd className="font-mono font-bold select-all">{freshCredentials.loginId}</dd>
-              </div>
-              <div className="flex items-baseline gap-3">
-                <dt className="text-[10px] uppercase font-bold tracking-wider text-outline w-24 shrink-0">
-                  Mot de passe
-                </dt>
-                <dd className="font-mono font-bold select-all">{freshCredentials.password}</dd>
-              </div>
-              <div className="flex items-baseline gap-3">
-                <dt className="text-[10px] uppercase font-bold tracking-wider text-outline w-24 shrink-0">
-                  Connexion
-                </dt>
-                <dd className="font-semibold text-primary">/equipe/connexion</dd>
-              </div>
-            </dl>
-            <button
-              type="button"
-              onClick={() => setFreshCredentials(null)}
-              className="mt-3 text-xs font-bold text-outline underline"
-            >
-              J&apos;ai noté, masquer
-            </button>
-          </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <input
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                placeholder="corinne@exemple.fr (facultatif)"
+                className={input + " flex-1 min-w-[220px] bg-white"}
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busy ? "Envoi…" : "Créer et envoyer"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAskingAccessFor(null)}
+                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-on-surface-variant"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+
+        {freshCredentials && (
+          <AccessCard
+            credentials={freshCredentials}
+            onCopied={(what) => notify(true, `${what} copié`)}
+            onClose={() => setFreshCredentials(null)}
+          />
         )}
       </section>
 
@@ -447,6 +537,51 @@ export default function TeamManager({
             )}
           </section>
 
+          {/* Boutiques où la personne travaille. Affiché seulement quand le
+              groupe en compte plusieurs : un indépendant n'a pas à lire une
+              question qui n'a qu'une réponse possible. */}
+          {establishments.length > 1 && (
+            <section className={card}>
+              <h2 className="text-base font-extrabold font-['Manrope'] mb-1">
+                Où travaille {selected.displayName}
+              </h2>
+              <p className="text-xs text-outline mb-3">
+                Une même personne peut exercer dans plusieurs boutiques. Elle garde un seul
+                identifiant de connexion, et vous lui donnez des horaires propres à chaque
+                établissement en basculant de boutique.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-1.5">
+                {establishments.map((e) => {
+                  const isHome = e.id === (selected.homeProfileId ?? currentEstablishmentId);
+                  const checked = (selected.establishmentIds ?? [currentEstablishmentId]).includes(e.id);
+                  return (
+                    <label
+                      key={e.id}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2 ${
+                        isHome ? "opacity-60" : "hover:bg-surface-container-low cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        // L'établissement d'origine ne se décoche pas : c'est
+                        // lui qui porte la personne et son historique. Pour
+                        // l'en retirer, on la désactive.
+                        disabled={isHome || busy}
+                        onChange={() => toggleEstablishment(selected, e.id)}
+                        className="w-4 h-4 accent-primary"
+                      />
+                      <span className="text-sm">
+                        {e.name}
+                        {isHome && <span className="text-xs text-outline ml-1">· établissement d&apos;origine</span>}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {/* Horaires + pauses */}
           <section className={card}>
             <h2 className="text-base font-extrabold font-['Manrope'] mb-1">
@@ -464,14 +599,16 @@ export default function TeamManager({
               closedLabel="Ne travaille pas"
             />
 
-            <h3 className="text-sm font-bold mt-5 mb-2">Pauses</h3>
-            <ScheduleTable
-              rows={breaks}
-              onChange={(i, patch) => setRow(breaks, setBreaks, i, patch)}
-              onRemove={(i) => setBreaks(breaks.filter((_, x) => x !== i))}
-              onAdd={() => setBreaks([...breaks, { weekday: 2, startMin: 750, endMin: 810, label: "Déjeuner" }])}
-              addLabel="+ Ajouter une pause"
-              withLabel
+            <h3 className="text-sm font-bold mt-5 mb-1">Pauses</h3>
+            <p className="text-xs text-outline mb-3">
+              Se soustraient aux horaires ci-dessus : la coupure déjeuner, le créneau de
+              ménage. Même grille, pour n&apos;avoir qu&apos;une seule façon de saisir une heure.
+            </p>
+            <WeekHoursEditor
+              value={breakWeek}
+              onChange={setBreakWeek}
+              maxRangesPerDay={3}
+              closedLabel="Aucune pause"
             />
 
             <button
@@ -816,71 +953,100 @@ function MemberIdentity({
   );
 }
 
-function ScheduleTable({
-  rows,
-  onChange,
-  onRemove,
-  onAdd,
-  addLabel,
-  withLabel = false,
+
+/**
+ * Accès fraîchement créés : à lire, à copier, à transmettre.
+ *
+ * Le mot de passe n'existe en clair qu'ici et dans l'e-mail envoyé — la base
+ * n'en garde que l'empreinte. D'où les boutons de copie : recopier huit
+ * caractères à la main dans un salon plein, c'est une faute de frappe garantie
+ * et un appel de plus le lendemain.
+ */
+function AccessCard({
+  credentials,
+  onCopied,
+  onClose,
 }: {
-  rows: Schedule[];
-  onChange: (index: number, patch: Partial<Schedule>) => void;
-  onRemove: (index: number) => void;
-  onAdd: () => void;
-  addLabel: string;
-  withLabel?: boolean;
+  credentials: {
+    displayName: string;
+    loginId: string;
+    password: string;
+    loginUrl: string;
+    sentTo: string | null;
+  };
+  onCopied: (what: string) => void;
+  onClose: () => void;
 }) {
+  const message =
+    `Bonjour ${credentials.displayName}, voici votre accès à votre planning :\n` +
+    `Identifiant : ${credentials.loginId}\n` +
+    `Mot de passe : ${credentials.password}\n` +
+    `Connexion : ${credentials.loginUrl}\n` +
+    `À changer à la première connexion.`;
+
+  const copy = async (value: string, what: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      onCopied(what);
+    } catch {
+      // Presse-papiers refusé (contexte non sécurisé, permission) : le texte
+      // reste sélectionnable à la main, on ne bloque personne.
+    }
+  };
+
   return (
-    <div className="space-y-2">
-      {rows.map((row, i) => (
-        <div key={i} className="flex flex-wrap items-center gap-2">
-          <select
-            value={row.weekday}
-            onChange={(e) => onChange(i, { weekday: Number(e.target.value) })}
-            className={`${input} w-32`}
-          >
-            {WEEKDAYS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-          <input
-            type="time"
-            value={toHHMM(row.startMin)}
-            onChange={(e) => {
-              const v = toMin(e.target.value);
-              if (v !== null) onChange(i, { startMin: v });
-            }}
-            className={`${input} w-28`}
-          />
-          <span className="text-outline text-sm">→</span>
-          <input
-            type="time"
-            value={toHHMM(row.endMin)}
-            onChange={(e) => {
-              const v = toMin(e.target.value);
-              if (v !== null) onChange(i, { endMin: v });
-            }}
-            className={`${input} w-28`}
-          />
-          {withLabel && (
-            <input
-              type="text"
-              value={row.label ?? ""}
-              placeholder="Motif"
-              onChange={(e) => onChange(i, { label: e.target.value })}
-              className={`${input} w-32`}
-            />
-          )}
-          <button type="button" onClick={() => onRemove(i)} className="text-outline hover:text-rose-600">
-            <span className="material-symbols-outlined text-[18px]">close</span>
-          </button>
-        </div>
-      ))}
-      <button type="button" onClick={onAdd} className="text-sm font-bold text-primary">
-        {addLabel}
+    <div className="mt-4 rounded-xl border-2 border-primary/30 bg-[#f5f9ff] p-4">
+      <p className="text-sm font-extrabold text-primary">Accès de {credentials.displayName}</p>
+      <p className="text-[11px] text-outline mt-1 leading-relaxed">
+        {credentials.sentTo
+          ? `Envoyés à ${credentials.sentTo}. Le mot de passe n'est affiché qu'une fois : s'il est perdu, il faudra en générer un nouveau.`
+          : "Transmettez-les à la personne concernée. Le mot de passe n'est affiché qu'une fois : s'il est perdu, il faudra en générer un nouveau."}
+      </p>
+
+      <dl className="mt-3 space-y-2">
+        <Field label="Identifiant" value={credentials.loginId} onCopy={() => copy(credentials.loginId, "Identifiant")} />
+        <Field label="Mot de passe" value={credentials.password} onCopy={() => copy(credentials.password, "Mot de passe")} />
+        <Field label="Connexion" value={credentials.loginUrl} onCopy={() => copy(credentials.loginUrl, "Lien")} />
+      </dl>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => copy(message, "Message complet")}
+          className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
+        >
+          Copier le message complet
+        </button>
+        {/* Repli quand l'e-mail n'a pas été utilisé : le salon envoie par SMS
+            ou par sa messagerie habituelle, sans rien retaper. */}
+        <a
+          href={`sms:?&body=${encodeURIComponent(message)}`}
+          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-on-surface-variant"
+        >
+          Envoyer par SMS
+        </a>
+        <button type="button" onClick={onClose} className="text-xs font-bold text-outline underline px-2">
+          J&apos;ai noté, masquer
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value, onCopy }: { label: string; value: string; onCopy: () => void }) {
+  return (
+    <div className="flex items-baseline gap-3">
+      <dt className="text-[10px] uppercase font-bold tracking-wider text-outline w-24 shrink-0">
+        {label}
+      </dt>
+      <dd className="font-mono font-bold select-all break-all flex-1">{value}</dd>
+      <button
+        type="button"
+        onClick={onCopy}
+        title={`Copier : ${label.toLowerCase()}`}
+        className="shrink-0 text-outline hover:text-primary"
+      >
+        <span className="material-symbols-outlined text-[18px]">content_copy</span>
       </button>
     </div>
   );

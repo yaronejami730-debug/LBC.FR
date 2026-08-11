@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 function extractMeta(html: string, ...properties: string[]): string {
   for (const property of properties) {
@@ -34,12 +36,43 @@ function resolveUrl(src: string, base: string): string {
   }
 }
 
+/**
+ * Aperçu d'un lien : le serveur va chercher la page et en extrait les balises.
+ *
+ * C'est un outil d'administration — il ne sert qu'à `components/admin/AdForm`
+ * pour pré-remplir une publicité. Il était pourtant ouvert à tous, et il fait
+ * exactement ce qu'un SSRF cherche : émettre une requête sortante vers une URL
+ * fournie par l'appelant, puis lui renvoyer un extrait de la réponse. Pointé
+ * sur une adresse interne, il transformait le serveur en fenêtre sur le réseau
+ * privé.
+ *
+ * Deux verrous : réservé aux administrateurs, et refus des cibles non
+ * routables sur Internet.
+ */
 export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+
+  const role = (session.user as { role?: string }).role;
+  if (role !== "ADMIN") {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    if (dbUser?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    }
+  }
+
   const url = req.nextUrl.searchParams.get("url");
   if (!url) return NextResponse.json({ error: "Missing url" }, { status: 400 });
 
-  try { new URL(url); } catch {
+  let target: URL;
+  try { target = new URL(url); } catch {
     return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+  }
+  if (!isPubliclyRoutable(target)) {
+    return NextResponse.json({ error: "URL non autorisée" }, { status: 400 });
   }
 
   try {
@@ -86,4 +119,31 @@ export async function GET(req: NextRequest) {
       { status: 502 }
     );
   }
+}
+
+/**
+ * La cible doit être une adresse publique.
+ *
+ * `localhost`, les plages privées RFC1918, le lien-local et l'IP de métadonnées
+ * des fournisseurs cloud (169.254.169.254) sont les cibles classiques d'un
+ * SSRF : elles ne sont joignables que depuis le serveur, jamais depuis le
+ * navigateur de l'administrateur qui saisit le lien.
+ */
+function isPubliclyRoutable(url: URL): boolean {
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+
+  const host = url.hostname.toLowerCase();
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".internal")) return false;
+  if (host === "[::1]" || host === "::1") return false;
+
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10 || a === 127 || a === 0) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 169 && b === 254) return false;
+    if (a >= 224) return false;
+  }
+  return true;
 }

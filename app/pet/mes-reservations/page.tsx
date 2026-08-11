@@ -4,6 +4,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SERVICE_LABELS, euros } from "@/lib/pet/services";
 import { submitReview } from "./actions";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata(
+  "Mes gardes d'animaux",
+  "Vos réservations de garde et de promenade sur Deal&Co Pet.",
+);
 
 export const dynamic = "force-dynamic";
 

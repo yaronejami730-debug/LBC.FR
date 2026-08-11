@@ -36,11 +36,17 @@ export default async function ReservationsPage({
   // consulte par recherche, pas en faisant défiler.
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-  const bookings = await prisma.proBooking.findMany({
-    where: { profileId: profile.id, startAt: { gte: since } },
-    orderBy: { startAt: "asc" },
-    include: { member: { select: { displayName: true, color: true } } },
-  });
+  const [bookings, settings] = await Promise.all([
+    prisma.proBooking.findMany({
+      where: { profileId: profile.id, startAt: { gte: since } },
+      orderBy: { startAt: "asc" },
+      include: { member: { select: { displayName: true, color: true } } },
+    }),
+    prisma.proBookingSettings.findUnique({
+      where: { profileId: profile.id },
+      select: { autoConfirm: true },
+    }),
+  ]);
 
   const rows: ProBookingRow[] = bookings.map((b) => ({
     id: b.id,
@@ -81,7 +87,18 @@ export default async function ReservationsPage({
           canBook
         />
 
-        <ReservationsBoard initial={rows} />
+        <ReservationsBoard
+          initial={rows}
+          serverNow={new Date().toISOString()}
+          establishment={{
+            name: profile.name,
+            address:
+              [profile.addressLine, profile.postalCode].filter(Boolean).join(", ") || null,
+          }}
+          // Pas de ligne de réglages = valeurs par défaut, et la valeur par
+          // défaut du modèle est l'auto-acceptation.
+          initialAutoConfirm={settings?.autoConfirm ?? true}
+        />
       </main>
     </div>
   );

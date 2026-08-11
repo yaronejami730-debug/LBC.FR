@@ -30,15 +30,36 @@ export async function PUT(req: NextRequest) {
     const { profile } = await requireProProfile(req, "bookings");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
+    /**
+     * Mise à jour partielle.
+     *
+     * Un corps qui ne porte qu'`autoConfirm` — c'est le cas du basculement
+     * depuis « Mes réservations » — ne doit pas ramener le pas de créneau, le
+     * battement et le délai d'annulation à leurs valeurs d'usine. On part donc
+     * des réglages existants, pas des valeurs par défaut, et on n'écrase que
+     * ce qui est effectivement transmis.
+     */
+    const existing = await prisma.proBookingSettings.findUnique({
+      where: { profileId: profile.id },
+    });
+
+    const num = (key: keyof typeof RANGES, current: number | undefined) =>
+      body[key] === undefined
+        ? (current ?? RANGES[key][2])
+        : clamp(body[key], RANGES[key][0], RANGES[key][1], RANGES[key][2]);
+
+    const bool = (key: string, current: boolean | undefined) =>
+      body[key] === undefined ? (current ?? true) : Boolean(body[key]);
+
     const data = {
-      slotGranularityMin: clamp(body.slotGranularityMin, 5, 120, 15),
-      bufferMin: clamp(body.bufferMin, 0, 120, 0),
-      minNoticeMin: clamp(body.minNoticeMin, 0, 60 * 24 * 30, 120),
-      maxAdvanceDays: clamp(body.maxAdvanceDays, 1, 365, 60),
-      cancelDeadlineMin: clamp(body.cancelDeadlineMin, 0, 60 * 24 * 30, 1440),
-      autoConfirm: body.autoConfirm === undefined ? true : Boolean(body.autoConfirm),
-      allowCancel: body.allowCancel === undefined ? true : Boolean(body.allowCancel),
-      allowReschedule: body.allowReschedule === undefined ? true : Boolean(body.allowReschedule),
+      slotGranularityMin: num("slotGranularityMin", existing?.slotGranularityMin),
+      bufferMin: num("bufferMin", existing?.bufferMin),
+      minNoticeMin: num("minNoticeMin", existing?.minNoticeMin),
+      maxAdvanceDays: num("maxAdvanceDays", existing?.maxAdvanceDays),
+      cancelDeadlineMin: num("cancelDeadlineMin", existing?.cancelDeadlineMin),
+      autoConfirm: bool("autoConfirm", existing?.autoConfirm),
+      allowCancel: bool("allowCancel", existing?.allowCancel),
+      allowReschedule: bool("allowReschedule", existing?.allowReschedule),
     };
 
     const settings = await prisma.proBookingSettings.upsert({
@@ -52,6 +73,15 @@ export async function PUT(req: NextRequest) {
     return bookingErrorResponse(error);
   }
 }
+
+/** Bornes et valeur par défaut de chaque réglage numérique : [min, max, défaut]. */
+const RANGES = {
+  slotGranularityMin: [5, 120, 15],
+  bufferMin: [0, 120, 0],
+  minNoticeMin: [0, 60 * 24 * 30, 120],
+  maxAdvanceDays: [1, 365, 60],
+  cancelDeadlineMin: [0, 60 * 24 * 30, 1440],
+} as const;
 
 function clamp(value: unknown, min: number, max: number, fallback: number): number {
   if (value === undefined || value === null || value === "") return fallback;

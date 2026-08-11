@@ -93,7 +93,12 @@ export async function PATCH(
   // ça, le cycle modifier → refuser → modifier repousserait la suppression
   // indéfiniment. Elle remonte en revanche en tête de file, parce qu'un
   // contenu déjà sanctionné mérite d'être revu vite.
-  const wasSanctioned = listing.status === "REMOVED" || listing.status === "REJECTED";
+  const wasSanctioned =
+    listing.status === "REMOVED" ||
+    listing.status === "REJECTED" ||
+    // Mise en revue : ce n'est pas une sanction, mais la correction demandée
+    // doit être relue vite — c'est nous qui avons mis l'annonce en pause.
+    listing.status === "UNDER_REVIEW";
 
   const updated = await prisma.listing.update({
     where: { id },

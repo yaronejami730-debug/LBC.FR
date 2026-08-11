@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Toggle } from "@/components/ui/Toggle";
 
 export type ProBookingRow = {
   id: string;
@@ -37,11 +38,102 @@ const SOURCE: Record<string, string> = {
 
 type Filter = "pending" | "upcoming" | "all";
 
-export default function ReservationsBoard({ initial }: { initial: ProBookingRow[] }) {
+/** Rythme du sondage : assez court pour qu'une demande « apparaisse », assez
+    long pour ne pas marteler la base quand l'onglet reste ouvert la journée. */
+const POLL_MS = 10_000;
+
+export default function ReservationsBoard({
+  initial,
+  serverNow,
+  establishment,
+  initialAutoConfirm,
+}: {
+  initial: ProBookingRow[];
+  /** Horloge serveur au rendu, point de départ du sondage incrémental. */
+  serverNow: string;
+  establishment: { name: string; address: string | null };
+  initialAutoConfirm: boolean;
+}) {
   const [rows, setRows] = useState(initial);
   const [filter, setFilter] = useState<Filter>("pending");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [autoConfirm, setAutoConfirm] = useState(initialAutoConfirm);
+  const [savingAuto, setSavingAuto] = useState(false);
+  const [live, setLive] = useState(true);
+  const since = useRef(serverNow);
+
+  /**
+   * Fusionne ce que le serveur a modifié depuis le dernier passage.
+   *
+   * On remplace ligne à ligne au lieu de tout réécrire : le professionnel peut
+   * être en train de lire une fiche pendant qu'une réservation arrive, et un
+   * remplacement complet de la liste ferait sauter le défilement sous ses yeux.
+   */
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/pro/reservations?since=${encodeURIComponent(since.current)}`);
+      if (!res.ok) {
+        setLive(false);
+        return;
+      }
+      const data = (await res.json()) as { now: string; bookings: ProBookingRow[] };
+      since.current = data.now;
+      setLive(true);
+      if (data.bookings.length === 0) return;
+
+      setRows((prev) => {
+        const byId = new Map(prev.map((r) => [r.id, r]));
+        for (const row of data.bookings) byId.set(row.id, row);
+        return [...byId.values()].sort((a, b) => a.startAt.localeCompare(b.startAt));
+      });
+    } catch {
+      setLive(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(poll, POLL_MS);
+    // Revenir sur l'onglet doit rattraper immédiatement : attendre le prochain
+    // tick donnerait dix secondes de liste périmée juste au moment où on
+    // regarde.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [poll]);
+
+  async function toggleAutoConfirm(next: boolean) {
+    setSavingAuto(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/pro/booking-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoConfirm: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ ok: false, text: data.error ?? "Réglage impossible" });
+        return;
+      }
+      setAutoConfirm(next);
+      setMessage({
+        ok: true,
+        text: next
+          ? "Auto-acceptation activée — les nouvelles réservations sont confirmées immédiatement."
+          : "Auto-acceptation désactivée — chaque demande attendra votre réponse.",
+      });
+    } catch {
+      setMessage({ ok: false, text: "Erreur réseau, réessayez." });
+    } finally {
+      setSavingAuto(false);
+    }
+  }
 
   const pendingCount = rows.filter((r) => r.status === "PENDING").length;
 
@@ -107,6 +199,53 @@ export default function ReservationsBoard({ initial }: { initial: ProBookingRow[
           {message.text}
         </div>
       )}
+
+      {/* Quel établissement — un compte à deux salons doit savoir lequel il
+          est en train de regarder avant d'accepter quoi que ce soit. */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-5">
+        <div className="flex flex-wrap items-start gap-3">
+          <span className="w-9 h-9 rounded-xl bg-primary/10 grid place-items-center shrink-0">
+            <span className="material-symbols-outlined text-primary text-[18px]">storefront</span>
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-extrabold font-['Manrope']">{establishment.name}</p>
+            {establishment.address && (
+              <p className="text-xs text-outline mt-0.5">{establishment.address}</p>
+            )}
+          </div>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+              live ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-800"
+            }`}
+            title={live ? "Les nouvelles réservations arrivent sans recharger" : "Reconnexion…"}
+          >
+            <span
+              aria-hidden
+              className={`w-1.5 h-1.5 rounded-full ${live ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`}
+            />
+            {live ? "En direct" : "Hors ligne"}
+          </span>
+        </div>
+
+        <div className="mt-4 border-t border-slate-100 pt-4 flex flex-wrap items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-on-surface">Auto-acceptation</p>
+            <p className="text-xs text-outline mt-0.5 leading-relaxed">
+              {autoConfirm
+                ? "Les réservations sont confirmées dès leur arrivée, le client reçoit sa confirmation immédiatement."
+                : "Chaque demande attend votre accord. Le créneau reste bloqué en attendant votre réponse."}
+            </p>
+          </div>
+          <Toggle
+            checked={autoConfirm}
+            onChange={toggleAutoConfirm}
+            loading={savingAuto}
+            tone="emerald"
+            size="lg"
+            label="Auto-acceptation des réservations"
+          />
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {(

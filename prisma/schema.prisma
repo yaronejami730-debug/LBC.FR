@@ -100,6 +100,9 @@ model User {
   proBookings        ProBooking[]      @relation("ProBookingCustomer")
   subscriptions      Subscription[]    @relation("SubscriptionFollower")
   subscribers        Subscription[]    @relation("SubscriptionSeller")
+  /// Lignes d'équipe rattachées à ce compte : « je suis aussi coiffeuse chez
+  /// Joana ». Donne accès à l'agenda du salon, à rien d'autre.
+  proMemberships     ProMember[]       @relation("ProMemberAccount")
   proVerifications   ProVerification[] @relation("ProVerificationUser")
   proReviews         ProVerification[] @relation("ProVerificationReviewer")
 
@@ -220,11 +223,16 @@ model Listing {
   /// déduire ; avec trois établissements, la déduction devient impossible.
   establishmentId     String?
   establishment       ProProfile? @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
-  /// APPROVED | PENDING | REJECTED | REMOVED | SOLD
+  /// APPROVED | PENDING | UNDER_REVIEW | REJECTED | REMOVED | SOLD
   ///
   /// REMOVED = retirée par la modération. Invisible publiquement (toutes les
   /// requêtes publiques filtrent sur APPROVED), mais toujours accessible à son
   /// auteur depuis son espace personnel pendant le délai de conservation.
+  ///
+  /// UNDER_REVIEW = mise en revue. Également invisible, mais ce n'est pas une
+  /// sanction : aucun compte à rebours de suppression ne court. On demande une
+  /// correction précise (« votre titre est identique à celui d'une autre de vos
+  /// annonces »), et l'annonce repart en modération dès qu'elle est modifiée.
   status              String      @default("APPROVED")
   rejectionReason     String?
   adminNote           String?
@@ -232,6 +240,9 @@ model Listing {
   /// `permanentDeletionAt` n'est jamais repoussé quand l'annonce est refusée à
   /// nouveau — sinon une annonce refusée en boucle ne serait jamais purgée.
   removedAt           DateTime?
+  /// Date de la dernière mise en revue. Sans effet sur la purge : une annonce
+  /// en revue n'est pas en sursis, elle attend une correction.
+  reviewRequestedAt   DateTime?
   permanentDeletionAt DateTime?
   expiresAt           DateTime?
   expiryNotifiedAt    DateTime?
@@ -1112,6 +1123,7 @@ model ProProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+
   /// Métier déclaré — un id de domaine du catalogue `data/pro-catalog`
   /// (`beaute`, `automobile`, `loisirs`…). Détermine les capacités par défaut
   /// et le vocabulaire de l'interface. Porté par l'établissement et non par
@@ -1192,6 +1204,16 @@ model ProMember {
   //
   // S'il veut vendre ses affaires personnelles, il se crée un compte Deal&Co
   // ordinaire, sans rapport avec le salon.
+  /// Compte Deal&Co personnel de cette personne, quand elle en a créé un avec
+  /// la même adresse. Purement informatif du côté du salon : il sert à afficher
+  /// l'agenda du salon dans l'espace personnel, et jamais l'inverse — un membre
+  /// d'équipe ne devient pas administrateur de la fiche.
+  userId             String?
+  user               User?     @relation("ProMemberAccount", fields: [userId], references: [id], onDelete: SetNull)
+  /// Adresse où le salon envoie les accès. Facultative : un identifiant peut
+  /// très bien se transmettre de vive voix. Elle sert à (re)envoyer les accès
+  /// sans avoir à la redemander.
+  email              String?
   /// Identifiant de connexion généré, ex. « corinne-4821 ».
   loginId            String?   @unique
   passwordHash       String?
@@ -1365,6 +1387,7 @@ model ProBooking {
   /// règle (cf. migration).
   status String @default("PENDING")
 
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   confirmedAt  DateTime?
@@ -1372,6 +1395,7 @@ model ProBooking {
   cancelReason String?
   /// Qui a annulé : CUSTOMER | PRO | SYSTEM.
   cancelledBy  String?
+
 
   @@index([profileId, startAt])
   @@index([memberId, startAt])

@@ -2,13 +2,73 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { SERVICE_ICONS, SERVICE_LABELS, SERVICE_TYPES, euros, unitLabel } from "@/lib/pet/services";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { isIndexable } from "@/lib/seo/inventory";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Trouver un pet-sitter près de chez vous",
-  description: "Recherchez un pet-sitter de confiance pour la garde ou la promenade de votre animal.",
-};
+/**
+ * Metadata dérivées de la recherche réellement effectuée.
+ *
+ * `?service=PROMENADE&ville=Lyon` est la requête que les gens tapent
+ * — « promenade chien Lyon » — et c'était jusqu'ici la même page, le même
+ * titre, sans canonical : une seule URL indexable pour toutes les
+ * combinaisons, donc aucune n'était atteignable.
+ *
+ * Le canonical porte les paramètres utiles (et eux seuls), pour que chaque
+ * combinaison ait sa propre identité sans que les variantes de tri ou de
+ * pagination créent des doublons.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ service?: string; ville?: string }>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const service = SERVICE_TYPES.includes(sp.service as never) ? sp.service! : undefined;
+  const ville = (sp.ville ?? "").trim();
+  const serviceLabel = service ? SERVICE_LABELS[service] : null;
+
+  // Combien de professionnels répondent réellement — c'est ce qui décide si la
+  // page mérite l'index. Une recherche sans pet-sitter est une page vide : la
+  // servir est utile, l'indexer ne l'est pas (doorway page).
+  const count = await prisma.petServiceOffering
+    .count({
+      where: {
+        isActive: true,
+        ...(service ? { serviceType: service } : {}),
+        proService: {
+          isPublished: true,
+          kycCompletedAt: { not: null },
+          ...(ville ? { city: { contains: ville, mode: "insensitive" } } : {}),
+        },
+      },
+    })
+    .catch(() => 0);
+
+  const cityPart = ville ? ` à ${ville}` : "";
+  const title = serviceLabel
+    ? `${serviceLabel}${cityPart} — pet-sitters vérifiés`
+    : `Trouver un pet-sitter${cityPart || " près de chez vous"}`;
+
+  const description = serviceLabel
+    ? `${count} pet-sitter${count > 1 ? "s" : ""} pour ${serviceLabel.toLowerCase()}${cityPart}. Profils vérifiés, réservation et paiement sécurisés sur Deal&Co.`
+    : `Trouvez un pet-sitter de confiance${cityPart} pour la garde, l'hébergement ou la promenade de votre animal. Profils vérifiés et paiement sécurisé.`;
+
+  const query = new URLSearchParams();
+  if (service) query.set("service", service);
+  if (ville) query.set("ville", ville);
+  const qs = query.toString();
+
+  return buildPageMetadata({
+    title,
+    description,
+    path: `/pet/recherche${qs ? `?${qs}` : ""}`,
+    // Même seuil que le reste du site : sous 3 résultats, la page reste
+    // accessible et ses liens sont suivis, mais elle n'entre pas dans l'index.
+    noindex: !isIndexable(count),
+  });
+}
 
 export default async function PetSearchPage({
   searchParams,

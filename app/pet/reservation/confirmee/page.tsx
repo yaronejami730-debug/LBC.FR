@@ -3,6 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SERVICE_LABELS, euros } from "@/lib/pet/services";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata(
+  "Réservation confirmée",
+  "Votre réservation de garde d'animaux est confirmée.",
+);
+
 
 export const dynamic = "force-dynamic";
 

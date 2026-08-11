@@ -8,6 +8,7 @@ import { purgeBannedAccounts } from "@/lib/moderation/account-purge";
 import { registerBan } from "@/lib/moderation/ban-registry";
 import { sendEmail } from "@/lib/email";
 import { listingRestoredEmail } from "@/lib/emails/listing-removed";
+import { listingUnderReviewEmail } from "@/lib/emails/listing-review";
 import { listingSlug } from "@/lib/listing-slug";
 
 /**
@@ -97,6 +98,160 @@ export async function removeListingAction(listingId: string, reason: string) {
   revalidatePath(`/annonce/${listingId}`);
   revalidatePath("/", "layout");
   return { permanentDeletionAt: res.permanentDeletionAt };
+}
+
+/**
+ * « Laisser en ligne » : l'administrateur tranche en faveur de l'annonce.
+ *
+ * Tous les signalements ouverts sur ce contenu sont classés d'un coup — sinon
+ * il faudrait cliquer dix fois pour une seule décision, et le compteur
+ * resterait bloqué au-dessus du seuil.
+ *
+ * Le classement remet de fait le compteur à zéro : les utilisateurs peuvent
+ * re-signaler, et il faudra à nouveau vingt signalements pour déclencher un
+ * retrait automatique. C'est ce qui donne le dernier mot à l'humain sans
+ * rendre l'annonce définitivement intouchable.
+ */
+export async function keepListingOnlineAction(listingId: string) {
+  const admin = await requireAdmin();
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: { id: true, status: true, userId: true },
+  });
+  if (!listing) throw new Error("Annonce introuvable");
+
+  const { count } = await prisma.report.updateMany({
+    where: { listingId, status: "OPEN" },
+    data: { status: "DISMISSED", resolvedAt: new Date(), resolvedBy: admin.id },
+  });
+
+  // Une annonce mise hors ligne par un automatisme antérieur revient en
+  // vitrine : décider de la garder et la laisser invisible n'aurait aucun sens.
+  if (listing.status === "PENDING" || listing.status === "UNDER_REVIEW") {
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { status: "APPROVED", adminNote: null, reviewPriority: 0, rejectionReason: null },
+    });
+  } else {
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { adminNote: null, reviewPriority: 0 },
+    });
+  }
+
+  await prisma.moderationEvent
+    .create({
+      data: {
+        listingId,
+        userId: listing.userId,
+        actor: `admin:${admin.id}`,
+        action: "reports_dismissed",
+        reason: `${count} signalement(s) classé(s) sans suite`,
+      },
+    })
+    .catch(() => {});
+
+  await audit({
+    action: "REPORTS_DISMISSED",
+    adminId: admin.id,
+    adminName: admin.name,
+    targetType: "listing",
+    targetId: listingId,
+    reason: `${count} signalement(s) classé(s), annonce maintenue en ligne`,
+  });
+
+  revalidateSecurity();
+  revalidatePath("/admin/listings");
+  revalidatePath(`/annonce/${listingId}`);
+  return { dismissed: count };
+}
+
+/**
+ * Met une annonce en ligne « en revue ».
+ *
+ * Troisième voie entre laisser passer et retirer : l'annonce sort de la
+ * vitrine, son auteur reçoit le motif écrit à la main, et il corrige. Rien
+ * n'est programmé pour la supprimer — c'est toute la différence avec
+ * `removeListingAction`, qui ouvre un compte à rebours de 21 jours.
+ *
+ * Le motif est obligatoire : un e-mail qui annonce un retrait sans dire quoi
+ * corriger génère un ticket de support, pas une correction.
+ */
+export async function reviewListingAction(listingId: string, reason: string) {
+  const admin = await requireAdmin();
+  const motif = reason.trim();
+  if (!motif) throw new Error("Un motif est obligatoire : il est envoyé à l'utilisateur.");
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      userId: true,
+      user: { select: { email: true, name: true, companyName: true, isPro: true } },
+    },
+  });
+  if (!listing) throw new Error("Annonce introuvable");
+
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: {
+      status: "UNDER_REVIEW",
+      rejectionReason: motif,
+      reviewRequestedAt: new Date(),
+      // Ni `removedAt` ni `permanentDeletionAt` : la mise en revue n'engage
+      // aucune destruction. Ni `shadowBanned` : l'annonce n'est pas suspecte,
+      // elle est incomplète.
+    },
+  });
+
+  await prisma.moderationEvent
+    .create({
+      data: {
+        listingId,
+        userId: listing.userId,
+        actor: `admin:${admin.id}`,
+        action: "listing_under_review",
+        reason: motif,
+      },
+    })
+    .catch(() => {});
+
+  await audit({
+    action: "LISTING_UNDER_REVIEW",
+    adminId: admin.id,
+    adminName: admin.name,
+    targetType: "listing",
+    targetId: listingId,
+    reason: motif,
+  });
+
+  if (listing.user?.email) {
+    const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
+    const displayName =
+      listing.user.isPro && listing.user.companyName ? listing.user.companyName : listing.user.name;
+    // L'envoi ne bloque pas la décision : une boîte pleine ne doit pas laisser
+    // une annonce en ligne alors que la modération l'a mise en pause.
+    sendEmail({
+      to: listing.user.email,
+      toName: displayName,
+      subject: "Votre annonce demande une correction — Deal&Co",
+      html: listingUnderReviewEmail({
+        name: displayName,
+        listingTitle: listing.title,
+        reason: motif,
+        editUrl: `${baseUrl}/annonce/${listingId}/edit`,
+      }),
+      adSource: "admin-listing-review",
+    }).catch((err) => console.error("[review] e-mail non envoyé:", err));
+  }
+
+  revalidateSecurity();
+  revalidatePath("/admin/listings");
+  revalidatePath(`/annonce/${listingId}`);
+  revalidatePath("/", "layout");
 }
 
 /** Valide une annonce retirée : elle redevient visible, le compte à rebours s'arrête. */

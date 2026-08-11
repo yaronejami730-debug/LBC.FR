@@ -116,6 +116,7 @@ export async function createBooking(input: CreateBookingInput) {
     requested.map((m) => m.id),
     input.day,
     input.day,
+    service.profileId,
   );
 
   // Candidats réellement libres à cette heure, du moins chargé au plus chargé.

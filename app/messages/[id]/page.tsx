@@ -2,6 +2,13 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ChatWindow from "./ChatWindow";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
+
+export const metadata = buildPrivateMetadata(
+  "Conversation",
+  "Vos échanges avec les autres membres de Deal&Co.",
+);
+
 
 export default async function ConversationPage({
   params,

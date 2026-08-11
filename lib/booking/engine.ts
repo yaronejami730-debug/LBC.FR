@@ -131,6 +131,7 @@ export async function getSlots(params: {
     members.map((m) => m.id),
     params.day,
     params.day,
+    service.profileId,
   );
 
   const perMember = members.map((member) => {
@@ -183,6 +184,7 @@ export async function getOpenDays(params: {
     members.map((m) => m.id),
     params.from,
     params.to,
+    service.profileId,
   );
 
   const days: string[] = [];

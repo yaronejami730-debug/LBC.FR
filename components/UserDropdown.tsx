@@ -8,6 +8,14 @@ import { signOut } from "next-auth/react";
 type Props = {
   user?: { name?: string | null; email?: string | null } | null;
   isPro?: boolean;
+  /**
+   * Nombre d'équipes dont ce compte fait partie en tant que salarié.
+   *
+   * Zéro : rien ne s'affiche. Un salon qui retire son accès fait donc
+   * disparaître l'onglet tout seul, sans traitement de fond — et il reste tant
+   * qu'une autre boutique garde la personne dans son équipe.
+   */
+  membershipCount?: number;
 };
 
 const MENU_ITEMS = [
@@ -16,7 +24,7 @@ const MENU_ITEMS = [
   { label: "Mes recherches", icon: "notifications", href: "/recherches", badge: false },
 ];
 
-export default function UserDropdown({ user, isPro = false }: Props) {
+export default function UserDropdown({ user, isPro = false, membershipCount = 0 }: Props) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, right: 0 });
   const [unread, setUnread] = useState(0);
@@ -140,6 +148,19 @@ export default function UserDropdown({ user, isPro = false }: Props) {
                       <span className="text-[14px] font-medium flex-1">Agenda</span>
                     </Link>
                   </>
+                )}
+                {/* Salariée d'un salon : son planning de travail, distinct de
+                    l'espace pro du gérant. Elle n'administre aucune fiche. */}
+                {membershipCount > 0 && (
+                  <Link href="/mon-agenda" onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+                    <span className="text-[14px] font-medium flex-1">Mon agenda</span>
+                    <span className="text-[9px] font-bold bg-[#2f6fb8] text-white px-1.5 py-0.5 rounded">
+                      {membershipCount > 1 ? `${membershipCount} PRO` : "PRO"}
+                    </span>
+                  </Link>
                 )}
                 <Link href="/mes-reservations" onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"

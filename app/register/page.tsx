@@ -73,8 +73,22 @@ export default function RegisterPage() {
     setShowConsentModal(true);
   }
 
-  async function submitRegistration(marketingConsent: boolean) {
+  /**
+   * Adresse déjà connue comme membre d'une équipe professionnelle.
+   *
+   * On ne crée rien tant que la personne n'a pas dit oui : découvrir l'agenda
+   * d'un salon dans son espace personnel sans l'avoir demandé serait à la fois
+   * inquiétant et incompréhensible.
+   */
+  const [membershipPrompt, setMembershipPrompt] = useState<{
+    notice: string;
+    memberships: { role: string | null; establishmentName: string; city: string | null }[];
+    marketingConsent: boolean;
+  } | null>(null);
+
+  async function submitRegistration(marketingConsent: boolean, confirmMembership = false) {
     setShowConsentModal(false);
+    setMembershipPrompt(null);
     setLoading(true);
     setError("");
 
@@ -88,6 +102,7 @@ export default function RegisterPage() {
         email,
         password,
         marketingConsent,
+        ...(confirmMembership ? { confirmMembership: true } : {}),
         ...(accountType === "pro" ? { isPro: true, siret, companyName } : {}),
       }),
     });
@@ -96,6 +111,14 @@ export default function RegisterPage() {
 
     if (!res.ok) {
       const data = await res.json();
+      if (data.code === "PRO_MEMBER_EXISTS") {
+        setMembershipPrompt({
+          notice: data.notice ?? "",
+          memberships: data.memberships ?? [],
+          marketingConsent,
+        });
+        return;
+      }
       setError(data.error || "Échec de l'inscription");
     } else {
       router.push(`/verifier-email?email=${encodeURIComponent(email)}`);
@@ -112,6 +135,52 @@ export default function RegisterPage() {
 
   return (
     <>
+      {membershipPrompt && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
+          <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white p-6">
+            <h2 className="text-lg font-extrabold font-['Manrope']">
+              Vous êtes déjà membre d&apos;une équipe
+            </h2>
+            <p className="mt-2 text-sm text-on-surface-variant leading-relaxed">
+              {membershipPrompt.notice}
+            </p>
+            <ul className="mt-3 space-y-1">
+              {membershipPrompt.memberships.map((m, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  <span className="material-symbols-outlined text-[18px] text-[#2f6fb8]">
+                    storefront
+                  </span>
+                  <span>
+                    <strong>{m.establishmentName}</strong>
+                    {m.role ? ` · ${m.role}` : ""}
+                    {m.city ? ` · ${m.city}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm font-semibold">
+              Voulez-vous créer un compte personnel avec cette adresse ?
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => submitRegistration(membershipPrompt.marketingConsent, true)}
+                className="rounded-full bg-[#2f6fb8] px-5 py-2.5 text-sm font-bold text-white"
+              >
+                Oui, créer mon compte
+              </button>
+              <button
+                type="button"
+                onClick={() => setMembershipPrompt(null)}
+                className="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-bold text-[#464652]"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showConsentModal && (
         <ConsentModal
           onAccept={submitRegistration}

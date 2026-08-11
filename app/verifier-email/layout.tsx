@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
+import { buildPrivateMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Vérifier mon e-mail — Deal&Co",
-  robots: { index: false, follow: false },
-};
+export const metadata = buildPrivateMetadata(
+  "Vérification de l'adresse e-mail",
+  "Confirmez votre adresse e-mail pour activer votre compte Deal&Co.",
+);
 
 export default function VerifyEmailLayout({ children }: { children: React.ReactNode }) {
   return children;
