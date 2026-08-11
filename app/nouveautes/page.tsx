@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 import { listingUrl } from "@/lib/listing-slug";
@@ -64,7 +63,7 @@ export default async function NouveautesPage() {
   };
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Navbar />
 
@@ -104,7 +103,6 @@ export default async function NouveautesPage() {
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

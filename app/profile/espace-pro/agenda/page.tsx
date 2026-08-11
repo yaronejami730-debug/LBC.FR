@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import ProNav from "../ProNav";
 import AgendaBoard from "./AgendaBoard";
 import { dayKey } from "@/lib/booking/time";
@@ -29,7 +28,7 @@ export default async function AgendaPage({
   }
 
   return (
-    <div className="bg-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface min-h-screen">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-3xl mx-auto">
         <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">Agenda</h1>
@@ -45,7 +44,6 @@ export default async function AgendaPage({
             navigateur d'un client à l'étranger ne doit pas décaler l'agenda. */}
         <AgendaBoard initialDay={dayKey(new Date())} />
       </main>
-      <BottomNav />
     </div>
   );
 }

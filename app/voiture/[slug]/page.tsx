@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { listingUrl } from "@/lib/listing-slug";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 
@@ -305,7 +304,7 @@ export default async function VoitureClusterPage({
   };
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
@@ -419,7 +418,6 @@ export default async function VoitureClusterPage({
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

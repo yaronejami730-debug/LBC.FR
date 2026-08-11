@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import { getAllArticles } from "@/lib/blog";
 
@@ -39,7 +38,7 @@ export default function BlogIndexPage() {
   };
 
   return (
-    <div className="bg-surface text-on-surface mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
@@ -100,7 +99,6 @@ export default function BlogIndexPage() {
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { FRENCH_CITIES, slugToCity, citySlug as toCitySlug } from "@/lib/cities"
 import { listingUrl } from "@/lib/listing-slug";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 
@@ -340,8 +339,6 @@ export default async function VillePage({
           </div>
         </section>
       </main>
-
-      <BottomNav />
       <SiteFooter />
     </>
   );

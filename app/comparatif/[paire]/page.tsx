@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -187,7 +186,7 @@ export default async function ComparatifPage({
   };
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
       <Navbar />
@@ -258,7 +257,6 @@ export default async function ComparatifPage({
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

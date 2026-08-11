@@ -3,7 +3,6 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import ProNav from "../ProNav";
 import TeamManager from "./TeamManager";
 import { resolveProContext } from "@/lib/pro/access";
@@ -49,7 +48,6 @@ export default async function EquipePage({
             </Link>
           </div>
         </main>
-        <BottomNav />
       </div>
     );
   }
@@ -68,7 +66,7 @@ export default async function EquipePage({
   ]);
 
   return (
-    <div className="bg-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface min-h-screen">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-16 px-4 max-w-3xl mx-auto">
         <h1 className="text-2xl font-extrabold tracking-tight font-['Manrope'] mb-4">
@@ -103,7 +101,6 @@ export default async function EquipePage({
           }))}
         />
       </main>
-      <BottomNav />
     </div>
   );
 }

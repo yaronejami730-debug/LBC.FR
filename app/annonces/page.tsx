@@ -15,7 +15,6 @@ import { FRENCH_CITIES } from "@/lib/cities";
 import { slugToSubcategoryLabel } from "@/lib/seo-content";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -70,7 +69,7 @@ export default async function AnnoncesHubPage() {
   };
 
   return (
-    <div className="bg-surface text-on-surface mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
@@ -179,7 +178,6 @@ export default async function AnnoncesHubPage() {
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

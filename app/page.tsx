@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { getImageDimensions } from "@/lib/image-dims";
 import { getActiveAds } from "@/lib/ads";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import AdCarousel from "@/components/AdCarousel";
 import HomeRecommendations from "@/components/HomeRecommendations";
 import AdvertiserLeadSection from "@/components/home/AdvertiserLeadSection";
@@ -287,7 +286,7 @@ export default async function Home() {
   ] = dedupe([featured, bargains, vehicules, immobilier, mode, recents]);
 
   return (
-    <div className="bg-surface text-on-surface mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -662,9 +661,6 @@ export default async function Home() {
 
       {/* Footer */}
       <SiteFooter />
-
-      <BottomNav active="accueil" />
-
     </div>
   );
 }

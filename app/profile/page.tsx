@@ -15,7 +15,6 @@ import BadgePrompt from "./BadgePrompt";
 import { BADGE_DELAY_DAYS } from "@/lib/verification-badge";
 import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import ProfileTabs from "./ProfileTabs";
 import PrivacySection from "./PrivacySection";
 
@@ -56,7 +55,7 @@ export default async function ProfilePage() {
     .slice(0, 2);
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <Navbar active="profil" right={<SignOutButton />} />
 
       <main className="pt-36 pb-10 px-6 max-w-3xl mx-auto">
@@ -235,8 +234,6 @@ export default async function ProfilePage() {
           consentGivenAt={user.consentGivenAt?.toISOString() ?? null}
         />
       </main>
-
-      <BottomNav active="profil" />
     </div>
   );
 }

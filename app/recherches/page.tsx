@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SearchesClient from "./SearchesClient";
 import { buildSearchWhere } from "@/lib/search-where";
 
@@ -37,14 +36,12 @@ export default async function RecherchesPage() {
   );
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <Navbar active="recherches" />
 
       <main className="pt-32 pb-10 px-4 max-w-3xl mx-auto">
         <SearchesClient initialSearches={withCounts} />
       </main>
-
-      <BottomNav active="recherches" />
     </div>
   );
 }

@@ -10,7 +10,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 
 export default async function FavoritesPage() {
   const session = await auth();
@@ -29,7 +28,7 @@ export default async function FavoritesPage() {
   const active = favorites.filter((f) => !f.listing.deletedAt && f.listing.status === "APPROVED");
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <Navbar active="favoris" />
 
       <main className="pt-32 pb-10 px-4 max-w-3xl mx-auto">
@@ -61,8 +60,6 @@ export default async function FavoritesPage() {
           </div>
         )}
       </main>
-
-      <BottomNav active="favoris" />
     </div>
   );
 }

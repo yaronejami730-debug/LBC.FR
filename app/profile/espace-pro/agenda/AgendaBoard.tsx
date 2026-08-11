@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import NewBookingDialog, { type DialogService } from "./NewBookingDialog";
+import BookingSheet from "./BookingSheet";
 
 type AgendaBooking = {
   id: string;
@@ -48,6 +49,8 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
   const [services, setServices] = useState<DialogService[]>([]);
   /** Ouverture du formulaire d'ajout, éventuellement préremplie. */
   const [adding, setAdding] = useState<null | { day?: string; memberId?: string }>(null);
+  /** Rendez-vous ouvert pour correction, déplacement ou annulation. */
+  const [opened, setOpened] = useState<AgendaBooking | null>(null);
 
   const [from, to] = useMemo(() => {
     if (view === "day") return [anchor, anchor];
@@ -170,6 +173,16 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
         />
       )}
 
+      {opened && (
+        <BookingSheet
+          booking={opened}
+          services={services}
+          members={members}
+          onClose={() => setOpened(null)}
+          onChanged={load}
+        />
+      )}
+
       {error && <div className="rounded-xl bg-rose-50 border border-rose-100 px-4 py-3 text-sm text-rose-700">{error}</div>}
       {loading && <div className={`${card} text-sm text-outline`}>Chargement de l&apos;agenda…</div>}
 
@@ -192,7 +205,11 @@ export default function AgendaBoard({ initialDay }: { initialDay: string }) {
                   {dayBookings.map((b) => {
                     const off = b.status === "CANCELLED" || b.status === "NO_SHOW";
                     return (
-                      <li key={b.id} className={`flex items-start gap-3 py-3 ${off ? "opacity-50" : ""}`}>
+                      <li
+                        key={b.id}
+                        onClick={() => !off && setOpened(b)}
+                        className={`flex items-start gap-3 py-3 ${off ? "opacity-50" : "cursor-pointer hover:bg-slate-50 -mx-2 px-2 rounded-lg"}`}
+                      >
                         <span className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: b.member?.color ?? "#94a3b8" }} aria-hidden />
                         <span className="font-extrabold text-sm w-14 shrink-0">{b.time}</span>
                         <span className="min-w-0 flex-1">

@@ -13,7 +13,6 @@ import {
 import { getRelatedBlogPostsForCity } from "@/lib/blog/category-links";
 import { getSeoInventory, isIndexable, listingPageRobots } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
 import StickyPublishFab from "@/components/StickyPublishFab";
@@ -282,7 +281,7 @@ export default async function AnnoncesGeoPage({
         : `${cat.label.toLowerCase()} à ${cityLabel}`;
 
   return (
-    <div className="bg-surface text-on-surface mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
@@ -539,7 +538,6 @@ export default async function AnnoncesGeoPage({
       </main>
 
       <SiteFooter />
-      <BottomNav />
       <StickyPublishFab categoryId={cat.id} />
     </div>
   );

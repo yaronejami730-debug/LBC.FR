@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import BookingFlow from "./BookingFlow";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +70,7 @@ export default async function ReserverPage({
   }
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <Navbar />
       <main className="pt-28 md:pt-36 pb-12 px-4 max-w-2xl mx-auto space-y-4">
         <div>
@@ -121,7 +120,6 @@ export default async function ReserverPage({
           }))}
         />
       </main>
-      <BottomNav />
     </div>
   );
 }

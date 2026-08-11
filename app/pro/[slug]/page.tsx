@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import { formatDuration } from "@/lib/wellness/classify";
 import { listingUrl } from "@/lib/listing-slug";
@@ -90,15 +89,25 @@ export default async function ProProfilePage({
 }) {
   const { slug } = await params;
   const profile = await getProfile(slug);
-  // Une habilitation suspendue ou retirée retire la fiche du public, même si
-  // le drapeau `isPublished` est resté à vrai.
-  if (
-    !profile ||
-    !profile.isPublished ||
-    profile.user.professionalStatus !== "APPROVED" ||
-    profile.user.bannedAt
-  ) {
+
+  // Fiche inexistante, ou compte qui n'a jamais eu d'habilitation : rien à
+  // montrer, et surtout rien à laisser deviner.
+  if (!profile || profile.user.bannedAt || profile.user.professionalStatus !== "APPROVED") {
     notFound();
+  }
+
+  /**
+   * Fiche mise hors ligne par son propriétaire.
+   *
+   * Un 404 serait une mauvaise réponse : le lien circule — carte de visite,
+   * vitrine, signature d'email — et il continuera de circuler. Dire « page
+   * introuvable » laisse croire que l'établissement a disparu. On annonce donc
+   * une absence temporaire, sous son propre nom.
+   *
+   * La page reste `noindex` : hors ligne veut dire hors des moteurs aussi.
+   */
+  if (!profile.isPublished) {
+    return <OfflineNotice name={profile.name} city={profile.city} />;
   }
 
   const hours: Record<string, string> = (() => {
@@ -178,7 +187,7 @@ export default async function ProProfilePage({
   };
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Navbar />
 
@@ -433,7 +442,50 @@ export default async function ProProfilePage({
       </main>
 
       <SiteFooter />
-      <BottomNav />
+    </div>
+  );
+}
+
+/**
+ * Écran « cet établissement met à jour sa fiche ».
+ *
+ * Volontairement sobre et sans navigation de catalogue : le visiteur venait
+ * voir un salon précis, lui déverser la page d'accueil serait une réponse à
+ * côté. Un seul lien de sortie, discret, vers Deal&Co.
+ */
+function OfflineNotice({ name, city }: { name: string; city: string | null }) {
+  return (
+    <div className="bg-surface text-on-surface min-h-screen flex flex-col">
+      <main className="flex-1 flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-md text-center">
+          <span className="material-symbols-outlined text-[40px] text-primary/40">storefront</span>
+
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight font-['Manrope']">
+            {name}
+          </h1>
+          {city && <p className="text-sm text-outline mt-0.5">{city}</p>}
+
+          <p className="mt-5 text-base leading-relaxed text-on-surface-variant">
+            Cet établissement met à jour sa fiche.
+            <br />
+            Elle sera de nouveau consultable très bientôt.
+          </p>
+
+          <p className="mt-3 text-xs text-outline leading-relaxed">
+            Le lien reste valable : inutile de le remplacer, cette page reviendra à la même adresse.
+          </p>
+
+          <div className="mt-10 pt-6 border-t border-outline-variant/20">
+            <Link href="/" title="Deal&Co — petites annonces" className="inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Deal & Co" className="h-9 w-auto mx-auto opacity-70" />
+            </Link>
+            <p className="mt-2 text-[11px] text-outline">
+              Fiche professionnelle hébergée sur Deal&amp;Co
+            </p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

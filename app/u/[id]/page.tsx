@@ -6,7 +6,6 @@ import { auth } from "@/lib/auth";
 import SubscribeButton from "@/components/SubscribeButton";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { getUserResponseTime } from "@/lib/user-stats";
 import { listingUrl } from "@/lib/listing-slug";
 import ListingCard from "@/components/home/ListingCard";
@@ -113,7 +112,7 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
   } : null;
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(profileLd) }}
@@ -189,8 +188,6 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
           </div>
         )}
       </main>
-
-      <BottomNav active="" />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -18,7 +17,7 @@ const LAST_UPDATE = "11 mai 2026";
 
 export default function ConfidentialitePage() {
   return (
-    <div className="bg-surface text-on-surface mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface">
       <Navbar />
       <main className="pt-32 pb-16 px-6 max-w-3xl mx-auto">
         <nav aria-label="Fil d'Ariane" className="mb-6 text-sm text-outline flex items-center gap-2">
@@ -442,7 +441,6 @@ export default function ConfidentialitePage() {
         </div>
       </main>
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

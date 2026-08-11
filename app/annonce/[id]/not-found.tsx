@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 
 export default function ListingNotFound() {
   return (
@@ -32,8 +31,6 @@ export default function ListingNotFound() {
           </Link>
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

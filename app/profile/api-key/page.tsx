@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import ApiKeyManager from "./ApiKeyManager";
 
 export default async function ApiKeyPage() {
@@ -46,7 +45,6 @@ export default async function ApiKeyPage() {
             </Link>
           </div>
         </main>
-        <BottomNav />
       </div>
     );
   }
@@ -116,7 +114,6 @@ export default async function ApiKeyPage() {
         </div>
 
       </main>
-      <BottomNav />
     </div>
   );
 }

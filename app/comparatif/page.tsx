@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -30,7 +29,7 @@ export const metadata: Metadata = {
 
 export default function ComparatifIndexPage() {
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-5xl mx-auto">
@@ -65,7 +64,6 @@ export default function ComparatifIndexPage() {
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

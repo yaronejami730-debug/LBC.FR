@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import ConversationList from "./ConversationList";
 
 export const metadata: Metadata = {
@@ -35,8 +34,6 @@ export default async function MessagesPage() {
         {/* Chat List — real-time client component */}
         <ConversationList currentUserId={userId} />
       </main>
-
-      <BottomNav active="messages" />
     </div>
   );
 }

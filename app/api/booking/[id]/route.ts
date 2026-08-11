@@ -26,6 +26,7 @@ export const dynamic = "force-dynamic";
  *   cancel      libère le créneau
  *   reschedule  déplace — nouvelle date, nouvelle heure, éventuellement un
  *               autre praticien ou une autre prestation
+ *   edit        corrige les coordonnées du client, sans toucher au créneau
  */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -42,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       serviceId?: string;
       contact?: Record<string, string>;
     };
-    if (body.action !== "cancel" && body.action !== "reschedule") {
+    if (body.action !== "cancel" && body.action !== "reschedule" && body.action !== "edit") {
       throw new BookingError("Action non supportée.", 400, "UNSUPPORTED_ACTION");
     }
 
@@ -62,6 +63,41 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     if (!isOccupying(booking.status)) {
       throw new BookingError("Ce rendez-vous est déjà clos.", 409, "ALREADY_CLOSED");
+    }
+
+    // ── Correction des coordonnées ─────────────────────────────────────
+    //
+    // Un nom mal orthographié au téléphone, un chiffre faux dans le numéro :
+    // ça n'a rien à voir avec la disponibilité, et repasser par un déplacement
+    // libérerait puis reprendrait le créneau pour rien — avec le risque qu'un
+    // client en ligne s'y glisse entre les deux.
+    if (body.action === "edit") {
+      if (!isOwner) throw new BookingError("Rendez-vous introuvable.", 404, "BOOKING_NOT_FOUND");
+
+      const c = body.contact ?? {};
+      const trim = (v: unknown, max: number) =>
+        typeof v === "string" ? v.trim().slice(0, max) : undefined;
+
+      const firstName = trim(c.firstName, 80);
+      const lastName = trim(c.lastName, 80);
+      const phone = trim(c.phone, 30);
+      if (firstName === "" || lastName === "" || phone === "") {
+        throw new BookingError("Prénom, nom et téléphone sont requis.", 400, "MISSING_NAME");
+      }
+
+      const updated = await prisma.proBooking.update({
+        where: { id },
+        data: {
+          ...(firstName !== undefined ? { firstName } : {}),
+          ...(lastName !== undefined ? { lastName } : {}),
+          ...(phone !== undefined ? { phone } : {}),
+          ...(c.email !== undefined ? { email: trim(c.email, 200)!.toLowerCase() } : {}),
+          ...(c.note !== undefined ? { note: trim(c.note, 500) || null } : {}),
+        },
+        select: { id: true, firstName: true, lastName: true, phone: true, email: true, note: true },
+      });
+
+      return NextResponse.json({ booking: updated });
     }
 
     // ── Déplacement ────────────────────────────────────────────────────

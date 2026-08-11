@@ -8,7 +8,6 @@ import { listingUrl } from "@/lib/listing-slug";
 import { brandMetadataFilter, parseVehicleMeta } from "@/lib/vehicle-meta";
 import { listingPageRobots } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 
@@ -191,7 +190,7 @@ export default async function ModelePage({
   };
 
   return (
-    <div className="bg-surface text-on-surface min-h-screen mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
@@ -274,7 +273,6 @@ export default async function ModelePage({
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

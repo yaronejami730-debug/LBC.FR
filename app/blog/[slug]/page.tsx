@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import SiteFooter from "@/components/SiteFooter";
 import ShareArticle from "@/components/ShareArticle";
 import { getAllArticles, getArticleBySlug, getRelatedArticles } from "@/lib/blog";
@@ -121,7 +120,7 @@ export default async function BlogArticlePage({
       : null;
 
   return (
-    <div className="bg-surface text-on-surface mb-24 md:mb-0">
+    <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }}
@@ -316,7 +315,6 @@ export default async function BlogArticlePage({
       </main>
 
       <SiteFooter />
-      <BottomNav />
     </div>
   );
 }

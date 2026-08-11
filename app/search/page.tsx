@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAds } from "@/lib/ads";
 import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
 import { CATEGORIES } from "@/lib/categories";
 import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
@@ -207,8 +206,6 @@ export default async function SearchPage({
           </div>
         )}
       </main>
-
-      <BottomNav active="recherche" />
     </div>
   );
 }
