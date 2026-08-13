@@ -12,6 +12,7 @@ import AdvertiserLeadSection from "@/components/home/AdvertiserLeadSection";
 import SiteFooter from "@/components/SiteFooter";
 import ListingRow from "@/components/home/ListingRow";
 import ListingCard, { type HomeListing } from "@/components/home/ListingCard";
+import { safeJsonLd } from "@/lib/json-ld";
 
 export const metadata: Metadata = {
   title: { absolute: "Petites annonces gratuites entre particuliers — Deal&Co" },
@@ -289,7 +290,7 @@ export default async function Home() {
     <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <Navbar active="accueil" />
 
@@ -422,7 +423,7 @@ export default async function Home() {
               id: "vehicules",
               label: "Véhicules d'occasion",
               tagline: "Voitures, motos, scooters",
-              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuBGMEyVAsY5RW4Yei9LtUSa92B7hQ2kPt8EdekXCUM9h3j7ZcDyUJHYxwJ0mb-4-QamClSjIg8RnjpAANyCePb3fhrOjVA2L0t5k7Rl3D1zh6oYexSNqqbyLW3pygORjeicNryZ6it1mEzuPhOT9zAeXaCTu5mBWuZdsI4wF9V7YBu95kW25E51BN9CKmlsBigwQeS7x3AW_HBzZZDo3E9aFdI4Xl__Vd5xAMJ4H80ljzvlZ4am1kTbfj1f9v50sst7_ApbhRtCnY2_",
+              src: "/categories/vehicules.webp",
               span: "col-span-2 md:col-span-3 md:row-span-2",
               featured: true,
             },
@@ -430,28 +431,28 @@ export default async function Home() {
               id: "immobilier",
               label: "Immobilier entre particuliers",
               tagline: "Achat, vente, location",
-              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAt-0kv_wITShSbU9nfI_E9TtW5TdTuw5hn_DluMsuR3tQbQXBkRXA_3FBmkrVgkDc8gTKQ1a89eMsiiBKwJxpvOKkhcmV_H7p9ZpIMBiBgqmp93hWzAhg7HuozYI-hBs3Ycm7STGtp47eGoFUKE07MF0yIyk5imrhRUSZCamG0oTX8XMTGnyOmk-FzCXAyd7HtUr0xNdYhIzFbIW1IXlxk3hmdApYxJterZ5B0mTXD2XP_tLbDOOCjpOdUcAh0wwGojhYLc87qf7gA",
+              src: "/categories/immobilier.webp",
               span: "col-span-2 md:col-span-3 md:row-span-2",
               featured: true,
             },
             {
               id: "mode",
               label: "Mode",
-              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAh42sdJERo4cvL_P118M-1bQmxaifGrDge0kVugUyS1msBPe9uUPNjGiudAk-iSrL6diy7aBN4uFtaj6ea6MQFDkIo-hWfZwPERRBiCuufUuwTxxepEdU0QBfPd6-bNEoZRYOQQ2ODh0y_oonMoVOSHBjU0lK919C1te5WXVUGifu1THI8gsk3RzG3uWmsPndQWKiGiiqcQiCvef7rsybA6lB5Eapf7xHk136aU_wkfWgUQmF1zmjeUC6CSIyCqdFTy7g0efbSr6tX",
+              src: "/categories/mode.webp",
               span: "col-span-1 md:col-span-2",
               featured: false,
             },
             {
               id: "maison",
               label: "Maison",
-              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuDehjPQkD8W1LqpDimsNIHT7WdfP5bacI12ZLl_bUlBKVRylknSR6MIo5dG_EqzV7od-W1K_MFzzzS3UbNrS6-9F4imbBf8nRLoI2fz7MG7p9Z78krgNFQPX_QVTHFOlPxpYN68i7ymEOIb-__QT9EQLIjWeDEfH4GQWrk06l14FW2VkRGJsknjV1WU0tlIKwPiyZdVXlUalsjoeJ534KwCfcBq5W_mmR6IQY4BCofwKeBxYGvsI3FZY8FgEyydmevYRNC-9aQhAuJ3",
+              src: "/categories/maison.webp",
               span: "col-span-1 md:col-span-2",
               featured: false,
             },
             {
               id: "services",
               label: "Services",
-              src: "https://lh3.googleusercontent.com/aida-public/AB6AXuAYdVk-G5r5SmBtZ1pOtrpJm3G6Hsse-MXy8DtbqFnGoYHOp-7w6mUzsyHxu8i49twEP5pjql6vTgWL4q6ZOsDtYogK8itEB2nIPvTaeDfD7V3vlTcYH9ClSubLCcQ4qnTNHt2aXlAzy_-I-UKEB_2tPB3EazYvwK3LqeH4V-CkYszESDT9lzZJs68F0ue6ZZZ7FrvmZt1vXxzsjnSjmUYH6IFR-0hRJExugJz4chy6oP6zlh1lsO0ks_T0wpW996uJWqkyn9-n5KyR",
+              src: "/categories/services.webp",
               span: "col-span-2 md:col-span-2",
               featured: false,
             },

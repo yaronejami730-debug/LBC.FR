@@ -81,11 +81,29 @@ export type IndexVerdict = {
  * Seuils de la barre de qualité. Assouplis pour les comptes professionnels :
  * une fiche pro est adossée à un SIRET contrôlé et à une adresse réelle, ce qui
  * compense un descriptif plus court.
+ *
+ * Exportés — et c'est le point : le formulaire de publication les affiche en
+ * direct au vendeur. Le relevé du 12/08/2026 montre pourquoi. Sur 174 annonces
+ * écartées, 31 le sont pour un **motif unique et réparable** : 23 à qui il
+ * manque une photo, 8 à qui il manque quelques lignes. Aucune n'était sans
+ * photo — dix-sept en avaient une, vingt en avaient deux, à une du seuil. La
+ * médiane des descriptions trop courtes est à 157 caractères pour un seuil à
+ * 250 ; huit d'entre elles sont déjà entre 180 et 250.
+ *
+ * Ces vendeurs ne refusent pas de faire l'effort : personne ne leur a dit qu'il
+ * restait un geste à faire, ni ce qu'il rapportait. Les remettre à l'index vaut
+ * +56 % d'annonces indexables (55 → 86), sans toucher à un seul seuil.
+ *
+ * D'où l'export plutôt qu'une copie des valeurs dans le formulaire : un seuil
+ * qui bouge ici doit bouger à l'écran le même jour, sinon on promet au vendeur
+ * une visibilité qu'on ne lui donne pas.
  */
-const BAR = {
+export const INDEXABILITY_BAR = {
   pro: { minDescription: 180, minImages: 2, minQualityScore: 40 },
   particulier: { minDescription: 250, minImages: 3, minQualityScore: 50 },
 } as const;
+
+const BAR = INDEXABILITY_BAR;
 
 /** Au-delà, l'annonce est traitée comme litigieuse et sort de l'index. */
 const MAX_REPORTS = 3;

@@ -1,3 +1,4 @@
+import { escapeHtml } from "./escape";
 export function listingPublishedEmail({
   name,
   listingTitle,
@@ -55,7 +56,7 @@ export function listingPublishedEmail({
   <!-- CORPS -->
   <tr><td class="pad" style="padding:0 8px 28px;">
     <p style="font-size:15px;color:#424751;line-height:1.75;margin:0;text-align:center;">
-      Bonjour <strong style="color:#1a1b25;">${name}</strong>, votre annonce vient d'être publiée sur <strong style="color:#1a1b25;">Deal&nbsp;&amp;&nbsp;Co</strong> et est désormais visible par tous les utilisateurs.
+      Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>, votre annonce vient d'être publiée sur <strong style="color:#1a1b25;">Deal&nbsp;&amp;&nbsp;Co</strong> et est désormais visible par tous les utilisateurs.
     </p>
   </td></tr>
 
@@ -67,21 +68,21 @@ export function listingPublishedEmail({
       ${imageUrl ? `
       <!-- IMAGE -->
       <tr><td style="padding:0;">
-        <img class="listing-img" src="${imageUrl}" alt="${listingTitle}"
+        <img class="listing-img" src="${imageUrl}" alt="${escapeHtml(listingTitle)}"
           style="display:block;width:100%;height:220px;object-fit:cover;border-radius:16px 16px 0 0;"/>
       </td></tr>` : ""}
 
       <!-- INFOS -->
       <tr><td style="padding:20px 24px;">
         <p style="font-family:Manrope,sans-serif;font-size:18px;font-weight:800;color:#1a1b25;margin:0 0 8px;line-height:1.3;">
-          ${listingTitle}
+          ${escapeHtml(listingTitle)}
         </p>
         <table role="presentation" cellpadding="0" cellspacing="0"><tr>
           <td style="padding-right:16px;">
             <p style="font-size:22px;font-weight:800;color:#2f6fb8;margin:0;">${priceFormatted}</p>
           </td>
           <td style="border-left:1px solid #eceef0;padding-left:16px;">
-            <p style="font-size:13px;color:#727782;margin:0;">${location}</p>
+            <p style="font-size:13px;color:#727782;margin:0;">${escapeHtml(location)}</p>
           </td>
         </tr></table>
       </td></tr>

@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { verifyEmailTrackToken } from "@/lib/email-token";
 import { recordEmailEvent } from "@/lib/email-tracking";
+import { attributeRecommendationEvent } from "@/lib/recommendations/tracking";
 
 // GIF transparent 1×1.
 const PIXEL = Buffer.from(
@@ -21,6 +22,11 @@ export async function GET(req: NextRequest) {
       recordEmailEvent({
         userId: data.userId,
         email: data.email,
+        emailType: data.emailType,
+        kind: "open",
+      });
+      attributeRecommendationEvent({
+        userId: data.userId,
         emailType: data.emailType,
         kind: "open",
       });

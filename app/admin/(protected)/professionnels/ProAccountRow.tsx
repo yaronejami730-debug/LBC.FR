@@ -27,7 +27,8 @@ export type ProAccount = {
   bannedAt: string | null;
   verified: boolean;
   _count: { listings: number };
-  proProfile: { slug: string; isPublished: boolean; _count: { services: number } } | null;
+  /** Un compte peut porter plusieurs établissements depuis le multi-boutique. */
+  proProfiles: { id: string; slug: string; isPublished: boolean; _count: { services: number } }[];
 };
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -121,11 +122,41 @@ export default function ProAccountRow({ account }: { account: ProAccount }) {
             {account._count.listings} annonces · email{" "}
             {account.emailVerified ? "vérifié" : "non vérifié"} · inscrit le{" "}
             {new Date(account.createdAt).toLocaleDateString("fr-FR")}
-            {account.proProfile
-              ? ` · fiche /pro/${account.proProfile.slug} (${account.proProfile._count.services} prestations${account.proProfile.isPublished ? "" : ", masquée"})`
+            {account.proProfiles.length > 0
+              ? ` · ${account.proProfiles.length} établissement${account.proProfiles.length > 1 ? "s" : ""}`
               : ""}
             {account.bannedAt ? " · compte banni" : ""}
           </p>
+
+          {/* Accès direct au back-office de chaque boutique : c'est là qu'on
+              vérifie ce que le professionnel a réellement publié, plutôt que de
+              le deviner depuis la fiche publique. */}
+          {account.proProfiles.length > 0 && (
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+              {account.proProfiles.map((p) => (
+                <li key={p.id} className="flex items-center gap-1.5">
+                  <a
+                    href={`/pro/${p.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-[#2f6fb8]"
+                  >
+                    /pro/{p.slug} · {p._count.services} prest.
+                    {p.isPublished ? "" : " · hors ligne"}
+                  </a>
+                  <a
+                    href={`/profile/espace-pro?etab=${p.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Ouvrir le back-office de cette boutique en vue administrateur"
+                    className="rounded-full border border-[#eceef0] px-2.5 py-1 text-[11px] font-bold text-slate-500 hover:text-[#2f6fb8]"
+                  >
+                    Espace pro
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${st.cls}`}>
           {st.label}

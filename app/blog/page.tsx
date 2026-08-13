@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import { getAllArticles } from "@/lib/blog";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -41,7 +42,7 @@ export default function BlogIndexPage() {
     <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }}
       />
       <Navbar />
 

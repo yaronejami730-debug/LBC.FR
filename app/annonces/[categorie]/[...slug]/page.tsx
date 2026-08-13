@@ -12,12 +12,15 @@ import {
 } from "@/lib/seo-content";
 import { getRelatedBlogPostsForCity } from "@/lib/blog/category-links";
 import { getSeoInventory, isIndexable, listingPageRobots } from "@/lib/seo/inventory";
+import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
 import StickyPublishFab from "@/components/StickyPublishFab";
 import ListingCard from "@/components/home/ListingCard";
 import { listingUrl } from "@/lib/listing-slug";
+import { safeJsonLd } from "@/lib/json-ld";
+import { parsePageParam } from "@/lib/pagination";
 
 export const revalidate = 86400;
 export const dynamicParams = true;
@@ -55,14 +58,23 @@ function parseSlug(categorie: string, slug: string[]): RouteShape | null {
  * sous-catégories — environ 800 pages compilées à chaque build, dont la quasi-
  * totalité vides. `dynamicParams` reste à `true` : toute autre combinaison est
  * rendue à la demande, puis mise en cache par le CDN.
+ *
+ * Les couples ville × catégorie passent par leur juge dédié, plus sévère que
+ * le seuil des sous-catégories : voir `lib/seo/city-category.ts`.
  */
 export async function generateStaticParams() {
   const inv = await getSeoInventory();
   const params: { categorie: string; slug: string[] }[] = [];
 
-  for (const bucket of [inv.byCategorySub, inv.byCategoryCity, inv.byCategorySubCity]) {
-    for (const [key, count] of Object.entries(bucket)) {
-      if (!isIndexable(count)) continue;
+  for (const [key, count] of Object.entries(inv.byCategorySub)) {
+    if (!isIndexable(count)) continue;
+    const [categorie, ...slug] = key.split("/");
+    params.push({ categorie, slug });
+  }
+
+  for (const bucket of [inv.byCategoryCity, inv.byCategorySubCity]) {
+    for (const key of Object.keys(bucket)) {
+      if (!inv.cityCategoryIndexable[key]) continue;
       const [categorie, ...slug] = key.split("/");
       params.push({ categorie, slug });
     }
@@ -87,7 +99,7 @@ export async function generateMetadata({
   const shape = parseSlug(categorie, slug);
   if (!shape) return {};
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const page = parsePageParam(pageParam);
 
   const target =
     shape.kind === "city"
@@ -95,6 +107,11 @@ export async function generateMetadata({
       : shape.kind === "sub"
         ? { categoryId: categorie, subcategorySlug: shape.subcategorySlug }
         : { categoryId: categorie, subcategorySlug: shape.subcategorySlug, citySlug: shape.citySlug };
+
+  // Ville hors référentiel : la page répondra 404 (voir le composant). On ne
+  // produit donc aucune metadata — un `<title>` sur une 404 n'a pas de sens et
+  // Next sert celle de `not-found.tsx`.
+  if (shape.kind !== "sub" && !slugToCity(shape.citySlug)) return {};
 
   const cityLabel =
     shape.kind === "sub"
@@ -117,6 +134,33 @@ export async function generateMetadata({
   }
   const total = await prisma.listing.count({ where: whereClause }).catch(() => 0);
 
+  /**
+   * Verdict d'indexabilité.
+   *
+   * Deux régimes distincts, et c'est délibéré :
+   *
+   *   — une page **sous-catégorie** (`/annonces/mode/chaussures`) suit le seuil
+   *     historique des pages de liste ;
+   *   — une page **ville × catégorie** suit le juge dédié, plus sévère et à
+   *     hystérésis. C'est cette famille qui produisait à elle seule les 1 586
+   *     URL en `noindex` relevées par Search Console.
+   *
+   * Le comptage lu ici est celui de l'inventaire — annonces **indexables**
+   * seulement — et non le `total` affiché à l'écran, qui inclut les annonces
+   * trop pauvres pour l'index. Une page peuplée de trois annonces que Google a
+   * déjà écartées n'a rien à lui proposer.
+   */
+  const inv = await getSeoInventory();
+  const cityIndexable =
+    shape.kind === "sub"
+      ? null
+      : isCityCategoryIndexable(
+          inv,
+          cat.id,
+          shape.citySlug,
+          shape.kind === "sub-city" ? shape.subcategorySlug : null,
+        );
+
   const content = (await getOrCreateSeoContent(target)) ?? fallbackContent(target);
   const baseUrl = `${BASE}/annonces/${cat.id}/${slug.join("/")}`;
   const canonical = page === 1 ? baseUrl : `${baseUrl}?page=${page}`;
@@ -129,8 +173,15 @@ export async function generateMetadata({
     keywords: content.keywords,
     // Auto-référent, page 2 comprise — voir `paginatedCanonical`.
     alternates: { canonical },
-    // noindex si page > 1 (pagination) ou page vide (aucune annonce).
-    robots: listingPageRobots(total, page),
+    // noindex si page > 1 (pagination), ou si le couple n'atteint pas son seuil.
+    // `follow` reste vrai : la page continue de transmettre vers les annonces
+    // qu'elle liste, elle cesse simplement de réclamer sa propre indexation.
+    robots:
+      cityIndexable === null
+        ? listingPageRobots(total, page)
+        : page > 1 || !cityIndexable
+          ? { index: false, follow: true }
+          : undefined,
     openGraph: {
       title,
       description: content.metaDescription,
@@ -161,10 +212,25 @@ export default async function AnnoncesGeoPage({
   const shape = parseSlug(categorie, slug);
   if (!shape) notFound();
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const page = parsePageParam(pageParam);
   const skip = (page - 1) * GEO_PER_PAGE;
 
+  /**
+   * Ville inconnue du référentiel → 404 franche.
+   *
+   * Le segment ville n'était vérifié nulle part : `/annonces/loisirs/nimporte-quoi`
+   * répondait 200 avec une page vide. Chaque variante inventée — faute de
+   * frappe dans un lien externe, slug forgé par un agrégateur — créait donc une
+   * URL explorable de plus, dans un espace lui aussi illimité.
+   *
+   * Le 404 ne concerne que les villes **inexistantes**. Une ville réelle mais
+   * sous le seuil continue de répondre 200 : un visiteur venu d'un favori ou
+   * d'un lien externe ne doit pas tomber sur une erreur. Elle est simplement
+   * `noindex`, absente du sitemap, et plus aucun lien du site n'y mène.
+   */
   const cityData = shape.kind === "sub" ? null : slugToCity(shape.citySlug);
+  if (shape.kind !== "sub" && !cityData) notFound();
+
   const cityLabel =
     shape.kind === "sub" ? null : (cityData?.name ?? slugToCityLabel(shape.citySlug));
   const subLabel =
@@ -210,18 +276,67 @@ export default async function AnnoncesGeoPage({
 
   const totalPages = Math.ceil(total / GEO_PER_PAGE);
 
-  const neighbouringCities = cityData
-    ? FRENCH_CITIES.filter((c) => c.departmentCode === cityData.departmentCode && c.slug !== cityData.slug).slice(0, 8)
-    : shape.kind === "sub"
-      ? TOP_CITIES.slice(0, 8)
-      : TOP_CITIES.filter((c) => c.slug !== shape.citySlug).slice(0, 8);
+  /**
+   * Un lien ville × catégorie n'est émis que si sa cible s'indexe.
+   *
+   * C'est le levier principal de tout ce chantier. Le `noindex` empêchait
+   * l'indexation ; il n'empêchait pas Googlebot de venir. Tant que le maillage
+   * interne pointe vers un millier de pages vides, elles sont explorées — et
+   * chaque exploration inutile est prise sur le budget des pages qui comptent.
+   *
+   * Les blocs ci-dessous filtrent donc plutôt que de griser : un chip mort
+   * n'apporte rien au visiteur non plus. Un bloc entièrement filtré disparaît.
+   */
+  const inv = await getSeoInventory();
+  const linksTo = (targetCity: string, targetSub?: string | null) =>
+    isCityCategoryIndexable(inv, cat.id, targetCity, targetSub);
+
+  const neighbouringCities = (
+    cityData
+      ? FRENCH_CITIES.filter((c) => c.departmentCode === cityData.departmentCode && c.slug !== cityData.slug)
+      : shape.kind === "sub"
+        ? TOP_CITIES
+        : TOP_CITIES.filter((c) => c.slug !== shape.citySlug)
+  )
+    .filter((c) =>
+      linksTo(c.slug, shape.kind === "sub-city" ? shape.subcategorySlug : null),
+    )
+    .slice(0, 8);
 
   const relatedPosts = getRelatedBlogPostsForCity(cat.id, cityLabel, 4);
-  const otherCategories = CATEGORIES.filter((c) => c.id !== cat.id).slice(0, 8);
+  const otherCategories = CATEGORIES.filter((c) => c.id !== cat.id)
+    .filter((c) =>
+      shape.kind === "sub"
+        ? true
+        : isCityCategoryIndexable(inv, c.id, shape.citySlug),
+    )
+    .slice(0, 8);
   const siblingSubs =
     shape.kind === "sub-city" || shape.kind === "sub"
       ? cat.subcategories.filter((s) => subcategoryToSlug(s) !== shape.subcategorySlug)
       : cat.subcategories;
+
+  /** Sous-catégories dont la déclinaison sur **cette** ville s'indexe. */
+  const linkableSubsHere =
+    shape.kind === "sub"
+      ? []
+      : cat.subcategories.filter((s) => linksTo(shape.citySlug, subcategoryToSlug(s)));
+
+  /** Idem pour les blocs « autres sous-catégories à {ville} » (sub-city). */
+  const linkableSiblingSubs =
+    shape.kind === "sub-city"
+      ? siblingSubs.filter((s) => linksTo(shape.citySlug, subcategoryToSlug(s)))
+      : [];
+
+  /** Villes où cette sous-catégorie précise s'indexe (page « sub »). */
+  const linkableCitiesForSub =
+    shape.kind === "sub"
+      ? TOP_CITIES.filter((c) => linksTo(c.slug, shape.subcategorySlug)).slice(0, 15)
+      : [];
+
+  /** Le fil d'Ariane d'une page sous-catégorie × ville remonte-t-il à la ville ? */
+  const cityCrumbLinkable =
+    shape.kind === "sub-city" && linksTo(shape.citySlug);
 
   const breadcrumbItems =
     shape.kind === "sub"
@@ -233,10 +348,15 @@ export default async function AnnoncesGeoPage({
       : [
           { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
           { "@type": "ListItem", position: 2, name: cat.label, item: `${BASE}/annonces/${cat.id}` },
+          // La marche « ville » n'existe que si la page ville × catégorie
+          // s'indexe. Le JSON-LD est un émetteur de liens comme un autre :
+          // Google suit les `item` d'un `BreadcrumbList`.
           ...(shape.kind === "sub-city" && subLabel
             ? [
-                { "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` },
-                { "@type": "ListItem", position: 4, name: subLabel, item: `${BASE}/annonces/${cat.id}/${slug.join("/")}` },
+                ...(cityCrumbLinkable
+                  ? [{ "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` }]
+                  : []),
+                { "@type": "ListItem", position: cityCrumbLinkable ? 4 : 3, name: subLabel, item: `${BASE}/annonces/${cat.id}/${slug.join("/")}` },
               ]
             : [
                 { "@type": "ListItem", position: 3, name: cityLabel, item: `${BASE}/annonces/${cat.id}/${shape.citySlug}` },
@@ -283,9 +403,9 @@ export default async function AnnoncesGeoPage({
 
   return (
     <div className="bg-surface text-on-surface">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
-      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }} />
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }} />}
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">
@@ -296,8 +416,12 @@ export default async function AnnoncesGeoPage({
           <span>/</span>
           {shape.kind === "sub-city" && subLabel ? (
             <>
-              <Link href={`/annonces/${cat.id}/${shape.citySlug}`} className="hover:text-primary transition-colors">{cityLabel}</Link>
-              <span>/</span>
+              {cityCrumbLinkable && (
+                <>
+                  <Link href={`/annonces/${cat.id}/${shape.citySlug}`} className="hover:text-primary transition-colors">{cityLabel}</Link>
+                  <span>/</span>
+                </>
+              )}
               <span className="text-on-surface font-semibold">{subLabel}</span>
             </>
           ) : shape.kind === "sub" ? (
@@ -321,17 +445,14 @@ export default async function AnnoncesGeoPage({
           <p className="text-on-surface leading-relaxed">{seo.intro}</p>
         </section>
 
-        {shape.kind === "city" && (
+        {shape.kind === "city" && linkableSubsHere.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">Affiner par sous-catégorie</h2>
             <div className="flex flex-wrap gap-2">
-              <Link
-                href={`/annonces/${cat.id}/${shape.citySlug}`}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-white"
-              >
+              <span className="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-white">
                 Toutes
-              </Link>
-              {cat.subcategories.map((sub) => (
+              </span>
+              {linkableSubsHere.map((sub) => (
                 <Link
                   key={sub}
                   href={`/annonces/${cat.id}/${subcategoryToSlug(sub)}/${shape.citySlug}`}
@@ -344,11 +465,11 @@ export default async function AnnoncesGeoPage({
           </div>
         )}
 
-        {shape.kind === "sub" && (
+        {shape.kind === "sub" && linkableCitiesForSub.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">{subLabel} par ville</h2>
             <div className="flex flex-wrap gap-2">
-              {TOP_CITIES.slice(0, 15).map((city) => (
+              {linkableCitiesForSub.map((city) => (
                 <Link
                   key={city.slug}
                   href={`/annonces/${cat.id}/${shape.subcategorySlug}/${city.slug}`}
@@ -434,7 +555,7 @@ export default async function AnnoncesGeoPage({
           </section>
         )}
 
-        {shape.kind !== "sub" && (
+        {shape.kind !== "sub" && neighbouringCities.length > 0 && (
           <section className="mt-12">
             <h2 className="text-lg font-bold text-on-surface mb-3">
               {subLabel ?? cat.label} dans les villes voisines
@@ -460,10 +581,11 @@ export default async function AnnoncesGeoPage({
         )}
 
         {shape.kind === "sub-city" ? (
+          linkableSiblingSubs.length > 0 && (
           <section className="mt-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">Autres {cat.label.toLowerCase()} à {cityLabel}</h2>
             <div className="flex flex-wrap gap-2">
-              {siblingSubs.map((sub) => (
+              {linkableSiblingSubs.map((sub) => (
                 <Link
                   key={sub}
                   href={`/annonces/${cat.id}/${subcategoryToSlug(sub)}/${shape.citySlug}`}
@@ -474,6 +596,7 @@ export default async function AnnoncesGeoPage({
               ))}
             </div>
           </section>
+          )
         ) : shape.kind === "sub" ? (
           <section className="mt-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">Autres {cat.label.toLowerCase()}</h2>
@@ -489,7 +612,7 @@ export default async function AnnoncesGeoPage({
               ))}
             </div>
           </section>
-        ) : (
+        ) : otherCategories.length > 0 ? (
           <section className="mt-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">Autres catégories à {cityLabel}</h2>
             <div className="flex flex-wrap gap-2">
@@ -505,7 +628,7 @@ export default async function AnnoncesGeoPage({
               ))}
             </div>
           </section>
-        )}
+        ) : null}
         {relatedPosts.length > 0 && (
           <section className="mt-12 border-t border-surface-container pt-10">
             <h2 className="text-xl font-bold text-on-surface mb-1">

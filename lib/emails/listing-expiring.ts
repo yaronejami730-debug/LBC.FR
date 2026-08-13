@@ -1,4 +1,5 @@
 import { LISTING_LIFETIME_DAYS } from "@/lib/listing-lifetime";
+import { escapeHtml } from "./escape";
 
 export function listingExpiringEmail({
   name,
@@ -30,15 +31,15 @@ export function listingExpiringEmail({
     <h1 class="h1" style="font-family:Manrope,sans-serif;font-size:32px;font-weight:800;color:#1a1b25;letter-spacing:-0.03em;margin:0;line-height:1.2;text-align:center;">Votre annonce expire dans 48h</h1>
   </td></tr>
   <tr><td class="pad" style="padding:0 8px 28px;">
-    <p style="font-size:15px;color:#424751;line-height:1.75;margin:0 0 16px;text-align:center;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-    <p style="font-size:15px;color:#424751;line-height:1.75;margin:0;text-align:center;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a atteint sa durée de vie de <strong>${LISTING_LIFETIME_DAYS} jours</strong> sur Deal&nbsp;&amp;&nbsp;Co. Elle sera automatiquement retirée du site dans <strong>48 heures</strong>.</p>
+    <p style="font-size:15px;color:#424751;line-height:1.75;margin:0 0 16px;text-align:center;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
+    <p style="font-size:15px;color:#424751;line-height:1.75;margin:0;text-align:center;">Votre annonce <strong style="color:#1a1b25;">« ${escapeHtml(listingTitle)} »</strong> a atteint sa durée de vie de <strong>${LISTING_LIFETIME_DAYS} jours</strong> sur Deal&nbsp;&amp;&nbsp;Co. Elle sera automatiquement retirée du site dans <strong>48 heures</strong>.</p>
   </td></tr>
   ${imageUrl ? `
   <tr><td style="padding:0 8px 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eceef0;border-radius:16px;overflow:hidden;">
-      <tr><td><img src="${imageUrl}" alt="${listingTitle}" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;"/></td></tr>
+      <tr><td><img src="${imageUrl}" alt="${escapeHtml(listingTitle)}" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:16px 16px 0 0;"/></td></tr>
       <tr><td style="padding:16px 20px;">
-        <p style="font-family:Manrope,sans-serif;font-size:16px;font-weight:800;color:#1a1b25;margin:0 0 4px;">${listingTitle}</p>
+        <p style="font-family:Manrope,sans-serif;font-size:16px;font-weight:800;color:#1a1b25;margin:0 0 4px;">${escapeHtml(listingTitle)}</p>
         <p style="font-size:18px;font-weight:800;color:#2f6fb8;margin:0;">${priceFormatted}</p>
       </td></tr>
     </table>

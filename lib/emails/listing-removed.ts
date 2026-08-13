@@ -1,4 +1,5 @@
 import { baseEmail } from "./base";
+import { escapeHtml } from "./escape";
 
 /**
  * Annonce retirée par la modération.
@@ -36,8 +37,8 @@ export function listingRemovedEmail({
       title: "Votre annonce a été retirée de Deal&Co",
       heading: "Votre annonce a été retirée",
       body: `
-        <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-        <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a été retirée de Deal&Co par notre équipe de modération. Elle n'est plus visible publiquement.</p>
+        <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
+        <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${escapeHtml(listingTitle)} »</strong> a été retirée de Deal&Co par notre équipe de modération. Elle n'est plus visible publiquement.</p>
         ${reasonBlock}
         <p style="margin:0;">Cette annonce ne peut pas être remise en ligne. Elle sera définitivement supprimée le <strong style="color:#1a1b25;">${deadline}</strong>.</p>
       `,
@@ -52,8 +53,8 @@ export function listingRemovedEmail({
     title: "Votre annonce a été retirée de Deal&Co",
     heading: "Votre annonce a été retirée",
     body: `
-      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-      <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a été retirée de Deal&Co par notre équipe de modération. Elle n'apparaît plus dans les recherches ni sur votre profil public.</p>
+      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
+      <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${escapeHtml(listingTitle)} »</strong> a été retirée de Deal&Co par notre équipe de modération. Elle n'apparaît plus dans les recherches ni sur votre profil public.</p>
       ${reasonBlock}
       <p style="margin:0 0 16px;">Elle reste accessible depuis votre espace personnel : vous pouvez la <strong style="color:#1a1b25;">modifier et la soumettre à nouveau</strong> à la validation.</p>
       <div style="background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:16px 20px;margin:0 0 16px;text-align:left;">
@@ -82,8 +83,8 @@ export function listingRestoredEmail({
     title: "Votre annonce est de nouveau en ligne — Deal&Co",
     heading: "Votre annonce a été approuvée",
     body: `
-      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-      <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a été approuvée et est de nouveau visible sur Deal&Co.</p>
+      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
+      <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${escapeHtml(listingTitle)} »</strong> a été approuvée et est de nouveau visible sur Deal&Co.</p>
       <p style="margin:0;">Elle réapparaît dans les recherches, dans sa catégorie et sur votre profil.</p>
     `,
     ctaLabel: "Voir mon annonce",

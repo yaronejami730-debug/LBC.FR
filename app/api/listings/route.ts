@@ -43,6 +43,7 @@ import { computeTrustScore } from "@/lib/trust-score";
 import { isOpenSearchEnabled } from "@/lib/opensearch";
 import { searchListings } from "@/lib/opensearch-search";
 import { indexListing } from "@/lib/opensearch-sync";
+import { notifyAdmins } from "@/lib/expo-push";
 import {
   postingCapabilities,
   resolvePostedAs,
@@ -635,6 +636,22 @@ export async function POST(req: NextRequest) {
     indexListing(listing).catch((err) =>
       console.error("[OpenSearch] indexListing échec:", err),
     );
+
+    // Alerte de modération sur les appareils passés en mode administrateur.
+    // Une annonce en attente qui dort douze heures est une annonce perdue pour
+    // le vendeur : l'administrateur doit l'apprendre sans ouvrir le back-office.
+    if (listingStatus === "PENDING") {
+      notifyAdmins(
+        {
+          title: "Annonce en attente",
+          body: `${listing.title} — ${listing.category}`,
+          data: { type: "admin_listing_pending", listingId: listing.id },
+        },
+        // L'auteur, s'il est lui-même administrateur, n'a pas à être alerté de
+        // sa propre publication.
+        { exceptUserId: session.user.id },
+      ).catch(() => {});
+    }
 
     // Audit log
     prisma.moderationEvent.create({

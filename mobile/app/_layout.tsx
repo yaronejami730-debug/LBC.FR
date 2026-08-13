@@ -11,6 +11,7 @@ import { useFonts } from "expo-font";
 import { AuthProvider } from "@/lib/auth";
 import { UnreadProvider } from "@/lib/unread";
 import { TaxonomyProvider } from "@/lib/taxonomy";
+import { AdminModeProvider } from "@/lib/adminMode";
 import { colors } from "@/lib/theme";
 import { interFonts, applyInterDefaults } from "@/lib/fonts";
 
@@ -36,6 +37,16 @@ if (Platform.OS === "android") {
     vibrationPattern: [0, 250, 250, 250],
     lightColor: colors.primary,
   }).catch(() => {});
+
+  // Canal distinct pour la modération : un administrateur doit pouvoir couper
+  // les alertes d'annonces en attente la nuit sans se couper de ses messages.
+  Notifications.setNotificationChannelAsync("admin", {
+    name: "Administration",
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: "default",
+    vibrationPattern: [0, 200, 150, 200],
+    lightColor: colors.primary,
+  }).catch(() => {});
 }
 
 function NotificationRouter() {
@@ -54,6 +65,14 @@ function NotificationRouter() {
       if (deepLink) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         router.push(deepLink as any);
+        return;
+      }
+      // Alertes de modération : elles ouvrent la file concernée, pas la fiche
+      // publique de l'annonce — l'administrateur vient décider, pas acheter.
+      if (typeof data?.type === "string" && data.type.startsWith("admin_")) {
+        if (data.type === "admin_report") router.push("/admin/signalements");
+        else if (data.type === "admin_pro_pending") router.push("/admin/professionnels");
+        else router.push("/admin/annonces");
         return;
       }
       if (typeof data?.conversationId === "string") {
@@ -107,6 +126,7 @@ export default function RootLayout() {
         <AuthProvider>
           <UnreadProvider>
             <TaxonomyProvider>
+            <AdminModeProvider>
             <StatusBar style="dark" />
             <NotificationRouter />
             <Stack
@@ -132,7 +152,9 @@ export default function RootLayout() {
               <Stack.Screen name="settings/telephone" options={{ headerShown: true, title: "Numéro de téléphone" }} />
               <Stack.Screen name="settings/appareils" options={{ headerShown: true, title: "Appareils connectés" }} />
               <Stack.Screen name="settings/aide" options={{ headerShown: true, title: "Aide" }} />
+              <Stack.Screen name="admin" options={{ headerShown: false }} />
             </Stack>
+            </AdminModeProvider>
             </TaxonomyProvider>
           </UnreadProvider>
         </AuthProvider>

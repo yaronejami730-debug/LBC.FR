@@ -37,6 +37,7 @@ import { FRENCH_CITIES } from "@/lib/cities";
 import { getAllArticles } from "@/lib/blog";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { getEditorialEligibility } from "@/lib/seo/editorial";
+import { getIndexablePriceSlugs } from "@/lib/seo/price";
 import { STATIC_PAGES } from "@/lib/seo/static-routes";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -45,9 +46,10 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 21600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [inv, editorial] = await Promise.all([
+  const [inv, editorial, priceSlugs] = await Promise.all([
     getSeoInventory(),
     getEditorialEligibility(),
+    getIndexablePriceSlugs(),
   ]);
 
   const now = new Date();
@@ -109,6 +111,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
+  // --- Pages de cote : indexées sur la solidité de la cote, pas sur le stock
+  //
+  // Elles n'étaient annoncées nulle part, et la page posait `noindex` sous
+  // trois annonces actives. `/prix/peugeot-308-occasion` — requête à volume
+  // réel — était donc exclue de l'index pour une raison sans rapport avec sa
+  // capacité à répondre. Le critère est désormais le nombre d'observations de
+  // prix, annonces vendues comprises : voir `lib/seo/price.ts`.
+  //
+  // `changeFrequency: monthly` est délibéré : une cote bouge lentement, et
+  // réclamer un passage quotidien sur une page stable est exactement ce qui
+  // consomme le budget d'exploration ailleurs.
+  for (const slug of priceSlugs) {
+    entries.push({
+      url: `${BASE}/prix/${slug}`,
+      lastModified: stockLastMod,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    });
+  }
+
   // --- Listes : uniquement celles qui passent le seuil d'indexation -------
   for (const cat of CATEGORIES) {
     if (!isIndexable(inv.byCategory[cat.id] ?? 0)) continue;
@@ -137,8 +159,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // leur présence ici. Les routes marque délèguent désormais à la page
   // générique dès que le segment est une ville connue, donc ces URL répondent
   // 200 et retrouvent leur place au sitemap.
-  for (const [key, count] of Object.entries(inv.byCategoryCity)) {
-    if (!isIndexable(count)) continue;
+  //
+  // Le seuil n'est pas `isIndexable` mais le juge dédié
+  // (`lib/seo/city-category.ts`), plus haut et à hystérésis : c'est cette
+  // famille qui produisait à elle seule les 1 586 URL en `noindex` de Search
+  // Console, et il n'y a qu'un seul verdict — celui-ci — pour le sitemap, la
+  // balise `robots` de la page et les liens internes.
+  for (const key of Object.keys(inv.byCategoryCity)) {
+    if (!inv.cityCategoryIndexable[key]) continue;
     entries.push({
       url: `${BASE}/annonces/${key}`,
       lastModified: stockLastMod,
@@ -147,8 +175,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  for (const [key, count] of Object.entries(inv.byCategorySubCity)) {
-    if (!isIndexable(count)) continue;
+  for (const key of Object.keys(inv.byCategorySubCity)) {
+    if (!inv.cityCategoryIndexable[key]) continue;
     entries.push({
       url: `${BASE}/annonces/${key}`,
       lastModified: stockLastMod,

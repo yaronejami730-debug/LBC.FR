@@ -31,9 +31,18 @@
     "db:seed:pro-booking": "tsx -r ./scripts/load-env.ts scripts/seed-pro-booking.ts",
     "seed:pro": "tsx scripts/seed-pro-account.ts",
     "test:intent": "tsx scripts/test-offer-intent.ts",
+    "test:city-category": "tsx scripts/test-city-category.ts",
+    "seo:sweep": "tsx -r ./scripts/load-env.ts scripts/seo-http-sweep.ts",
+    "seo:exclusions": "tsx -r ./scripts/load-env.ts scripts/seo-exclusion-report.ts",
     "test:toponymes": "tsx scripts/test-classifier-toponyms.ts",
     "test:classifier": "tsx scripts/test-listing-classifier.ts",
-    "intent:backfill": "tsx scripts/backfill-offer-intent.ts"
+    "intent:backfill": "tsx scripts/backfill-offer-intent.ts",
+    "geo:build-communes": "tsx scripts/build-communes-dataset.ts",
+    "reco:backfill-geo": "tsx scripts/backfill-listing-geo.ts",
+    "reco:geo-report": "tsx scripts/backfill-listing-geo.ts --report",
+    "reco:refresh-profiles": "tsx scripts/refresh-reco-profiles.ts",
+    "reco:dry-run": "tsx scripts/reco-dry-run.ts",
+    "test:reco": "tsx scripts/test-recommendations.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

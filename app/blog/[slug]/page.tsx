@@ -7,6 +7,7 @@ import ShareArticle from "@/components/ShareArticle";
 import { getAllArticles, getArticleBySlug, getRelatedArticles } from "@/lib/blog";
 import { getArticleInternalLinks } from "@/lib/blog/internal-links";
 import { CATEGORIES } from "@/lib/categories";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -63,7 +64,7 @@ export default async function BlogArticlePage({
   const relatedCategory = article.relatedCategoryId
     ? CATEGORIES.find((c) => c.id === article.relatedCategoryId)
     : null;
-  const internalLinks = getArticleInternalLinks(article);
+  const internalLinks = await getArticleInternalLinks(article);
 
   const url = `${BASE}/blog/${article.slug}`;
 
@@ -123,16 +124,16 @@ export default async function BlogArticlePage({
     <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(articleLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
       />
       {faqLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }}
         />
       )}
       <Navbar />

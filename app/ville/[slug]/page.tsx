@@ -6,9 +6,11 @@ import { CATEGORIES } from "@/lib/categories";
 import { FRENCH_CITIES, slugToCity, citySlug as toCitySlug } from "@/lib/cities";
 import { listingUrl } from "@/lib/listing-slug";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
+import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
+import { safeJsonLd } from "@/lib/json-ld";
 
 export const revalidate = 86400;
 export const dynamicParams = true;
@@ -134,6 +136,25 @@ export default async function VillePage({
     (c) => (countsByCat.get(c.label) ?? 0) > 0,
   );
 
+  /**
+   * Quelles catégories méritent un lien `/annonces/{cat}/{ville}` ?
+   *
+   * Avoir une annonce dans la catégorie ne suffit pas — c'était le critère
+   * précédent, et il produisait jusqu'à treize liens par page ville vers des
+   * pages à une ou deux annonces. Le juge dédié (`lib/seo/city-category.ts`)
+   * tranche désormais, et la page ville continue d'afficher ses annonces par
+   * catégorie : c'est le lien vers la page ville × catégorie qui disparaît,
+   * pas le contenu.
+   */
+  const inv = await getSeoInventory().catch(() => null);
+  const linkableCats = new Set(
+    inv
+      ? catsWithListings
+          .filter((c) => isCityCategoryIndexable(inv, c.id, city.slug))
+          .map((c) => c.id)
+      : [],
+  );
+
   const byCategory = new Map<string, typeof recent>();
   for (const cat of catsWithListings) {
     byCategory.set(
@@ -189,15 +210,15 @@ export default async function VillePage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(placeLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(placeLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }}
       />
 
       <Navbar />
@@ -234,17 +255,34 @@ export default async function VillePage({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
             {catsWithListings.map((cat) => {
               const n = countsByCat.get(cat.label) ?? 0;
-              return (
-                <Link
-                  key={cat.id}
-                  href={`/annonces/${cat.id}/${city.slug}`}
-                  className="flex items-center justify-between rounded-2xl bg-white border border-slate-200 hover:border-primary hover:bg-primary/[0.03] px-4 py-3 transition-all"
-                >
+              const content = (
+                <>
                   <span className="text-sm font-bold text-on-surface">
                     {cat.label}
                   </span>
                   <span className="text-[11px] font-bold text-outline">{n}</span>
+                </>
+              );
+              const shell =
+                "flex items-center justify-between rounded-2xl bg-white border border-slate-200 px-4 py-3 transition-all";
+
+              // Catégorie sous le seuil sur cette ville : la tuile reste
+              // affichée — le visiteur voit ce qui existe près de chez lui — mais
+              // elle cesse d'émettre un lien vers une page que Google ne doit
+              // plus explorer. La catégorie nationale reste accessible depuis la
+              // navigation.
+              return linkableCats.has(cat.id) ? (
+                <Link
+                  key={cat.id}
+                  href={`/annonces/${cat.id}/${city.slug}`}
+                  className={`${shell} hover:border-primary hover:bg-primary/[0.03]`}
+                >
+                  {content}
                 </Link>
+              ) : (
+                <div key={cat.id} className={shell}>
+                  {content}
+                </div>
               );
             })}
           </div>
@@ -261,12 +299,14 @@ export default async function VillePage({
                 <h2 className="text-lg font-extrabold text-on-surface font-['Manrope']">
                   {cat.label} à {city.name}
                 </h2>
-                <Link
-                  href={`/annonces/${cat.id}/${city.slug}`}
-                  className="text-xs text-primary font-bold hover:underline whitespace-nowrap"
-                >
-                  Voir les {totalInCat.toLocaleString("fr-FR")} →
-                </Link>
+                {linkableCats.has(cat.id) && (
+                  <Link
+                    href={`/annonces/${cat.id}/${city.slug}`}
+                    className="text-xs text-primary font-bold hover:underline whitespace-nowrap"
+                  >
+                    Voir les {totalInCat.toLocaleString("fr-FR")} →
+                  </Link>
+                )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {items.map((l) => (

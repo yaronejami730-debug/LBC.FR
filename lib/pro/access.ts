@@ -46,6 +46,18 @@ export type Establishment = Awaited<ReturnType<typeof listEstablishments>>[numbe
  * professionnel perdrait l'accès à sa propre boutique.
  */
 export async function listEstablishments(userId: string) {
+  // Un administrateur de la plateforme voit toutes les boutiques. Il n'en
+  // possède aucune : il instruit des dossiers, et refuser l'accès au
+  // back-office l'obligeait à croire le professionnel sur parole. La vue est
+  // signalée à l'écran (`isPlatformAdmin`), elle n'est jamais silencieuse.
+  if (await isPlatformAdmin(userId)) {
+    return prisma.proProfile.findMany({
+      orderBy: { createdAt: "asc" },
+      include: { company: true },
+      take: 500,
+    });
+  }
+
   const access = await prisma.proAccess.findMany({ where: { userId } });
 
   const companyIds = access.map((a) => a.companyId);
@@ -73,8 +85,17 @@ export async function listEstablishments(userId: string) {
   return establishments.filter((e) => allowed.has(e.id) || e.userId === userId);
 }
 
+/** Le compte est-il administrateur de la plateforme ? */
+export async function isPlatformAdmin(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  return user?.role === "ADMIN";
+}
+
 /** Rôle du compte sur l'entreprise d'un établissement. `null` s'il n'y en a pas. */
 export async function roleFor(userId: string, establishment: { companyId: string | null; userId: string }) {
+  // L'administrateur agit avec les pleins droits, sinon il pourrait ouvrir la
+  // boutique sans rien pouvoir y corriger.
+  if (await isPlatformAdmin(userId)) return "OWNER";
   if (!establishment.companyId) return establishment.userId === userId ? "OWNER" : null;
   const access = await prisma.proAccess.findUnique({
     where: { userId_companyId: { userId, companyId: establishment.companyId } },
@@ -91,6 +112,12 @@ export type ProScope = {
   establishment: Establishment;
   /** Tous les établissements accessibles — alimente le sélecteur. */
   establishments: Establishment[];
+  /**
+   * Le compte n'est pas le professionnel : c'est un administrateur de la
+   * plateforme qui regarde. L'écran doit le dire — une modification faite
+   * « par erreur » depuis une vue d'inspection est indétectable autrement.
+   */
+  isPlatformAdmin: boolean;
 };
 
 /**
@@ -110,11 +137,13 @@ export async function resolveProScope(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isPro: true, professionalStatus: true },
+    select: { isPro: true, professionalStatus: true, role: true },
   });
   // Verrou inchangé : `isPro` seul ne suffit pas, seul APPROVED ouvre les
-  // fonctions professionnelles.
-  if (!user?.isPro || user.professionalStatus !== "APPROVED") {
+  // fonctions professionnelles. L'administrateur de la plateforme passe outre —
+  // il instruit les dossiers professionnels, il doit voir ce qu'il habilite.
+  const platformAdmin = user?.role === "ADMIN";
+  if (!platformAdmin && (!user?.isPro || user.professionalStatus !== "APPROVED")) {
     throw new ProAccessError("Réservé aux comptes professionnels vérifiés.", 403, "NOT_APPROVED_PRO");
   }
 
@@ -134,9 +163,9 @@ export async function resolveProScope(
   const establishment =
     establishments.find((e) => e.id === requested) ?? establishments[0];
 
-  const role = (await roleFor(userId, establishment)) ?? "MANAGER";
+  const role = platformAdmin ? "OWNER" : ((await roleFor(userId, establishment)) ?? "MANAGER");
 
-  return { userId, role, establishment, establishments };
+  return { userId, role, establishment, establishments, isPlatformAdmin: platformAdmin };
 }
 
 async function readCookie(): Promise<string | null> {

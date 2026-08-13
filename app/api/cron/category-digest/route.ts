@@ -81,10 +81,18 @@ export async function GET(req: Request) {
   }
 
   // 3. Comptes récemment relancés — exclus d'office.
+  //
+  // La recommandation locale (`listing_recommendation`) compte comme une
+  // relance : elle annonce exactement la même chose — de nouvelles annonces
+  // dans une catégorie suivie — en mieux ciblé. Recevoir les deux la même
+  // semaine ferait doublon, et c'est la version géolocalisée qui doit gagner.
   const recentlySent = new Set(
     (
       await prisma.userEvent.findMany({
-        where: { kind: "category_digest", createdAt: { gte: new Date(now.getTime() - THROTTLE_MS) } },
+        where: {
+          kind: { in: ["category_digest", "listing_recommendation"] },
+          createdAt: { gte: new Date(now.getTime() - THROTTLE_MS) },
+        },
         select: { userId: true },
       })
     )

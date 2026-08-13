@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
+import { safeJsonLd } from "@/lib/json-ld";
+import { getIndexablePriceSlugs } from "@/lib/seo/price";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -129,6 +131,18 @@ export default async function ComparatifPage({
   const cheaper = a.avg && b.avg ? (a.avg < b.avg ? pair.a : pair.b) : null;
   const moreSupply = a.count >= b.count ? pair.a : pair.b;
 
+  // Pages de cote réellement servies. Le lien « Cote marché » pointait vers un
+  // slug forgé à la volée, sans vérifier que la page existait.
+  const availableQuotes = await getIndexablePriceSlugs().catch(() => [] as string[]);
+  const quoteFor = (marque: string, modele: string) => {
+    const slug = `${priceSlug(marque, modele)}-occasion`;
+    return availableQuotes.includes(slug) ? slug : null;
+  };
+  const quoteSlugs = {
+    a: quoteFor(pair.a.marque, pair.a.modele),
+    b: quoteFor(pair.b.marque, pair.b.modele),
+  };
+
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -187,8 +201,8 @@ export default async function ComparatifPage({
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }} />
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-5xl mx-auto">
@@ -208,8 +222,8 @@ export default async function ComparatifPage({
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
-          <PairCard model={pair.a} stats={a} winner={cheaper === pair.a} />
-          <PairCard model={pair.b} stats={b} winner={cheaper === pair.b} />
+          <PairCard model={pair.a} stats={a} winner={cheaper === pair.a} quoteSlug={quoteSlugs.a} />
+          <PairCard model={pair.b} stats={b} winner={cheaper === pair.b} quoteSlug={quoteSlugs.b} />
         </div>
 
         <section className="bg-white rounded-2xl border border-slate-100 p-6 mb-10">
@@ -261,7 +275,13 @@ export default async function ComparatifPage({
   );
 }
 
-function PairCard({ model, stats, winner }: { model: { marque: string; modele: string; label: string }; stats: PairStats; winner: boolean }) {
+/**
+ * `quoteSlug` est nul quand la page de cote correspondante n'a pas assez
+ * d'observations pour exister — elle répondrait 404. Le bloc disparaît alors :
+ * un lien mort depuis une page éditoriale coûte deux fois, en budget
+ * d'exploration et en confiance.
+ */
+function PairCard({ model, stats, winner, quoteSlug }: { model: { marque: string; modele: string; label: string }; stats: PairStats; winner: boolean; quoteSlug: string | null }) {
   return (
     <article className={`rounded-2xl p-6 border ${winner ? "border-primary bg-primary/5" : "border-slate-100 bg-white"}`}>
       <div className="flex items-center justify-between mb-4">
@@ -279,15 +299,17 @@ function PairCard({ model, stats, winner }: { model: { marque: string; modele: s
         <Row label="Prix minimum" value={stats.min > 0 ? `${stats.min.toLocaleString("fr-FR")} €` : "—"} />
         <Row label="Prix maximum" value={stats.max > 0 ? `${stats.max.toLocaleString("fr-FR")} €` : "—"} />
       </dl>
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={`/prix/${priceSlug(model.marque, model.modele)}-occasion`}
-          className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
-        >
-          Cote marché {model.label}
-          <span className="material-symbols-outlined text-sm">arrow_forward</span>
-        </Link>
-      </div>
+      {quoteSlug && (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/prix/${quoteSlug}`}
+            className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+          >
+            Cote marché {model.label}
+            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          </Link>
+        </div>
+      )}
     </article>
   );
 }

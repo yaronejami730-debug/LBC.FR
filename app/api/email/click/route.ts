@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyEmailTrackToken, verifyRedirectUrl } from "@/lib/email-token";
 import { recordEmailEvent } from "@/lib/email-tracking";
+import { attributeRecommendationEvent } from "@/lib/recommendations/tracking";
 
 const FALLBACK_URL = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
 
@@ -32,6 +33,12 @@ export async function GET(req: NextRequest) {
       recordEmailEvent({
         userId: data.userId,
         email: data.email,
+        emailType: data.emailType,
+        kind: "click",
+        url: target,
+      });
+      attributeRecommendationEvent({
+        userId: data.userId,
         emailType: data.emailType,
         kind: "click",
         url: target,

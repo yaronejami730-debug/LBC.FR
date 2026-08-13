@@ -20,6 +20,7 @@ export type ConfigSectionId =
   | "horaires"
   | "equipe"
   | "reservation"
+  | "acces"
   | "etablissements";
 
 type SectionDef = {
@@ -70,6 +71,16 @@ const REGISTRY: SectionDef[] = [
     title: () => "Règles de réservation",
     description: () =>
       "Pas des créneaux, délai de prévenance, confirmation automatique, annulation et report.",
+  },
+  {
+    id: "acces",
+    href: "/profile/espace-pro/configuration/acces",
+    icon: "key",
+    requires: [],
+    allows: canManageEstablishments,
+    title: () => "Accès et administrateurs",
+    description: () =>
+      "Les comptes qui entrent dans votre back-office, leur rôle, et le retrait de leur accès.",
   },
   {
     id: "etablissements",

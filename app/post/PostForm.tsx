@@ -15,6 +15,7 @@ import {
   WELLNESS_PLACES,
 } from "@/lib/wellness/publish-fields";
 import { inferOfferIntent } from "@/lib/offer-intent";
+import { INDEXABILITY_BAR } from "@/lib/seo/indexability";
 import { FIELD_SETS } from "@/lib/offer-fields";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -277,6 +278,16 @@ export default function PostForm() {
   const { data: session, update: updateSession, status } = useSession();
   const isPro = Boolean((session?.user as { isPro?: boolean } | undefined)?.isPro);
   const MAX_PHOTOS = isPro ? MAX_PHOTOS_PRO : MAX_PHOTOS_DEFAULT;
+
+  /**
+   * Barre de qualité qui décide si l'annonce sera référencée.
+   *
+   * Lue depuis `lib/seo/indexability.ts`, jamais recopiée : c'est la même
+   * constante qui pose le `noindex` et qui remplit le sitemap. Un chiffre
+   * affiché ici qui ne serait pas celui appliqué là-bas serait pire que pas de
+   * chiffre du tout — on promettrait une visibilité qu'on ne donne pas.
+   */
+  const seoBar = isPro ? INDEXABILITY_BAR.pro : INDEXABILITY_BAR.particulier;
 
   // Auth gate state
   const [showAuthGate, setShowAuthGate] = useState(false);
@@ -1029,6 +1040,32 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 <span className="material-symbols-outlined text-amber-500 text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
                 <p className="text-sm text-amber-800 font-medium leading-snug">
                   Attention — veuillez flouter vos plaques d&apos;immatriculation si celles-ci sont apparentes sur vos photos.
+                </p>
+              </div>
+            )}
+
+            {/* Jauge de visibilité — voir `seoBar` plus haut. */}
+            {doneCount > 0 && doneCount < seoBar.minImages && (
+              <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3">
+                <span className="material-symbols-outlined text-primary text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  photo_library
+                </span>
+                <p className="text-sm text-on-surface font-medium leading-snug">
+                  Encore <strong>{seoBar.minImages - doneCount} photo{seoBar.minImages - doneCount > 1 ? "s" : ""}</strong> et
+                  votre annonce apparaîtra dans les résultats Google.
+                  <span className="block text-outline font-normal mt-0.5">
+                    En dessous de {seoBar.minImages} photos, elle reste visible sur Deal&amp;Co mais n&apos;est pas référencée.
+                  </span>
+                </p>
+              </div>
+            )}
+            {doneCount >= seoBar.minImages && (
+              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                <span className="material-symbols-outlined text-emerald-600 text-xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  check_circle
+                </span>
+                <p className="text-sm text-emerald-800 font-medium leading-snug">
+                  Assez de photos pour être référencée sur Google.
                 </p>
               </div>
             )}
@@ -1940,7 +1977,39 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={7} autoFocus
                   className="w-full bg-transparent border-none p-0 text-base text-on-surface placeholder:text-slate-300 focus:ring-0 leading-relaxed resize-none outline-none"
                   placeholder={DESCRIPTION_PLACEHOLDERS[fieldSpec.lexicon]} />
-                <p className="text-xs text-outline text-right tabular-nums">{description.length} caractères</p>
+
+                {/*
+                  Compteur de visibilité.
+                  Il affichait « 157 caractères », une information sans enjeu :
+                  le vendeur n'avait aucun moyen de savoir que le seuil était à
+                  250, ni ce qu'il perdait à s'arrêter avant. La médiane des
+                  descriptions trop courtes est justement à 157.
+                */}
+                <div className="space-y-1.5">
+                  <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        description.trim().length >= seoBar.minDescription ? "bg-emerald-500" : "bg-primary"
+                      }`}
+                      style={{
+                        width: `${Math.min(100, (description.trim().length / seoBar.minDescription) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  {description.trim().length >= seoBar.minDescription ? (
+                    <p className="text-xs text-emerald-600 font-semibold text-right tabular-nums">
+                      {description.trim().length} caractères — référencée sur Google
+                    </p>
+                  ) : (
+                    <p className="text-xs text-outline text-right tabular-nums">
+                      {description.trim().length} caractères — encore{" "}
+                      <strong className="text-on-surface">
+                        {seoBar.minDescription - description.trim().length}
+                      </strong>{" "}
+                      pour apparaître sur Google
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1953,6 +2022,67 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
             <div className="space-y-4">
               <h2 className="text-2xl font-extrabold">Récapitulatif</h2>
               <p className="text-sm text-outline -mt-2">Vérifiez avant de publier. Cliquez sur Modifier pour corriger.</p>
+
+              {/*
+                Dernier rattrapage avant publication.
+                Ce n'est pas un blocage : l'annonce se publie telle quelle, elle
+                est visible sur le site, et c'est le vendeur qui décide. Mais il
+                décide en sachant — ce qui n'était pas le cas jusqu'ici. Sur les
+                174 annonces écartées de l'index, 31 le sont pour un seul geste
+                manquant, que ce panneau nomme.
+              */}
+              {(() => {
+                const missing: string[] = [];
+                const photos = images.filter(Boolean).length;
+                const chars = description.trim().length;
+                if (photos < seoBar.minImages) {
+                  const n = seoBar.minImages - photos;
+                  missing.push(`${n} photo${n > 1 ? "s" : ""}`);
+                }
+                if (chars < seoBar.minDescription) {
+                  missing.push(`${seoBar.minDescription - chars} caractères de description`);
+                }
+                if (missing.length === 0) {
+                  return (
+                    <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                      <span className="material-symbols-outlined text-emerald-600 text-xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        travel_explore
+                      </span>
+                      <p className="text-sm text-emerald-800 font-medium leading-snug">
+                        Votre annonce sera référencée sur Google.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3">
+                    <span className="material-symbols-outlined text-primary text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      travel_explore
+                    </span>
+                    <div className="text-sm text-on-surface font-medium leading-snug">
+                      Il manque <strong>{missing.join(" et ")}</strong> pour que votre
+                      annonce apparaisse sur Google.
+                      <span className="block text-outline font-normal mt-0.5">
+                        Vous pouvez publier maintenant : l&apos;annonce sera visible sur
+                        Deal&amp;Co, et elle sera référencée automatiquement dès que vous
+                        la compléterez.
+                      </span>
+                      <div className="flex gap-3 mt-2">
+                        {photos < seoBar.minImages && (
+                          <button type="button" onClick={() => setFormStep(2)} className="text-xs font-bold text-primary underline underline-offset-2">
+                            Ajouter des photos
+                          </button>
+                        )}
+                        {chars < seoBar.minDescription && (
+                          <button type="button" onClick={() => setFormStep(3)} className="text-xs font-bold text-primary underline underline-offset-2">
+                            Compléter la description
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Photos */}
               <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">

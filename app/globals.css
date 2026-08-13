@@ -64,8 +64,33 @@
   --font-label: var(--font-inter, "Inter"), sans-serif;
 }
 
+/**
+ * Icônes Material Symbols.
+ *
+ * La feuille Google est chargée sans bloquer le rendu (voir `app/layout.tsx`).
+ * Conséquence : entre le premier pixel et l'arrivée de la police, le nom de la
+ * ligature s'affichait tel quel — « storefront », « visibility », « person »
+ * partout dans la page, jusqu'au rechargement. C'est ce que voit l'utilisateur
+ * comme un « truc bizarre » au retour sur le dashboard.
+ *
+ * On réserve donc la place de l'icône sans jamais rendre son texte : `size` et
+ * `line-height` fixent la boîte, `color: transparent` masque la ligature. Le
+ * script de `layout.tsx` pose `data-icons="ready"` dès que la police est
+ * disponible (ou après 2 s, pour ne jamais rester aveugle si Google ne répond
+ * pas) et la couleur revient.
+ */
 .material-symbols-outlined {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+html:not([data-icons="ready"]) .material-symbols-outlined {
+  display: inline-block;
+  width: 1em;
+  min-width: 1em;
+  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  color: transparent;
 }
 
 body {

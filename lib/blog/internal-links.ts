@@ -3,6 +3,8 @@ import { CATEGORIES } from "@/lib/categories";
 import { TOP_CITIES, FRENCH_CITIES, citySlug } from "@/lib/cities";
 import { CAR_BRANDS } from "@/lib/carBrands";
 import { subcategoryToSlug } from "@/lib/seo-content";
+import { getSeoInventory } from "@/lib/seo/inventory";
+import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 
 export type InternalLink = { label: string; href: string };
 
@@ -95,12 +97,35 @@ function detectCityLinks(article: BlogArticle, sub: InternalLink | null, max: nu
   }));
 }
 
-export function getArticleInternalLinks(article: BlogArticle): InternalLink[] {
+/**
+ * Liens internes d'un article de blog.
+ *
+ * Le blog est aujourd'hui le meilleur actif du site en référencement — donc
+ * l'endroit d'où partent les liens qui comptent le plus. Il détectait les noms
+ * de villes cités dans un article et émettait jusqu'à quatre liens
+ * `/annonces/{catégorie}/{ville}`, sans jamais vérifier que ces pages avaient
+ * quelque chose à montrer. Un article mentionnant Metz, Calais et Chartres
+ * offrait ainsi trois portes d'entrée vers des pages vides — depuis les pages
+ * les plus explorées du domaine.
+ *
+ * Fonction devenue asynchrone pour cette seule raison : elle doit consulter
+ * l'inventaire. L'appel ne coûte rien, l'instantané étant déjà en cache.
+ */
+export async function getArticleInternalLinks(article: BlogArticle): Promise<InternalLink[]> {
   const links: InternalLink[] = [];
 
   const sub = detectSubcategoryLink(article);
   const brand = detectBrandLink(article);
-  const cities = detectCityLinks(article, sub, 4);
+  const inventory = await getSeoInventory().catch(() => null);
+  const cities = inventory
+    ? detectCityLinks(article, sub, 4).filter((link) => {
+        // `/annonces/{cat}/{ville}` ou `/annonces/{cat}/{sub}/{ville}`
+        const [, , categoryId, ...rest] = link.href.split("/");
+        const targetCity = rest[rest.length - 1];
+        const targetSub = rest.length > 1 ? rest[0] : null;
+        return isCityCategoryIndexable(inventory, categoryId, targetCity, targetSub);
+      })
+    : [];
 
   if (sub) links.push(sub);
   if (brand && brand.href !== sub?.href) links.push(brand);

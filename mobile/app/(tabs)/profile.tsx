@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth";
+import { useAdminMode } from "@/lib/adminMode";
 import { apiFetch } from "@/lib/api";
 import { API_BASE_URL } from "@/lib/config";
 import { getToken } from "@/lib/tokenStore";
@@ -39,6 +40,7 @@ async function uploadAvatarAsync(uri: string): Promise<string> {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, loading, refresh } = useAuth();
+  const { adminMode, setAdminMode } = useAdminMode();
   const [refreshing, setRefreshing] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
@@ -174,6 +176,24 @@ export default function ProfileScreen() {
             <SettingsRow icon="mail-outline" label="Adresse email" onPress={() => router.push("/settings/email")} />
             <SettingsRow icon="notifications-outline" label="Notifications" onPress={() => router.push("/settings/notifications")} last />
           </SettingsSection>
+
+          {/* Le mode administrateur est un état de l'application, pas une page
+              cachée : quand il est actif, il se voit et se quitte d'un geste. */}
+          {adminMode && (
+            <SettingsSection title="Administration">
+              <SettingsRow
+                icon="speedometer-outline"
+                label="Files de modération"
+                onPress={() => router.push("/admin")}
+              />
+              <SettingsRow
+                icon="swap-horizontal-outline"
+                label="Revenir en mode utilisateur"
+                onPress={() => setAdminMode(false)}
+                last
+              />
+            </SettingsSection>
+          )}
 
           <SettingsSection title="Sécurité et connexion">
             <SettingsRow icon="shield-checkmark-outline" label="Sécurité du compte" onPress={() => router.push("/settings/securite")} />

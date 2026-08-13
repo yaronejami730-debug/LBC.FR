@@ -1,4 +1,5 @@
 import { baseEmail } from "./base";
+import { escapeHtml } from "./escape";
 
 export type DigestListing = {
   title: string;
@@ -32,8 +33,8 @@ export function categoryDigestEmail({
       (l) => `
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #eceef0;">
-          <a href="${l.url}" style="color:#191c1e;text-decoration:none;font-weight:600;">${l.title}</a>
-          <div style="color:#777683;font-size:13px;margin-top:2px;">${l.location}</div>
+          <a href="${l.url}" style="color:#191c1e;text-decoration:none;font-weight:600;">${escapeHtml(l.title)}</a>
+          <div style="color:#777683;font-size:13px;margin-top:2px;">${escapeHtml(l.location)}</div>
         </td>
         <td style="padding:10px 0;border-bottom:1px solid #eceef0;text-align:right;white-space:nowrap;">
           <strong style="color:#2f6fb8;">${l.price.toLocaleString("fr-FR")} €</strong>
@@ -43,14 +44,14 @@ export function categoryDigestEmail({
     .join("");
 
   return baseEmail({
-    title: `${count} nouvelles annonces en ${categoryLabel} — Deal & Co`,
-    heading: `${count} nouvelle${count > 1 ? "s" : ""} annonce${count > 1 ? "s" : ""} en ${categoryLabel}`,
+    title: `${count} nouvelles annonces en ${escapeHtml(categoryLabel)} — Deal & Co`,
+    heading: `${count} nouvelle${count > 1 ? "s" : ""} annonce${count > 1 ? "s" : ""} en ${escapeHtml(categoryLabel)}`,
     body: `
-      <p style="margin:0 0 16px;">Bonjour ${name || ""},</p>
+      <p style="margin:0 0 16px;">Bonjour ${escapeHtml(name)},</p>
       <p style="margin:0 0 16px;">Depuis votre dernière visite, <strong>${count}</strong> annonce${count > 1 ? "s ont" : " a"} été publiée${count > 1 ? "s" : ""} dans la catégorie que vous suivez.</p>
       <table style="width:100%;border-collapse:collapse;margin:0 0 16px;">${rows}</table>
     `,
-    ctaLabel: `Voir les annonces ${categoryLabel}`,
+    ctaLabel: `Voir les annonces ${escapeHtml(categoryLabel)}`,
     ctaUrl: categoryUrl,
   });
 }

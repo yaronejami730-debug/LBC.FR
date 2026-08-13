@@ -5,6 +5,7 @@ import {
   MIN_VEHICLE_COMPARABLES,
   type Comparable,
 } from "@/lib/market/price-signal";
+import { getIndexablePriceSlugs } from "@/lib/seo/price";
 
 interface Props {
   listingId: string;
@@ -66,12 +67,20 @@ export default async function MarketEstimate({ listingId, marque, modele, curren
   const range = max - min;
   const pos = range > 0 ? Math.max(0, Math.min(1, (currentPrice - min) / range)) : 0.5;
 
+  // Le lien vers la cote n'est émis que si la page existe réellement : le slug
+  // était forgé à la volée depuis la marque et le modèle de l'annonce, sans
+  // aucune garantie que `/prix/{slug}-occasion` ait de quoi répondre. Sur des
+  // centaines de fiches annonce, cela fait autant de 404 potentielles offertes
+  // au crawl.
   const priceSlug = `${marque}-${modele}`
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+  const quoteExists = await getIndexablePriceSlugs()
+    .then((slugs) => slugs.includes(`${priceSlug}-occasion`))
+    .catch(() => false);
 
   return (
     <section className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_8px_24px_rgba(21,21,125,0.04)]">
@@ -120,13 +129,15 @@ export default async function MarketEstimate({ listingId, marque, modele, curren
         </div>
       </div>
 
-      <Link
-        href={`/prix/${priceSlug}-occasion`}
-        className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
-      >
-        Voir prix marché {marque} {modele} d&apos;occasion
-        <span className="material-symbols-outlined text-sm">arrow_forward</span>
-      </Link>
+      {quoteExists && (
+        <Link
+          href={`/prix/${priceSlug}-occasion`}
+          className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+        >
+          Voir prix marché {marque} {modele} d&apos;occasion
+          <span className="material-symbols-outlined text-sm">arrow_forward</span>
+        </Link>
+      )}
     </section>
   );
 }

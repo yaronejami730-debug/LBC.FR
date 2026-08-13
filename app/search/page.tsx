@@ -12,6 +12,7 @@ import GridAdCard from "@/components/GridAdCard";
 import ListingCard from "@/components/home/ListingCard";
 import { Suspense } from "react";
 import SaveSearchButton from "./SaveSearchButton";
+import { parsePageParam } from "@/lib/pagination";
 
 export async function generateMetadata({
   searchParams,
@@ -67,7 +68,10 @@ export default async function SearchPage({
   const params = await searchParams;
   const q        = params.q        || "";
   const category = params.category || "";
-  const page     = parseInt(params.page || "1");
+  // Même défaut que partout ailleurs : un `?page=` illisible vaut page 1.
+  // `parseInt("abc")` valait `NaN`, qui se propageait jusqu'au `skip` de Prisma
+  // et faisait répondre 500.
+  const page     = parsePageParam(params.page);
   const sort     = params.sort     || "";
   const perPage  = 12;
 

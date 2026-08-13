@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { removeListing } from "@/lib/moderation/removal";
+import { notifyAdmins } from "@/lib/expo-push";
 
 const VALID_CATEGORIES = new Set([
   "scam",
@@ -65,7 +66,10 @@ export async function POST(req: NextRequest) {
 
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
-    select: { id: true, userId: true, status: true, reportCount: true } as any,
+    // `title` sert à l'alerte poussée vers les administrateurs : un
+    // signalement sans le titre de l'annonce oblige à ouvrir l'application
+    // pour savoir de quoi il s'agit.
+    select: { id: true, title: true, userId: true, status: true, reportCount: true } as any,
   }) as any;
   if (!listing) {
     return NextResponse.json({ error: "Listing not found" }, { status: 404 });
@@ -103,6 +107,15 @@ export async function POST(req: NextRequest) {
       message: message?.trim() || null,
     } as any,
   });
+
+  // Alerte immédiate sur les appareils en mode administrateur : un signalement
+  // qui attend le prochain passage dans le back-office laisse en ligne un
+  // contenu que quelqu'un vient de juger frauduleux.
+  notifyAdmins({
+    title: "Annonce signalée",
+    body: `${listing.title} — motif : ${category}`,
+    data: { type: "admin_report", listingId, reportCategory: category },
+  }).catch(() => {});
 
   // Increment listing reportCount + user totalReportsAgainst
   const updatedListing = await prisma.listing.update({

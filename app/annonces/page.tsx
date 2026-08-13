@@ -16,6 +16,7 @@ import { slugToSubcategoryLabel } from "@/lib/seo-content";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -72,7 +73,7 @@ export default async function AnnoncesHubPage() {
     <div className="bg-surface text-on-surface">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }}
       />
       <Navbar />
 

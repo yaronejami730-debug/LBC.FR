@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { proVerificationSubmittedEmail } from "@/lib/emails/pro-verification";
+import { notifyAdmins } from "@/lib/expo-push";
 import {
   siretFlaggedByBan,
   releaseSiretFromBannedAccounts,
@@ -112,6 +113,15 @@ export async function POST(req: NextRequest) {
       companyDocPath: b.companyDocPath,
     },
   });
+
+  // Alerte les appareils passés en mode administrateur : un dossier
+  // professionnel qui attend est un professionnel qui ne peut ni publier sa
+  // fiche ni recevoir de réservation.
+  notifyAdmins({
+    title: "Dossier professionnel à vérifier",
+    body: `${companyName} — SIRET ${siret}${siretPreviouslyBanned ? " ⚠ déjà vu sur un compte banni" : ""}`,
+    data: { type: "admin_pro_pending", verificationId: demande.id },
+  }).catch(() => {});
 
   await prisma.proVerificationLog.create({
     data: {

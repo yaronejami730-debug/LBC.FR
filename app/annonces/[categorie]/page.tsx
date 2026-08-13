@@ -7,13 +7,16 @@ import { CATEGORIES } from "@/lib/categories";
 import { TOP_CITIES } from "@/lib/cities";
 import { subcategoryToSlug, fallbackContent } from "@/lib/seo-content";
 import { getRelatedBlogPosts } from "@/lib/blog/category-links";
-import { listingPageRobots } from "@/lib/seo/inventory";
+import { listingPageRobots, getSeoInventory, isIndexable } from "@/lib/seo/inventory";
+import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import EmptyStatePublishCTA from "@/components/EmptyStatePublishCTA";
 import StickyPublishFab from "@/components/StickyPublishFab";
 import ListingCard from "@/components/home/ListingCard";
 import { listingUrl } from "@/lib/listing-slug";
+import { safeJsonLd } from "@/lib/json-ld";
+import { parsePageParam } from "@/lib/pagination";
 
 export const revalidate = 3600;
 
@@ -41,7 +44,7 @@ export async function generateMetadata({
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) return {};
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const page = parsePageParam(pageParam);
   const BASE = "https://www.dealandcompany.fr";
   const canonical = page === 1 ? `${BASE}/annonces/${cat.id}` : `${BASE}/annonces/${cat.id}?page=${page}`;
 
@@ -94,7 +97,7 @@ export default async function CategoryPage({
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) notFound();
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const page = parsePageParam(pageParam);
   const skip = (page - 1) * PER_PAGE;
 
   const [listings, total, priceAgg] = await Promise.all([
@@ -129,7 +132,38 @@ export default async function CategoryPage({
 
   const seo = fallbackContent({ categoryId: cat.id });
   const relatedPosts = getRelatedBlogPosts(cat.id, 4);
-  const topCities = TOP_CITIES.slice(0, 15);
+
+  const inv = await getSeoInventory().catch(() => null);
+
+  /**
+   * Bloc « {catégorie} par ville ».
+   *
+   * C'était le principal émetteur de liens vers la matrice ville × catégorie :
+   * quinze liens par page de catégorie, treize catégories, quasiment tous vers
+   * des pages vides que Googlebot explorait ensuite une par une. On ne garde
+   * que les couples qui s'indexent réellement — souvent aucun, au stock actuel,
+   * et le bloc disparaît alors plutôt que d'afficher des liens morts.
+   */
+  const topCities = inv
+    ? TOP_CITIES.filter((city) => isCityCategoryIndexable(inv, cat.id, city.slug)).slice(0, 15)
+    : [];
+
+  /**
+   * Marques de véhicules ayant assez de stock pour mériter leur page.
+   *
+   * Ces pages existaient, étaient au sitemap, et **aucun lien du site n'y
+   * menait** : 24 pages orphelines relevées par l'audit. Un crawler qui ne
+   * trouve une URL que dans le sitemap la traite comme un cul-de-sac. On les
+   * raccroche donc ici, à la seule page dont elles dépendent, et seulement
+   * celles qui passent le seuil d'indexation — pas de lien vers une page vide.
+   */
+  const brandLinks =
+    cat.id === "vehicules" && inv
+      ? Object.entries(inv.byBrand)
+          .filter(([, count]) => isIndexable(count))
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 24)
+      : ([] as [string, number][]);
 
   const BASE = "https://www.dealandcompany.fr";
 
@@ -188,10 +222,10 @@ export default async function CategoryPage({
 
   return (
     <div className="bg-surface text-on-surface">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }} />
-      {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />}
-      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(collectionLd) }} />
+      {itemListLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }} />}
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }} />}
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">
@@ -280,7 +314,7 @@ export default async function CategoryPage({
           </nav>
         )}
         {/* Top cities */}
-        {page === 1 && (
+        {page === 1 && topCities.length > 0 && (
           <section className="mt-12">
             <h2 className="text-lg font-bold text-on-surface mb-3">
               {cat.label} par ville
@@ -293,6 +327,26 @@ export default async function CategoryPage({
                   className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
                 >
                   {cat.label} à {city.name}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Marques — uniquement sous Véhicules, et uniquement celles qui
+            tiennent debout toutes seules. */}
+        {page === 1 && brandLinks.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-lg font-bold text-on-surface mb-3">Voitures d&apos;occasion par marque</h2>
+            <div className="flex flex-wrap gap-2">
+              {brandLinks.map(([slug, count]) => (
+                <Link
+                  key={slug}
+                  href={`/annonces/vehicules/${slug}`}
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                >
+                  <span className="capitalize">{slug.replace(/-/g, " ")}</span>
+                  <span className="text-outline ml-1.5 tabular-nums">{count}</span>
                 </Link>
               ))}
             </div>

@@ -15,6 +15,8 @@ import GeoListingPage, {
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
+import { safeJsonLd } from "@/lib/json-ld";
+import { parsePageParam } from "@/lib/pagination";
 
 const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 3600;
@@ -75,7 +77,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { marque: marqueSlug } = await params;
   const { page: pageParam } = await searchParams;
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const page = parsePageParam(pageParam);
   const brand = BRAND_BY_SLUG.get(marqueSlug);
 
   if (!brand) {
@@ -157,7 +159,7 @@ export default async function MarquePage({
   const subLabel = !brand ? slugToSubcategoryLabel("vehicules", marqueSlug) : null;
   if (!brand && !subLabel) notFound();
 
-  const page = Math.max(1, parseInt(pageParam ?? "1", 10));
+  const page = parsePageParam(pageParam);
 
   if (subLabel) {
     return renderSubcategoryPage({ subSlug: marqueSlug, subLabel, page });
@@ -289,9 +291,9 @@ export default async function MarquePage({
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }} />
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">
@@ -480,7 +482,7 @@ async function renderSubcategoryPage({
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">

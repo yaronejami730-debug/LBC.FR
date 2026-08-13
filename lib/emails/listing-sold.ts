@@ -1,4 +1,5 @@
 import { baseEmail } from "./base";
+import { escapeHtml } from "./escape";
 
 export function listingSoldEmail({
   name,
@@ -13,8 +14,8 @@ export function listingSoldEmail({
     title: "Félicitations pour votre vente — Deal & Co",
     heading: "Félicitations pour votre vente\u00a0!",
     body: `
-      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-      <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong> a été marquée comme vendue. C'est une bonne affaire de conclue !</p>
+      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
+      <p style="margin:0 0 16px;">Votre annonce <strong style="color:#1a1b25;">« ${escapeHtml(listingTitle)} »</strong> a été marquée comme vendue. C'est une bonne affaire de conclue !</p>
       <p style="margin:0;">Vous avez d'autres articles à vendre ? Déposez une nouvelle annonce gratuitement en quelques secondes.</p>
     `,
     ctaLabel: "Déposer une nouvelle annonce",

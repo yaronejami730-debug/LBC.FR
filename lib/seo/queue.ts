@@ -23,6 +23,7 @@ import { FRENCH_CITIES } from "@/lib/cities";
 import { getAllArticles } from "@/lib/blog";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { getEditorialEligibility } from "@/lib/seo/editorial";
+import { getIndexablePriceSlugs } from "@/lib/seo/price";
 import { STATIC_PAGES } from "@/lib/seo/static-routes";
 import { priorityBand, type ExclusionReason } from "@/lib/seo/indexability";
 
@@ -80,9 +81,10 @@ export type QueueEntry = {
  * troisième règle ailleurs.
  */
 export async function buildQueueEntries(): Promise<QueueEntry[]> {
-  const [inv, editorial] = await Promise.all([
+  const [inv, editorial, priceSlugs] = await Promise.all([
     getSeoInventory(),
     getEditorialEligibility(),
+    getIndexablePriceSlugs(),
   ]);
 
   const entries: QueueEntry[] = [];
@@ -124,6 +126,10 @@ export async function buildQueueEntries(): Promise<QueueEntry[]> {
     ["voiture", editorial.clusters],
     ["voiture-budget", editorial.budgets],
   ];
+  // Les pages de cote sont éditoriales au même titre : leur éligibilité tient à
+  // la solidité de la cote, jamais au stock (`lib/seo/price.ts`).
+  editorialFamilies.push(["prix", priceSlugs]);
+
   for (const [prefix, slugs] of editorialFamilies) {
     for (const slug of slugs) {
       push({
@@ -143,6 +149,13 @@ export async function buildQueueEntries(): Promise<QueueEntry[]> {
   // Pages de liste. Celles qui n'atteignent pas le seuil entrent quand même
   // dans la file, en EXCLUDED : c'est précisément ce qu'on veut voir sur le
   // tableau de bord — « cette page est à une annonce de basculer ».
+  //
+  // Le verdict d'une page ville × catégorie ne vient **pas** de `isIndexable` :
+  // il est précalculé par l'inventaire, seuils plus hauts et hystérésis
+  // comprises (`lib/seo/city-category.ts`). C'est aussi cette table que la
+  // synchro réécrit dans `SeoUrl.indexable` — donc l'état que l'instantané
+  // suivant relira comme « état précédent ». La boucle est fermée ici, et
+  // nulle part ailleurs.
   const listBuckets: Array<[SeoUrlType, Record<string, number>, (key: string) => string | null]> = [
     ["CATEGORY", inv.byCategory, (id) => (CATEGORIES.some((c) => c.id === id) ? `/annonces/${id}` : null)],
     ["SUBCATEGORY", inv.byCategorySub, (key) => `/annonces/${key}`],
@@ -156,7 +169,10 @@ export async function buildQueueEntries(): Promise<QueueEntry[]> {
     for (const [key, count] of Object.entries(bucket)) {
       const path = toPath(key);
       if (!path) continue;
-      const eligible = isIndexable(count);
+      const eligible =
+        type === "CATEGORY_CITY"
+          ? (inv.cityCategoryIndexable[key] ?? false)
+          : isIndexable(count);
       push({
         url: `${BASE}${path}`,
         path,

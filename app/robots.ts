@@ -3,20 +3,37 @@ import type { MetadataRoute } from "next";
 /**
  * Chemins fermés à l'exploration.
  *
- * Deux catégories, et une seule raison de figurer ici : la page n'a aucune
+ * Trois catégories, et une seule raison de figurer ici : la page n'a aucune
  * chance de répondre à une requête d'internaute.
  *
  *   — espaces privés (compte, messagerie, administration) ;
  *   — tunnels d'action sur une annonce (`/annonce/*​/edit`, `/annonce/*​/republier`),
  *     qui redirigent vers la connexion et faisaient explorer une chaîne de
- *     redirections pour rien, sur chacune des annonces du site.
+ *     redirections pour rien, sur chacune des annonces du site ;
+ *   — espaces d'URL **infinis** : `/login?callbackUrl=…` et `/search?q=…`.
  *
- * Les tunnels de compte (`/login`, `/register`, mots de passe) ne sont
- * volontairement **pas** listés : ils portent désormais `noindex` dans leur
- * metadata, et une page bloquée au crawl ne peut pas transmettre sa directive
- * `noindex` — Google peut alors l'indexer sans jamais l'avoir lue, sur la seule
- * foi des liens entrants. Interdire l'exploration et interdire l'indexation ne
- * sont pas la même chose ; ici c'est la seconde qu'on veut.
+ * Sur ces deux derniers, une remarque s'impose, parce qu'elle contredit le
+ * commentaire qui vivait ici et qui les excluait délibérément de cette liste.
+ *
+ * L'argument était juste dans le cas général : une page bloquée au crawl ne
+ * peut pas transmettre sa directive `noindex`, donc bloquer ce qu'on veut
+ * désindexer laisse la page coincée dans l'index, indexée sur la seule foi des
+ * liens entrants. Cela ne vaut que pour une page **déjà indexée**.
+ *
+ * Ce n'est pas le cas ici. Search Console les classe au 12/08/2026 en « exclue
+ * par la balise noindex » : Google les a lues, il a obéi, elles ne sont pas
+ * dans l'index — et il continue pourtant de les explorer une par une. Or il y
+ * en a une par valeur de `callbackUrl` et une par requête tapée par un
+ * visiteur : l'espace est illimité, il croît tout seul, et il consommait une
+ * part mesurable d'un budget d'exploration déjà saturé (2 280 URL connues,
+ * 6,7 % retenues, 234 URL détectées et jamais explorées).
+ *
+ * Le `noindex` a donc fait son travail et n'a plus rien à transmettre. Le
+ * blocage est sûr, et son effet sur le budget est immédiat.
+ *
+ * Les autres tunnels de compte (`/register`, mots de passe) restent hors de
+ * cette liste : ils sont en nombre fini, leur `noindex` suffit, et rien ne
+ * justifie de leur retirer la possibilité de le déclarer.
  */
 const PRIVATE_PATHS = [
   "/admin",
@@ -31,6 +48,9 @@ const PRIVATE_PATHS = [
   "/preferences",
   "/annonce/*/edit",
   "/annonce/*/republier",
+  // Espaces infinis — voir le commentaire ci-dessus.
+  "/login",
+  "/search",
 ];
 
 /**

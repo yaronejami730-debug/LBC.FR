@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import ProNav from "../ProNav";
+import AdminViewBanner from "../AdminViewBanner";
 import { resolveProContext, canManageEstablishments } from "@/lib/pro/access";
 import { configSectionsFor, type ConfigSectionId } from "@/lib/pro/configuration";
 import { CAPABILITY_LABELS, prerequisitesFor } from "@/lib/pro/capabilities";
@@ -36,13 +37,16 @@ export default async function ConfigurationPage({
   const profile = context.establishment;
   const sections = configSectionsFor(context.capabilities, context.lexicon, context.role);
 
-  const [memberCount, serviceCount, bookableCount, settings] = await Promise.all([
+  const [memberCount, serviceCount, bookableCount, settings, accessCount] = await Promise.all([
     prisma.proMember.count({ where: { profileId: profile.id, isActive: true } }),
     prisma.proService.count({ where: { profileId: profile.id, isActive: true } }),
     prisma.proService.count({
       where: { profileId: profile.id, isActive: true, isBookable: true, durationMin: { not: null } },
     }),
     prisma.proBookingSettings.findUnique({ where: { profileId: profile.id } }),
+    profile.companyId
+      ? prisma.proAccess.count({ where: { companyId: profile.companyId } })
+      : Promise.resolve(0),
   ]);
 
   const openDays = Object.values(parseHours(profile.hours)).filter(Boolean).length;
@@ -76,6 +80,13 @@ export default async function ConfigurationPage({
             : "Réglages par défaut",
       warn: memberCount === 0 || bookableCount === 0,
     },
+    acces: {
+      text:
+        accessCount > 0
+          ? `${accessCount} compte${plural(accessCount)} autorisé${plural(accessCount)}`
+          : "Vous seul",
+      warn: false,
+    },
     etablissements: {
       text: `${context.establishments.length} établissement${plural(context.establishments.length)}`,
       warn: false,
@@ -99,6 +110,8 @@ export default async function ConfigurationPage({
           activeEstablishmentId={profile.id}
           canBook={context.capabilities.includes("bookings")}
         />
+
+        {context.isPlatformAdmin && <AdminViewBanner establishmentName={profile.name} />}
 
         {/* On arrive ici depuis « Agenda » quand la réservation n'est pas
             activée : il faut dire pourquoi, sinon le clic ressemble à un bug. */}

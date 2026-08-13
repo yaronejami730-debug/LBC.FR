@@ -7,6 +7,7 @@ import SiteFooter from "@/components/SiteFooter";
 import { formatDuration } from "@/lib/wellness/classify";
 import { listingUrl } from "@/lib/listing-slug";
 import { normalizeWebsite, websiteLabel } from "@/lib/pro/website";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -193,7 +194,7 @@ export default async function ProProfilePage({
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <Navbar />
 
       <main className="pt-28 md:pt-36 pb-12 px-4 max-w-4xl mx-auto space-y-6">

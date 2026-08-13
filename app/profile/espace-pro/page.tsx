@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import ProfileEditor from "./ProfileEditor";
 import ProNav from "./ProNav";
 import VisibilitySwitch from "./VisibilitySwitch";
+import AdminViewBanner from "./AdminViewBanner";
 import { canManageEstablishments, resolveProContext } from "@/lib/pro/access";
 
 export const metadata = { title: "Mon espace professionnel" };
@@ -32,10 +33,12 @@ export default async function EspaceProPage({
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { companyName: true, professionalStatus: true, avatar: true },
+    select: { companyName: true, professionalStatus: true, avatar: true, role: true },
   });
 
-  if (user?.professionalStatus !== "APPROVED") {
+  // L'administrateur de la plateforme entre sans habilitation : il vient
+  // inspecter une boutique qu'il instruit, pas exploiter la sienne.
+  if (user?.role !== "ADMIN" && user?.professionalStatus !== "APPROVED") {
     return (
       <div className="bg-surface min-h-screen">
         <Navbar />
@@ -92,6 +95,10 @@ export default async function EspaceProPage({
           activeEstablishmentId={profile?.id}
           canBook={context?.capabilities.includes("bookings") ?? false}
         />
+
+        {context?.isPlatformAdmin && profile && (
+          <AdminViewBanner establishmentName={profile.name} />
+        )}
 
         {profile?.slug && (
           // Au-dessus du formulaire : décider qui voit la fiche est une

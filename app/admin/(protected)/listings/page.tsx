@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ListingActions from "@/components/admin/ListingActions";
+import CategoryPicker from "@/components/admin/CategoryPicker";
 import PendingReasonButton from "@/components/admin/PendingReasonButton";
 import { formatDistanceToNow } from "@/lib/utils";
 import TimeLeftBadge from "@/components/admin/TimeLeftBadge";
@@ -123,9 +124,11 @@ export default async function ListingsPage({
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#777683]">
-                <span className="bg-[#f2f4f6] text-[#464652] px-2.5 py-1 rounded-full font-medium">
-                  {listing.category}
-                </span>
+                <CategoryPicker
+                  listingId={listing.id}
+                  category={listing.category}
+                  subcategory={listing.subcategory}
+                />
                 <span>{formatDistanceToNow(listing.createdAt)}</span>
                 {showsExpiry && <TimeLeftBadge createdAt={listing.createdAt} />}
                 <span className="truncate max-w-full">{listing.user.name}</span>
@@ -253,11 +256,15 @@ export default async function ListingsPage({
                       </div>
                     </td>
 
-                    {/* Category */}
+                    {/* Category — modifiable : une annonce mal rangée n'est
+                        trouvée par personne, et la refuser pour cela ferait
+                        tout recommencer à son auteur. */}
                     <td className="px-4 py-3">
-                      <span className="text-xs bg-[#f2f4f6] text-[#464652] px-2.5 py-1 rounded-full font-medium">
-                        {listing.category}
-                      </span>
+                      <CategoryPicker
+                        listingId={listing.id}
+                        category={listing.category}
+                        subcategory={listing.subcategory}
+                      />
                     </td>
 
                     {/* Price */}

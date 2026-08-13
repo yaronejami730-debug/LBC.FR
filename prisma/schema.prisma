@@ -106,6 +106,11 @@ model User {
   proVerifications   ProVerification[] @relation("ProVerificationUser")
   proReviews         ProVerification[] @relation("ProVerificationReviewer")
 
+  // Moteur de recommandation locale
+  locationProfiles UserLocationProfile[]
+  categoryInterests UserCategoryInterest[]
+  recommendations  ListingRecommendationLog[]
+
   @@index([watchedAt])
   @@index([bannedAt])
 }
@@ -162,6 +167,13 @@ model Waitlist {
   citySlug        String?
   categoryId      String?
   subcategorySlug String?
+  /// Demande exprimée en toutes lettres — « peugeot 308 », « iphone 14 ».
+  ///
+  /// Une inscription depuis une page de cote (`/prix/*`) ne se range dans
+  /// aucune catégorie ni aucune ville : c'est un modèle précis que le visiteur
+  /// cherche et que l'inventaire n'a pas. C'est précisément le signal qui
+  /// intéresse le recrutement vendeurs, et il n'avait nulle part où être écrit.
+  query           String?
   source          String?
   userAgent       String?
   createdAt       DateTime @default(now())
@@ -170,6 +182,7 @@ model Waitlist {
   @@index([email])
   @@index([categoryId])
   @@index([citySlug])
+  @@index([query])
 }
 
 model Listing {
@@ -272,13 +285,33 @@ model Listing {
   riskScore    Int     @default(0)
   riskDecision String?
 
+  // Géolocalisation résolue depuis `location` (lib/geo/communes.ts).
+  //
+  // `location` est une chaîne saisie à la main : elle sert à l'affichage et à
+  // la recherche textuelle, jamais au calcul de distance. Comparer « Paris » et
+  // « Levallois-Perret » ne dit rien ; comparer deux couples lat/lng dit tout.
+  // Les colonnes sont dénormalisées sur l'annonce plutôt que recalculées à la
+  // volée : un envoi qui géocode 10 000 annonces à chaque exécution du CRON est
+  // un envoi qui expire.
+  geoLat       Float?
+  geoLng       Float?
+  /// COMMUNE | POSTAL | DEPARTMENT — finesse du point. Un point départemental
+  /// ne permet pas de statuer à 20 km près et est écarté des recommandations.
+  geoPrecision String?
+  geoCity      String?
+  geoInsee     String?
+  geoResolvedAt DateTime?
+
   conversations    Conversation[]
   user             User              @relation(fields: [userId], references: [id])
   favorites        Favorite[]
   listingImages    ListingImage[]
   reports          Report[]
   moderationEvents ModerationEvent[]
+  recommendations  ListingRecommendationLog[]
 
+  @@index([geoLat, geoLng])
+  @@index([status, deletedAt, shadowBanned, geoResolvedAt])
   @@index([status, deletedAt, shadowBanned])
   @@index([status, deletedAt, shadowBanned, createdAt])
   @@index([status, deletedAt, shadowBanned, category])
@@ -874,12 +907,23 @@ model ExpoPushToken {
   platform   String?
   deviceName String?
   appVersion String?
+  /// Mode dans lequel l'appareil est actuellement utilisé : `user` ou `admin`.
+  ///
+  /// Un administrateur reste un utilisateur ordinaire : il vend, il achète, il
+  /// reçoit des messages. Quand il bascule son application en mode
+  /// administrateur, ce ne sont plus les mêmes alertes qui l'intéressent — une
+  /// annonce en attente, un signalement — et surtout plus les mêmes qu'il veut
+  /// recevoir la nuit. Le mode est porté par l'appareil et non par le compte :
+  /// le téléphone peut être en mode administrateur pendant que la tablette
+  /// reste en mode utilisateur.
+  mode       String    @default("user")
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime  @default(now())
   disabledAt DateTime?
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, disabledAt])
+  @@index([mode, disabledAt])
 }
 
 /// Demande de contact d'un annonceur potentiel, déposée depuis la page
@@ -1531,4 +1575,200 @@ model SeoJobRun {
   error       String?
 
   @@index([job, startedAt])
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// MOTEUR DE RECOMMANDATION LOCALE
+//
+// Trois tables de connaissance (où vit un compte, ce qui l'intéresse, ce
+// qu'on lui a déjà envoyé) et une table de campagne. Aucune n'est une
+// source de vérité : toutes se reconstruisent à partir des annonces, des
+// favoris et du journal `UserEvent`. Les perdre coûte un recalcul, pas une
+// donnée.
+// ═════════════════════════════════════════════════════════════════════════
+
+/// Une zone géographique connue ou supposée d'un compte.
+///
+/// Un compte en a plusieurs : on ne vit pas là où l'on vend son canapé, et
+/// quelqu'un qui déménage garde un pied dans son ancienne ville pendant des
+/// mois. Écraser l'ancienne zone à chaque nouvelle annonce ferait perdre cette
+/// épaisseur — d'où une ligne par zone, chacune avec son propre niveau de
+/// confiance.
+///
+/// La distinction cardinale est portée par `source` :
+///
+///   LISTING_PUBLISHED — le compte a publié une annonce ici. Il a choisi cette
+///     commune lui-même, en connaissance de cause. Localisation **certaine**.
+///   PROFILE_ADDRESS   — adresse déclarée au profil. Certaine également.
+///   LISTING_VIEWED    — le compte regarde des annonces situées ici. C'est un
+///     intérêt, pas une adresse : on peut consulter des maisons à Biarritz
+///     depuis Lille. Localisation **estimée**.
+///   SEARCH            — recherche filtrée sur cette zone. Estimée aussi.
+///
+/// Rien dans le produit ne doit présenter une zone estimée comme une adresse.
+model UserLocationProfile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Clé de déduplication : code INSEE, ou `dept:XX` pour un repli
+  /// départemental. Une commune = une ligne, quelle que soit l'orthographe
+  /// saisie par l'utilisateur.
+  zoneKey    String
+  city       String
+  department String
+  postalCode String?
+  lat        Float
+  lng        Float
+  /// COMMUNE | POSTAL | DEPARTMENT
+  precision  String @default("COMMUNE")
+
+  /// LISTING_PUBLISHED | PROFILE_ADDRESS | LISTING_VIEWED | SEARCH
+  source String
+  /// CERTAIN | ESTIMATED — dérivé de `source`, dupliqué pour filtrer sans
+  /// réécrire la logique dans chaque requête.
+  certainty String @default("ESTIMATED")
+
+  /// 0 → 100. Combine la nature de la source, le volume d'activité et la
+  /// fraîcheur. Recalculé à chaque rafraîchissement, jamais incrémenté.
+  confidence Int @default(0)
+
+  listingCount Int @default(0)
+  viewCount    Int @default(0)
+  searchCount  Int @default(0)
+
+  /// Zone la mieux notée du compte. Une seule par utilisateur.
+  isPrimary Boolean @default(false)
+
+  firstActivityAt DateTime @default(now())
+  lastActivityAt  DateTime @default(now())
+  computedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, zoneKey])
+  @@index([userId, confidence])
+  @@index([lat, lng])
+  @@index([certainty, confidence])
+}
+
+/// Intérêt d'un compte pour une catégorie Deal&Co.
+///
+/// Jamais déclaré, toujours déduit. Un compte qui a publié une voiture sait ce
+/// qu'est le marché de l'occasion ; un compte qui a ouvert une annonce de moto
+/// une fois en huit mois, non. Le score sépare les deux.
+///
+/// `categoryId` est l'identifiant de `lib/categories.ts` (« immobilier »,
+/// « maison », « vehicules »…), pas un libellé : ajouter une catégorie au
+/// catalogue suffit à la rendre recommandable, sans toucher à ce fichier.
+model UserCategoryInterest {
+  id         String @id @default(cuid())
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId String
+
+  /// 0 → 100.
+  score Int @default(0)
+
+  publishedCount  Int @default(0)
+  favoriteCount   Int @default(0)
+  viewCount       Int @default(0)
+  searchCount     Int @default(0)
+  emailClickCount Int @default(0)
+  /// Emails reçus sur cette catégorie et jamais ouverts. Signal négatif : au
+  /// bout de plusieurs, le compte a répondu, même sans se désabonner.
+  ignoredEmailCount Int @default(0)
+
+  lastActivityAt DateTime @default(now())
+  computedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, categoryId])
+  @@index([categoryId, score])
+}
+
+/// Une exécution du moteur pour une catégorie, réelle ou simulée.
+///
+/// Sert de lot : toutes les recommandations d'un même passage y sont
+/// rattachées, ce qui rend l'écran d'administration lisible (qui a été ciblé,
+/// combien ont ouvert) et permet de rejouer une campagne en simulation avant
+/// de l'envoyer pour de bon.
+model RecommendationCampaign {
+  id            String @id @default(cuid())
+  categoryId    String
+  categoryLabel String
+
+  /// Annonces neuves entrées dans le calcul.
+  listingCount Int @default(0)
+  /// Comptes examinés (pré-filtre géographique passé).
+  candidateUsers Int @default(0)
+  /// Comptes retenus après scoring, consentement et anti-doublon.
+  targetedUsers Int @default(0)
+  emailsSent    Int @default(0)
+  errors        Int @default(0)
+
+  /// Simulation : tout est calculé et journalisé, rien n'est envoyé.
+  dryRun Boolean @default(false)
+  /// RUNNING | DONE | FAILED
+  status String @default("RUNNING")
+
+  windowStart DateTime
+  windowEnd   DateTime
+  /// Détail sérialisé : seuils utilisés, motifs d'exclusion agrégés.
+  meta        String @default("{}")
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  recommendations ListingRecommendationLog[]
+
+  @@index([categoryId, startedAt])
+  @@index([startedAt])
+}
+
+/// Une annonce recommandée à un compte — décision, justification et suites.
+///
+/// Cette table est aussi le garde-fou anti-répétition : avant d'inclure une
+/// annonce dans un email, on vérifie qu'elle n'y a jamais figuré. La contrainte
+/// d'unicité `(userId, listingId)` rend le doublon impossible, y compris si
+/// deux exécutions se chevauchent.
+///
+/// Les scores sont conservés pour pouvoir expliquer une décision six mois plus
+/// tard : « pourquoi ce compte a-t-il reçu ça ? » doit avoir une réponse.
+model ListingRecommendationLog {
+  id         String  @id @default(cuid())
+  campaignId String?
+  campaign   RecommendationCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  /// 0 → 100.
+  score         Int
+  categoryScore Int   @default(0)
+  locationScore Int   @default(0)
+  recencyScore  Int   @default(0)
+  distanceKm    Float?
+
+  /// CERTAIN | ESTIMATED — nature de la position utilisée pour décider. Pilote
+  /// aussi l'affichage : on n'écrit « à 4,8 km » que sur une position certaine.
+  locationCertainty String @default("ESTIMATED")
+  /// Zone de l'utilisateur retenue pour ce rapprochement.
+  matchedZoneKey    String?
+
+  /// Rang dans l'email envoyé. -1 en simulation.
+  position Int @default(0)
+
+  sentAt    DateTime?
+  openedAt  DateTime?
+  clickedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, listingId])
+  @@index([campaignId])
+  @@index([userId, sentAt])
+  @@index([listingId, clickedAt])
 }

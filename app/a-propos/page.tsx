@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -71,7 +72,7 @@ export default function AProposPage() {
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(orgLd) }} />
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-4xl mx-auto">

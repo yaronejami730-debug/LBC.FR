@@ -1,4 +1,5 @@
 import { baseEmail } from "./base";
+import { escapeHtml } from "./escape";
 
 /**
  * Mise en revue d'une annonce en ligne.
@@ -29,9 +30,9 @@ export function listingUnderReviewEmail({
     title: "Votre annonce demande une correction — Deal&Co",
     heading: "Une correction est nécessaire",
     body: `
-      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
+      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
       <p style="margin:0 0 16px;">
-        Votre annonce <strong style="color:#1a1b25;">${listingTitle}</strong> a été mise en pause le
+        Votre annonce <strong style="color:#1a1b25;">${escapeHtml(listingTitle)}</strong> a été mise en pause le
         temps d'une correction. Elle n'est plus visible sur Deal&amp;Co pour le moment.
       </p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"

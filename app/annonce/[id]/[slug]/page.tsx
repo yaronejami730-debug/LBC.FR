@@ -32,7 +32,9 @@ import { RemovedNotice } from "@/components/listing/RemovedNotice";
 import { evaluateListing } from "@/lib/seo/indexability";
 import { displayCity, resolveCity } from "@/lib/seo/city";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
+import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import { subcategoryToSlug } from "@/lib/seo-content";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -256,7 +258,7 @@ export default async function ListingPage({
   }
 
   const images = JSON.parse(listing.images) as string[];
-  const mainImg = images[0] || "https://lh3.googleusercontent.com/aida-public/AB6AXuAwwxQgv4rI6XClzhTLjkwXug8TYby1cyK7AgQhc4UpMdyrjwq4jRPQo_ZvL_7xvjhVSon_iJvztv0bdEqqiFX0CHRW9IDYjccZpyP4v8zoDq0pcj4RtADoGgiXgRyW1_sPXiKqwZz8D1UwMIYilwBQMOTHJ4RMQl9Rp4vFbK6a0UCsy93TZ3-DYA8qYhHPO4LhM2csSFfFLlOh2P8D7w00bjyGrSMRlGSvhxZrGjVcqJUJ2-2y9XbKHb7ww02PREvAIJO3_wJ41hV5";
+  const mainImg = images[0] || "/categories/annonce-placeholder.webp";
 
   const pageUrl = `${BASE}/annonce/${listing.id}/${correctSlug}`;
   const cat = CATEGORIES.find((c) => c.label === listing.category);
@@ -386,15 +388,20 @@ export default async function ListingPage({
    * Trois conditions cumulatives, désormais :
    *   1. la localisation se résout vers une ville du référentiel ;
    *   2. la page catégorie × ville existe dans l'inventaire ;
-   *   3. elle franchit le seuil d'indexation.
+   *   3. elle franchit son seuil d'indexation.
    *
    * Sinon le fil s'arrête à la catégorie. Une marche en moins vaut mieux qu'une
    * marche dans le vide.
+   *
+   * Le seuil de la marche ville n'est plus `isIndexable` mais le juge dédié
+   * (`lib/seo/city-category.ts`) : c'est ici que se jouait le gros du maillage
+   * vers la matrice ville × catégorie, une annonce publiée valant un lien de
+   * plus vers la page locale correspondante.
    */
   const crumbCity = resolveCity(listing.location);
   const inventory = await getSeoInventory();
   const cityCrumb =
-    cat && crumbCity && isIndexable(inventory.byCategoryCity[`${cat.id}/${crumbCity.slug}`] ?? 0)
+    cat && crumbCity && isCityCategoryIndexable(inventory, cat.id, crumbCity.slug)
       ? { slug: crumbCity.slug, name: crumbCity.name }
       : null;
 
@@ -502,10 +509,10 @@ export default async function ListingPage({
 
   return (
     <div className="bg-surface text-on-surface mb-24 md:mb-12">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbLd) }} />
       {faqLd && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqLd) }} />
       )}
       <ListingHeader
         title={listing.title}

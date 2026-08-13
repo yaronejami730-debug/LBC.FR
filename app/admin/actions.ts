@@ -6,18 +6,16 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { accountInvitationEmail } from "@/lib/emails/account-invitation";
 import { listingPublishedEmail } from "@/lib/emails/listing-published";
-import { listingApprovedEmail } from "@/lib/emails/listing-approved";
 import { platformDiscoveryEmail } from "@/lib/emails/platform-discovery";
 import { baseEmail } from "@/lib/emails/base";
 import { syncSource, parseSourceUrl } from "@/lib/external-sync";
 import { normalizePhone, hashPhone } from "@/lib/moderation/phone";
-import { deletionDateFrom } from "@/lib/moderation/removal";
-import { onListingPublished, onListingRemoved } from "@/lib/seo/lifecycle";
 import { sendPushNotification } from "@/lib/notifications/send";
 import { sendExpoPush } from "@/lib/expo-push";
-import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
 import { listingSlug } from "@/lib/listing-slug";
 import { CATEGORIES } from "@/lib/categories";
+import { indexListing } from "@/lib/opensearch-sync";
+import { approveListingCore, rejectListingCore } from "@/lib/moderation/listing-decisions";
 import { citySlug } from "@/lib/cities";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -44,50 +42,10 @@ async function requireAdmin() {
 
 export async function approveListing(id: string) {
   await requireAdmin();
-  // L'approbation est le seul moment où le compte à rebours de suppression
-  // s'arrête : une annonce corrigée puis validée n'a plus d'échéance.
-  const listing = await prisma.listing.update({
-    where: { id },
-    data: {
-      status: "APPROVED",
-      rejectionReason: null,
-      removedAt: null,
-      permanentDeletionAt: null,
-      shadowBanned: false,
-    },
-    include: { user: { select: { name: true, email: true, companyName: true, isPro: true } } },
-  });
-
-  const baseUrl = process.env.NEXTAUTH_URL ?? "https://www.dealandcompany.fr";
-  const displayName = listing.user.isPro && listing.user.companyName ? listing.user.companyName : listing.user.name;
-  sendEmail({
-    to: listing.user.email,
-    toName: displayName,
-    subject: `Votre annonce "${listing.title}" est en ligne — Deal & Co`,
-    html: listingApprovedEmail({
-      name: displayName,
-      listingTitle: listing.title,
-      listingUrl: `${baseUrl}/annonce/${listing.id}`,
-    }),
-  }).catch(() => {});
-
-  sendPushNotification({
-    userId: listing.userId,
-    template: "listing_approved",
-    variables: { listingTitle: listing.title, listingId: listing.id },
-  }).catch(() => {});
-
-  notifyMatchingSavedSearches(listing.id).catch(() => {});
-
-  revalidatePath("/admin/listings");
-  revalidatePath("/admin");
-  revalidatePath("/");
-  revalidatePath("/annonces", "layout");
-  revalidatePath(`/annonce/${listing.id}`);
-
-  // Verdict SEO, entrée en file, invalidation du sitemap, et signalement
-  // IndexNow seulement si la page s'indexe réellement.
-  await onListingPublished(listing.id);
+  // Le corps de la décision est partagé avec l'application mobile
+  // (`lib/moderation/listing-decisions.ts`) : email, notification, index et
+  // sitemap doivent suivre, quel que soit l'écran d'où vient le clic.
+  await approveListingCore(id);
 }
 
 /**
@@ -95,49 +53,10 @@ export async function approveListing(id: string) {
  *
  * Un refus arme le même délai de conservation qu'un retrait : l'annonce reste
  * accessible à son auteur le temps qu'il la corrige, puis elle est détruite.
- * `permanentDeletionAt` n'est armé qu'une fois — un refus après correction ne
- * repousse pas l'échéance, sinon l'aller-retour refus/modification permettrait
- * de garder indéfiniment un contenu jamais publiable.
  */
 export async function rejectListing(id: string, reason: string) {
   await requireAdmin();
-
-  const current = await prisma.listing.findUnique({
-    where: { id },
-    select: { removedAt: true, permanentDeletionAt: true },
-  });
-  const removedAt = current?.removedAt ?? new Date();
-  const permanentDeletionAt = current?.permanentDeletionAt ?? deletionDateFrom(removedAt);
-
-  const listing = await prisma.listing.update({
-    where: { id },
-    data: {
-      status: "REJECTED",
-      rejectionReason: reason || null,
-      removedAt,
-      permanentDeletionAt,
-    },
-    select: { id: true, title: true, userId: true },
-  });
-
-  import("@/lib/opensearch-sync")
-    .then((m) => m.deleteListingFromIndex(id))
-    .catch(() => {});
-
-  sendPushNotification({
-    userId: listing.userId,
-    template: "listing_rejected",
-    variables: { listingTitle: listing.title, listingId: listing.id },
-  }).catch(() => {});
-
-  // Sortie du sitemap et passage en GONE dans la file d'indexation. Une annonce
-  // refusée restait annoncée à Google jusqu'au prochain recalcul de
-  // l'instantané, soit jusqu'à six heures.
-  await onListingRemoved(id);
-
-  revalidatePath("/admin/listings");
-  revalidatePath("/admin/securite");
-  revalidatePath("/admin");
+  await rejectListingCore(id, reason);
 }
 
 // ── Users ─────────────────────────────────────────────────────────────────────
@@ -1101,4 +1020,69 @@ export async function deleteExternalSource(id: string) {
   await requireAdmin();
   await prisma.externalSource.delete({ where: { id } });
   revalidatePath("/admin/crm/sources");
+}
+
+/**
+ * Reclasse une annonce à la place de son auteur.
+ *
+ * Une annonce mal rangée est invisible : personne ne cherche une tondeuse dans
+ * « Multimédia ». Jusqu'ici la seule issue était de la refuser en demandant à
+ * l'auteur de recommencer — pour une erreur de menu déroulant. L'administrateur
+ * corrige donc directement, et l'annonce reste en ligne.
+ *
+ * La sous-catégorie est vidée quand elle n'appartient pas à la nouvelle
+ * catégorie : garder « Voitures » sous « Immobilier » casserait les filtres.
+ */
+export async function setListingCategory(
+  id: string,
+  category: string,
+  subcategory: string | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const session = await requireAdmin();
+    const adminId = session.user?.id ?? "inconnu";
+
+    const target = CATEGORIES.find((c) => c.id === category);
+    if (!target) return { ok: false, error: "Catégorie inconnue" };
+
+    const sub = subcategory && target.subcategories.includes(subcategory) ? subcategory : null;
+
+    const before = await prisma.listing.findUnique({
+      where: { id },
+      select: { category: true, subcategory: true },
+    });
+    if (!before) return { ok: false, error: "Annonce introuvable" };
+
+    const updated = await prisma.listing.update({
+      where: { id },
+      data: { category: target.id, subcategory: sub },
+    });
+
+    await prisma.moderationEvent
+      .create({
+        data: {
+          listingId: id,
+          actor: `admin:${adminId}`,
+          action: "listing_recategorized",
+          reason: `${before.category}${before.subcategory ? ` / ${before.subcategory}` : ""} → ${target.id}${sub ? ` / ${sub}` : ""}`,
+        } as never,
+      })
+      .catch(() => {});
+
+    // L'index et les pages de liste portent la catégorie : sans resynchro,
+    // l'annonce resterait cherchable dans l'ancienne rubrique.
+    indexListing(updated).catch((err) =>
+      console.error("[OpenSearch] indexListing (recategorize) échec:", err),
+    );
+
+    revalidatePath("/admin/listings");
+    revalidatePath("/annonces", "layout");
+    revalidatePath(`/annonce/${id}`);
+    revalidatePath("/");
+
+    return { ok: true };
+  } catch (err) {
+    console.error("[admin] setListingCategory:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Erreur inconnue" };
+  }
 }

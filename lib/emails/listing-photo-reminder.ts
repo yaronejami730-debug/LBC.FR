@@ -1,4 +1,5 @@
 import { baseEmail } from "./base";
+import { escapeHtml } from "./escape";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -15,8 +16,8 @@ export function listingPhotoReminderEmail({
     title: `Ajoutez des photos à votre annonce — Deal & Co`,
     heading: "Votre annonce est en ligne !",
     body: `
-      <p>Bonjour ${name},</p>
-      <p>Votre annonce <strong>&laquo;&nbsp;${listingTitle}&nbsp;&raquo;</strong> est publiée sur Deal&amp;Co.</p>
+      <p>Bonjour ${escapeHtml(name)},</p>
+      <p>Votre annonce <strong>&laquo;&nbsp;${escapeHtml(listingTitle)}&nbsp;&raquo;</strong> est publiée sur Deal&amp;Co.</p>
       <p>Les annonces <strong>avec au moins 3 photos</strong> reçoivent en moyenne <strong>5× plus de messages</strong> que celles sans photo. Ajoutez des photos maintenant pour maximiser vos chances de vendre rapidement.</p>
     `,
     ctaLabel: "Ajouter des photos",

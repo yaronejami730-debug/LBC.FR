@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 import { listingUrl } from "@/lib/listing-slug";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -64,7 +65,7 @@ export default async function NouveautesPage() {
 
   return (
     <div className="bg-surface text-on-surface min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <Navbar />
 
       <main className="pt-32 pb-16 px-6 max-w-7xl mx-auto">

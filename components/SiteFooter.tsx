@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CATEGORIES } from "@/lib/categories";
 import { TOP_CITIES } from "@/lib/cities";
+import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
+import { getIndexablePriceSlugs } from "@/lib/seo/price";
 
 const LEGAL_LINKS = [
   { label: "À propos", href: "/a-propos" },
@@ -23,10 +25,40 @@ const POPULAR_QUERIES = [
   { label: "Volkswagen Golf occasion", href: "/prix/volkswagen-golf-occasion" },
 ];
 
-const FOOTER_TOP_CITIES = TOP_CITIES.slice(0, 24);
 const FOOTER_CATEGORIES = CATEGORIES.slice(0, 14);
 
-export default function SiteFooter() {
+/**
+ * Le pied de page est présent sur **toutes** les pages du site : c'est de loin
+ * le premier émetteur de liens du domaine, et le premier chemin qu'un crawler
+ * emprunte. Deux blocs y pointaient vers des pages qui n'existent pas toujours.
+ *
+ *   — « Annonces par ville » listait vingt-quatre villes en dur, alors que
+ *     `/ville/{slug}` répond 404 dès qu'une ville n'a aucune annonce. Vingt-
+ *     quatre liens potentiellement morts, répétés sur chaque page du site : le
+ *     candidat le plus vraisemblable aux 55 « Introuvables (404) » de Search
+ *     Console.
+ *
+ *   — « Recherches populaires » listait huit pages de cote choisies à la main,
+ *     dont certaines n'ont pas assez d'observations pour exister.
+ *
+ * Les deux blocs sont désormais filtrés sur l'état réel. Ils rétrécissent quand
+ * le stock est maigre — c'est le comportement voulu : mieux vaut huit liens
+ * vivants que trente-deux dont la moitié renvoie une erreur.
+ */
+export default async function SiteFooter() {
+  const [inv, priceSlugs] = await Promise.all([
+    getSeoInventory().catch(() => null),
+    getIndexablePriceSlugs().catch(() => [] as string[]),
+  ]);
+
+  const footerCities = inv
+    ? TOP_CITIES.filter((c) => isIndexable(inv.byCity[c.slug] ?? 0)).slice(0, 24)
+    : [];
+
+  const popularQueries = POPULAR_QUERIES.filter((q) =>
+    priceSlugs.includes(q.href.replace("/prix/", "")),
+  );
+
   return (
     <footer className="bg-white border-t border-slate-200 mt-12">
       <div className="max-w-7xl mx-auto px-6 py-10">
@@ -55,7 +87,7 @@ export default function SiteFooter() {
               Annonces par ville
             </h3>
             <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              {FOOTER_TOP_CITIES.map((city) => (
+              {footerCities.map((city) => (
                 <li key={city.slug}>
                   <Link
                     href={`/ville/${city.slug}`}
@@ -74,7 +106,7 @@ export default function SiteFooter() {
               Recherches populaires
             </h3>
             <ul className="space-y-1.5">
-              {POPULAR_QUERIES.map((q) => (
+              {popularQueries.map((q) => (
                 <li key={q.href}>
                   <Link
                     href={q.href}

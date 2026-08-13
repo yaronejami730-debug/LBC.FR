@@ -139,7 +139,14 @@ export default async function ProfessionnelsPage({
         bannedAt: true,
         verified: true,
         _count: { select: { listings: true } },
-        proProfile: { select: { slug: true, isPublished: true, _count: { select: { services: true } } } },
+        // Depuis le multi-établissement, un compte porte *plusieurs* fiches :
+        // la relation `proProfile` n'existe plus. La garder faisait échouer la
+        // requête, donc planter tous les onglets qui listent des comptes —
+        // « Vérifiés », « Refusés », « Suspendus », « Non vérifiés », « Tous ».
+        proProfiles: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, slug: true, isPublished: true, _count: { select: { services: true } } },
+        },
       },
     }),
     prisma.user.groupBy({

@@ -1,4 +1,5 @@
 import { baseEmail } from "./base";
+import { escapeHtml } from "./escape";
 
 export function newMessageEmail({
   name,
@@ -14,13 +15,13 @@ export function newMessageEmail({
   conversationUrl: string;
 }): string {
   return baseEmail({
-    title: `Nouveau message de ${senderName} — Deal & Co`,
+    title: `Nouveau message de ${escapeHtml(senderName)} — Deal & Co`,
     heading: "Vous avez reçu un message",
     body: `
-      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${name}</strong>,</p>
-      <p style="margin:0 0 24px;"><strong style="color:#1a1b25;">${senderName}</strong> vous a envoyé un message concernant votre annonce <strong style="color:#1a1b25;">« ${listingTitle} »</strong>.</p>
+      <p style="margin:0 0 16px;">Bonjour <strong style="color:#1a1b25;">${escapeHtml(name)}</strong>,</p>
+      <p style="margin:0 0 24px;"><strong style="color:#1a1b25;">${escapeHtml(senderName)}</strong> vous a envoyé un message concernant votre annonce <strong style="color:#1a1b25;">« ${escapeHtml(listingTitle)} »</strong>.</p>
       <div style="background:#f5f2ff;border-left:3px solid #2f6fb8;border-radius:0 8px 8px 0;padding:16px 20px;margin:0;text-align:left;">
-        <p style="font-size:14px;color:#424751;line-height:1.7;margin:0;font-style:italic;">« ${messageBody} »</p>
+        <p style="font-size:14px;color:#424751;line-height:1.7;margin:0;font-style:italic;">« ${escapeHtml(messageBody)} »</p>
       </div>
     `,
     ctaLabel: "Répondre au message",

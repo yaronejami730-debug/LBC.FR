@@ -30,7 +30,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
 import { CAR_BRANDS } from "@/lib/carBrands";
-import { subcategoryToSlug } from "@/lib/seo-content";
+import { subcategoryToSlug, slugToSubcategoryLabel } from "@/lib/seo-content";
 import { listingSlug } from "@/lib/listing-slug";
 import { parseVehicleMeta } from "@/lib/vehicle-meta";
 import { resolveCity, normalizeToken } from "@/lib/seo/city";
@@ -39,6 +39,7 @@ import {
   sitemapPriority,
   type ExclusionReason,
 } from "@/lib/seo/indexability";
+import { computeCityCategoryIndexability } from "@/lib/seo/city-category";
 
 /**
  * Seuil d'indexation d'une page de liste.
@@ -103,6 +104,18 @@ export type SeoInventory = {
   byCategoryCity: Record<string, number>;
   /** clé = `${categorieId}/${sousCategorieSlug}/${villeSlug}` */
   byCategorySubCity: Record<string, number>;
+  /**
+   * Verdict d'indexabilité des couples ville × catégorie, hystérésis appliquée.
+   *
+   * Couvre les clés de `byCategoryCity` **et** de `byCategorySubCity`. C'est la
+   * seule table que consultent la balise `robots` de la page, le sitemap, la
+   * file d'indexation et les émetteurs de liens — voir `lib/seo/city-category.ts`.
+   *
+   * Une clé absente vaut « non indexable » : un couple sans aucune annonce
+   * indexable n'apparaît dans aucun compteur, et c'est précisément le cas qu'on
+   * refuse d'exposer.
+   */
+  cityCategoryIndexable: Record<string, boolean>;
   /** clé = slug de ville */
   byCity: Record<string, number>;
   /** clé = slug de marque */
@@ -123,6 +136,7 @@ const EMPTY_INVENTORY: SeoInventory = {
   byCategorySub: {},
   byCategoryCity: {},
   byCategorySubCity: {},
+  cityCategoryIndexable: {},
   byCity: {},
   byBrand: {},
   byBrandModel: {},
@@ -187,6 +201,7 @@ async function buildInventory(): Promise<SeoInventory> {
     byCategorySub: {},
     byCategoryCity: {},
     byCategorySubCity: {},
+    cityCategoryIndexable: {},
     byCity: {},
     byBrand: {},
     byBrandModel: {},
@@ -243,8 +258,23 @@ async function buildInventory(): Promise<SeoInventory> {
     });
 
     const categoryId = CATEGORY_ID_BY_LABEL.get(row.category);
-    const subSlug = row.subcategory ? subcategoryToSlug(row.subcategory) : null;
     const citySlug = verdict.citySlug;
+
+    /**
+     * Sous-catégorie retenue seulement si elle existe vraiment au catalogue.
+     *
+     * `Listing.subcategory` est du texte libre venu du dépôt et des imports :
+     * on y trouve « Voiture d'occasion », « Voitures d'occasion », « Voiture
+     * particulière », « Automobile »… là où la taxonomie ne connaît que
+     * « Voiture ». Le sitemap annonçait ces variantes, la page les refusait :
+     * neuf URL en 404 offertes à Google, et une de plus à chaque orthographe
+     * inventée. On ne publie donc que ce que la route sait résoudre.
+     */
+    const rawSubSlug = row.subcategory ? subcategoryToSlug(row.subcategory) : null;
+    const subSlug =
+      categoryId && rawSubSlug && slugToSubcategoryLabel(categoryId, rawSubSlug)
+        ? rawSubSlug
+        : null;
 
     if (citySlug) bump(inv.byCity, citySlug);
 
@@ -274,6 +304,35 @@ async function buildInventory(): Promise<SeoInventory> {
   inv.averageScore = inv.listings.length
     ? Math.round(scoreSum / inv.listings.length)
     : 0;
+
+  // ── Ville × catégorie : verdict avec hystérésis ───────────────────────────
+  //
+  // L'état précédent vit dans `SeoUrl`, écrit par la synchro de la file. Une
+  // seule requête, sur des lignes déjà indexées par `type` — et le résultat est
+  // figé pour les 6 h de vie de l'instantané.
+  //
+  // En cas de panne, la carte reste vide : tous les couples repassent alors par
+  // le seuil d'entrée, le plus strict des deux. Un couple légitime peut ainsi
+  // perdre son indexabilité une journée, ce qui est sans commune mesure avec le
+  // risque inverse — republier mille pages vides dans le sitemap.
+  const previousVerdicts = await prisma.seoUrl
+    .findMany({
+      where: { type: "CATEGORY_CITY" },
+      select: { path: true, indexable: true },
+      take: MAX_ROWS,
+    })
+    .catch(() => [] as Array<{ path: string; indexable: boolean }>);
+
+  const previous: Record<string, boolean> = {};
+  for (const row of previousVerdicts) {
+    if (!row.path.startsWith("/annonces/")) continue;
+    previous[row.path.slice("/annonces/".length)] = row.indexable;
+  }
+
+  inv.cityCategoryIndexable = computeCityCategoryIndexability(
+    { ...inv.byCategoryCity, ...inv.byCategorySubCity },
+    previous,
+  );
 
   // ── Fiches professionnelles ───────────────────────────────────────────────
   //
@@ -319,7 +378,7 @@ async function buildInventory(): Promise<SeoInventory> {
  * Le tag `listings` permet à une publication ou une modération de forcer le
  * recalcul via `revalidateTag("listings")`.
  */
-export const getSeoInventory = unstable_cache(buildInventory, ["seo-inventory-v2"], {
+export const getSeoInventory = unstable_cache(buildInventory, ["seo-inventory-v3"], {
   revalidate: SNAPSHOT_TTL_SECONDS,
   tags: ["listings"],
 });

@@ -137,11 +137,20 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
           suppressHydrationWarning
         />
+        {/* Deux temps : basculer la feuille en `all` dès qu'elle est arrivée,
+            puis marquer `data-icons="ready"` une fois la police réellement
+            utilisable. Tant que ce marqueur est absent, `globals.css` garde les
+            ligatures invisibles — sinon le nom de l'icône s'affiche en toutes
+            lettres pendant le chargement. Le repli à 2 s garantit que les
+            icônes réapparaissent même si Google Fonts ne répond pas. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "var l=document.getElementById('material-symbols');" +
-              "if(l){if(l.sheet){l.media='all'}else{l.addEventListener('load',function(){l.media='all'})}}",
+              "(function(){var d=document;var r=function(){d.documentElement.setAttribute('data-icons','ready')};" +
+              "var l=d.getElementById('material-symbols');" +
+              "var ready=function(){if(d.fonts&&d.fonts.load){d.fonts.load('24px \"Material Symbols Outlined\"').then(r).catch(r)}else{r()}};" +
+              "if(l){if(l.sheet){l.media='all';ready()}else{l.addEventListener('load',function(){l.media='all';ready()})}}else{r()}" +
+              "setTimeout(r,2000)})()",
           }}
         />
       </head>

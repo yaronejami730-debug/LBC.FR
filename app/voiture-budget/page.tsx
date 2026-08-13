@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getEditorialEligibility } from "@/lib/seo/editorial";
 import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
@@ -21,7 +22,9 @@ export const metadata: Metadata = {
   alternates: { canonical: `${BASE}/voiture-budget` },
 };
 
-export default function VoitureBudgetIndexPage() {
+export default async function VoitureBudgetIndexPage() {
+  const eligibleBudgets = new Set((await getEditorialEligibility()).budgets);
+
   return (
     <div className="bg-surface text-on-surface min-h-screen">
       <Navbar />
@@ -41,7 +44,12 @@ export default function VoitureBudgetIndexPage() {
         </p>
 
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {BUDGETS.map((b) => (
+          {/* Seules les pages qui répondront 200 sont proposées.
+              `/comparatif`, `/voiture` et `/voiture-budget` refusent de
+              s'afficher sous un certain stock : les lister sans vérifier
+              revenait à envoyer nos visiteurs — et Google — sur nos propres
+              404. L'éligibilité est celle du sitemap, pas une seconde règle. */}
+          {BUDGETS.filter((b) => eligibleBudgets.has(b.slug)).map((b) => (
             <li key={b.slug}>
               <Link
                 href={`/voiture-budget/${b.slug}`}

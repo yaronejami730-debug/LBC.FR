@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import { getUserResponseTime } from "@/lib/user-stats";
 import { listingUrl } from "@/lib/listing-slug";
 import ListingCard from "@/components/home/ListingCard";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -115,12 +116,12 @@ export default async function UserProfilePage({ params }: { params: Promise<{ id
     <div className="bg-surface text-on-surface min-h-screen">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(profileLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(profileLd) }}
       />
       {itemListLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(itemListLd) }}
         />
       )}
       <Navbar active="" />

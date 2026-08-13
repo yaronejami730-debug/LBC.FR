@@ -3,14 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
-import { deleteProDocuments } from "@/lib/pro-documents";
 import {
-  proVerificationApprovedEmail,
-  proVerificationRejectedEmail,
-  proVerificationInfoRequestedEmail,
-  proVerificationSuspendedEmail,
-} from "@/lib/emails/pro-verification";
+  approveProCore,
+  refuseProCore,
+  reinstateProCore,
+  requestProInfoCore,
+  suspendProCore,
+} from "@/lib/moderation/pro-decisions";
 
 /**
  * Résultat d'une action de modération.
@@ -50,104 +49,11 @@ async function requireAdmin(): Promise<string> {
   return session.user.id;
 }
 
-/**
- * Journalise sur le dernier compte du compte, s'il en a un.
- *
- * Beaucoup de comptes professionnels sont antérieurs à la vérification : ils
- * n'ont aucun compte. La décision est alors tracée dans `ModerationEvent`,
- * pour qu'aucune action n'échappe à l'historique.
- */
-async function trace(userId: string, action: string, adminId: string, details?: string) {
-  const lastRequest = await prisma.proVerification.findFirst({
-    where: { userId },
-    orderBy: { submittedAt: "desc" },
-    select: { id: true },
-  });
-
-  if (lastRequest) {
-    await prisma.proVerificationLog.create({
-      data: { verificationId: lastRequest.id, action, actor: `admin:${adminId}`, details: details ?? null },
-    });
-  }
-  await prisma.moderationEvent.create({
-    data: {
-      userId,
-      actor: `admin:${adminId}`,
-      action: `pro_${action.toLowerCase()}`,
-      reason: details ?? action,
-    } as any,
-  }).catch(() => {});
-}
-
-/**
- * Retire du site toutes les annonces d'un compte.
- *
- * Une sanction qui laisse les annonces en ligne ne sanctionne rien : le
- * vendeur continue d'être contacté. `shadowBanned` les sort des listes et de
- * la recherche, `PENDING` les sort de la page publique. Réversible — la levée
- * de sanction les republie.
- */
-async function hideAllListings(userId: string, reason: string) {
-  await prisma.listing.updateMany({
-    where: { userId, deletedAt: null },
-    data: {
-      status: "PENDING",
-      shadowBanned: true,
-      adminNote: `[COMPTE_SANCTIONNE] ${reason}`,
-    },
-  });
-}
-
-/** Republie les annonces retirées lors d'une suspension levée. */
-async function restoreListings(userId: string) {
-  await prisma.listing.updateMany({
-    where: { userId, deletedAt: null, shadowBanned: true, status: "PENDING" },
-    data: { status: "APPROVED", shadowBanned: false },
-  });
-}
-
-async function loadUser(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, email: true, name: true, companyName: true },
-  });
-  if (!user) throw new Error("Compte introuvable");
-  return user;
-}
-
 /** Habilite un compte professionnel déjà présent sur la plateforme. */
 export async function verifyProAccount(userId: string): Promise<ActionResult> {
   return guard("verify", async () => {
     const adminId = await requireAdmin();
-    const user = await loadUser(userId);
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { isPro: true, professionalStatus: "APPROVED", proVerifiedAt: new Date() },
-    });
-    await prisma.proVerification.updateMany({
-      where: { userId, status: { in: ["PENDING", "INFO_REQUESTED"] } },
-      data: { status: "APPROVED", approvedAt: new Date(), approvedById: adminId },
-    });
-    const requests = await prisma.proVerification.findMany({
-      where: { userId, documentsDeletedAt: null },
-      select: { id: true },
-    });
-    for (const d of requests) {
-      await deleteProDocuments(d.id, `admin:${adminId}`, "Habilitation accordée");
-    }
-    await trace(userId, "APPROVED", adminId);
-
-    if (user.email) {
-      await sendEmail({
-        to: user.email,
-        subject: "Votre compte professionnel est activé",
-        html: proVerificationApprovedEmail({
-          name: user.name ?? "",
-          companyName: user.companyName ?? "",
-        }),
-      }).catch(() => {});
-    }
+    await approveProCore(userId, adminId);
     revalidatePath("/admin/professionnels");
   });
 }
@@ -156,27 +62,7 @@ export async function verifyProAccount(userId: string): Promise<ActionResult> {
 export async function requestProInfo(userId: string, request: string): Promise<ActionResult> {
   return guard("request-info", async () => {
     const adminId = await requireAdmin();
-    const demande = request.trim();
-    if (demande.length < 5) throw new Error("Demande trop courte");
-    const user = await loadUser(userId);
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { professionalStatus: "INFO_REQUESTED" },
-    });
-    await prisma.proVerification.updateMany({
-      where: { userId, status: { in: ["PENDING", "APPROVED"] } },
-      data: { status: "INFO_REQUESTED", infoRequest: demande.slice(0, 500) },
-    });
-    await trace(userId, "INFO_REQUESTED", adminId, demande.slice(0, 500));
-
-    if (user.email) {
-      await sendEmail({
-        to: user.email,
-        subject: "Informations complémentaires pour votre compte professionnel",
-        html: proVerificationInfoRequestedEmail({ name: user.name ?? "", request: demande.slice(0, 500) }),
-      }).catch(() => {});
-    }
+    await requestProInfoCore(userId, adminId, request);
     revalidatePath("/admin/professionnels");
   });
 }
@@ -185,34 +71,7 @@ export async function requestProInfo(userId: string, request: string): Promise<A
 export async function refuseProAccount(userId: string, reason: string): Promise<ActionResult> {
   return guard("refuse", async () => {
     const adminId = await requireAdmin();
-    const motif = reason.trim();
-    if (motif.length < 5) throw new Error("Motif trop court");
-    const user = await loadUser(userId);
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { isPro: false, professionalStatus: "REJECTED", proVerifiedAt: null },
-    });
-    await prisma.proVerification.updateMany({
-      where: { userId, status: { in: ["PENDING", "INFO_REQUESTED", "APPROVED"] } },
-      data: {
-        status: "REJECTED",
-        rejectedAt: new Date(),
-        rejectedById: adminId,
-        rejectionReason: motif.slice(0, 500),
-      },
-    });
-    await prisma.proProfile.updateMany({ where: { userId }, data: { isPublished: false } });
-    await hideAllListings(userId, `Habilitation refusée : ${motif.slice(0, 200)}`);
-    await trace(userId, "REJECTED", adminId, motif.slice(0, 500));
-
-    if (user.email) {
-      await sendEmail({
-        to: user.email,
-        subject: "Votre demande de compte professionnel",
-        html: proVerificationRejectedEmail({ name: user.name ?? "", reason: motif.slice(0, 500) }),
-      }).catch(() => {});
-    }
+    await refuseProCore(userId, adminId, reason);
     revalidatePath("/admin/professionnels");
   });
 }
@@ -224,29 +83,7 @@ export async function refuseProAccount(userId: string, reason: string): Promise<
 export async function suspendProAccount(userId: string, reason: string): Promise<ActionResult> {
   return guard("suspend", async () => {
     const adminId = await requireAdmin();
-    const motif = reason.trim();
-    if (motif.length < 5) throw new Error("Motif trop court");
-    const user = await loadUser(userId);
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { isPro: false, professionalStatus: "SUSPENDED" },
-    });
-    await prisma.proVerification.updateMany({
-      where: { userId },
-      data: { status: "SUSPENDED", suspendedAt: new Date(), suspendedById: adminId },
-    });
-    await prisma.proProfile.updateMany({ where: { userId }, data: { isPublished: false } });
-    await hideAllListings(userId, `Compte suspendu : ${motif.slice(0, 200)}`);
-    await trace(userId, "SUSPENDED", adminId, motif.slice(0, 500));
-
-    if (user.email) {
-      await sendEmail({
-        to: user.email,
-        subject: "Votre compte professionnel a été suspendu",
-        html: proVerificationSuspendedEmail({ name: user.name ?? "", reason: motif.slice(0, 500) }),
-      }).catch(() => {});
-    }
+    await suspendProCore(userId, adminId, reason);
     revalidatePath("/admin/professionnels");
   });
 }
@@ -255,17 +92,7 @@ export async function suspendProAccount(userId: string, reason: string): Promise
 export async function reinstateProAccount(userId: string): Promise<ActionResult> {
   return guard("reinstate", async () => {
     const adminId = await requireAdmin();
-    await prisma.user.update({
-      where: { id: userId },
-      data: { isPro: true, professionalStatus: "APPROVED" },
-    });
-    await prisma.proVerification.updateMany({
-      where: { userId, status: "SUSPENDED" },
-      data: { status: "APPROVED", suspendedAt: null, suspendedById: null },
-    });
-    await prisma.proProfile.updateMany({ where: { userId }, data: { isPublished: true } });
-    await restoreListings(userId);
-    await trace(userId, "REINSTATED", adminId);
+    await reinstateProCore(userId, adminId);
     revalidatePath("/admin/professionnels");
   });
 }

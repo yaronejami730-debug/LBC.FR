@@ -64,18 +64,64 @@ export async function sendExpoPush(messages: ExpoPushPayload[]): Promise<void> {
   }
 }
 
-// Envoie une notification à tous les appareils actifs d'un utilisateur.
+/**
+ * Envoie une notification aux appareils d'un utilisateur.
+ *
+ * Seuls les appareils en mode « utilisateur » sont visés : un administrateur
+ * qui a basculé son téléphone en mode administrateur ne veut pas y voir
+ * arriver « votre annonce a été mise en favori ». Il la retrouvera en
+ * rebasculant — rien n'est perdu, c'est l'aiguillage qui change.
+ */
 export async function notifyUser(
   userId: string,
   payload: Omit<ExpoPushPayload, "to">,
 ): Promise<void> {
   const tokens = await prisma.expoPushToken.findMany({
-    where: { userId, disabledAt: null },
+    where: { userId, disabledAt: null, mode: "user" },
     select: { token: true },
   });
   if (tokens.length === 0) return;
   await sendExpoPush(
     tokens.map((t) => ({ ...payload, to: t.token, sound: payload.sound ?? "default" })),
+  );
+  await prisma.expoPushToken
+    .updateMany({
+      where: { token: { in: tokens.map((t) => t.token) } },
+      data: { lastUsedAt: new Date() },
+    })
+    .catch(() => {});
+}
+
+/**
+ * Alerte de modération, envoyée aux appareils passés en mode administrateur.
+ *
+ * Personne n'est notifié en double : un administrateur dont le téléphone est
+ * resté en mode utilisateur ne reçoit rien ici — c'est le sens du mode. Le
+ * rôle est revérifié à l'envoi, un compte rétrogradé depuis l'enregistrement
+ * de son jeton ne doit plus rien recevoir.
+ */
+export async function notifyAdmins(
+  payload: Omit<ExpoPushPayload, "to">,
+  options?: { exceptUserId?: string },
+): Promise<void> {
+  const tokens = await prisma.expoPushToken.findMany({
+    where: {
+      disabledAt: null,
+      mode: "admin",
+      user: { role: "ADMIN" },
+      ...(options?.exceptUserId ? { userId: { not: options.exceptUserId } } : {}),
+    },
+    select: { token: true },
+  });
+  if (tokens.length === 0) return;
+
+  await sendExpoPush(
+    tokens.map((t) => ({
+      ...payload,
+      to: t.token,
+      sound: payload.sound ?? "default",
+      channelId: payload.channelId ?? "admin",
+    })),
   );
   await prisma.expoPushToken
     .updateMany({
