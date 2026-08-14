@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/auth-unified";
 
-async function checkAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) return false;
+/**
+ * Verrou administrateur — session du site ou jeton Bearer de l'application.
+ *
+ * Le rôle est relu en base à chaque appel : c'est la seule autorité, un jeton
+ * ne prouve pas que le compte est encore administrateur aujourd'hui.
+ */
+async function checkAdmin(req: NextRequest) {
+  const actor = await getAuthUser(req);
+  if (!actor?.id) return false;
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: actor.id },
     select: { role: true },
   });
   return user?.role === "ADMIN";
 }
 
 export async function POST(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await checkAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   const banner = await prisma.heroBanner.create({
     data: {
@@ -31,7 +37,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await checkAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id, isActive } = await req.json();
   // Si on active, désactiver les autres d'abord
   if (isActive) await prisma.heroBanner.updateMany({ data: { isActive: false } });
@@ -40,7 +46,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await checkAdmin(req))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await req.json();
   await prisma.heroBanner.delete({ where: { id } });
   return NextResponse.json({ ok: true });

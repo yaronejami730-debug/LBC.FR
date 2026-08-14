@@ -42,7 +42,8 @@
     "reco:geo-report": "tsx scripts/backfill-listing-geo.ts --report",
     "reco:refresh-profiles": "tsx scripts/refresh-reco-profiles.ts",
     "reco:dry-run": "tsx scripts/reco-dry-run.ts",
-    "test:reco": "tsx scripts/test-recommendations.ts"
+    "test:reco": "tsx scripts/test-recommendations.ts",
+    "seed:advertiser": "tsx -r ./scripts/load-env.ts scripts/seed-advertiser-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

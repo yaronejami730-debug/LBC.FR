@@ -10,6 +10,8 @@ export type NotificationType =
   | "listing_suspended"
   | "listing_expired"
   | "listing_expiring"
+  // Support client
+  | "support_reply"
   // Messagerie
   | "new_message"
   | "listing_message"
@@ -86,6 +88,17 @@ export const NOTIFICATION_TEMPLATES: Record<NotificationType, NotificationTempla
   },
 
   // ── Messagerie ─────────────────────────────────────────────────────────────
+  // ── Support client ─────────────────────────────────────────────────────────
+  // Une réponse du support suit toujours une demande de l'utilisateur : elle
+  // n'est jamais une sollicitation, et ne passe donc pas par les préférences
+  // marketing (cf. `templateToEvent`, qui la laisse hors préférence).
+  support_reply: {
+    type: "support_reply",
+    title: "Réponse du support",
+    body: "{{message}}",
+    deepLink: "/support/{{ticketId}}",
+  },
+
   new_message: {
     type: "new_message",
     title: "Nouveau message 💬",

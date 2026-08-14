@@ -2,20 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { isLeadStatus } from "@/lib/advertiser-budgets";
 
+/** Verrou administrateur — session du site ou jeton Bearer de l'application. */
 async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Accès refusé");
-
-  const roleFromToken = (session.user as unknown as Record<string, unknown>)?.role as
-    | string
-    | undefined;
-  if (roleFromToken === "ADMIN") return;
+  const actor = await getAuthUser();
+  if (!actor?.id) throw new Error("Accès refusé");
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: actor.id },
     select: { role: true },
   });
   if (user?.role !== "ADMIN") throw new Error("Accès refusé");

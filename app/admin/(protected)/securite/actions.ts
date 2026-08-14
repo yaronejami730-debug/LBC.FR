@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { removeListing, restoreListing, purgeListing } from "@/lib/moderation/removal";
 import { purgeBannedAccounts } from "@/lib/moderation/account-purge";
@@ -25,17 +26,23 @@ import { listingSlug } from "@/lib/listing-slug";
 
 const CONFIRM_WORD = "SUPPRIMER";
 
+/**
+ * Verrou administrateur — session par cookie (site) ou jeton Bearer (mobile).
+ *
+ * Le rôle est toujours relu en base : un jeton signé il y a trois semaines ne
+ * prouve pas que le compte est encore administrateur.
+ */
 async function requireAdmin() {
-  const session = await auth();
-  const id = session?.user?.id;
+  const actor = await getAuthUser();
+  const id = actor?.id;
   if (!id) throw new Error("Accès refusé");
 
-  const role = (session.user as unknown as Record<string, unknown>)?.role as string | undefined;
-  if (role !== "ADMIN") {
-    const dbUser = await prisma.user.findUnique({ where: { id }, select: { role: true } });
-    if (dbUser?.role !== "ADMIN") throw new Error("Accès refusé");
-  }
-  return { id, name: session.user?.name ?? null };
+  const dbUser = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true, name: true },
+  });
+  if (dbUser?.role !== "ADMIN") throw new Error("Accès refusé");
+  return { id, name: dbUser.name ?? null };
 }
 
 async function audit(entry: {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { deleteProDocuments } from "@/lib/pro-documents";
@@ -27,21 +28,17 @@ async function guard(label: string, fn: () => Promise<void>): Promise<ActionResu
   }
 }
 
+/** Verrou administrateur — session du site ou jeton Bearer de l'application. */
 async function requireAdmin(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Accès refusé");
-
-  const roleFromToken = (session.user as unknown as Record<string, unknown>)?.role as
-    | string
-    | undefined;
-  if (roleFromToken === "ADMIN") return session.user.id;
+  const actor = await getAuthUser();
+  if (!actor?.id) throw new Error("Accès refusé");
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: actor.id },
     select: { role: true },
   });
   if (user?.role !== "ADMIN") throw new Error("Accès refusé");
-  return session.user.id;
+  return actor.id;
 }
 
 /** Toute décision laisse une trace : l'historique ne se réécrit pas. */

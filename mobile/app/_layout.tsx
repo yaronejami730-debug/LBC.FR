@@ -70,7 +70,8 @@ function NotificationRouter() {
       // Alertes de modération : elles ouvrent la file concernée, pas la fiche
       // publique de l'annonce — l'administrateur vient décider, pas acheter.
       if (typeof data?.type === "string" && data.type.startsWith("admin_")) {
-        if (data.type === "admin_report") router.push("/admin/signalements");
+        if (data.type === "admin_support") router.push("/admin/support");
+        else if (data.type === "admin_report") router.push("/admin/signalements");
         else if (data.type === "admin_pro_pending") router.push("/admin/professionnels");
         else router.push("/admin/annonces");
         return;
@@ -153,6 +154,11 @@ export default function RootLayout() {
               <Stack.Screen name="settings/appareils" options={{ headerShown: true, title: "Appareils connectés" }} />
               <Stack.Screen name="settings/aide" options={{ headerShown: true, title: "Aide" }} />
               <Stack.Screen name="admin" options={{ headerShown: false }} />
+              <Stack.Screen name="support/index" options={{ headerShown: true, title: "Support" }} />
+              <Stack.Screen
+                name="support/[id]"
+                options={{ headerShown: true, title: "Discussion", headerBackTitle: "Support" }}
+              />
             </Stack>
             </AdminModeProvider>
             </TaxonomyProvider>

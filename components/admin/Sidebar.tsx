@@ -10,10 +10,15 @@ const navItems = [
   { href: "/admin", icon: "grid_view", label: "Dashboard", exact: true },
   { href: "/admin/users", icon: "group", label: "Utilisateurs", exact: false },
   { href: "/admin/listings", icon: "list_alt", label: "Annonces", exact: false },
+  { href: "/admin/support", icon: "support_agent", label: "Support", exact: false },
   { href: "/admin/categories", icon: "tune", label: "Catégories", exact: false },
   { href: "/admin/professionnels", icon: "verified_user", label: "Professionnels", exact: false },
   { href: "/admin/securite", icon: "shield", label: "Centre de sécurité", exact: false },
   { href: "/admin/crm", icon: "handshake", label: "CRM", exact: false },
+  // Régie Deal&Co Ads. « Annonceurs » (au-dessus) reste le pipeline
+  // commercial : des prospects. Ici, ce sont les comptes qui diffusent.
+  { href: "/admin/publicite/annonceurs", icon: "ads_click", label: "Comptes annonceurs", exact: false },
+  { href: "/admin/publicite/campagnes", icon: "rate_review", label: "Campagnes pub", exact: false },
   { href: "/admin/annonceurs", icon: "storefront", label: "Annonceurs", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
   { href: "/admin/banniere", icon: "wallpaper", label: "Bannières", exact: false },

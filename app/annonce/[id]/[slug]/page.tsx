@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "../ListingHeader";
 import AdRotator from "../AdRotator";
+import AdSlot from "@/components/ads/AdSlot";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "../SellerActions";
 import ReportButton from "../ReportButton";
@@ -1196,7 +1197,16 @@ export default async function ListingPage({
                 </div>
               )}
 
-              {ads.length > 0 && <AdRotator ads={ads} />}
+              {/* Régie Deal&Co Ads d'abord : une campagne payée passe avant une
+                  bannière maison. Sans campagne éligible ici — mauvaise ville,
+                  budget épuisé, inventaire vide — on retombe sur les bannières
+                  existantes, et l'encart ne reste jamais vide. */}
+              <AdSlot
+                placement="LISTING_ROTATOR"
+                city={listing.location}
+                category={listing.category}
+                fallback={ads.length > 0 ? <AdRotator ads={ads} /> : null}
+              />
             </div>
           </div>
         </section>

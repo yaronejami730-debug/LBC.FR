@@ -1,21 +1,26 @@
 import { View, Text, Pressable, ScrollView, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { colors } from "@/lib/theme";
 
 const SITE = "https://www.dealandcompany.fr";
 
 export default function Aide() {
+  const router = useRouter();
+
   return (
     <ScrollView className="flex-1 bg-app" contentContainerStyle={{ padding: 16 }}>
+      {/* Une discussion suivie plutôt qu'un email dans le vide : la demande
+          garde un état, et la réponse arrive au même endroit. */}
+      <LinkRow
+        icon="chatbubbles-outline"
+        label="Discuter avec le support"
+        onPress={() => router.push("/support")}
+      />
       <LinkRow
         icon="help-circle-outline"
         label="Centre d'aide / FAQ"
         onPress={() => Linking.openURL(`${SITE}/aide`)}
-      />
-      <LinkRow
-        icon="mail-outline"
-        label="Contacter le support"
-        onPress={() => Linking.openURL("mailto:support@dealandcompany.fr")}
       />
       <LinkRow
         icon="document-text-outline"

@@ -8,11 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  ScrollView,
   TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { apiFetch } from "@/lib/api";
+import { adminAction, adminData } from "@/lib/adminApi";
 import { colors } from "@/lib/theme";
 
 type AdminListing = {
@@ -99,6 +101,46 @@ export default function AdminAnnonces() {
   const [rejecting, setRejecting] = useState<AdminListing | null>(null);
   const [reason, setReason] = useState("");
 
+  /**
+   * Édition d'une annonce par l'administrateur.
+   *
+   * Corriger un titre trompeur ou un prix aberrant vaut mieux que de refuser :
+   * l'annonce reste en ligne et le vendeur n'a rien à recommencer.
+   */
+  const [editing, setEditing] = useState<AdminListing | null>(null);
+  const [form, setForm] = useState({ title: "", price: "", description: "", location: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  async function openEdit(item: AdminListing) {
+    setEditing(item);
+    setForm({ title: item.title, price: String(item.price), description: "", location: item.location });
+    try {
+      const data = await adminData<{ listing?: { description: string } }>("listing", { id: item.id });
+      if (data.listing) setForm((p) => ({ ...p, description: data.listing!.description }));
+    } catch {
+      // La description manquante n'empêche pas de corriger le titre ou le prix.
+    }
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      await adminAction("updateListingByAdmin", editing.id, {
+        title: form.title.trim(),
+        price: Number(form.price) || 0,
+        description: form.description.trim(),
+        location: form.location.trim(),
+      });
+      setEditing(null);
+      await load(status);
+    } catch (e) {
+      Alert.alert("Enregistrement impossible", e instanceof Error ? e.message : "Réessayez.");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   return (
     <View className="flex-1 bg-app">
       <View className="flex-row px-3 pt-3 pb-1">
@@ -179,8 +221,48 @@ export default function AdminAnnonces() {
                 </View>
               </Pressable>
 
+              <View className="flex-row mt-3">
+                <Pressable
+                  onPress={() => openEdit(item)}
+                  className="flex-1 items-center py-2.5 rounded-xl mr-2"
+                  style={{ backgroundColor: colors.surfaceContainer }}
+                >
+                  <Text className="font-bold text-xs" style={{ color: colors.onSurfaceVariant }}>
+                    Modifier
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    Alert.alert("Supprimer l'annonce", `« ${item.title} » sera retirée du site.`, [
+                      { text: "Annuler", style: "cancel" },
+                      {
+                        text: "Supprimer",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            await adminAction("deleteListingByAdmin", item.id);
+                            setItems((prev) => prev.filter((l) => l.id !== item.id));
+                          } catch (e) {
+                            Alert.alert(
+                              "Suppression impossible",
+                              e instanceof Error ? e.message : "Réessayez.",
+                            );
+                          }
+                        },
+                      },
+                    ])
+                  }
+                  className="flex-1 items-center py-2.5 rounded-xl"
+                  style={{ backgroundColor: colors.surfaceContainer }}
+                >
+                  <Text className="font-bold text-xs" style={{ color: colors.danger }}>
+                    Supprimer
+                  </Text>
+                </Pressable>
+              </View>
+
               {(item.status === "PENDING" || item.status === "UNDER_REVIEW") && (
-                <View className="flex-row mt-3">
+                <View className="flex-row mt-2">
                   <Pressable
                     onPress={() => decide(item, "approve")}
                     disabled={busyId === item.id}
@@ -208,6 +290,76 @@ export default function AdminAnnonces() {
           )}
         />
       )}
+
+      <Modal visible={editing !== null} animationType="slide" onRequestClose={() => setEditing(null)}>
+        <ScrollView className="flex-1 bg-app" contentContainerStyle={{ padding: 16 }}>
+          <Text className="text-on-surface text-xl font-extrabold mb-3">Modifier l&apos;annonce</Text>
+
+          <Text className="text-on-surface-variant text-[11px] font-bold uppercase tracking-wider mb-1.5">
+            Titre
+          </Text>
+          <TextInput
+            value={form.title}
+            onChangeText={(v) => setForm((p) => ({ ...p, title: v }))}
+            className="rounded-xl px-3 py-3 text-on-surface mb-3"
+            style={{ backgroundColor: colors.surfaceContainer }}
+          />
+
+          <Text className="text-on-surface-variant text-[11px] font-bold uppercase tracking-wider mb-1.5">
+            Prix (€)
+          </Text>
+          <TextInput
+            value={form.price}
+            onChangeText={(v) => setForm((p) => ({ ...p, price: v }))}
+            keyboardType="numeric"
+            className="rounded-xl px-3 py-3 text-on-surface mb-3"
+            style={{ backgroundColor: colors.surfaceContainer }}
+          />
+
+          <Text className="text-on-surface-variant text-[11px] font-bold uppercase tracking-wider mb-1.5">
+            Localisation
+          </Text>
+          <TextInput
+            value={form.location}
+            onChangeText={(v) => setForm((p) => ({ ...p, location: v }))}
+            className="rounded-xl px-3 py-3 text-on-surface mb-3"
+            style={{ backgroundColor: colors.surfaceContainer }}
+          />
+
+          <Text className="text-on-surface-variant text-[11px] font-bold uppercase tracking-wider mb-1.5">
+            Description
+          </Text>
+          <TextInput
+            value={form.description}
+            onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
+            multiline
+            className="rounded-xl px-3 py-3 text-on-surface mb-3"
+            style={{ backgroundColor: colors.surfaceContainer, minHeight: 160 }}
+          />
+
+          <View className="flex-row">
+            <Pressable
+              onPress={() => setEditing(null)}
+              className="flex-1 items-center py-3 rounded-xl mr-2"
+              style={{ backgroundColor: colors.surfaceContainer }}
+            >
+              <Text className="font-bold text-sm" style={{ color: colors.onSurfaceVariant }}>
+                Annuler
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={saveEdit}
+              disabled={savingEdit}
+              className="flex-1 items-center py-3 rounded-xl"
+              style={{ backgroundColor: colors.primary, opacity: savingEdit ? 0.5 : 1 }}
+            >
+              <Text className="text-white font-bold text-sm">
+                {savingEdit ? "Enregistrement…" : "Enregistrer"}
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </Modal>
 
       <Modal visible={rejecting !== null} transparent animationType="slide" onRequestClose={() => setRejecting(null)}>
         <View className="flex-1 justify-end" style={{ backgroundColor: "rgba(0,0,0,0.35)" }}>

@@ -192,6 +192,16 @@ export default async function ProfilePage() {
           </div>
         )}
 
+        {/* Support : une discussion suivie, pas un email dans le vide. */}
+        <div className="mb-4">
+          <ProfileLink
+            href="/support"
+            icon="support_agent"
+            title="Support"
+            subtitle="Poser une question, suivre vos demandes"
+          />
+        </div>
+
         {/* Rendez-vous pris en tant que client — tout le monde, pro compris. */}
         <div className="mb-4">
           <ProfileLink

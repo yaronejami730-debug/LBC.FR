@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { accountInvitationEmail } from "@/lib/emails/account-invitation";
@@ -20,22 +21,26 @@ import { citySlug } from "@/lib/cities";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
+/**
+ * Verrou administrateur, commun au site et à l'application mobile.
+ *
+ * `getAuthUser()` accepte les deux : la session par cookie du site, et le jeton
+ * Bearer de l'application. C'est ce qui permet à l'administration mobile
+ * d'appeler exactement ces actions-ci, au lieu d'une copie qui aurait divergé.
+ * Le rôle est toujours relu en base — un jeton signé il y a trois semaines ne
+ * prouve pas que le compte est encore administrateur aujourd'hui.
+ */
 async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Accès refusé");
+  const actor = await getAuthUser();
+  if (!actor?.id) throw new Error("Accès refusé");
 
-  const roleFromToken = (session.user as unknown as Record<string, unknown>)?.role as string | undefined;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { role: true },
+  });
+  if (dbUser?.role !== "ADMIN") throw new Error("Accès refusé");
 
-  // Fallback: re-check directly in DB if role is missing or not ADMIN in the token
-  if (roleFromToken !== "ADMIN") {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-    if (dbUser?.role !== "ADMIN") throw new Error("Accès refusé");
-  }
-
-  return session;
+  return { user: { id: actor.id, email: actor.email } };
 }
 
 // ── Listings ──────────────────────────────────────────────────────────────────
@@ -312,11 +317,11 @@ export async function sendConsentReminderToUser(userId: string) {
   });
 
   // Trace pour audit + rate-limit.
-  const admin = await auth();
+  const admin = await requireAdmin();
   await prisma.moderationEvent.create({
     data: {
       userId: user.id,
-      actor: `admin:${admin?.user?.id ?? "unknown"}`,
+      actor: `admin:${admin.user.id}`,
       action: "admin_consent_reminder",
       reason: "Relance CGU/confidentialité depuis la fiche admin",
     },

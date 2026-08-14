@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { get } from "@vercel/blob";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAuthUser } from "@/lib/auth-unified";
 
 export const runtime = "nodejs";
 
@@ -14,9 +14,13 @@ export const runtime = "nodejs";
  * faille de session) pourrait parcourir tout le store.
  */
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (!session?.user?.id || role !== "ADMIN") {
+  // Session du site ou jeton de l'application : le modérateur instruit le même
+  // dossier depuis les deux. Le rôle est relu en base, jamais déduit du jeton.
+  const actor = await getAuthUser(req);
+  const account = actor?.id
+    ? await prisma.user.findUnique({ where: { id: actor.id }, select: { role: true } })
+    : null;
+  if (account?.role !== "ADMIN") {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 

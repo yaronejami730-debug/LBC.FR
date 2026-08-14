@@ -58,3 +58,37 @@ export async function getMobileUser(req: NextRequest) {
     return null;
   }
 }
+
+/**
+ * Même chose, à partir des en-têtes de la requête courante.
+ *
+ * Les Server Actions n'ont pas d'objet `NextRequest` : elles ne reçoivent que
+ * leurs arguments. `headers()` donne pourtant accès à l'en-tête `Authorization`
+ * de l'appel en cours, ce qui permet à l'application mobile d'appeler
+ * exactement le même code d'administration que le site — sans dupliquer une
+ * logique qui divergerait au premier correctif.
+ */
+export async function getMobileUserFromHeaders() {
+  try {
+    const { headers } = await import("next/headers");
+    const store = await headers();
+    const raw = store.get("authorization") ?? store.get("Authorization");
+    const token = raw?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    if (!token) return null;
+
+    const payload = await verifyMobileToken(token);
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: {
+        id: true, email: true, name: true, role: true, isPro: true, emailVerified: true,
+        bannedAt: true, companyName: true, verified: true, avatar: true, phoneNumber: true,
+        marketingConsent: true,
+      },
+    });
+    if (!user || user.bannedAt) return null;
+    return user;
+  } catch {
+    // Hors contexte de requête (script, build) : pas de jeton, pas d'erreur.
+    return null;
+  }
+}

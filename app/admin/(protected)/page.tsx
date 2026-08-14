@@ -16,6 +16,7 @@ async function getStats() {
     totalAds,
     pendingProAccounts,
     visits30d,
+    openSupport,
   ] =
     await Promise.all([
       prisma.user.count(),
@@ -44,6 +45,9 @@ async function getStats() {
           createdAt: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
+      // Demandes de support qui attendent une réponse : un client qui patiente
+      // doit se voir depuis l'accueil, pas seulement dans sa file.
+      prisma.supportTicket.count({ where: { status: "OPEN" } }),
     ]);
   return {
     totalUsers,
@@ -55,6 +59,7 @@ async function getStats() {
     totalAds,
     pendingProAccounts,
     visits30d,
+    openSupport,
   };
 }
 
@@ -103,6 +108,14 @@ export default async function AdminDashboard() {
       icon: "check_circle",
       color: "bg-emerald-100 text-emerald-700",
       href: "/admin/listings?status=APPROVED",
+    },
+    {
+      label: "Support en attente",
+      value: stats.openSupport,
+      icon: "support_agent",
+      color: "bg-amber-100 text-amber-700",
+      href: "/admin/support?statut=OPEN",
+      urgent: stats.openSupport > 0,
     },
     {
       label: "Visites (30 j)",
