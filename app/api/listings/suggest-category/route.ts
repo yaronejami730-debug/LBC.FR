@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { detectCategory } from "@/lib/autoCategory";
+import { classifyTitle } from "@/lib/category/engine";
 import { extractAttributes } from "@/lib/extract-attributes";
 import { CATEGORIES } from "@/lib/categories";
 
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const cat = detectCategory(title);
+  const cat = classifyTitle(title);
   const attrs = extractAttributes(title);
   const found = cat ? CATEGORIES.find((c) => c.id === cat.categoryId) : null;
 

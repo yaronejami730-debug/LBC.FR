@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getFiltersForCategory, COMMON_FILTERS, type FilterField } from "@/lib/filters-config";
 import { CATEGORIES } from "@/lib/categories";
-import { detectCategory } from "@/lib/autoCategory";
 
 interface Props {
   q: string;
@@ -71,18 +70,35 @@ export default function SearchBar({ q, category, searchParams }: Props) {
   // auto-open when coming from saved search
   const [open, setOpen] = useState(() => searchParams._filters === "1");
 
-  // run auto-detect immediately when panel opens (if q already set and no manual category)
+  /**
+   * Pré-sélection de la catégorie à l'ouverture des filtres.
+   *
+   * La détection passe par le serveur : l'index de catégorisation pèse 537 Ko
+   * et n'a rien à faire dans le bundle d'une page de recherche. L'appel n'a
+   * lieu qu'à l'ouverture du panneau, jamais à la frappe — un filtre n'a pas
+   * besoin d'être prédictif au caractère près.
+   *
+   * L'ouverture n'attend pas la réponse : le panneau s'affiche tout de suite,
+   * la catégorie se pose ensuite si elle arrive.
+   */
   function openPanel() {
-    if (!manualCategory && (values.q || q)) {
-      const kw = (values.q || q).trim();
-      const result = detectCategory(kw);
-      if (result && result.confidence > 0.3 && !drawerCategory) {
-        setDrawerCategory(result.categoryId);
-        const cat = CATEGORIES.find((c) => c.id === result.categoryId);
-        setDetected(cat?.label ?? null);
-      }
-    }
     setOpen(true);
+    const kw = (values.q || q).trim();
+    if (manualCategory || drawerCategory || kw.length < 3) return;
+
+    fetch("/api/category/suggest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: kw }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const result = data.result as { categoryId: string | null; status: string } | null;
+        if (!result?.categoryId || result.status === "ambiguous") return;
+        setDrawerCategory(result.categoryId);
+        setDetected(CATEGORIES.find((c) => c.id === result.categoryId)?.label ?? null);
+      })
+      .catch(() => {});
   }
 
   // clear category-specific values when category changes (skip first render)
@@ -100,19 +116,45 @@ export default function SearchBar({ q, category, searchParams }: Props) {
     });
   }, [drawerCategory]);
 
-  // auto-detect category from q
+  /**
+   * Détection au fil de la saisie, à distance et différée.
+   *
+   * 400 ms après la dernière frappe, et jamais avant trois caractères : une
+   * requête par lettre pour un filtre serait du gaspillage des deux côtés.
+   * L'appel précédent est annulé, donc une réponse en retard ne peut pas
+   * écraser une saisie plus récente.
+   */
   useEffect(() => {
     const kw = values.q?.trim() || "";
     if (!kw || manualCategory) { setDetected(null); return; }
-    const result = detectCategory(kw);
-    if (result && result.confidence > 0.3) {
-      setDrawerCategory(result.categoryId);
-      const cat = CATEGORIES.find((c) => c.id === result.categoryId);
-      setDetected(cat?.label ?? null);
-    } else {
-      setDetected(null);
-      if (!manualCategory) setDrawerCategory("");
-    }
+    if (kw.length < 3) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetch("/api/category/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: kw }),
+        signal: controller.signal,
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          const result = data.result as { categoryId: string | null; status: string } | null;
+          if (result?.categoryId && result.status !== "ambiguous") {
+            setDrawerCategory(result.categoryId);
+            setDetected(CATEGORIES.find((c) => c.id === result.categoryId)?.label ?? null);
+          } else {
+            setDetected(null);
+            if (!manualCategory) setDrawerCategory("");
+          }
+        })
+        .catch(() => {});
+    }, 400);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
   }, [values.q, manualCategory]);
 
   const setValue = useCallback((key: string, val: string) => {

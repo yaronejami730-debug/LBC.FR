@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Inter } from "next/font/google";
+import { inter, manrope } from "./fonts";
 import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
@@ -10,21 +10,6 @@ import { AppStoreBanner } from "@/components/AppStoreBanner";
 
 const GA_ID = "G-31WRQ5YXX6";
 const ADSENSE_CLIENT = "ca-pub-1774647148412256";
-
-// Weights réduits au strict nécessaire : -200 KB sur le critical path.
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["700", "800"], // utilisé uniquement pour les titres/headlines
-  variable: "--font-manrope",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -117,39 +102,46 @@ export default function RootLayout({
         {/* Material Symbols — range réduit (400 + FILL 0..1) → fichier ~5× plus
             petit.
 
-            Chargé en `media="print"` : la feuille se télécharge sans bloquer le
-            rendu, puis un script la repasse en `all` une fois arrivée. En 3G,
-            un stylesheet Google bloquant coûtait un aller-retour DNS + TLS +
-            téléchargement avant le premier pixel. Contrepartie assumée : les
-            icônes apparaissent juste après le texte.
+            La feuille était chargée en `media="print"`, puis un script inline la
+            repassait en `all` une fois arrivée : un classique pour ne pas
+            bloquer le premier rendu. Ça ne tient pas dans l'App Router.
 
-            `suppressHydrationWarning` : le script repasse `media` à `all` avant
-            l'hydratation, donc l'attribut du DOM diffère du HTML serveur. */}
+            Le `<link>` est un élément React, et React le re-rend à sa valeur du
+            JSX — `print` — lors des navigations côté client. Le script inline,
+            lui, ne s'exécute qu'au chargement initial du document. Après un
+            aller-retour entre deux pages, la feuille repassait donc en `print`
+            et la police cessait d'être appliquée, sans que rien ne la remette.
+            L'attribut `data-icons="ready"`, posé une fois pour toutes sur
+            `<html>`, restait en place et levait le masque : le nom de la
+            ligature s'affichait en toutes lettres — « person », « storefront »,
+            « visibility » — à la place de chaque icône.
+
+            D'où le retour à un `<link>` ordinaire. Le coût réel est faible :
+            `preconnect` supprime le DNS et le TLS du chemin critique, et
+            `display=swap` laisse le texte s'afficher pendant le téléchargement.
+            Surtout, l'attribut `media` ne change plus jamais — il n'y a donc
+            plus rien qu'un re-rendu puisse défaire. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          rel="preload"
-          as="style"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
-        />
-        <link
-          id="material-symbols"
           rel="stylesheet"
-          media="print"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1&display=swap"
-          suppressHydrationWarning
         />
-        {/* Deux temps : basculer la feuille en `all` dès qu'elle est arrivée,
-            puis marquer `data-icons="ready"` une fois la police réellement
-            utilisable. Tant que ce marqueur est absent, `globals.css` garde les
-            ligatures invisibles — sinon le nom de l'icône s'affiche en toutes
-            lettres pendant le chargement. Le repli à 2 s garantit que les
-            icônes réapparaissent même si Google Fonts ne répond pas. */}
+        {/* Marque `data-icons="ready"` une fois la police réellement utilisable.
+            Tant que ce marqueur est absent, `globals.css` garde les ligatures
+            invisibles — sinon le nom de l'icône s'affiche pendant le
+            chargement.
+
+            La détection passe par `document.fonts`, qui interroge l'état réel
+            de la police et non celui d'une balise : aucune course possible avec
+            un événement `load` déjà tiré, et aucune dépendance à un élément que
+            React pourrait remplacer. Le repli à 2 s garantit que les icônes
+            réapparaissent même si Google Fonts ne répond pas. */}
         <script
           dangerouslySetInnerHTML={{
             __html:
               "(function(){var d=document;var r=function(){d.documentElement.setAttribute('data-icons','ready')};" +
-              "var l=d.getElementById('material-symbols');" +
-              "var ready=function(){if(d.fonts&&d.fonts.load){d.fonts.load('24px \"Material Symbols Outlined\"').then(r).catch(r)}else{r()}};" +
-              "if(l){if(l.sheet){l.media='all';ready()}else{l.addEventListener('load',function(){l.media='all';ready()})}}else{r()}" +
+              "if(d.fonts&&d.fonts.load){d.fonts.load('24px \"Material Symbols Outlined\"').then(r).catch(r)}else{r()}" +
               "setTimeout(r,2000)})()",
           }}
         />

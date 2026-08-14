@@ -2,7 +2,7 @@
  * Extraction d'attributs structurés depuis le texte libre d'une annonce.
  *
  * Réutilise les listes `brands` / `models` de la taxonomie
- * (categories-classifier.json — 862 marques, 844 modèles) + les marques
+ * (data/attributes/brands-models.json — 862 marques, 844 modèles) + les marques
  * auto de carBrands.ts. Aucun appel réseau, aucune IA générative :
  * matching exact mot/phrase contre un index construit au chargement.
  *
@@ -11,7 +11,11 @@
  *   → { brand: "BMW", model: "F20", year: 2014, brands: ["BMW"], models: ["F20"] }
  */
 
-import categoriesData from "./categories-classifier.json";
+// Dictionnaire de marques et modèles, et rien d'autre : ce fichier a cessé
+// d'être une taxonomie le jour où la catégorisation a pris `lib/categories.ts`
+// pour source unique. Il est resté ici pour ce qu'il sait faire — reconnaître
+// 862 marques et 844 modèles dans un titre.
+import categoriesData from "@/data/attributes/brands-models.json";
 import { CAR_BRANDS } from "./carBrands";
 import { foldAccents } from "./normalize-fr";
 

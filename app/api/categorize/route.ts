@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { detectCategory } from "@/lib/autoCategory";
+import { classifyTitle } from "@/lib/category/engine";
 import { extractAttributes } from "@/lib/extract-attributes";
 import { expandAbbreviations } from "@/lib/normalize-fr";
 import { guardRate } from "@/lib/rate-limit-guard";
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Titre trop court (min. 3 caractères)" }, { status: 400 });
   }
 
-  const detection = detectCategory(titleStr, descStr);
+  const detection = classifyTitle(titleStr, descStr);
   const attributes = extractAttributes(`${titleStr} ${descStr}`);
 
   return NextResponse.json({

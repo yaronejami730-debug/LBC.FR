@@ -1,7 +1,5 @@
-import { Sora } from "next/font/google";
+import { sora } from "@/app/fonts";
 import { COLORS } from "@/lib/ads/theme";
-
-const sora = Sora({ subsets: ["latin"], weight: ["600", "700", "800"], display: "swap" });
 
 /**
  * Cadre des écrans d'entrée : connexion et changement de mot de passe.

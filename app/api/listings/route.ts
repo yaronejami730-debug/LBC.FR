@@ -18,7 +18,7 @@ import { notifyMatchingSavedSearches } from "@/lib/notify-saved-searches";
 import { listingSlug } from "@/lib/listing-slug";
 import { citySlug } from "@/lib/cities";
 import { computeQualityScore } from "@/lib/quality-score";
-import { detectCategory } from "@/lib/autoCategory";
+import { classifyTitle } from "@/lib/category/engine";
 import { extractAttributes } from "@/lib/extract-attributes";
 import { classifyWellness } from "@/lib/wellness/classify";
 import { inferOfferIntent } from "@/lib/offer-intent";
@@ -343,7 +343,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Vérification catégorie server-side (classifier sans IA générative) ──
-    const detected = detectCategory(title, description);
+    // Contrôle serveur de la catégorie choisie. Une décision « ambiguë » ne
+    // prouve rien : elle ne doit pas envoyer l'annonce en modération.
+    const classified = classifyTitle(title, description);
+    const detected =
+      classified.categoryId && (classified.status === "auto" || classified.status === "suggested")
+        ? { categoryId: classified.categoryId, subcategory: classified.subcategory ?? "", confidence: classified.confidence }
+        : null;
     const attributes = extractAttributes(`${title} ${description}`);
     if (detected && detected.confidence >= 0.6 && detected.categoryId !== categoryId) {
       if (listingStatus === "APPROVED") {

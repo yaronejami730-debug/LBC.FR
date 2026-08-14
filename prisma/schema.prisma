@@ -1162,6 +1162,34 @@ model AdEvent {
 }
 
 
+/// Correction de catégorie par un utilisateur.
+///
+/// Le moteur a proposé, la personne a choisi autre chose : c'est le signal le
+/// plus fiable qui existe sur la qualité de la catégorisation. On l'enregistre
+/// pour mesurer les confusions récurrentes — « lit bébé » vers l'ameublement,
+/// par exemple — et corriger la base de connaissance en connaissance de cause.
+///
+/// Aucune boucle automatique : une correction isolée peut être une erreur de
+/// l'utilisateur, pas du moteur.
+model CategoryFeedback {
+  id String @id @default(cuid())
+
+  title                String
+  suggestedCategoryId  String?
+  suggestedSubcategory String?
+  confidence           Float?
+
+  chosenCategoryId  String
+  chosenSubcategory String?
+
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([suggestedCategoryId, chosenCategoryId])
+}
+
+
 /// Journal des événements Stripe de la régie, et rempart d'idempotence.
 ///
 /// Stripe réémet un événement en cas de doute sur la réception. Sans ce

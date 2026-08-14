@@ -12,7 +12,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { moderateListing } from "@/lib/moderation";
 import { computeQualityScore } from "@/lib/quality-score";
-import { detectCategory } from "@/lib/autoCategory";
+import { classifyTitle } from "@/lib/category/engine";
 import { extractAttributes } from "@/lib/extract-attributes";
 import { scanText } from "@/lib/moderation/url-scanner";
 import { scanScam } from "@/lib/moderation/scam-patterns";
@@ -230,7 +230,11 @@ export async function createExternalListing(
     },
   });
 
-  const detected = detectCategory(p.title, p.description);
+  const classified = classifyTitle(p.title, p.description);
+  const detected =
+    classified.categoryId && (classified.status === "auto" || classified.status === "suggested")
+      ? { categoryId: classified.categoryId, subcategory: classified.subcategory ?? "", confidence: classified.confidence }
+      : null;
   const categoryId = CATEGORIES.find((c) => c.label === p.category)?.id ?? p.category;
   const moderationFlags = [...modResult.flags];
   if (detected && detected.confidence >= 0.6 && detected.categoryId !== categoryId) {

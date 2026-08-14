@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { CATEGORIES } from "@/lib/categories";
-import { detectCategory } from "@/lib/autoCategory";
 import BrandPicker from "@/components/BrandPicker";
 import { ToggleField } from "@/components/ui/Toggle";
 import {
@@ -324,7 +323,63 @@ export default function PostForm() {
     companyName: string | null;
   } | null>(null);
   const [autoDetected, setAutoDetected] = useState(false);
+  /** Suggestion en cours de calcul — évite un clignotement à chaque frappe. */
+  const [detecting, setDetecting] = useState(false);
   const [userPickedCategory, setUserPickedCategory] = useState(false);
+
+  /**
+   * Suggestion de catégorie, à distance.
+   *
+   * Trois raisons de ne plus classer dans le navigateur : l'index pèse
+   * 537 Ko et n'a rien à faire dans le bundle ; le calcul bloquait la frappe ;
+   * et le moteur évolue sans qu'il faille redéployer le client.
+   *
+   * 350 ms d'attente après la dernière touche : assez pour ne pas interroger à
+   * chaque caractère, assez peu pour que la catégorie apparaisse pendant qu'on
+   * réfléchit au prix. Un choix manuel gèle définitivement la suggestion —
+   * c'est l'utilisateur qui a le dernier mot, jamais le moteur.
+   */
+  useEffect(() => {
+    if (userPickedCategory) return;
+    if (title.trim().length < 3) {
+      setAutoDetected(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setDetecting(true);
+    const timer = window.setTimeout(() => {
+      fetch("/api/category/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+        signal: controller.signal,
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          const result = data.result as
+            | { status: string; categoryId: string | null; subcategory: string | null }
+            | null;
+          // « Ambigu » n'impose rien : le formulaire laisse choisir plutôt que
+          // de deviner. C'est ce qui évite de publier un lit bébé en salon.
+          if (result && result.categoryId && (result.status === "auto" || result.status === "suggested")) {
+            setCategoryId(result.categoryId);
+            setSubcategory(result.subcategory ?? "");
+            setAutoDetected(true);
+          } else {
+            setAutoDetected(false);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setDetecting(false));
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+      setDetecting(false);
+    };
+  }, [title, userPickedCategory]);
   // Bien-être : le moteur déduit durée/capacité/unité d'un titre bien écrit,
   // mais ne devine rien d'un titre pauvre — et un acheteur qui compare deux
   // hammams a besoin que ce soit déclaré. Ces champs priment sur l'extraction.
@@ -1359,15 +1414,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               <div className="px-5 py-4 space-y-2">
                 <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Titre de l&apos;annonce *</label>
                 <input value={title} autoFocus
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setTitle(v);
-                    if (!userPickedCategory) {
-                      const m = detectCategory(v);
-                      if (m) { setCategoryId(m.categoryId); setSubcategory(m.subcategory); setAutoDetected(true); }
-                      else setAutoDetected(false);
-                    }
-                  }}
+                  onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-transparent border-none p-0 text-xl font-bold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
                   placeholder="Que vendez-vous ?" />
               </div>

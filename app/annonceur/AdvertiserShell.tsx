@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sora } from "next/font/google";
+import { sora } from "@/app/fonts";
 import AdvertiserSignOut from "./AdvertiserSignOut";
 import { COLORS } from "@/lib/ads/theme";
 
@@ -18,9 +18,6 @@ export { COLORS };
  * site : ce sont celles de la maquette, elles n'ont pas d'équivalent dans le
  * thème public, et les inventer aurait produit un à-peu-près.
  */
-const sora = Sora({ subsets: ["latin"], weight: ["600", "700", "800"], display: "swap" });
-
-
 const NAV = [
   { href: "/annonceur", label: "Tableau de bord", icon: "grid_view" },
   { href: "/annonceur/campagnes", label: "Campagnes", icon: "campaign" },

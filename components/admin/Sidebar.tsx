@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/listings", icon: "list_alt", label: "Annonces", exact: false },
   { href: "/admin/support", icon: "support_agent", label: "Support", exact: false },
   { href: "/admin/categories", icon: "tune", label: "Catégories", exact: false },
+  { href: "/admin/categorisation", icon: "auto_awesome", label: "Catégorisation", exact: false },
   { href: "/admin/professionnels", icon: "verified_user", label: "Professionnels", exact: false },
   { href: "/admin/securite", icon: "shield", label: "Centre de sécurité", exact: false },
   { href: "/admin/crm", icon: "handshake", label: "CRM", exact: false },
