@@ -8,6 +8,7 @@ import { formatDuration } from "@/lib/wellness/classify";
 import { listingUrl } from "@/lib/listing-slug";
 import { normalizeWebsite, websiteLabel } from "@/lib/pro/website";
 import { safeJsonLd } from "@/lib/json-ld";
+import { stockOf } from "@/lib/pro/inventory";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -19,6 +20,32 @@ const getProfile = (slug: string) =>
       where: { slug },
       include: {
         services: { where: { isActive: true }, orderBy: { position: "asc" } },
+        // Produits en vente. Chargés systématiquement mais affichés seulement
+        // si l'établissement en a : une fiche de coiffeur n'aura jamais de
+        // rubrique « produits » vide à l'écran.
+        products: {
+          where: { status: "ACTIVE" },
+          orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+          take: 60,
+          select: {
+            id: true,
+            name: true,
+            section: true,
+            price: true,
+            comparePrice: true,
+            images: true,
+            quantity: true,
+            reserved: true,
+            unlimited: true,
+            lowStockAt: true,
+            variants: { select: { quantity: true, reserved: true, isActive: true } },
+            listings: {
+              where: { status: "APPROVED", deletedAt: null, shadowBanned: false },
+              select: { id: true, title: true },
+              take: 1,
+            },
+          },
+        },
         members: {
           where: { isActive: true },
           orderBy: { position: "asc" },
@@ -136,6 +163,31 @@ export default async function ProProfilePage({
 
   // Une ligne sans durée ne produit aucun créneau : sans prestation réservable
   // ni équipe, le bouton « Réserver » mènerait à un tunnel vide.
+  // Produits présentables : on calcule ici plutôt que dans le JSX, pour que le
+  // rendu n'ait plus qu'à afficher. `stockOf` reste la seule autorité sur la
+  // disponibilité — la fiche publique ne recompte rien elle-même.
+  const sellableProducts = profile.products.map((p) => {
+    const stock = stockOf(p);
+    let image: string | null = null;
+    try {
+      const parsed = JSON.parse(p.images) as unknown;
+      if (Array.isArray(parsed) && typeof parsed[0] === "string") image = parsed[0];
+    } catch {
+      /* colonne illisible — vignette de repli */
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      section: p.section,
+      price: p.price,
+      comparePrice: p.comparePrice,
+      image,
+      outOfStock: stock.outOfStock,
+      low: stock.low,
+      listingId: p.listings[0]?.id ?? null,
+    };
+  });
+
   const bookableCount = profile.services.filter(
     (s) => s.isBookable && s.durationMin && s.durationMin > 0,
   ).length;
@@ -385,6 +437,72 @@ export default async function ProProfilePage({
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Ce que la boutique vend. La section n'apparaît que si des produits
+            existent : la fiche s'adapte à l'activité réelle, sans que personne
+            n'ait à déclarer un « type de compte ». */}
+        {sellableProducts.length > 0 && (
+          <section className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_8px_24px_rgba(21,21,125,0.04)]">
+            <h2 className="text-lg font-extrabold tracking-tight font-['Manrope'] mb-4">
+              {profile.services.length > 0 ? "Nos produits" : "Notre catalogue"}
+            </h2>
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {sellableProducts.map((p) => (
+                <li
+                  key={p.id}
+                  className="rounded-xl border border-slate-100 overflow-hidden flex flex-col"
+                >
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="w-full h-36 object-cover bg-slate-50"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-36 bg-slate-50" aria-hidden />
+                  )}
+                  <div className="p-3.5 flex-1 flex flex-col">
+                    <p className="font-semibold text-[15px] leading-snug text-on-surface">
+                      {p.name}
+                    </p>
+                    {p.section && (
+                      <p className="text-[11px] uppercase tracking-wider text-slate-400 mt-0.5">
+                        {p.section}
+                      </p>
+                    )}
+                    <p className="mt-2 font-extrabold text-primary">
+                      {p.price.toLocaleString("fr-FR")} €
+                      {p.comparePrice && p.comparePrice > p.price && (
+                        <span className="ml-2 text-xs font-semibold text-slate-400 line-through">
+                          {p.comparePrice.toLocaleString("fr-FR")} €
+                        </span>
+                      )}
+                    </p>
+                    {/* Une rupture se dit, elle ne se cache pas : le client qui
+                        se déplace pour rien ne revient pas. */}
+                    {p.outOfStock ? (
+                      <p className="mt-1 text-xs font-semibold text-[#9a6118]">
+                        Momentanément épuisé
+                      </p>
+                    ) : p.low ? (
+                      <p className="mt-1 text-xs text-slate-400">Derniers exemplaires</p>
+                    ) : null}
+                    {p.listingId && (
+                      <Link
+                        href={`/annonce/${p.listingId}`}
+                        className="mt-3 inline-block text-sm font-bold text-primary hover:underline"
+                      >
+                        Voir l&apos;annonce
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

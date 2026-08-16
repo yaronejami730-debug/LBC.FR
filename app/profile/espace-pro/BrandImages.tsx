@@ -70,6 +70,7 @@ export default function BrandImages({ coverImage, avatar, framing, monogram, onC
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("usage", "brand");
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) throw new Error(data.error ?? `Erreur ${res.status}`);

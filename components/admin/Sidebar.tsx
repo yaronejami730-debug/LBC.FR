@@ -26,6 +26,7 @@ const navItems = [
   { href: "/admin/notifications", icon: "notifications", label: "Notifications", exact: false },
   { href: "/admin/behavioral", icon: "psychology", label: "Moteur comportemental", exact: false },
   { href: "/admin/recommandations", icon: "near_me", label: "Recommandations", exact: false },
+  { href: "/admin/satisfaction", icon: "reviews", label: "Satisfaction", exact: false },
   { href: "/admin/seo", icon: "travel_explore", label: "Indexation SEO", exact: false },
 ];
 

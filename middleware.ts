@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-const PROTECTED = ["/messages", "/profile", "/post", "/favorites"];
+const PROTECTED = ["/messages", "/profile", "/post", "/favorites", "/brouillons"];
 
 // Scrapers that should not trigger auth middleware (no cookies)
 const SCRAPER_AGENTS = [

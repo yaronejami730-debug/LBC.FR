@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import BusinessModelPicker from "../BusinessModelPicker";
+import type { BusinessModelChoice } from "@/lib/pro/business-model";
 
 export type ManagedEstablishment = {
   id: string;
@@ -30,6 +32,10 @@ export default function EstablishmentsManager({
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  // « Que propose principalement votre entreprise ? » — la réponse décide des
+  // sections que le professionnel verra. Non répondue, on retombe sur le preset
+  // de son métier : personne n'est bloqué par une question.
+  const [businessModel, setBusinessModel] = useState<BusinessModelChoice | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +66,7 @@ export default function EstablishmentsManager({
           // l'équipe restent vides, ce sont elles qui distinguent deux points
           // de vente.
           copyFrom: String(fd.get("copyFrom") ?? "") || undefined,
+          businessModel: businessModel ?? undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -68,6 +75,7 @@ export default function EstablishmentsManager({
         return;
       }
       form.reset();
+      setBusinessModel(null);
       setCreating(false);
       // La nouvelle boutique naît hors ligne : on l'ouvre directement sur sa
       // fiche, il reste l'adresse et l'équipe à renseigner.
@@ -178,6 +186,13 @@ export default function EstablishmentsManager({
                 ))}
               </select>
             </label>
+
+            {/* Posée seulement pour une fiche neuve : recopier un établissement
+                existant reprend déjà ses réglages, redemander l'activité
+                reviendrait à faire choisir deux fois la même chose. */}
+            <div className="pt-2">
+              <BusinessModelPicker value={businessModel} onChange={setBusinessModel} />
+            </div>
 
             <div className="flex items-center gap-3 pt-1">
               <button

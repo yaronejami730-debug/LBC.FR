@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ProAccessError, canManageEstablishments, resolveProScope } from "@/lib/pro/access";
 import { presetFor, serialize } from "@/lib/pro/capabilities";
 import { listingSlug } from "@/lib/listing-slug";
+import { capabilitiesForChoice, isBusinessModelChoice } from "@/lib/pro/business-model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,6 +74,17 @@ export async function POST(req: NextRequest) {
 
     const activityType = String(body.activityType ?? source?.activityType ?? "") || null;
 
+    // « Que propose principalement votre entreprise ? » — la réponse arrive
+    // sous forme de choix lisible et repart en capacités. Le métier ne donne
+    // qu'un point de départ : deux salons de coiffure ne vendent pas forcément
+    // la même chose, et c'est le professionnel qui sait s'il tient un stock.
+    const businessModel = body.businessModel;
+    const capabilities = source
+      ? source.capabilities
+      : isBusinessModelChoice(businessModel)
+        ? serialize(capabilitiesForChoice(businessModel))
+        : serialize(presetFor(activityType));
+
     const created = await prisma.proProfile.create({
       data: {
         userId: scope.userId,
@@ -80,9 +92,7 @@ export async function POST(req: NextRequest) {
         name: name.slice(0, 120),
         slug: await uniqueSlug(name),
         activityType,
-        capabilities: source
-          ? source.capabilities
-          : serialize(presetFor(activityType)),
+        capabilities,
         description: source?.description ?? null,
         categories: source?.categories ?? "[]",
         city: body.city ? String(body.city).slice(0, 80) : null,

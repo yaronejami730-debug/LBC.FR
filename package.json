@@ -45,7 +45,10 @@
     "seed:advertiser": "tsx -r ./scripts/load-env.ts scripts/seed-advertiser-test.ts",
     "category:build": "tsx scripts/generate-category-dataset.ts",
     "category:bench": "tsx scripts/benchmark-category.ts",
-    "category:toponyms": "tsx scripts/test-classifier-toponyms.ts"
+    "category:toponyms": "tsx scripts/test-classifier-toponyms.ts",
+    "test:plate": "tsx scripts/test-plate-policy.ts",
+    "test:inventory": "tsx scripts/test-inventory.ts",
+    "test:satisfaction": "tsx -r ./scripts/load-env.ts scripts/test-satisfaction.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

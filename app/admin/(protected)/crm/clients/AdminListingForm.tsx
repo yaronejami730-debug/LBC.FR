@@ -358,6 +358,10 @@ export default function AdminListingForm({
       for (const file of Array.from(files)) {
         const form = new FormData();
         form.append("file", file);
+        form.append("usage", "listing");
+        form.append("category", categoryId);
+        form.append("subcategory", subcategory);
+        form.append("title", title);
         const res = await fetch("/api/upload", { method: "POST", body: form });
         if (!res.ok) throw new Error("Erreur d'envoi");
         const data = await res.json();

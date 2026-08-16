@@ -15,6 +15,7 @@ import type { Lexicon } from "./lexicon";
 export type ProModuleId =
   | "fiche"
   | "annonces"
+  | "stock"
   | "prestations"
   | "activites"
   | "agenda"
@@ -33,6 +34,13 @@ type ModuleDef = {
 };
 
 const REGISTRY: ModuleDef[] = [
+  {
+    id: "stock",
+    href: "/profile/espace-pro/stock",
+    icon: "inventory_2",
+    requires: ["inventory"],
+    label: () => "Mon stock",
+  },
   {
     id: "fiche",
     href: "/profile/espace-pro",

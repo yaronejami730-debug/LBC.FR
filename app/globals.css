@@ -62,6 +62,33 @@
   --font-headline: var(--font-manrope, "Manrope"), sans-serif;
   --font-body: var(--font-inter, "Inter"), sans-serif;
   --font-label: var(--font-inter, "Inter"), sans-serif;
+
+  /* Formulaire de dépôt d'annonce — palette bleue de la maquette.
+     Isolée sous le préfixe `form-` : le parcours de dépôt est la seule surface
+     de l'app à utiliser ce bleu saturé, on ne le laisse pas fuiter dans les
+     tokens Material génériques. */
+  --color-form-canvas: oklch(97.5% 0.006 255);
+  --color-form-edge: oklch(92% 0.008 255);
+  --color-form-line: oklch(90% 0.008 255);
+  --color-form-soft: oklch(98% 0.006 255);
+  --color-form-dash: oklch(80% 0.02 260);
+  --color-form-blue: oklch(52% 0.19 263);
+  --color-form-blue-deep: oklch(40% 0.19 263);
+  --color-form-blue-dark: oklch(30% 0.06 263);
+  --color-form-ink: oklch(20% 0.03 260);
+  --color-form-label: oklch(30% 0.03 260);
+  --color-form-body: oklch(25% 0.03 260);
+  --color-form-muted: oklch(48% 0.02 255);
+  --color-form-faint: oklch(55% 0.02 255);
+}
+
+@keyframes formFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.form-card-in {
+  animation: formFadeIn 0.35s ease;
 }
 
 /**

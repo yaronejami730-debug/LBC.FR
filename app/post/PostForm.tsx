@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
@@ -14,6 +14,7 @@ import {
   WELLNESS_PLACES,
 } from "@/lib/wellness/publish-fields";
 import { inferOfferIntent } from "@/lib/offer-intent";
+import { platePolicyFromCategory } from "@/lib/plate-policy";
 import { INDEXABILITY_BAR } from "@/lib/seo/indexability";
 import { FIELD_SETS } from "@/lib/offer-fields";
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ const MAX_PHOTOS_PRO = 30;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type PhotoMode = "choose" | "guided" | "free";
-type FormStep  = 0 | 1 | 2 | 3 | 4 | 5; // 0=titre 1=photos 2=prix 3=desc 4=coordonnées 5=récap
+type FormStep  = 0 | 1 | 2 | 3 | 4 | 5; // voir STEP ci-dessous
 
 type VehicleFields = {
   marque: string; modele: string; nomModele: string; annee: string; kilometrage: string;
@@ -251,21 +252,145 @@ function getAutoMode(): PhotoMode {
 // ── Reusable field styles ─────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full bg-surface-container-low rounded-xl px-4 py-3 text-base text-on-surface outline-none focus:ring-2 focus:ring-primary/50 border border-transparent focus:border-primary/30 transition-all placeholder:text-outline-variant/60";
+  "w-full box-border rounded-[12px] border-[1.5px] border-form-line bg-white px-4 py-3.5 text-[15px] text-form-ink outline-none transition-colors placeholder:text-form-faint/60 focus:border-form-blue";
+
+/** Intitulé au-dessus d'un champ. */
+const labelCls = "text-[13px] font-semibold text-form-label";
+
+/** Titre et sous-titre d'une étape, dans la carte. */
+const stepTitleCls = "text-[20px] font-bold text-form-ink";
+const stepSubCls   = "mt-1 text-[14px] text-form-muted";
 
 /** Options des champs bien-être — valeurs stockées telles quelles en metadata. */
 
 const pillCls = (active: boolean) =>
-  `px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+  `px-4 py-2 rounded-full text-sm font-semibold transition-all border-[1.5px] ${
     active
-      ? "bg-primary text-white border-primary shadow-sm"
-      : "bg-white border-slate-200 text-slate-600 hover:border-primary/40 hover:text-primary"
+      ? "bg-form-blue text-white border-form-blue shadow-[0_4px_12px_rgba(45,86,224,0.25)]"
+      : "bg-white border-form-line text-form-muted hover:border-form-blue hover:text-form-blue"
   }`;
+
+/**
+ * Encart d'information dans une étape.
+ *
+ * Remplace les bandeaux jaunes : un fond ambre bordé d'ambre criait « erreur »
+ * pour dire « voici ce qui se passe ». Ici la couleur ne sert qu'à distinguer
+ * l'état atteint (bleu = en cours, vert = acquis), en teinte légère, dans le
+ * même vocabulaire que le reste du formulaire.
+ */
+function FormNote({
+  tone,
+  icon,
+  children,
+}: {
+  tone: "info" | "success";
+  icon: string;
+  children: ReactNode;
+}) {
+  const frame =
+    tone === "success"
+      ? "border-emerald-500/25 bg-emerald-500/[0.06]"
+      : "border-form-blue/20 bg-form-blue/[0.05]";
+  const iconTone = tone === "success" ? "text-emerald-600" : "text-form-blue";
+
+  return (
+    <div className={`flex items-start gap-3 rounded-[14px] border px-4 py-3 ${frame}`}>
+      <span className={`material-symbols-outlined shrink-0 text-[20px] ${iconTone}`}
+        style={{ fontVariationSettings: "'FILL' 1" }}>
+        {icon}
+      </span>
+      <div className="text-[13.5px] leading-snug text-form-body">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Vignette de photo — vide (ajout) ou remplie (aperçu).
+ *
+ * L'aperçu pose la photo entière sur un fond flou tiré d'elle-même : une photo
+ * verticale n'est ni rognée ni posée sur une bande grise.
+ *
+ * Les commandes remplacer/supprimer restent visibles en permanence. Elles
+ * n'apparaissaient qu'au survol, geste qui n'existe pas au doigt : sur mobile,
+ * supprimer une photo était impossible sans passer par un appui long qui ne
+ * déclenchait rien.
+ */
+function PhotoTile({
+  src,
+  ratio,
+  label,
+  hint,
+  icon = "add_a_photo",
+  badge,
+  onPick,
+  onRemove,
+}: {
+  src?: string;
+  ratio: "wide" | "square";
+  label?: string;
+  hint?: string;
+  icon?: string;
+  badge?: string | null;
+  onPick: () => void;
+  onRemove?: () => void;
+}) {
+  const shape = ratio === "wide" ? "aspect-[4/3]" : "aspect-square";
+
+  if (!src) {
+    return (
+      <button type="button" onClick={onPick}
+        className={`group flex ${shape} w-full flex-col items-center justify-center gap-2 rounded-[16px] border-[1.5px] border-dashed border-form-dash bg-form-soft px-3 text-center transition-colors hover:border-form-blue hover:bg-form-blue/[0.04]`}>
+        <span className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-form-blue/10">
+          <span className="material-symbols-outlined text-[22px] text-form-blue">{icon}</span>
+        </span>
+        {label && <span className="text-[13px] font-semibold text-form-blue">{label}</span>}
+        {hint && <span className="text-[11.5px] leading-snug text-form-muted">{hint}</span>}
+      </button>
+    );
+  }
+
+  return (
+    <div className={`relative ${shape} w-full overflow-hidden rounded-[16px] border border-form-line`}>
+      <img src={src} alt="" aria-hidden
+        className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+      <img src={src} alt={label ?? "Photo de l'annonce"} className="relative h-full w-full object-contain" />
+
+      {label && (
+        <span className="absolute left-3 top-3 rounded-full bg-form-ink/65 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+          {label}
+        </span>
+      )}
+
+      {badge && (
+        <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-emerald-500/90 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+          <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>blur_on</span>
+          {badge}
+        </span>
+      )}
+
+      <div className="absolute right-2.5 top-2.5 flex gap-1.5">
+        <button type="button" onClick={onPick} aria-label="Remplacer la photo"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-form-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-white">
+          <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+        </button>
+        {onRemove && (
+          <button type="button" onClick={onRemove} aria-label="Supprimer la photo"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-form-ink shadow-sm backdrop-blur-sm transition-colors hover:bg-red-500 hover:text-white">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ── Step labels ───────────────────────────────────────────────────────────────
 
-// 0=Titre  1=Prix(+catégorie)  2=Photos  3=Description  4=Coordonnées  5=Récap
-const STEP_LABELS = ["Titre", "Prix", "Photos", "Description", "Coordonnées", "Récap"];
+// Source unique de la numérotation des étapes : pas de `formStep === 2` en dur
+// ailleurs, sinon un réordonnancement casse les liens « Modifier » du récap.
+const STEP = { TITLE: 0, PHOTOS: 1, DESC: 2, PRICE: 3, CONTACT: 4, RECAP: 5 } as const;
+
+const STEP_LABELS = ["Titre", "Photos", "Description", "Prix", "Coordonnées", "Récap"];
 
 // ── Tips per step ─────────────────────────────────────────────────────────────
 
@@ -736,20 +861,33 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
         let uploadFile = rawFile;
         let clientPlatesFound = 0;
 
-        // Always detect plates — Claude returns [] if no plate visible, cheap call
-        setPlateDetecting(true);
-        try {
-          const result = await detectAndBlurPlates(rawFile);
-          uploadFile = result.file;
-          clientPlatesFound = result.platesFound;
-        } catch {
-          // silent fallback — upload original
-        } finally {
-          setPlateDetecting(false);
+        // La détection de plaques ne concerne que les rubriques où un véhicule
+        // peut se trouver. Elle tournait sur chaque photo de chaque annonce —
+        // un appel facturé et jusqu'à quinze secondes d'attente pour chercher
+        // une immatriculation sur un canapé ou une manucure.
+        const platePolicy = platePolicyFromCategory(categoryId, subcategory);
+
+        if (platePolicy.verdict !== "skip") {
+          setPlateDetecting(true);
+          try {
+            const result = await detectAndBlurPlates(rawFile);
+            uploadFile = result.file;
+            clientPlatesFound = result.platesFound;
+          } catch {
+            // silent fallback — upload original
+          } finally {
+            setPlateDetecting(false);
+          }
         }
 
         const form = new FormData();
         form.append("file", uploadFile);
+        // Le serveur retranche la même décision plutôt que de croire le client :
+        // au pire, une requête forgée provoque une analyse inutile.
+        form.append("usage", "listing");
+        form.append("category", categoryId);
+        form.append("subcategory", subcategory);
+        form.append("title", title);
         const res = await fetch("/api/upload", { method: "POST", body: form });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -935,10 +1073,10 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
   // ── Step validation ───────────────────────────────────────────────────────────
 
   function canAdvance(step: FormStep): boolean {
-    if (step === 0) return title.trim().length > 0; // titre obligatoire
-    if (step === 1) return price.trim().length > 0; // prix obligatoire
-    if (step === 2) return true;                    // photos optionnelles
-    if (step === 3) return description.trim().length > 0;
+    if (step === STEP.TITLE)  return title.trim().length > 0;       // titre obligatoire
+    if (step === STEP.PHOTOS) return true;                          // photos optionnelles
+    if (step === STEP.DESC)   return description.trim().length > 0;
+    if (step === STEP.PRICE)  return price.trim().length > 0;       // prix obligatoire
     return true;
   }
 
@@ -947,6 +1085,12 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
   const guides    = getGuides(categoryId);
   const totalPhotoSteps = 1 + guides.length;
   const doneCount = images.filter(Boolean).length;
+
+  const stepsLeft = STEP_LABELS.length - 1 - formStep;
+  const stepsLeftLabel =
+    stepsLeft === 0 ? "Dernière vérification avant la mise en ligne."
+    : stepsLeft === 1 ? "Encore une étape avant la mise en ligne."
+    : `Encore ${stepsLeft} étapes avant la mise en ligne.`;
 
   if (rejection) {
     return (
@@ -1026,7 +1170,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 onClick={() => {
                   setRejection(null);
                   setPublishError(null);
-                  setFormStep(0);
+                  setFormStep(STEP.TITLE);
                 }}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-surface-container text-on-surface rounded-full font-semibold hover:bg-slate-50 transition-colors"
               >
@@ -1041,225 +1185,232 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
   }
 
   return (
-    <div className="bg-[#f7f8fc] text-on-surface min-h-screen pb-32">
+    <div className="min-h-screen bg-form-canvas text-form-ink">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="bg-white fixed top-0 w-full z-50 shadow-[0_1px_0_rgba(0,0,0,0.06)]">
-        <div className="flex items-center justify-between px-5 py-3 max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors text-slate-500">
-              <span className="material-symbols-outlined text-xl">close</span>
+      <header className="w-full border-b border-form-edge bg-white">
+        <div className="mx-auto flex w-full max-w-[1080px] items-center justify-between px-6 py-5 sm:px-10">
+          <div className="flex items-center gap-4">
+            <Link href="/" aria-label="Quitter le dépôt d'annonce"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xl leading-none text-form-faint transition-colors hover:bg-form-canvas hover:text-form-ink">
+              ×
             </Link>
-            <img src="/logo.png" alt="Deal&Co" className="h-9 w-auto" />
+            <img src="/logo.png" alt="Deal&Co" className="h-8 w-auto" />
           </div>
-          <span className="text-xs font-bold text-primary uppercase tracking-widest">Nouvelle annonce</span>
-        </div>
-
-        {/* Step progress bar */}
-        <div className="max-w-2xl mx-auto px-5 pb-3">
-          <div className="flex items-center gap-1.5">
-            {STEP_LABELS.map((label, i) => (
-              <div key={i} className="flex items-center gap-1.5 flex-1 min-w-0">
-                <div className="flex flex-col items-center gap-1 flex-1">
-                  <div
-                    className={`h-1 rounded-full w-full transition-all duration-300 ${
-                      i < formStep ? "bg-emerald-500" : i === formStep ? "bg-primary" : "bg-slate-200"
-                    }`}
-                  />
-                  <span className={`text-[9px] font-bold uppercase tracking-wide truncate transition-colors ${
-                    i === formStep ? "text-primary" : i < formStep ? "text-emerald-500" : "text-slate-300"
-                  }`}>
-                    {label}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <span className="text-[13px] font-bold uppercase tracking-[0.06em] text-form-blue-deep">Nouvelle annonce</span>
         </div>
       </header>
 
       {/* ── Content ────────────────────────────────────────────────────────── */}
-      <main className="max-w-2xl mx-auto pt-32 px-4 space-y-6">
+      <main className="mx-auto flex w-full max-w-[640px] flex-col gap-7 px-6 pt-12 pb-20">
 
-        {/* ══ STEP 2 : PHOTOS ═══════════════════════════════════════════════ */}
-        {formStep === 2 && (
-          <div className="space-y-5">
+        {/* Titre de page + décompte restant */}
+        <div>
+          <h1 className="bg-gradient-to-br from-form-blue-dark to-form-blue bg-clip-text text-[32px] font-extrabold leading-[1.15] tracking-[-0.025em] text-transparent sm:text-[36px]">
+            Publier une annonce
+          </h1>
+          <p className="mt-2 text-[15.5px] text-form-muted">{stepsLeftLabel}</p>
+        </div>
+
+        {/* Progression */}
+        <div>
+          <div className="flex items-center gap-2">
+            {STEP_LABELS.map((label, i) => (
+              <div key={label}
+                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                  i < formStep ? "bg-form-blue-deep" : i === formStep ? "bg-form-blue" : "bg-form-edge"
+                }`}
+              />
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between text-[11.5px] font-semibold">
+            {STEP_LABELS.map((label, i) => (
+              <span key={label}
+                className={`flex-1 text-center ${
+                  i === formStep ? "text-form-blue" : i < formStep ? "text-form-blue-deep" : "text-form-faint/60"
+                }`}>
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Carte d'étape — `key` sur l'étape pour rejouer le fondu à chaque
+            changement d'écran, sinon le passage d'une étape à l'autre est un
+            saut sec. */}
+        <div key={formStep}
+          className="form-card-in rounded-[20px] border border-form-edge bg-white p-6 shadow-[0_1px_2px_rgba(24,28,45,0.04),0_12px_32px_rgba(24,28,45,0.06)] sm:p-10">
+
+        {/* ══ ÉTAPE PHOTOS ══════════════════════════════════════════════════ */}
+        {formStep === STEP.PHOTOS && (
+          <div className="flex flex-col gap-[22px]">
             <div>
-              <h2 className="text-2xl font-extrabold text-on-surface">Photos</h2>
-              <p className="text-sm text-outline mt-0.5">Jusqu&apos;à {MAX_PHOTOS} · Toutes gratuites</p>
+              <h2 className={stepTitleCls}>Ajoutez des photos</h2>
+              <p className={stepSubCls}>Les annonces avec photos reçoivent bien plus de réponses. Jusqu&apos;à {MAX_PHOTOS}, toutes gratuites.</p>
             </div>
 
-            {/* Plate warning — vehicles only */}
-            {categoryId === "vehicules" && (
-              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-                <span className="material-symbols-outlined text-amber-500 text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
-                <p className="text-sm text-amber-800 font-medium leading-snug">
-                  Attention — veuillez flouter vos plaques d&apos;immatriculation si celles-ci sont apparentes sur vos photos.
-                </p>
-              </div>
-            )}
+            {/*
+              L'avertissement « floutez vos plaques » a disparu d'ici.
+              Il réclamait au vendeur un geste que le serveur fait désormais
+              lui-même : les photos de véhicule passent par la détection de
+              plaques, qui les floute avant l'enregistrement. Le résultat est
+              annoncé sur la vignette concernée (« Plaque floutée ») — on montre
+              ce qui a été fait au lieu d'exiger ce qui ne dépend plus de lui.
+            */}
 
             {/* Jauge de visibilité — voir `seoBar` plus haut. */}
             {doneCount > 0 && doneCount < seoBar.minImages && (
-              <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3">
-                <span className="material-symbols-outlined text-primary text-xl shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  photo_library
+              <FormNote tone="info" icon="photo_library">
+                Encore{" "}
+                <strong className="font-bold text-form-ink">
+                  {seoBar.minImages - doneCount} photo{seoBar.minImages - doneCount > 1 ? "s" : ""}
+                </strong>{" "}
+                et votre annonce apparaîtra dans les résultats Google.
+                <span className="mt-0.5 block text-form-muted">
+                  En dessous de {seoBar.minImages} photos, elle reste visible sur Deal&amp;Co mais n&apos;est pas référencée.
                 </span>
-                <p className="text-sm text-on-surface font-medium leading-snug">
-                  Encore <strong>{seoBar.minImages - doneCount} photo{seoBar.minImages - doneCount > 1 ? "s" : ""}</strong> et
-                  votre annonce apparaîtra dans les résultats Google.
-                  <span className="block text-outline font-normal mt-0.5">
-                    En dessous de {seoBar.minImages} photos, elle reste visible sur Deal&amp;Co mais n&apos;est pas référencée.
-                  </span>
-                </p>
-              </div>
+              </FormNote>
             )}
             {doneCount >= seoBar.minImages && (
-              <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
-                <span className="material-symbols-outlined text-emerald-600 text-xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  check_circle
-                </span>
-                <p className="text-sm text-emerald-800 font-medium leading-snug">
-                  Assez de photos pour être référencée sur Google.
-                </p>
-              </div>
+              <FormNote tone="success" icon="check_circle">
+                Assez de photos pour être référencée sur Google.
+              </FormNote>
             )}
 
             {/* ── Mode "choose" ── */}
             {photoMode === "choose" && (
-              <div className="space-y-3">
-                <p className="text-sm text-on-surface-variant font-medium">Comment souhaitez-vous ajouter vos photos ?</p>
-                <div className="grid grid-cols-1 gap-3">
-                  <button type="button" onClick={() => pickMode("guided")}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-white border-2 border-primary/20 hover:border-primary shadow-sm active:scale-[0.99] transition-all text-left">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-on-surface">Aide à la photo</p>
-                      <p className="text-outline text-xs mt-0.5">On vous guide angle par angle pour une annonce qui vend mieux</p>
-                    </div>
-                    <span className="material-symbols-outlined text-primary text-xl shrink-0">chevron_right</span>
-                  </button>
-                  <button type="button" onClick={() => pickMode("free")}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-sm active:scale-[0.99] transition-all text-left">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-slate-500 text-2xl">photo_library</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-bold text-on-surface">Ajouter mes photos</p>
-                      <p className="text-outline text-xs mt-0.5">Je gère mes photos moi-même, librement</p>
-                    </div>
-                    <span className="material-symbols-outlined text-slate-400 text-xl shrink-0">chevron_right</span>
-                  </button>
-                </div>
+              <div className="flex flex-col gap-3">
+                <p className={labelCls}>Comment souhaitez-vous ajouter vos photos ?</p>
+                <button type="button" onClick={() => pickMode("guided")}
+                  className="flex items-center gap-4 rounded-[16px] border-[1.5px] border-form-blue/30 bg-form-blue/[0.04] p-4 text-left transition-all hover:border-form-blue active:scale-[0.99]">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-form-blue/10">
+                    <span className="material-symbols-outlined text-2xl text-form-blue">auto_awesome</span>
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-bold text-form-ink">Aide à la photo</span>
+                    <span className="mt-0.5 block text-[13px] text-form-muted">On vous guide angle par angle, pour une annonce qui vend mieux</span>
+                  </span>
+                  <span className="material-symbols-outlined shrink-0 text-form-blue">chevron_right</span>
+                </button>
+                <button type="button" onClick={() => pickMode("free")}
+                  className="flex items-center gap-4 rounded-[16px] border-[1.5px] border-form-line bg-white p-4 text-left transition-all hover:border-form-dash active:scale-[0.99]">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-form-soft">
+                    <span className="material-symbols-outlined text-2xl text-form-faint">photo_library</span>
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-bold text-form-ink">Ajouter mes photos</span>
+                    <span className="mt-0.5 block text-[13px] text-form-muted">Je gère mes photos moi-même, librement</span>
+                  </span>
+                  <span className="material-symbols-outlined shrink-0 text-form-faint">chevron_right</span>
+                </button>
               </div>
             )}
 
             {/* ── Mode "free" : slots progressifs ── */}
-            {photoMode === "free" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-on-surface">{doneCount} / {MAX_PHOTOS} photos</p>
-                  <button type="button" onClick={() => setPhotoMode("choose")}
-                    className="text-xs text-outline underline underline-offset-2">Changer</button>
-                </div>
+            {photoMode === "free" && (() => {
+              // Premier emplacement libre : c'est lui que vise la tuile « Ajouter ».
+              let nextSlot = -1;
+              for (let i = 0; i < MAX_PHOTOS; i++) {
+                if (!images[i]) { nextSlot = i; break; }
+              }
+              const secondary = images
+                .map((im, i) => ({ im, i }))
+                .filter((s) => s.im && s.i !== 0);
 
-                {/* Progressive slots — never all at once */}
-                <div className="flex flex-col gap-3">
-                  {Array.from({ length: Math.min(doneCount + 1, MAX_PHOTOS) }).map((_, i) => {
-                    const img = images[i];
-                    const isMain = i === 0;
-                    return (
-                      <div key={i}
-                        className={`relative overflow-hidden rounded-2xl cursor-pointer group transition-all ${
-                          img ? "h-48" : isMain ? "h-48 border-2 border-dashed border-primary/40 bg-white" : "h-20 border-2 border-dashed border-slate-200 bg-white hover:border-primary/40"
-                        }`}
-                        onClick={() => {
-                          extraFileRef.current?.setAttribute("data-slot", String(i));
-                          extraFileRef.current?.click();
-                        }}
-                      >
-                        {img ? (
-                          <>
-                            <img src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-40" />
-                            <img src={img} alt={`Photo ${i + 1}`} className="relative w-full h-full object-contain" />
-                            <span className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">
-                              {isMain ? "Principale" : `Photo ${i + 1}`}
-                            </span>
-                            {plateStatus[img] > 0 && (
-                              <span className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md">
-                                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>blur_on</span>
-                                Plaque floutée
-                              </span>
-                            )}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
-                              <button type="button" onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                                className="w-10 h-10 rounded-full bg-red-500/80 text-white flex items-center justify-center">
-                                <span className="material-symbols-outlined text-lg">delete</span>
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center gap-3">
-                            {plateDetecting ? (
-                              <div className="flex flex-col items-center gap-2">
-                                <div className="animate-spin rounded-full h-6 w-6 border-[3px] border-amber-500 border-t-transparent" />
-                                <p className="text-xs text-amber-600 font-semibold">Analyse des plaques…</p>
-                              </div>
-                            ) : uploading ? (
-                              <div className="animate-spin rounded-full h-6 w-6 border-[3px] border-primary border-t-transparent" />
-                            ) : (
-                              <>
-                                <span className={`material-symbols-outlined ${isMain ? "text-primary text-4xl" : "text-slate-400 text-2xl"}`}>
-                                  {isMain ? "add_a_photo" : "add"}
-                                </span>
-                                {isMain && <p className="font-bold text-primary text-sm">Ajouter la photo principale</p>}
-                                {!isMain && <p className="text-sm text-slate-400 font-medium">Ajouter une ou plusieurs photos</p>}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              function pick(slot: number) {
+                extraFileRef.current?.setAttribute("data-slot", String(slot));
+                extraFileRef.current?.click();
+              }
 
-                <input ref={mainFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
-                  onChange={(e) => { handleImageUpload(e.target.files, 0); e.target.value = ""; }} />
-                <input ref={extraFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden"
-                  onChange={(e) => {
-                    const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
-                    handleImageUpload(e.target.files, isNaN(slot) ? undefined : slot);
-                    extraFileRef.current?.removeAttribute("data-slot");
-                    e.target.value = "";
-                  }} />
-              </div>
-            )}
+              return (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[13px] font-semibold text-form-label">
+                      <span className="tabular-nums text-form-ink">{doneCount}</span> / {MAX_PHOTOS} photos
+                    </p>
+                    <button type="button" onClick={() => setPhotoMode("choose")}
+                      className="text-[12px] font-semibold text-form-muted underline underline-offset-2 hover:text-form-blue">
+                      Changer de mode
+                    </button>
+                  </div>
+
+                  {/* Photo principale — celle qui s'affiche dans les résultats */}
+                  <PhotoTile
+                    src={images[0]}
+                    ratio="wide"
+                    label={images[0] ? "Principale" : "Ajouter la photo principale"}
+                    hint={images[0] ? undefined : "Elle s'affiche en premier dans les résultats"}
+                    badge={images[0] && plateStatus[images[0]] > 0 ? "Plaque floutée" : null}
+                    onPick={() => pick(0)}
+                    onRemove={images[0] ? () => removeImage(0) : undefined}
+                  />
+
+                  {/* Photos suivantes */}
+                  {(secondary.length > 0 || (images[0] && nextSlot > 0)) && (
+                    <div className="grid grid-cols-3 gap-3">
+                      {secondary.map(({ im, i }) => (
+                        <PhotoTile
+                          key={i}
+                          src={im}
+                          ratio="square"
+                          badge={plateStatus[im] > 0 ? "Floutée" : null}
+                          onPick={() => pick(i)}
+                          onRemove={() => removeImage(i)}
+                        />
+                      ))}
+                      {nextSlot > 0 && (
+                        <PhotoTile ratio="square" icon="add" label="Ajouter" onPick={() => pick(nextSlot)} />
+                      )}
+                    </div>
+                  )}
+
+                  {(uploading || plateDetecting) && (
+                    <FormNote tone="info" icon="hourglass_top">
+                      {plateDetecting ? "Analyse des plaques d'immatriculation…" : "Envoi de la photo…"}
+                    </FormNote>
+                  )}
+
+                  <input ref={mainFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden"
+                    onChange={(e) => { handleImageUpload(e.target.files, 0); e.target.value = ""; }} />
+                  <input ref={extraFileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple className="hidden"
+                    onChange={(e) => {
+                      const slot = parseInt(extraFileRef.current?.getAttribute("data-slot") ?? "");
+                      handleImageUpload(e.target.files, isNaN(slot) ? undefined : slot);
+                      extraFileRef.current?.removeAttribute("data-slot");
+                      e.target.value = "";
+                    }} />
+                </div>
+              );
+            })()}
 
             {/* ── Mode "guided" : stepper ── */}
             {photoMode === "guided" && (
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 {/* Header guided */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-on-surface">
-                      Étape <span className="text-primary">{photoStep + 1}</span> / {totalPhotoSteps}
+                    <p className="text-[13px] font-semibold text-form-label">
+                      Angle <span className="text-form-blue">{photoStep + 1}</span> / {totalPhotoSteps}
                     </p>
                     {doneCount > 0 && (
-                      <p className="text-xs text-emerald-600 font-semibold">{doneCount} photo{doneCount > 1 ? "s" : ""} ajoutée{doneCount > 1 ? "s" : ""}</p>
+                      <p className="text-[12px] font-semibold text-emerald-600">
+                        {doneCount} photo{doneCount > 1 ? "s" : ""} ajoutée{doneCount > 1 ? "s" : ""}
+                      </p>
                     )}
                   </div>
                   <button type="button" onClick={() => setPhotoMode("choose")}
-                    className="text-xs text-outline underline underline-offset-2">Changer</button>
+                    className="text-[12px] font-semibold text-form-muted underline underline-offset-2 hover:text-form-blue">
+                    Changer de mode
+                  </button>
                 </div>
 
-                {/* Progress dots */}
-                <div className="flex gap-1 overflow-x-auto pb-1">
+                {/* Progression des angles */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
                   {Array.from({ length: totalPhotoSteps }).map((_, i) => (
                     <button key={i} type="button" onClick={() => setPhotoStep(i)}
-                      className={`h-1.5 rounded-full shrink-0 transition-all duration-200 ${
-                        i === photoStep ? "w-6 bg-primary" : images[i] ? "w-3 bg-emerald-500" : "w-3 bg-slate-200"
+                      aria-label={`Aller à l'angle ${i + 1}`}
+                      className={`h-1.5 shrink-0 rounded-full transition-all duration-200 ${
+                        i === photoStep ? "w-7 bg-form-blue" : images[i] ? "w-3.5 bg-emerald-500" : "w-3.5 bg-form-edge"
                       }`}
                     />
                   ))}
@@ -1281,69 +1432,30 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                   }
 
                   return (
-                    <div className="space-y-3">
-                      {/* Big photo area */}
-                      <div
-                        className={`relative overflow-hidden rounded-2xl h-56 md:h-72 transition-all ${
-                          img ? "cursor-default" : "cursor-pointer bg-white border-2 border-dashed hover:border-primary " + (isMain ? "border-primary/40" : "border-slate-200")
-                        }`}
-                        onClick={() => { if (!img) triggerUpload(); }}
-                      >
-                        {img ? (
-                          <>
-                            <img src={img} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-xl scale-110 opacity-40" />
-                            <img src={img} alt={guide.label} className="relative w-full h-full object-contain" />
-                            <span className="absolute top-3 left-3 bg-black/50 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">{guide.label}</span>
-                            {plateStatus[img] > 0 && (
-                              <span className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md">
-                                <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>blur_on</span>
-                                Plaque floutée
-                              </span>
-                            )}
-                            <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center gap-3 opacity-0 hover:opacity-100">
-                              <button type="button" onClick={triggerUpload}
-                                className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/40 transition-colors">
-                                <span className="material-symbols-outlined">edit</span>
-                              </button>
-                              <button type="button" onClick={() => removeImage(photoStep)}
-                                className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center hover:bg-red-500/60 transition-colors">
-                                <span className="material-symbols-outlined">delete</span>
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                            {plateDetecting ? (
-                              <div className="flex flex-col items-center gap-2">
-                                <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-amber-500 border-t-transparent" />
-                                <p className="text-xs text-amber-600 font-semibold">Analyse des plaques…</p>
-                              </div>
-                            ) : uploading ? (
-                              <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-primary border-t-transparent" />
-                            ) : (
-                              <>
-                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isMain ? "bg-primary/10" : "bg-slate-100"}`}>
-                                  <span className={`material-symbols-outlined text-4xl ${isMain ? "text-primary" : "text-slate-400"}`}>{guide.icon}</span>
-                                </div>
-                                <div className="text-center px-8">
-                                  <p className={`font-bold text-base ${isMain ? "text-primary" : "text-on-surface"}`}>{guide.label}</p>
-                                  {isMain && <p className="text-outline text-xs mt-1">Apparaît en premier dans l&apos;annonce</p>}
-                                </div>
-                                <div className="flex items-center gap-2 bg-primary/8 text-primary text-xs font-semibold px-4 py-2 rounded-full border border-primary/20">
-                                  <span className="material-symbols-outlined text-base">add_a_photo</span>
-                                  Appuyer pour ajouter
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                    <div className="flex flex-col gap-3">
+                      <PhotoTile
+                        src={img}
+                        ratio="wide"
+                        label={guide.label}
+                        hint={img ? undefined : isMain ? "Elle s'affiche en premier dans les résultats" : "Appuyez pour ajouter cet angle"}
+                        icon={guide.icon}
+                        badge={img && plateStatus[img] > 0 ? "Plaque floutée" : null}
+                        onPick={triggerUpload}
+                        onRemove={img ? () => removeImage(photoStep) : undefined}
+                      />
+
+                      {(uploading || plateDetecting) && (
+                        <FormNote tone="info" icon="hourglass_top">
+                          {plateDetecting ? "Analyse des plaques d'immatriculation…" : "Envoi de la photo…"}
+                        </FormNote>
+                      )}
 
                       {/* Nav buttons */}
                       <div className="flex items-center gap-2">
                         {photoStep > 0 && (
                           <button type="button" onClick={() => setPhotoStep((s) => s - 1)}
-                            className="w-11 h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                            aria-label="Angle précédent"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-form-line bg-white text-form-muted transition-colors hover:border-form-dash">
                             <span className="material-symbols-outlined">chevron_left</span>
                           </button>
                         )}
@@ -1351,17 +1463,19 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                           <button type="button"
                             onClick={() => !isLast && setPhotoStep((s) => s + 1)}
                             disabled={isLast}
-                            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-full bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-50">
-                            {isLast ? "Photos complètes ✓" : <>Suivant <span className="material-symbols-outlined text-base">arrow_forward</span></>}
+                            className="flex-1 rounded-full bg-form-blue py-3 text-[14px] font-bold text-white shadow-[0_6px_16px_rgba(45,86,224,0.25)] transition-all active:scale-95 disabled:opacity-40 disabled:shadow-none">
+                            {isLast ? "Photos complètes ✓" : "Angle suivant →"}
                           </button>
                         ) : (
                           <button type="button"
                             onClick={() => !isMain && setPhotoStep((s) => s + 1)}
                             disabled={isMain}
-                            className={`flex-1 py-3 rounded-full text-sm font-semibold transition-all border ${
-                              isMain ? "bg-slate-100 text-slate-400 border-transparent cursor-default" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                            className={`flex-1 rounded-full border py-3 text-[14px] font-semibold transition-all ${
+                              isMain
+                                ? "cursor-default border-transparent bg-form-soft text-form-faint/70"
+                                : "border-form-line bg-white text-form-muted hover:border-form-dash"
                             }`}>
-                            {isMain ? "Ajoutez d'abord la photo principale" : "Passer cette étape →"}
+                            {isMain ? "Ajoutez d'abord la photo principale" : "Passer cet angle →"}
                           </button>
                         )}
                       </div>
@@ -1371,12 +1485,13 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                         <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
                           {images.map((im, i) => im ? (
                             <button key={i} type="button" onClick={() => setPhotoStep(i)}
-                              className={`relative w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                                i === photoStep ? "border-primary scale-105" : "border-transparent hover:border-slate-300"
+                              aria-label={`Voir la photo ${i + 1}`}
+                              className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-[12px] border-2 transition-all ${
+                                i === photoStep ? "border-form-blue" : "border-transparent hover:border-form-line"
                               }`}>
-                              <img src={im} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm scale-110 opacity-60" />
-                              <img src={im} alt="" className="relative w-full h-full object-contain" />
-                              <span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
+                              <img src={im} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-sm" />
+                              <img src={im} alt="" className="relative h-full w-full object-contain" />
+                              <span className="absolute left-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-form-ink/70 text-[9px] font-bold text-white">{i + 1}</span>
                             </button>
                           ) : null)}
                         </div>
@@ -1405,143 +1520,129 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           </div>
         )}
 
-        {/* ══ STEP 0 : TITRE ═══════════════════════════════════════════════ */}
-        {formStep === 0 && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-extrabold">Titre de l&apos;annonce</h2>
-            <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
-              {/* Titre */}
-              <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Titre de l&apos;annonce *</label>
-                <input value={title} autoFocus
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 text-xl font-bold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
-                  placeholder="Que vendez-vous ?" />
-              </div>
-              {/* Prix */}
-              <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Prix *</label>
-                <div className="flex items-center gap-2">
-                  <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0"
-                    className="flex-1 bg-transparent border-none p-0 text-3xl font-extrabold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
-                    placeholder="0" />
-                  <span className="text-2xl font-bold text-slate-300">€</span>
-                </div>
-              </div>
-              {/* Catégorie auto-détectée */}
-              {autoDetected && (() => {
-                const cat = CATEGORIES.find((c) => c.id === categoryId);
-                return (
-                  <div className="px-5 py-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Catégorie détectée</label>
-                      <button type="button"
-                        onClick={() => { setAutoDetected(false); setUserPickedCategory(false); setFormStep(1); }}
-                        className="text-[10px] text-outline underline underline-offset-2">Modifier</button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2 bg-primary/8 text-primary px-3 py-1.5 rounded-full">
-                        <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>{cat?.icon}</span>
-                        <span className="font-bold text-sm">{cat?.label}</span>
-                        <span className="material-symbols-outlined text-sm text-emerald-500">check_circle</span>
-                      </div>
-                    </div>
-                    {/* Sous-catégorie inline */}
-                    <div className="space-y-2">
-                      <p className="text-[10px] text-outline uppercase font-bold tracking-widest">Sous-catégorie</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cat?.subcategories.map((sub) => (
-                          <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={pillCls(subcategory === sub)}>{sub}</button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-              {/* Catégorie non détectée — sélecteur rapide */}
-              {!autoDetected && title.trim().length > 2 && (
-                <div className="px-5 py-4 space-y-3">
-                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Catégorie</label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {CATEGORIES.slice(0, 6).map((cat) => (
-                      <button key={cat.id} type="button"
-                        onClick={() => { setCategoryId(cat.id); setSubcategory(cat.subcategories[0]); setUserPickedCategory(true); }}
-                        className={`py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all border-2 text-center ${
-                          categoryId === cat.id ? "bg-primary/8 border-primary text-primary" : "bg-slate-50 border-transparent text-slate-500 hover:border-slate-200"
-                        }`}>
-                        <span className="material-symbols-outlined text-lg">{cat.icon}</span>
-                        <span className="text-[8px] font-bold uppercase tracking-tight leading-tight">{cat.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <button type="button" onClick={() => setFormStep(1)}
-                    className="text-xs text-primary font-semibold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">expand_more</span>
-                    Voir toutes les catégories
-                  </button>
-                </div>
-              )}
+        {/* ══ ÉTAPE TITRE ═══════════════════════════════════════════════════ */}
+        {formStep === STEP.TITLE && (
+          <div className="flex flex-col gap-[22px]">
+            <div>
+              <h2 className={stepTitleCls}>De quoi s&apos;agit-il ?</h2>
+              <p className={stepSubCls}>Donnez un titre clair : c&apos;est lui qui décide de la catégorie.</p>
             </div>
-            {/* Tip */}
-          </div>
-        )}
 
-        {/* ══ STEP 1 : PRIX + CATÉGORIE (si non détectée) ═════════════════ */}
-        {formStep === 1 && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-extrabold">Prix</h2>
-            <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
-              {/* Prix */}
-              <div className="px-5 py-4 space-y-2">
-                {/* « Prix de vente » n'a pas de sens pour un loyer, un tarif
-                    horaire ou un salaire — le libellé suit le régime. */}
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">{fieldSpec.labels.price} *</label>
-                <div className="flex items-center gap-2">
-                  <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" autoFocus
-                    className="flex-1 bg-transparent border-none p-0 text-3xl font-extrabold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
-                    placeholder="0" />
-                  <span className="text-2xl font-bold text-slate-300">€</span>
-                </div>
-              </div>
+            {/* Le prix a son étape à lui, après la description : pas de saisie
+                ici, sinon le vendeur chiffre avant d'avoir décrit le bien. */}
+            <div className="flex flex-col gap-2">
+              <label className={labelCls}>Titre de l&apos;annonce</label>
+              <input value={title} autoFocus
+                onChange={(e) => setTitle(e.target.value)}
+                className={inputCls}
+                placeholder="Ex : Vélo de ville en excellent état" />
+            </div>
 
-              {/* Catégorie — seulement si non détectée automatiquement */}
-              {!autoDetected && (
-                <div className="px-5 py-4 space-y-3">
-                  <label className="text-[10px] font-bold text-outline uppercase tracking-widest">Catégorie</label>
-                  <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-                    {CATEGORIES.map((cat) => (
-                      <button key={cat.id} type="button"
-                        onClick={() => { setCategoryId(cat.id); setSubcategory(cat.subcategories[0]); setUserPickedCategory(true); }}
-                        className={`py-2.5 px-1 rounded-xl flex flex-col items-center gap-1 transition-all border-2 ${
-                          categoryId === cat.id ? "bg-primary/8 border-primary text-primary" : "bg-slate-50 border-transparent text-slate-500 hover:border-slate-200"
-                        }`}>
-                        <span className="material-symbols-outlined text-lg" style={categoryId === cat.id ? { fontVariationSettings: "'FILL' 1" } : {}}>{cat.icon}</span>
-                        <span className="text-[8px] font-bold uppercase tracking-tight text-center leading-tight">{cat.label}</span>
-                      </button>
-                    ))}
+            {/* Catégorie auto-détectée */}
+            {autoDetected && (() => {
+              const cat = CATEGORIES.find((c) => c.id === categoryId);
+              return (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className={labelCls}>Catégorie détectée</label>
+                    <button type="button"
+                      onClick={() => { setAutoDetected(false); setUserPickedCategory(false); setFormStep(STEP.PRICE); }}
+                      className="text-[12px] font-semibold text-form-muted underline underline-offset-2 hover:text-form-blue">Modifier</button>
                   </div>
-                  <div className="space-y-2 pt-1">
-                    <p className="text-[10px] text-outline uppercase font-bold tracking-widest">Sous-catégorie</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {CATEGORIES.find((c) => c.id === categoryId)?.subcategories.map((sub) => (
+                  <div className="flex items-center gap-2 self-start rounded-full bg-form-blue/8 px-3.5 py-2 text-form-blue">
+                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>{cat?.icon}</span>
+                    <span className="text-sm font-bold">{cat?.label}</span>
+                    <span className="material-symbols-outlined text-sm text-emerald-500">check_circle</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <p className={labelCls}>Sous-catégorie</p>
+                    <div className="flex flex-wrap gap-2">
+                      {cat?.subcategories.map((sub) => (
                         <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={pillCls(subcategory === sub)}>{sub}</button>
                       ))}
                     </div>
                   </div>
                 </div>
-              )}
+              );
+            })()}
 
-              {/* Sous-catégorie si catégorie auto-détectée */}
-              {autoDetected && (
-                <div className="px-5 py-4 space-y-2">
-                  <p className="text-[10px] text-outline uppercase font-bold tracking-widest">Sous-catégorie</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {CATEGORIES.find((c) => c.id === categoryId)?.subcategories.map((sub) => (
-                      <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={pillCls(subcategory === sub)}>{sub}</button>
+            {/* Catégorie non détectée — sélecteur rapide */}
+            {!autoDetected && title.trim().length > 2 && (
+              <div className="flex flex-col gap-3">
+                <label className={labelCls}>Catégorie</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {CATEGORIES.slice(0, 6).map((cat) => (
+                    <button key={cat.id} type="button"
+                      onClick={() => { setCategoryId(cat.id); setSubcategory(cat.subcategories[0]); setUserPickedCategory(true); }}
+                      className={`flex flex-col items-center gap-1.5 rounded-[14px] border-[1.5px] px-2 py-3 text-center transition-all ${
+                        categoryId === cat.id
+                          ? "border-form-blue bg-form-blue/8 text-form-blue"
+                          : "border-form-line bg-form-soft text-form-muted hover:border-form-dash"
+                      }`}>
+                      <span className="material-symbols-outlined text-xl">{cat.icon}</span>
+                      <span className="text-[11px] font-semibold leading-tight">{cat.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setFormStep(STEP.PRICE)}
+                  className="flex items-center gap-1 self-start text-[13px] font-semibold text-form-blue">
+                  <span className="material-symbols-outlined text-sm">expand_more</span>
+                  Voir toutes les catégories
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ ÉTAPE PRIX + CATÉGORIE (si non détectée) ══════════════════════ */}
+        {formStep === STEP.PRICE && (
+          <div className="flex flex-col gap-[22px]">
+            <div>
+              <h2 className={stepTitleCls}>Fixez votre {fieldSpec.labels.price.toLowerCase()}</h2>
+              <p className={stepSubCls}>Vous pourrez toujours l&apos;ajuster plus tard.</p>
+            </div>
+            <div className="flex flex-col gap-[22px]">
+              {/* Prix — « Prix de vente » n'a pas de sens pour un loyer, un tarif
+                  horaire ou un salaire : le libellé suit le régime. */}
+              <div className="flex flex-col gap-2">
+                <label className={labelCls}>{fieldSpec.labels.price}</label>
+                <div className="relative">
+                  <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" autoFocus
+                    className={inputCls + " pr-12 text-[20px] font-bold"}
+                    placeholder="0" />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[20px] font-bold text-form-faint">€</span>
+                </div>
+              </div>
+
+              {/* Catégorie — seulement si non détectée automatiquement */}
+              {!autoDetected && (
+                <div className="flex flex-col gap-3">
+                  <label className={labelCls}>Catégorie</label>
+                  <div className="grid grid-cols-3 gap-2 md:grid-cols-5">
+                    {CATEGORIES.map((cat) => (
+                      <button key={cat.id} type="button"
+                        onClick={() => { setCategoryId(cat.id); setSubcategory(cat.subcategories[0]); setUserPickedCategory(true); }}
+                        className={`flex flex-col items-center gap-1.5 rounded-[14px] border-[1.5px] px-2 py-3 transition-all ${
+                          categoryId === cat.id
+                            ? "border-form-blue bg-form-blue/8 text-form-blue"
+                            : "border-form-line bg-form-soft text-form-muted hover:border-form-dash"
+                        }`}>
+                        <span className="material-symbols-outlined text-xl" style={categoryId === cat.id ? { fontVariationSettings: "'FILL' 1" } : {}}>{cat.icon}</span>
+                        <span className="text-center text-[11px] font-semibold leading-tight">{cat.label}</span>
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
+
+              <div className="flex flex-col gap-2">
+                <p className={labelCls}>Sous-catégorie</p>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.find((c) => c.id === categoryId)?.subcategories.map((sub) => (
+                    <button key={sub} type="button" onClick={() => setSubcategory(sub)} className={pillCls(subcategory === sub)}>{sub}</button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Le moteur annonce ce qu'il a compris plutôt que de changer le
@@ -1980,10 +2081,13 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           </div>
         )}
 
-        {/* ══ STEP 3 : DESCRIPTION & ÉTAT ═══════════════════════════════════ */}
-        {formStep === 3 && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-extrabold">{fieldSpec.labels.descriptionStep}</h2>
+        {/* ══ ÉTAPE DESCRIPTION & ÉTAT ══════════════════════════════════════ */}
+        {formStep === STEP.DESC && (
+          <div className="flex flex-col gap-[22px]">
+            <div>
+              <h2 className={stepTitleCls}>{fieldSpec.labels.descriptionStep}</h2>
+              <p className={stepSubCls}>Plus c&apos;est précis, plus vite ça se vend.</p>
+            </div>
 
             {/* AI assist button */}
             <button
@@ -2006,23 +2110,22 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
             </button>
             {aiError && <p className="text-red-500 text-xs text-center font-medium">{aiError}</p>}
 
-            {/* Une seule carte — pas de vide entre état et description */}
-            <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+            <div className="flex flex-col gap-[22px]">
               {/* L'état ne se demande que d'un objet. Une prestation, un poste
                   ou un événement n'en ont pas — la question était absurde et la
                   réponse partait quand même en base. */}
               {fieldSpec.core.condition && (
-                <div className="px-5 py-4 space-y-3">
-                  <label className="text-[10px] font-bold text-primary uppercase tracking-widest">État du produit</label>
+                <div className="flex flex-col gap-2">
+                  <label className={labelCls}>État du produit</label>
                   <div className="flex flex-wrap gap-2">
                     {CONDITIONS.map((c) => <button key={c} type="button" onClick={() => setCondition(c)} className={pillCls(condition === c)}>{c}</button>)}
                   </div>
                 </div>
               )}
-              <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">Description *</label>
+              <div className="flex flex-col gap-2">
+                <label className={labelCls}>Description</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={7} autoFocus
-                  className="w-full bg-transparent border-none p-0 text-base text-on-surface placeholder:text-slate-300 focus:ring-0 leading-relaxed resize-none outline-none"
+                  className={inputCls + " resize-y leading-relaxed"}
                   placeholder={DESCRIPTION_PLACEHOLDERS[fieldSpec.lexicon]} />
 
                 {/*
@@ -2062,13 +2165,15 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           </div>
         )}
 
-        {/* ══ STEP 5 : RÉCAPITULATIF ═══════════════════════════════════════ */}
-        {formStep === 5 && (() => {
+        {/* ══ ÉTAPE RÉCAPITULATIF ═══════════════════════════════════════════ */}
+        {formStep === STEP.RECAP && (() => {
           const cat = CATEGORIES.find((c) => c.id === categoryId);
           return (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-extrabold">Récapitulatif</h2>
-              <p className="text-sm text-outline -mt-2">Vérifiez avant de publier. Cliquez sur Modifier pour corriger.</p>
+            <div className="flex flex-col gap-[22px]">
+              <div>
+                <h2 className={stepTitleCls}>Récapitulatif</h2>
+                <p className={stepSubCls}>Vérifiez avant de publier — « Modifier » vous ramène à l&apos;étape concernée.</p>
+              </div>
 
               {/*
                 Dernier rattrapage avant publication.
@@ -2116,12 +2221,12 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                       </span>
                       <div className="flex gap-3 mt-2">
                         {photos < seoBar.minImages && (
-                          <button type="button" onClick={() => setFormStep(2)} className="text-xs font-bold text-primary underline underline-offset-2">
+                          <button type="button" onClick={() => setFormStep(STEP.PHOTOS)} className="text-xs font-bold text-primary underline underline-offset-2">
                             Ajouter des photos
                           </button>
                         )}
                         {chars < seoBar.minDescription && (
-                          <button type="button" onClick={() => setFormStep(3)} className="text-xs font-bold text-primary underline underline-offset-2">
+                          <button type="button" onClick={() => setFormStep(STEP.DESC)} className="text-xs font-bold text-primary underline underline-offset-2">
                             Compléter la description
                           </button>
                         )}
@@ -2132,10 +2237,10 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               })()}
 
               {/* Photos */}
-              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+              <div className="rounded-[14px] border border-form-line bg-form-soft overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
                   <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Photos</span>
-                  <button type="button" onClick={() => setFormStep(2)}
+                  <button type="button" onClick={() => setFormStep(STEP.PHOTOS)}
                     className="flex items-center gap-1 text-xs font-bold text-primary">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -2156,13 +2261,13 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               </div>
 
               {/* Titre + Prix */}
-              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+              <div className="rounded-[14px] border border-form-line bg-form-soft overflow-hidden divide-y divide-form-line">
                 <div className="flex items-start justify-between px-5 py-4">
                   <div className="flex-1 min-w-0 pr-3">
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Titre</p>
                     <p className="font-bold text-on-surface text-base leading-snug">{title || <span className="text-outline italic">Non renseigné</span>}</p>
                   </div>
-                  <button type="button" onClick={() => setFormStep(0)}
+                  <button type="button" onClick={() => setFormStep(STEP.TITLE)}
                     className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -2172,7 +2277,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Prix</p>
                     <p className="text-2xl font-extrabold text-on-surface">{price ? `${price} €` : <span className="text-outline italic text-base">Non renseigné</span>}</p>
                   </div>
-                  <button type="button" onClick={() => setFormStep(1)}
+                  <button type="button" onClick={() => setFormStep(STEP.PRICE)}
                     className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -2185,7 +2290,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                       <p className="font-semibold text-sm text-on-surface">{cat?.label}{subcategory ? ` › ${subcategory}` : ""}</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setFormStep(1)}
+                  <button type="button" onClick={() => setFormStep(STEP.PRICE)}
                     className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -2193,14 +2298,14 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               </div>
 
               {/* État + Description */}
-              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+              <div className="rounded-[14px] border border-form-line bg-form-soft overflow-hidden divide-y divide-form-line">
                 {fieldSpec.core.condition && (
                   <div className="flex items-center justify-between px-5 py-4">
                     <div>
                       <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">État</p>
                       <p className="font-semibold text-sm text-on-surface">{condition}</p>
                     </div>
-                    <button type="button" onClick={() => setFormStep(3)}
+                    <button type="button" onClick={() => setFormStep(STEP.DESC)}
                       className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                       <span className="material-symbols-outlined text-sm">edit</span>Modifier
                     </button>
@@ -2209,7 +2314,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                 <div className="px-5 py-4">
                   <div className="flex items-start justify-between mb-2">
                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Description</p>
-                    <button type="button" onClick={() => setFormStep(3)}
+                    <button type="button" onClick={() => setFormStep(STEP.DESC)}
                       className="flex items-center gap-1 text-xs font-bold text-primary shrink-0 ml-3">
                       <span className="material-symbols-outlined text-sm">edit</span>Modifier
                     </button>
@@ -2223,13 +2328,13 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               </div>
 
               {/* Localisation + Téléphone */}
-              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+              <div className="rounded-[14px] border border-form-line bg-form-soft overflow-hidden divide-y divide-form-line">
                 <div className="flex items-center justify-between px-5 py-4">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-xl">location_on</span>
                     <p className="font-semibold text-sm text-on-surface">{location || <span className="text-outline italic font-normal">Non renseignée</span>}</p>
                   </div>
-                  <button type="button" onClick={() => setFormStep(4)}
+                  <button type="button" onClick={() => setFormStep(STEP.CONTACT)}
                     className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                     <span className="material-symbols-outlined text-sm">edit</span>Modifier
                   </button>
@@ -2240,7 +2345,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                       <span className="material-symbols-outlined text-outline text-xl">call</span>
                       <p className="font-semibold text-sm text-on-surface">{phone}{hidePhone && <span className="ml-2 text-[10px] text-outline font-normal">(masqué)</span>}</p>
                     </div>
-                    <button type="button" onClick={() => setFormStep(4)}
+                    <button type="button" onClick={() => setFormStep(STEP.CONTACT)}
                       className="flex items-center gap-1 text-xs font-bold text-primary shrink-0">
                       <span className="material-symbols-outlined text-sm">edit</span>Modifier
                     </button>
@@ -2259,18 +2364,19 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           );
         })()}
 
-        {/* ══ STEP 4 : COORDONNÉES ═════════════════════════════════════════ */}
-        {formStep === 4 && (
-          <div className="space-y-5">
-            <h2 className="text-2xl font-extrabold">Coordonnées</h2>
+        {/* ══ ÉTAPE COORDONNÉES ═════════════════════════════════════════════ */}
+        {formStep === STEP.CONTACT && (
+          <div className="flex flex-col gap-[22px]">
+            <div>
+              <h2 className={stepTitleCls}>Où et comment vous joindre ?</h2>
+              <p className={stepSubCls}>Ces informations restent visibles sur l&apos;annonce publiée.</p>
+            </div>
 
             {/* Casquette de publication — posée uniquement aux comptes qui ont
                 réellement les deux usages (particulier devenu professionnel). */}
             {postingCaps?.mustChoose && (
-              <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 p-5 space-y-3">
-                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                  Vous publiez cette annonce en tant que *
-                </p>
+              <div className="rounded-[14px] border border-form-line bg-form-soft p-5 space-y-3">
+                <p className={labelCls}>Vous publiez cette annonce en tant que</p>
                 <div className="grid grid-cols-2 gap-3">
                   {(
                     [
@@ -2294,14 +2400,14 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                         key={opt.value}
                         type="button"
                         onClick={() => setPostedAs(opt.value)}
-                        className={`text-left rounded-xl border-2 p-3 transition-all ${
+                        className={`rounded-[14px] border-[1.5px] p-3 text-left transition-all ${
                           on
-                            ? "border-primary bg-primary/5"
-                            : "border-slate-200 hover:border-slate-300"
+                            ? "border-form-blue bg-form-blue/8"
+                            : "border-form-line bg-white hover:border-form-dash"
                         }`}
                       >
                         <span
-                          className={`material-symbols-outlined text-xl ${on ? "text-primary" : "text-outline"}`}
+                          className={`material-symbols-outlined text-xl ${on ? "text-form-blue" : "text-form-faint"}`}
                         >
                           {opt.icon}
                         </span>
@@ -2314,33 +2420,33 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
               </div>
             )}
 
-            <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden divide-y divide-slate-100">
+            <div className="flex flex-col gap-[22px]">
               {/* Localisation */}
-              <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-primary uppercase tracking-widest">
-                  {postedAs === "PRO" ? "Adresse de l'établissement *" : "Localisation *"}
+              <div className="flex flex-col gap-2">
+                <label className={labelCls}>
+                  {postedAs === "PRO" ? "Adresse de l'établissement" : "Localisation"}
                 </label>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-xl shrink-0">location_on</span>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl text-form-blue">location_on</span>
                   <input value={location} onChange={(e) => setLocation(e.target.value)} autoFocus
-                    className="flex-1 bg-transparent border-none p-0 text-base font-semibold text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
+                    className={inputCls + " pl-12"}
                     placeholder={postedAs === "PRO" ? "12 rue de Turbigo, 75003 Paris" : "Ville, département"} />
                 </div>
-                <p className="text-[11px] text-outline leading-snug">
+                <p className="text-[12px] leading-snug text-form-muted">
                   {postedAs === "PRO"
                     ? "L'adresse complète de votre établissement est affichée sur l'annonce : les acheteurs peuvent venir sur place."
                     : "Indiquez une ville ou un arrondissement, pas une adresse. Votre domicile n'est jamais affiché — si vous saisissez une rue, elle sera retirée."}
                 </p>
               </div>
               {/* Téléphone */}
-              <div className="px-5 py-4 space-y-2">
-                <label className="text-[10px] font-bold text-outline uppercase tracking-widest">
-                  Téléphone <span className="normal-case font-normal">(facultatif)</span>
+              <div className="flex flex-col gap-2">
+                <label className={labelCls}>
+                  Téléphone <span className="font-normal text-form-muted">(facultatif)</span>
                 </label>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-outline text-xl shrink-0">call</span>
+                <div className="relative">
+                  <span className="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xl text-form-faint">call</span>
                   <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" maxLength={20}
-                    className="flex-1 bg-transparent border-none p-0 text-base text-on-surface placeholder:text-slate-300 focus:ring-0 outline-none"
+                    className={inputCls + " pl-12"}
                     placeholder="06 12 34 56 78" />
                 </div>
                 {phone.trim() && (
@@ -2359,43 +2465,41 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
           </div>
         )}
 
-      </main>
+        </div>
 
-      {/* ── Bottom nav bar ──────────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-100 z-50 px-4 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          {formStep > 0 && (
-            <button type="button" onClick={() => {
-              setFormStep((s) => (s - 1) as FormStep);
-            }}
-              className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors shrink-0">
-              <span className="material-symbols-outlined">chevron_left</span>
+        {/* ── Navigation ───────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between gap-3">
+          {formStep > STEP.TITLE ? (
+            <button type="button" onClick={() => setFormStep((s) => (s - 1) as FormStep)}
+              className="rounded-[12px] border border-form-line bg-white px-6 py-3.5 text-[15px] font-semibold text-form-muted transition-colors hover:border-form-dash hover:text-form-ink">
+              ← Précédent
             </button>
-          )}
+          ) : <span />}
 
-          {formStep < 5 ? (
+          {formStep < STEP.RECAP ? (
             <button type="button"
               onClick={() => {
                 if (!canAdvance(formStep)) return;
                 setFormStep((s) => (s + 1) as FormStep);
               }}
               disabled={!canAdvance(formStep)}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-primary text-white font-bold text-sm active:scale-95 transition-all disabled:opacity-40">
-              {formStep === 4 ? (
-                <><span className="material-symbols-outlined text-base">checklist</span>Vérifier l&apos;annonce</>
-              ) : formStep === 2 && photoMode === "choose" ? "Passer les photos →" : (
-                <>Suivant{formStep !== 0 && <span className="material-symbols-outlined text-base">arrow_forward</span>}</>
-              )}
+              className="rounded-[12px] bg-form-blue px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_20px_rgba(45,86,224,0.3)] transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+              {formStep === STEP.CONTACT
+                ? "Vérifier l'annonce →"
+                : formStep === STEP.PHOTOS && photoMode === "choose"
+                  ? "Passer les photos →"
+                  : "Continuer →"}
             </button>
           ) : (
             <button type="button" onClick={handlePublish}
               disabled={publishing || !title || !price || !description || !location}
-              className="flex-1 py-3.5 rounded-full bg-gradient-to-r from-primary to-primary-container text-white font-bold text-sm shadow-[0_8px_24px_rgba(47,111,184,0.3)] active:scale-95 transition-all disabled:opacity-50">
+              className="rounded-[12px] bg-form-blue px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_20px_rgba(45,86,224,0.3)] transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
               {publishing ? "Publication…" : "Publier l'annonce"}
             </button>
           )}
         </div>
-      </div>
+
+      </main>
 
       {/* ── Auth gate overlay — shown when user hits publish without session ── */}
       {showAuthGate && (

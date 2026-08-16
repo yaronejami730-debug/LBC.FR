@@ -65,6 +65,9 @@ export default function EditForm({ listingId, initial }: { listingId: string; in
       for (const file of Array.from(files)) {
         const form = new FormData();
         form.append("file", file);
+        form.append("usage", "listing");
+        form.append("category", catId);
+        form.append("subcategory", subcategory ?? "");
         const res = await fetch("/api/upload", { method: "POST", body: form });
         const data = await res.json();
         if (data.url) uploads.push(data.url);

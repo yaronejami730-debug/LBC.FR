@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { get } from "@vercel/blob";
+import { readKycDocument } from "@/lib/kyc-storage";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/auth-unified";
 
@@ -41,14 +41,14 @@ export async function GET(req: NextRequest) {
   if (!known) return NextResponse.json({ error: "Document inconnu" }, { status: 404 });
 
   try {
-    const blob = await get(path, { access: "private" });
-    if (!blob || blob.statusCode !== 200) {
+    const doc = await readKycDocument(path);
+    if (!doc) {
       return NextResponse.json({ error: "Document introuvable" }, { status: 404 });
     }
 
-    return new NextResponse(blob.stream, {
+    return new NextResponse(doc.body as BodyInit, {
       headers: {
-        "Content-Type": blob.blob.contentType ?? "application/octet-stream",
+        "Content-Type": doc.contentType,
         // Jamais de cache partagé sur une pièce d'identité.
         "Cache-Control": "private, no-store",
         "Content-Disposition": "inline",

@@ -111,6 +111,9 @@ model User {
   supportAssigned SupportTicket[]  @relation("SupportAssignee")
   supportMessages SupportMessage[] @relation("SupportMessages")
 
+  // Collecte de satisfaction
+  satisfactionCampaigns SatisfactionCampaign[]
+
   // Moteur de recommandation locale
   locationProfiles UserLocationProfile[]
   categoryInterests UserCategoryInterest[]
@@ -241,6 +244,15 @@ model Listing {
   /// déduire ; avec trois établissements, la déduction devient impossible.
   establishmentId     String?
   establishment       ProProfile? @relation(fields: [establishmentId], references: [id], onDelete: SetNull)
+  /// Produit d'inventaire dont cette annonce est la vitrine.
+  ///
+  /// Facultatif dans les deux sens, et c'est essentiel : toutes les annonces
+  /// déjà publiées n'ont pas de produit, un particulier n'en aura jamais, et un
+  /// produit peut rester en magasin sans être annoncé. `SetNull` plutôt que
+  /// `Cascade` — archiver un produit ne doit pas effacer l'annonce qui en
+  /// portait l'historique de vues et de messages.
+  productId           String?
+  product             ProProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
   /// APPROVED | PENDING | UNDER_REVIEW | REJECTED | REMOVED | SOLD
   ///
   /// REMOVED = retirée par la modération. Invisible publiquement (toutes les
@@ -317,6 +329,7 @@ model Listing {
   supportTickets   SupportTicket[]
 
   @@index([geoLat, geoLng])
+  @@index([productId])
   @@index([status, deletedAt, shadowBanned, geoResolvedAt])
   @@index([status, deletedAt, shadowBanned])
   @@index([status, deletedAt, shadowBanned, createdAt])
@@ -916,7 +929,15 @@ model Draft {
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  /// Horodatage des deux relances d'abandon (cron `draft-relance`).
+  /// Stockés sur le brouillon et pas déduits d'`EmailEvent` : une relance
+  /// n'est due qu'une fois par brouillon, et remettre le compteur à zéro
+  /// quand le vendeur reprend sa saisie doit être une écriture explicite.
+  nudge1SentAt DateTime?
+  nudge2SentAt DateTime?
+
   @@index([updatedAt])
+  @@index([nudge1SentAt])
 }
 
 /// Événement d'email — envoi / ouverture / clic. Alimente le moteur
@@ -1636,6 +1657,7 @@ model ProProfile {
   listings        Listing[]
   bookings        ProBooking[]
   bookingSettings ProBookingSettings?
+  products        ProProduct[]
 
   @@index([isPublished, city])
 }
@@ -2223,4 +2245,253 @@ model ListingRecommendationLog {
   @@index([campaignId])
   @@index([userId, sentAt])
   @@index([listingId, clickedAt])
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// INVENTAIRE PROFESSIONNEL
+//
+// Réservé aux établissements portant la capacité `inventory`. Un salon de
+// coiffure n'a rien ici ; une boutique y tient ses quantités.
+//
+// La séparation produit / annonce est délibérée. Les deux ne se recouvrent
+// pas, et les confondre casse l'un des deux métiers :
+//
+//   - un garage vend une voiture unique — un produit, une annonce, une unité ;
+//   - une boutique vend trente-sept t-shirts taille M — un produit, une
+//     annonce, trente-sept unités ;
+//   - une boutique vend le même t-shirt en quatre tailles — un produit,
+//     quatre variantes, une annonce.
+//
+// L'annonce reste ce qu'elle a toujours été : la publication visible sur la
+// marketplace. Le produit est ce que le professionnel a en magasin. Le lien
+// entre les deux est facultatif dans les deux sens : une annonce peut vivre
+// sans produit (c'est le cas de toutes celles déjà publiées), et un produit
+// peut exister sans être annoncé.
+// ═════════════════════════════════════════════════════════════════════════
+
+/// Un article du catalogue d'un établissement.
+///
+/// Ce n'est pas une annonce. C'est ce que le professionnel possède, avec ses
+/// quantités — l'annonce n'en est que la vitrine.
+model ProProduct {
+  id        String     @id @default(cuid())
+  profileId String
+  profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  name String
+  /// Référence interne du professionnel : « BMW-001 », « TS-BLC-M ». Unique
+  /// par établissement seulement — deux boutiques peuvent employer la même.
+  sku         String?
+  description String?
+  /// Rubrique libre du catalogue : « Berlines », « Hauts », « Accessoires ».
+  section     String?
+
+  /// Prix de vente. Le prix affiché sur l'annonce reste celui de l'annonce :
+  /// une promotion marketplace ne doit pas réécrire le tarif du magasin.
+  price Float
+  /// Prix barré, quand il y en a un.
+  comparePrice Float?
+
+  /// Quantité en magasin, hors variantes. Nulle quand le produit se décline :
+  /// c'est alors la somme des variantes qui fait foi, et dupliquer ce total
+  /// ici garantirait qu'il finisse faux.
+  quantity Int?
+  /// Rien à décompter : prestation à la commande, article fabriqué à la
+  /// demande, service illimité. `quantity` est alors ignoré.
+  unlimited Boolean @default(false)
+  /// Seuil d'alerte. Sous cette valeur, l'établissement est prévenu.
+  lowStockAt Int?
+
+  /// Quantités engagées mais pas encore sorties — commande en cours,
+  /// réservation. Le disponible réel vaut `quantity - reserved`.
+  reserved Int @default(0)
+
+  images String @default("[]")
+  /// ACTIVE | ARCHIVED — un produit retiré n'est jamais supprimé : ses
+  /// mouvements de stock et ses annonces passées y font référence.
+  status String @default("ACTIVE")
+
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variants  ProProductVariant[]
+  movements ProStockMovement[]
+  listings  Listing[]
+
+  @@unique([profileId, sku])
+  @@index([profileId, status, position])
+}
+
+/// Une déclinaison : taille, couleur, capacité.
+///
+/// Existe seulement quand le produit se décline réellement. Créer une variante
+/// unique « par défaut » pour tous les produits doublerait les écritures et les
+/// requêtes sans rien apporter au garage qui vend une voiture.
+model ProProductVariant {
+  id        String     @id @default(cuid())
+  productId String
+  product   ProProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// Libellé affiché : « Taille M », « Noir », « 256 Go ».
+  label String
+  sku   String?
+  /// Écart au prix du produit, en euros. Nul quand la variante coûte le même
+  /// prix — le cas le plus fréquent.
+  priceDelta Float?
+
+  quantity Int @default(0)
+  reserved Int @default(0)
+
+  position Int      @default(0)
+  isActive Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  movements ProStockMovement[]
+
+  @@index([productId, position])
+}
+
+/// Un mouvement de stock — l'historique, et la seule écriture qui fasse foi.
+///
+/// Les quantités portées par `ProProduct` et `ProProductVariant` sont un
+/// cumul de lecture rapide ; c'est cette table qui explique *pourquoi* le stock
+/// vaut ce qu'il vaut. Sans elle, « il manque trois pièces » est une question
+/// sans réponse.
+model ProStockMovement {
+  id        String     @id @default(cuid())
+  productId String
+  product   ProProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  variantId String?
+  variant   ProProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  /// Signé : positif pour une entrée, négatif pour une sortie.
+  delta Int
+  /// Quantité après application, pour relire l'historique sans le rejouer.
+  resulting Int
+
+  /// RECEIPT | SALE | CORRECTION | RETURN | LOSS | RESERVATION | RELEASE
+  reason String
+  /// Précision libre : numéro de commande, motif de la casse.
+  note   String?
+
+  /// Compte à l'origine du mouvement. Nul pour un mouvement automatique.
+  actorId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([variantId, createdAt])
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// COLLECTE DE SATISFACTION
+//
+// Deux tables : la sollicitation et la réponse. Séparées parce qu'elles ne
+// vivent pas au même rythme — une campagne existe dès qu'elle est décidée, la
+// réponse arrive des jours plus tard, ou jamais.
+// ═════════════════════════════════════════════════════════════════════════
+
+/// Une sollicitation d'avis, décidée puis envoyée.
+///
+/// La ligne est créée **avant** l'envoi, à l'état `PENDING`. C'est ce qui rend
+/// le système idempotent : deux exécutions simultanées du planificateur ne
+/// peuvent pas décider deux fois pour le même compte, l'index unique partiel
+/// `satisfaction_one_open_per_user` (voir la migration) interdisant qu'un compte
+/// ait plus d'une campagne ouverte à la fois.
+///
+/// L'état `PENDING` porte aussi la fenêtre de regroupement : entre la décision
+/// et l'envoi, toute nouvelle activité du compte vient se fondre dans cette
+/// campagne au lieu d'en créer une autre. C'est ce délai — et non un compteur —
+/// qui garantit qu'une rafale de dix annonces ne produit qu'un seul email.
+model SatisfactionCampaign {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// PERIODIC | ACTIVITY — ce qui a motivé la sollicitation.
+  trigger String
+  /// PENDING | SCHEDULED | SENT | CANCELLED | FAILED
+  status  String @default("PENDING")
+
+  /// Nombre d'annonces retenues au moment de la décision, pour `ACTIVITY`.
+  /// Purement explicatif : sert à relire une décision, jamais à la reprendre.
+  activityCount Int?
+
+  /// Fin de la fenêtre de regroupement. L'envoi n'a pas lieu avant.
+  sendAfter DateTime
+  sentAt    DateTime?
+  /// Renseigné quand le destinataire a ouvert la page, même sans terminer.
+  openedAt  DateTime?
+
+  /// Motif d'un abandon (`CANCELLED`) ou d'un échec (`FAILED`).
+  reason   String?
+  /// Tentatives d'envoi. Au-delà d'un plafond, la campagne reste `FAILED` sans
+  /// être retentée : un email qui échoue trois fois ne réussira pas la quatrième.
+  attempts Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  response SatisfactionResponse?
+
+  @@index([status, sendAfter])
+  @@index([userId, sentAt])
+}
+
+/// Ce que le compte a répondu.
+///
+/// Toutes les questions sont facultatives sauf la première : quelqu'un qui ne
+/// note que sa satisfaction globale a déjà donné l'essentiel, et exiger cinq
+/// réponses ferait abandonner le formulaire à mi-parcours.
+model SatisfactionResponse {
+  id         String               @id @default(cuid())
+  campaignId String               @unique
+  campaign   SatisfactionCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  userId String
+
+  /// 1 à 5. La seule réponse obligatoire.
+  rating Int
+  /// 0 à 10 — recommanderiez-vous Deal&Co ? Base du Net Promoter Score.
+  nps    Int?
+
+  likes       String?
+  improvements String?
+  wishedFeature String?
+
+  createdAt DateTime @default(now())
+
+  @@index([rating])
+  @@index([createdAt])
+}
+
+/// Réglages de la collecte de satisfaction, modifiables sans redéploiement.
+///
+/// Une seule ligne, d'identifiant fixe. Les valeurs absentes retombent sur les
+/// défauts de `lib/satisfaction/config.ts` : la table n'a donc pas besoin
+/// d'exister pour que le système fonctionne, et la vider revient à revenir aux
+/// réglages d'origine.
+///
+/// Les bornes de sécurité ne sont pas ici mais dans le code qui écrit : une
+/// contrainte de base ne dirait pas *pourquoi* un cooldown de zéro jour est
+/// refusé, alors qu'un message d'erreur le peut.
+model SatisfactionSetting {
+  id String @id @default("singleton")
+
+  enabled         Boolean? 
+  periodicEnabled Boolean?
+  activityEnabled Boolean?
+
+  periodicMinDays   Int?
+  periodicMaxDays   Int?
+  activityThreshold Int?
+  burstWindowHours  Int?
+  cooldownDays      Int?
+  maxSendsPerRun    Int?
+
+  updatedAt DateTime @updatedAt
+  updatedBy String?
 }

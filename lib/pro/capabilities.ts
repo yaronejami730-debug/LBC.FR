@@ -28,6 +28,16 @@ export const CAPABILITIES = [
   "staff",
   /** Recevoir des réservations. */
   "bookings",
+  /**
+   * Tenir un stock : quantités, seuil d'alerte, mouvements.
+   *
+   * Distincte de `listings`. Publier une annonce et tenir un inventaire sont
+   * deux gestes différents : un garage publie une voiture unique sans compter
+   * d'unités, une boutique gère trente-sept t-shirts taille M dont une seule
+   * annonce rend compte. Lier les deux capacités obligerait le garage à
+   * décompter un stock qui vaut toujours 1.
+   */
+  "inventory",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -77,9 +87,9 @@ const PRESETS: Record<string, Capability[]> = {
   audiovisuel: ["offerings", "services", "staff", "bookings"],
 
   // Le stock est le cœur de l'activité ; le rendez-vous, l'accessoire.
-  automobile: ["listings", "offerings", "staff"],
+  automobile: ["listings", "offerings", "staff", "inventory"],
   immobilier: ["listings", "offerings", "staff"],
-  restauration: ["listings", "offerings", "staff"],
+  restauration: ["listings", "offerings", "staff", "inventory"],
   transport: ["offerings", "services", "staff", "bookings"],
   securite: ["offerings", "services", "staff"],
   entreprise: ["offerings", "services", "staff", "bookings"],
@@ -127,6 +137,7 @@ export const CAPABILITY_LABELS: Record<Capability, string> = {
   activities: "Sorties et cours collectifs",
   staff: "Équipe et plannings",
   bookings: "Réservation en ligne",
+  inventory: "Stock et quantités",
 };
 
 /**

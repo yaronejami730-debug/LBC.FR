@@ -1,4 +1,4 @@
-import { del } from "@vercel/blob";
+import { deleteKycDocuments } from "@/lib/kyc-storage";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -52,9 +52,7 @@ export async function deleteProDocuments(
     // Un échec de suppression côté stockage ne doit pas bloquer la décision de
     // modération : on neutralise malgré tout les chemins, et l'erreur est
     // journalisée pour reprise.
-    await del(paths).catch((err) =>
-      console.error("[pro-documents] suppression blob:", err),
-    );
+    await deleteKycDocuments(paths as string[]);
   }
 
   const now = new Date();

@@ -1,9 +1,39 @@
 "use client";
 
+/**
+ * Bandeau de consentement aux cookies.
+ *
+ * Trois défauts le faisaient réapparaître à chaque rechargement.
+ *
+ * **Le cookie n'était pas écrit hors HTTPS.** L'attribut `Secure` était posé en
+ * dur ; sur une origine en clair — le développement local par l'adresse du
+ * réseau local, notamment — le navigateur rejette l'écriture sans rien dire. Le
+ * choix n'était donc jamais enregistré, et le bandeau revenait indéfiniment.
+ *
+ * **Safari effaçait le cookie au bout de 7 jours.** Sa protection anti-pistage
+ * plafonne tout cookie écrit en JavaScript, quelle que soit la durée demandée.
+ * L'écriture passe désormais par `POST /api/consent`, dont l'en-tête
+ * `Set-Cookie` échappe à cette limite et tient les 13 mois annoncés.
+ *
+ * `localStorage` sert de filet : si le cookie disparaît malgré tout — purge de
+ * navigateur, quota, expiration imprévue — le choix y est relu et le cookie
+ * reposé en silence, sans que le visiteur ait à répondre une seconde fois.
+ *
+ * La lecture reste volontairement côté navigateur. La faire côté serveur
+ * supprimerait le bref instant où le bandeau peut apparaître, mais appeler
+ * `cookies()` dans le layout racine ferait basculer tout le site en rendu
+ * dynamique : ce serait payer la génération statique de toutes les pages SEO
+ * pour gagner quelques millisecondes d'affichage.
+ */
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
-
-type ConsentState = "granted" | "denied";
+import {
+  CONSENT_COOKIE,
+  CONSENT_MAX_AGE,
+  isConsentState,
+  type ConsentState,
+} from "@/lib/consent";
 
 declare global {
   interface Window {
@@ -12,22 +42,54 @@ declare global {
   }
 }
 
-const COOKIE_NAME = "consent_v1";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 390; // 13 months — CNIL max
+const STORAGE_KEY = CONSENT_COOKIE;
 
-function readConsent(): ConsentState | null {
+function readCookie(): ConsentState | null {
   if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]*)`));
+  const match = document.cookie.match(new RegExp(`(?:^|; )${CONSENT_COOKIE}=([^;]*)`));
   if (!match) return null;
-  const v = decodeURIComponent(match[1]);
-  return v === "granted" || v === "denied" ? v : null;
+  const value = decodeURIComponent(match[1]);
+  return isConsentState(value) ? value : null;
 }
 
-function writeConsent(state: ConsentState) {
-  document.cookie = `${COOKIE_NAME}=${state}; Max-Age=${COOKIE_MAX_AGE}; Path=/; SameSite=Lax; Secure`;
+function readStorage(): ConsentState | null {
+  try {
+    const value = localStorage.getItem(STORAGE_KEY);
+    return isConsentState(value) ? value : null;
+  } catch {
+    // Navigation privée ou stockage refusé : ce n'est pas une erreur, juste un
+    // filet indisponible.
+    return null;
+  }
 }
 
-function applyConsent(state: ConsentState) {
+/**
+ * Écriture immédiate côté navigateur, pour que le bandeau ne puisse pas
+ * revenir entre le clic et la réponse du serveur. Le serveur repose ensuite le
+ * même cookie avec une durée que Safari ne rognera pas.
+ */
+function writeLocally(state: ConsentState): void {
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${CONSENT_COOKIE}=${state}; Max-Age=${CONSENT_MAX_AGE}; Path=/; SameSite=Lax${secure}`;
+  try {
+    localStorage.setItem(STORAGE_KEY, state);
+  } catch {
+    /* stockage indisponible — le cookie suffit */
+  }
+}
+
+function persist(state: ConsentState): void {
+  fetch("/api/consent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value: state }),
+    keepalive: true,
+  }).catch(() => {
+    /* hors ligne : le cookie navigateur a déjà été posé */
+  });
+}
+
+function applyConsent(state: ConsentState): void {
   if (typeof window === "undefined") return;
   window.dataLayer = window.dataLayer || [];
   const gtag = (...args: unknown[]) => window.dataLayer!.push(args);
@@ -43,13 +105,24 @@ export default function CookieBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (readConsent() === null) setVisible(true);
+    // Choix déjà connu — par le cookie, ou par le filet `localStorage` si le
+    // cookie a disparu. On le rétablit en silence plutôt que de reposer la
+    // question, et le bandeau ne s'affiche jamais.
+    const known = readCookie() ?? readStorage();
+    if (known) {
+      writeLocally(known);
+      persist(known);
+      applyConsent(known);
+      return;
+    }
+    setVisible(true);
   }, []);
 
   if (!visible) return null;
 
   function choose(state: ConsentState) {
-    writeConsent(state);
+    writeLocally(state);
+    persist(state);
     applyConsent(state);
     setVisible(false);
   }

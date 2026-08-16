@@ -4,6 +4,7 @@ import { put } from "@vercel/blob";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
+import { shouldDetectPlates } from "@/lib/plate-policy.server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -160,7 +161,32 @@ export async function POST(req: NextRequest) {
 
     const raw = Buffer.from(await file.arrayBuffer());
 
-    const boxes = await detectPlates(raw, file.type);
+    /**
+     * Détection de plaques : seulement là où un véhicule peut se trouver.
+     *
+     * L'appel était inconditionnel, donc facturé et attendu sur chaque photo de
+     * la plateforme — avatars, logos d'enseigne, photos d'équipe, bannières
+     * incluses. Le contexte (`usage`, `category`, `title`) est envoyé par
+     * l'appelant, et c'est le serveur qui tranche : un client qui mentirait ne
+     * peut, au pire, que provoquer une analyse inutile.
+     *
+     * `usage=avatar` court-circuite tout : une photo de profil n'est pas une
+     * annonce, il n'y a rien à y chercher.
+     */
+    const usage = (form.get("usage") as string | null)?.trim() || null;
+    const policy =
+      usage && usage !== "listing"
+        ? { shouldDetect: false, reason: `usage « ${usage} »` }
+        : shouldDetectPlates({
+            categoryId: (form.get("category") as string | null) ?? null,
+            subcategory: (form.get("subcategory") as string | null) ?? null,
+            title: (form.get("title") as string | null) ?? null,
+          });
+
+    const boxes = policy.shouldDetect ? await detectPlates(raw, file.type) : [];
+    if (!policy.shouldDetect) {
+      console.log(`[upload] détection de plaques ignorée — ${policy.reason}`);
+    }
     const blurred = await blurPlates(raw, boxes);
     const isPng = file.type === "image/png";
     const finalBuf = await compress(blurred, isPng ? "image/png" : "image/jpeg");

@@ -59,103 +59,88 @@ export default async function SiteFooter() {
     priceSlugs.includes(q.href.replace("/prix/", "")),
   );
 
+  /**
+   * Colonnes réellement affichées.
+   *
+   * Le filtrage des liens morts vidait des colonnes sans retirer leur titre :
+   * « Recherches populaires » s'affichait au-dessus de rien, et « Annonces par
+   * ville » gardait sa grille à deux colonnes pour trois villes. Un titre sans
+   * lien en dessous ressemble à une page cassée — alors que le stock est
+   * simplement maigre. On ne rend donc que les colonnes qui ont quelque chose
+   * à montrer, et la grille se resserre sur ce qui reste.
+   */
+  const sections: {
+    title: string;
+    /** Liste sur deux colonnes dès qu'elle est longue (villes uniquement). */
+    dense?: boolean;
+    links: { label: string; href: string; title: string }[];
+  }[] = [
+    {
+      title: "Catégories populaires",
+      links: FOOTER_CATEGORIES.map((c) => ({
+        label: c.label,
+        href: `/annonces/${c.id}`,
+        title: `Annonces ${c.label}`,
+      })),
+    },
+    {
+      title: "Annonces par ville",
+      dense: true,
+      links: footerCities.map((city) => ({
+        label: city.name,
+        href: `/ville/${city.slug}`,
+        title: `Annonces à ${city.name}`,
+      })),
+    },
+    {
+      title: "Recherches populaires",
+      links: popularQueries.map((q) => ({
+        label: q.label,
+        href: q.href,
+        title: `Voir les prix : ${q.label}`,
+      })),
+    },
+    {
+      title: "Deal&Co",
+      links: [
+        ...LEGAL_LINKS.map((l) => ({ label: l.label, href: l.href, title: l.label })),
+        { label: "Dernières annonces", href: "/nouveautes", title: "Dernières annonces publiées" },
+        { label: "Publier une annonce", href: "/post", title: "Publier une annonce gratuite" },
+      ],
+    },
+  ].filter((s) => s.links.length > 0);
+
+  // Tailwind ne voit que des classes écrites en entier : pas de `grid-cols-${n}`.
+  const gridCols =
+    sections.length >= 4 ? "md:grid-cols-4" : sections.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+
   return (
     <footer className="bg-white border-t border-slate-200 mt-12">
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-          <div>
-            <h3 className="text-xs font-extrabold text-on-surface uppercase tracking-wider mb-3 font-['Manrope']">
-              Catégories populaires
-            </h3>
-            <ul className="space-y-1.5">
-              {FOOTER_CATEGORIES.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    href={`/annonces/${c.id}`}
-                    title={`Annonces ${c.label}`}
-                    className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
-                  >
-                    {c.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-extrabold text-on-surface uppercase tracking-wider mb-3 font-['Manrope']">
-              Annonces par ville
-            </h3>
-            <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              {footerCities.map((city) => (
-                <li key={city.slug}>
-                  <Link
-                    href={`/ville/${city.slug}`}
-                    title={`Annonces à ${city.name}`}
-                    className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
-                  >
-                    {city.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-extrabold text-on-surface uppercase tracking-wider mb-3 font-['Manrope']">
-              Recherches populaires
-            </h3>
-            <ul className="space-y-1.5">
-              {popularQueries.map((q) => (
-                <li key={q.href}>
-                  <Link
-                    href={q.href}
-                    title={`Voir les prix : ${q.label}`}
-                    className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
-                  >
-                    {q.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="text-xs font-extrabold text-on-surface uppercase tracking-wider mb-3 font-['Manrope']">
-              Deal&amp;Co
-            </h3>
-            <ul className="space-y-1.5">
-              {LEGAL_LINKS.map((l) => (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    title={l.label}
-                    className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link
-                  href="/nouveautes"
-                  title="Dernières annonces publiées"
-                  className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
-                >
-                  Dernières annonces
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/post"
-                  title="Publier une annonce gratuite"
-                  className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
-                >
-                  Publier une annonce
-                </Link>
-              </li>
-            </ul>
-          </div>
+        <div className={`grid grid-cols-2 ${gridCols} gap-8 mb-10`}>
+          {sections.map((section) => (
+            <div key={section.title}>
+              <h3 className="text-xs font-extrabold text-on-surface uppercase tracking-wider mb-3 font-['Manrope']">
+                {section.title}
+              </h3>
+              {/* Deux colonnes seulement quand la liste est assez longue pour
+                  que ça se voie : à trois villes, la seconde colonne laissait un
+                  trou au milieu du pied de page. */}
+              <ul className={section.dense && section.links.length >= 10 ? "grid grid-cols-2 gap-x-2 gap-y-1.5" : "space-y-1.5"}>
+                {section.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      title={link.title}
+                      className="text-xs text-slate-500 hover:text-[#2f6fb8] transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
         <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">

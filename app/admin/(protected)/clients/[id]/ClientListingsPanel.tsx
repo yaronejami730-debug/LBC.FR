@@ -270,6 +270,10 @@ function EditForm({
       for (const file of Array.from(files).slice(0, remaining)) {
         const form = new FormData();
         form.append("file", file);
+        form.append("usage", "listing");
+        form.append("category", listing.category);
+        form.append("subcategory", listing.subcategory ?? "");
+        form.append("title", title);
         const res = await fetch("/api/upload", { method: "POST", body: form });
         if (!res.ok) throw new Error("Erreur d'envoi");
         const data = await res.json();

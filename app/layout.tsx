@@ -190,6 +190,11 @@ gtag('config', '${GA_ID}');`}
         <EventTracker />
         <AppStoreBanner />
         <Providers>{children}</Providers>
+        {/* Monté sur toutes les pages, mais il ne s'affiche que si aucun choix
+            n'est enregistré. La lecture ne peut pas se faire côté serveur :
+            appeler `cookies()` dans ce layout ferait basculer *tout* le site en
+            rendu dynamique et supprimerait la génération statique des pages
+            SEO. Un composant client qui reste muet coûte infiniment moins. */}
         <CookieBanner />
       </body>
     </html>

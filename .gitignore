@@ -13,3 +13,6 @@ dev.db
 
 /generated/prisma
 .vercel
+
+# Pièces justificatives déposées hors store Blob — jamais versionnées.
+.private-uploads/

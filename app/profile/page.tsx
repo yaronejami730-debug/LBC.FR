@@ -202,6 +202,16 @@ export default async function ProfilePage() {
           />
         </div>
 
+        {/* Annonce commencée et non publiée — conservée 30 jours. */}
+        <div className="mb-4">
+          <ProfileLink
+            href="/brouillons"
+            icon="draft"
+            title="Mes brouillons"
+            subtitle="Reprendre une annonce non terminée"
+          />
+        </div>
+
         {/* Rendez-vous pris en tant que client — tout le monde, pro compris. */}
         <div className="mb-4">
           <ProfileLink
