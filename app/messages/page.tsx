@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import ConversationList from "./ConversationList";
 import SupportEntry from "./SupportEntry";
+import AdSlot from "@/components/ads/AdSlot";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
@@ -24,9 +25,17 @@ export default async function MessagesPage() {
    * son compteur de non-lus — et il reste accessible depuis le profil pour qui
    * a pris l'habitude.
    */
+  /**
+   * Seulement une discussion **en cours**.
+   *
+   * « Résolu » comptait comme ouvert : après une clôture, l'entrée renvoyait
+   * encore vers l'ancien fil, et l'utilisateur retombait sur une conversation
+   * terminée sans comprendre où il était. Un dossier réglé appartient à
+   * l'historique, pas à la liste des messages.
+   */
   const ticket = await prisma.supportTicket
     .findFirst({
-      where: { userId, status: { notIn: ["CLOSED"] } },
+      where: { userId, status: { in: ["OPEN", "WAITING_USER"] } },
       orderBy: { lastMessageAt: "desc" },
       select: {
         id: true,
@@ -59,6 +68,11 @@ export default async function MessagesPage() {
           </div>
         </div>
 
+        {/* En tête, au-dessus du support : vue à chaque passage. Rien n'est
+            inséré entre les conversations — une réclame glissée dans le fil se
+            lit comme un message, et c'est précisément ce qu'il ne faut pas. */}
+        <AdSlot placement="MESSAGES_TOP" className="mb-6" />
+
         <SupportEntry
           ticket={
             ticket
@@ -78,6 +92,8 @@ export default async function MessagesPage() {
 
         {/* Chat List — real-time client component */}
         <ConversationList currentUserId={userId} />
+
+        <AdSlot placement="MESSAGES_BOTTOM" className="mt-8" />
       </main>
     </div>
   );

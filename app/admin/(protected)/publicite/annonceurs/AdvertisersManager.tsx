@@ -13,6 +13,8 @@ export type AdminAdvertiser = {
   loginId: string;
   mustChangePassword: boolean;
   suspendedAt: string | null;
+  /** Non nul : la diffusion est offerte, rien n'est débité. */
+  billingDisabledAt: string | null;
   balanceCents: number;
   lastLoginAt: string | null;
   createdAt: string;
@@ -94,6 +96,27 @@ export default function AdvertisersManager({ initial }: { initial: AdminAdvertis
         password: payload.credentials.password,
         sent: payload.sent,
         notice: payload.notice,
+      });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Coupe ou reprend la facturation.
+   *
+   * Réactiver ne rattrape pas ce qui a été offert : ce serait présenter une
+   * addition pour une période annoncée gratuite. La facturation reprend à
+   * l'instant du clic, sur les événements suivants.
+   */
+  async function toggleBilling(a: AdminAdvertiser) {
+    setBusy(true);
+    try {
+      await fetch(`/api/admin/advertisers/${a.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ billingDisabled: !a.billingDisabledAt }),
       });
       router.refresh();
     } finally {
@@ -267,6 +290,11 @@ export default function AdvertisersManager({ initial }: { initial: AdminAdvertis
                         suspendu
                       </span>
                     )}
+                    {a.billingDisabledAt && (
+                      <span className="ml-2 rounded-full bg-[#e8f5ee] px-2 py-0.5 text-[10px] font-bold text-[#0f6b45]">
+                        diffusion offerte
+                      </span>
+                    )}
                     {a.mustChangePassword && !a.suspendedAt && (
                       <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
                         accès non utilisé
@@ -274,7 +302,12 @@ export default function AdvertisersManager({ initial }: { initial: AdminAdvertis
                     )}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{a.loginId}</td>
-                  <td className="px-4 py-3 tabular-nums">{euros(a.balanceCents)}</td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {euros(a.balanceCents)}
+                    {a.billingDisabledAt && (
+                      <span className="block text-[10px] font-semibold text-slate-400">non débité</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{date(a.lastLoginAt)}</td>
                   <td className="px-4 py-3 text-slate-500">{date(a.createdAt)}</td>
                   <td className="px-4 py-3">
@@ -294,6 +327,14 @@ export default function AdvertisersManager({ initial }: { initial: AdminAdvertis
                         className="text-xs font-bold text-slate-500 hover:text-[#ba1a1a] disabled:opacity-50"
                       >
                         {a.suspendedAt ? "Réactiver" : "Suspendre"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleBilling(a)}
+                        disabled={busy}
+                        className="text-xs font-bold text-slate-500 hover:text-[#2f6fb8] disabled:opacity-50"
+                      >
+                        {a.billingDisabledAt ? "Réactiver le portefeuille" : "Désactiver le portefeuille"}
                       </button>
                     </div>
                   </td>

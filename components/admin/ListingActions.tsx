@@ -13,6 +13,95 @@ type Props = {
   status: string;
 };
 
+/**
+ * Trois décisions, trois poids visuels.
+ *
+ * Valider est l'issue de la très grande majorité des annonces : c'est le seul
+ * bouton plein. Mettre en revue demande une correction, elle se signale en
+ * ambre sans dramatiser. Refuser et retirer sont irréversibles pour l'auteur —
+ * bordure rouge, jamais de fond plein : un bouton destructeur aussi appuyé
+ * qu'un bouton de validation se clique par réflexe.
+ */
+const BTN = {
+  base: "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100",
+  approve: "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20 hover:bg-emerald-700",
+  review: "border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100",
+  danger: "border border-[#ffb4ab] bg-white text-[#ba1a1a] hover:bg-[#fff1f0]",
+  ghost: "text-[13px] font-semibold text-[#777683] hover:text-[#191c1e]",
+} as const;
+
+/** Panneau de saisie d'un motif : même cadre pour le refus et la revue. */
+function ReasonPanel({
+  tone,
+  title,
+  hint,
+  placeholder,
+  value,
+  onChange,
+  onConfirm,
+  onCancel,
+  confirmLabel,
+  pending,
+  required,
+}: {
+  tone: "amber" | "red";
+  title: string;
+  hint: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirmLabel: string;
+  pending: boolean;
+  required: boolean;
+}) {
+  const amber = tone === "amber";
+  return (
+    <div
+      className={`rounded-2xl border p-3 ${
+        amber ? "border-amber-200 bg-amber-50/60" : "border-[#ffb4ab] bg-[#fff8f7]"
+      }`}
+    >
+      <p
+        className={`text-[11px] font-bold uppercase tracking-wider ${
+          amber ? "text-amber-800" : "text-[#ba1a1a]"
+        }`}
+      >
+        {title}
+      </p>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={3}
+        placeholder={placeholder}
+        className={`mt-2 w-full resize-none rounded-xl border bg-white px-3 py-2 text-[13px] outline-none transition-colors ${
+          amber
+            ? "border-amber-200 focus:border-amber-500"
+            : "border-[#ffb4ab] focus:border-[#ba1a1a]"
+        }`}
+      />
+      <p className="mt-1.5 text-[11px] leading-relaxed text-[#777683]">{hint}</p>
+      <div className="mt-2.5 flex items-center gap-2">
+        <button
+          onClick={onConfirm}
+          disabled={pending || (required && !value.trim())}
+          className={`${BTN.base} ${
+            amber
+              ? "bg-amber-500 text-white shadow-sm shadow-amber-500/20 hover:bg-amber-600"
+              : "bg-[#ba1a1a] text-white shadow-sm shadow-[#ba1a1a]/20 hover:bg-[#9f1414]"
+          }`}
+        >
+          {pending ? "…" : confirmLabel}
+        </button>
+        <button onClick={onCancel} className={BTN.ghost}>
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ListingActions({ listingId, status }: Props) {
   const [showReject, setShowReject] = useState(false);
   const [reason, setReason] = useState("");
@@ -32,8 +121,13 @@ export default function ListingActions({ listingId, status }: Props) {
     const icon = done === "approved" ? "check_circle" : done === "review" ? "rate_review" : "cancel";
     const label = done === "approved" ? "Validée" : done === "review" ? "En revue" : "Retirée";
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${tone}`}>
-        <span className="material-symbols-outlined text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold ${tone}`}
+      >
+        <span
+          className="material-symbols-outlined text-[15px]"
+          style={{ fontVariationSettings: "'FILL' 1" }}
+        >
           {icon}
         </span>
         {label}
@@ -87,188 +181,196 @@ export default function ListingActions({ listingId, status }: Props) {
     );
   }
 
+  const approve = () => {
+    setError("");
+    startTransition(async () => {
+      try {
+        await approveListing(listingId);
+        setDone("approved");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur");
+      }
+    });
+  };
+
   if (status === "PENDING") {
     return (
       <div className="space-y-2">
-        {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
-        {!showReject ? (
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => {
-                setError("");
-                startTransition(async () => {
-                  try { await approveListing(listingId); setDone("approved"); }
-                  catch (err) { setError(err instanceof Error ? err.message : "Erreur"); }
-                });
-              }}
-              disabled={isPending}
-              className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-[13px]">check_circle</span>
+        {error && <p className="text-[11px] font-semibold text-[#ba1a1a]">{error}</p>}
+
+        {showReject ? (
+          <ReasonPanel
+            tone="red"
+            title="Refuser l'annonce"
+            placeholder="Motif envoyé à l'auteur. Ex. : les photos ne montrent pas l'objet vendu."
+            hint="L'annonce ne sera jamais publiée. Sans motif, son auteur ne saura pas quoi corriger."
+            value={reason}
+            onChange={setReason}
+            confirmLabel="Confirmer le refus"
+            pending={isPending}
+            required={false}
+            onCancel={() => {
+              setShowReject(false);
+              setReason("");
+            }}
+            onConfirm={() => {
+              setError("");
+              startTransition(async () => {
+                try {
+                  await rejectListing(listingId, reason);
+                  setDone("rejected");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Erreur");
+                }
+              });
+            }}
+          />
+        ) : showReview ? (
+          <ReasonPanel
+            tone="amber"
+            title="Demander une correction"
+            placeholder="Ce qui est à corriger, dans vos mots. Ex. : le prix affiché ne correspond pas à la description."
+            hint="Envoyé tel quel à l'auteur. L'annonce revient en modération dès qu'il la modifie."
+            value={reviewReason}
+            onChange={setReviewReason}
+            confirmLabel="Envoyer la demande"
+            pending={isPending}
+            required
+            onCancel={() => {
+              setShowReview(false);
+              setReviewReason("");
+            }}
+            onConfirm={() => {
+              setError("");
+              startTransition(async () => {
+                try {
+                  await reviewListingAction(listingId, reviewReason);
+                  setShowReview(false);
+                  setReviewReason("");
+                  setDone("review");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Erreur");
+                }
+              });
+            }}
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={approve} disabled={isPending} className={`${BTN.base} ${BTN.approve}`}>
+              <span className="material-symbols-outlined text-[16px]">check_circle</span>
               {isPending ? "…" : "Valider"}
+            </button>
+            {/* Troisième voie, qui manquait ici : tout ce qui n'est ni bon ni
+                condamnable finissait refusé faute de bouton intermédiaire. */}
+            <button
+              onClick={() => setShowReview(true)}
+              disabled={isPending}
+              className={`${BTN.base} ${BTN.review}`}
+            >
+              <span className="material-symbols-outlined text-[16px]">rate_review</span>
+              À corriger
             </button>
             <button
               onClick={() => setShowReject(true)}
               disabled={isPending}
-              className="inline-flex items-center gap-1 text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffb4ab] px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50"
+              className={`${BTN.base} ${BTN.danger}`}
             >
-              <span className="material-symbols-outlined text-[13px]">remove_circle</span>
+              <span className="material-symbols-outlined text-[16px]">remove_circle</span>
               Refuser
             </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            <input
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Motif (optionnel)"
-              className="text-xs border border-[#c7c5d4] rounded-lg px-2.5 py-1.5 outline-none focus:border-[#ba1a1a] w-full"
-            />
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => {
-                  setError("");
-                  startTransition(async () => {
-                    try {
-                      await rejectListing(listingId, reason);
-                      setDone("rejected");
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Erreur");
-                    }
-                  });
-                }}
-                disabled={isPending}
-                className="text-xs bg-[#ba1a1a] text-white px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-50"
-              >
-                {isPending ? "…" : "Confirmer"}
-              </button>
-              <button
-                onClick={() => { setShowReject(false); setReason(""); }}
-                className="text-xs text-[#777683] hover:text-[#191c1e] py-1.5"
-              >
-                Annuler
-              </button>
-            </div>
           </div>
         )}
       </div>
     );
   }
 
-  // APPROVED — seul bouton disponible : Retirer.
+  // APPROVED — retirer ou demander une correction.
   //
-  // Le motif est obligatoire ici, contrairement au refus d'une annonce jamais
-  // publiée : retirer un contenu déjà en ligne déclenche un email à son auteur,
-  // et un email de retrait sans motif est incompréhensible.
+  // Le motif est obligatoire des deux côtés : retirer un contenu déjà en ligne
+  // déclenche un e-mail à son auteur, et un e-mail de retrait sans motif est
+  // incompréhensible.
   return (
     <div className="space-y-2">
-      {error && <p className="text-[10px] text-[#ba1a1a]">{error}</p>}
+      {error && <p className="text-[11px] font-semibold text-[#ba1a1a]">{error}</p>}
 
-      {/* Passer en revue : l'annonce sort de la vitrine le temps d'une
-          correction, sans sanction ni compte à rebours. C'est la réponse aux
-          cas de forme — titre en double, photo trompeuse, prix manifestement
-          faux — pour lesquels retirer serait disproportionné. */}
-      {showReview && (
-        <div className="flex flex-col gap-1.5">
-          <textarea
-            value={reviewReason}
-            onChange={(e) => setReviewReason(e.target.value)}
-            rows={3}
-            placeholder="Ce qui est à corriger, dans vos mots. Ex. : le titre de cette annonce est identique à celui d'une autre de vos annonces, précisez-le."
-            className="text-xs border border-[#c7c5d4] rounded-lg px-2.5 py-1.5 outline-none focus:border-amber-500 w-full resize-none"
-          />
-          <p className="text-[10px] text-[#777683]">
-            Envoyé tel quel à l&apos;auteur. L&apos;annonce revient en modération dès qu&apos;il la modifie.
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => {
-                setError("");
-                startTransition(async () => {
-                  try {
-                    await reviewListingAction(listingId, reviewReason);
-                    setShowReview(false);
-                    setReviewReason("");
-                    setDone("review");
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Erreur");
-                  }
-                });
-              }}
-              disabled={isPending || !reviewReason.trim()}
-              className="text-xs bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-50"
-            >
-              {isPending ? "…" : "Envoyer et mettre en pause"}
-            </button>
-            <button
-              onClick={() => { setShowReview(false); setReviewReason(""); }}
-              className="text-xs text-[#777683] hover:text-[#191c1e] py-1.5"
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!showReject && !showReview ? (
-        <div className="flex items-center gap-2 flex-wrap">
+      {showReview ? (
+        <ReasonPanel
+          tone="amber"
+          title="Passer en revue"
+          placeholder="Ce qui est à corriger, dans vos mots. Ex. : le titre de cette annonce est identique à celui d'une autre de vos annonces."
+          hint="L'annonce sort de la vitrine sans sanction ni compte à rebours. Elle revient en modération dès que l'auteur la modifie."
+          value={reviewReason}
+          onChange={setReviewReason}
+          confirmLabel="Envoyer et mettre en pause"
+          pending={isPending}
+          required
+          onCancel={() => {
+            setShowReview(false);
+            setReviewReason("");
+          }}
+          onConfirm={() => {
+            setError("");
+            startTransition(async () => {
+              try {
+                await reviewListingAction(listingId, reviewReason);
+                setShowReview(false);
+                setReviewReason("");
+                setDone("review");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Erreur");
+              }
+            });
+          }}
+        />
+      ) : showReject ? (
+        <ReasonPanel
+          tone="red"
+          title="Retirer l'annonce"
+          placeholder="Motif envoyé à l'auteur."
+          hint="L'annonce devient invisible immédiatement. Son auteur a 21 jours pour la corriger avant suppression définitive."
+          value={reason}
+          onChange={setReason}
+          confirmLabel="Confirmer le retrait"
+          pending={isPending}
+          required
+          onCancel={() => {
+            setShowReject(false);
+            setReason("");
+          }}
+          onConfirm={() => {
+            setError("");
+            startTransition(async () => {
+              try {
+                await removeListingAction(listingId, reason);
+                setShowReject(false);
+                setReason("");
+                setDone("rejected");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Erreur");
+              }
+            });
+          }}
+        />
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowReview(true)}
             disabled={isPending}
-            className="inline-flex items-center gap-1 text-xs font-semibold bg-amber-100 text-amber-800 hover:bg-amber-200 px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50"
+            className={`${BTN.base} ${BTN.review}`}
           >
-            <span className="material-symbols-outlined text-[13px]">rate_review</span>
+            <span className="material-symbols-outlined text-[16px]">rate_review</span>
             Passer en revue
           </button>
           <button
             onClick={() => setShowReject(true)}
             disabled={isPending}
-            className="inline-flex items-center gap-1 text-xs font-semibold bg-[#ffdad6] text-[#ba1a1a] hover:bg-[#ffb4ab] px-2.5 py-1.5 rounded-full transition-colors disabled:opacity-50"
+            className={`${BTN.base} ${BTN.danger}`}
           >
-            <span className="material-symbols-outlined text-[13px]">remove_circle</span>
-            Retirer l&apos;annonce
+            <span className="material-symbols-outlined text-[16px]">visibility_off</span>
+            Retirer
           </button>
         </div>
-      ) : showReject ? (
-        <div className="flex flex-col gap-1.5">
-          <input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Motif (envoyé à l'utilisateur)"
-            className="text-xs border border-[#c7c5d4] rounded-lg px-2.5 py-1.5 outline-none focus:border-[#ba1a1a] w-full"
-          />
-          <p className="text-[10px] text-[#777683]">
-            L'annonce devient invisible immédiatement. Son auteur a 21 jours pour la corriger.
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => {
-                setError("");
-                startTransition(async () => {
-                  try {
-                    await removeListingAction(listingId, reason);
-                    setShowReject(false);
-                    setReason("");
-                    setDone("rejected");
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "Erreur");
-                  }
-                });
-              }}
-              disabled={isPending || !reason.trim()}
-              className="text-xs bg-[#ba1a1a] text-white px-2.5 py-1.5 rounded-lg font-semibold disabled:opacity-50"
-            >
-              {isPending ? "…" : "Confirmer"}
-            </button>
-            <button
-              onClick={() => { setShowReject(false); setReason(""); }}
-              className="text-xs text-[#777683] hover:text-[#191c1e] py-1.5"
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
-      ) : null}
+      )}
     </div>
   );
 }

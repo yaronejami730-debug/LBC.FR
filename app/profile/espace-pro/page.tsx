@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import AdSlot from "@/components/ads/AdSlot";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -164,6 +165,10 @@ export default async function EspaceProPage({
               })),
           }}
         />
+
+        {/* Sous l'éditeur, pas au-dessus : un gérant vient ici pour corriger
+            sa fiche, on ne lui coupe pas la route. */}
+        <AdSlot placement="PRO_SPACE" className="mt-8" />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import AdSlot from "@/components/ads/AdSlot";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
@@ -2518,6 +2519,12 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
             </button>
           )}
         </div>
+
+        {/* Sous la navigation du formulaire, jamais au-dessus : on ne
+            s'interpose pas entre quelqu'un et le bouton qu'il cherche. Format
+            large ici, contrairement à la messagerie : la page de dépôt est
+            longue et respirée, une vignette d'une ligne s'y perdait. */}
+        <AdSlot placement="POST_FORM" size="md" city={location || null} category={categoryId || null} className="mt-10" />
 
       </main>
 

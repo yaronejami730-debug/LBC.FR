@@ -25,6 +25,7 @@ export default async function AdminAdvertisersPage() {
       loginId: true,
       mustChangePassword: true,
       suspendedAt: true,
+      billingDisabledAt: true,
       balanceCents: true,
       lastLoginAt: true,
       createdAt: true,
@@ -48,6 +49,7 @@ export default async function AdminAdvertisersPage() {
         initial={advertisers.map((a) => ({
           ...a,
           suspendedAt: a.suspendedAt?.toISOString() ?? null,
+          billingDisabledAt: a.billingDisabledAt?.toISOString() ?? null,
           lastLoginAt: a.lastLoginAt?.toISOString() ?? null,
           createdAt: a.createdAt.toISOString(),
         }))}

@@ -4,6 +4,7 @@ import { getAuthUserId } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
 import { onListingUpdated, onListingRemoved } from "@/lib/seo/lifecycle";
 import { sendPushNotification } from "@/lib/notifications/send";
+import { notifyReviewQueue } from "@/lib/moderation/notify-review";
 import { listingSlug } from "@/lib/listing-slug";
 import { indexListing, deleteListingFromIndex } from "@/lib/opensearch-sync";
 import { sanitizeLocation, addressLineFor } from "@/lib/listing-location";
@@ -119,13 +120,25 @@ export async function PATCH(
   const priceAfter = price !== undefined ? parseFloat(price) : priceBefore;
   const priceCollapsed = priceBefore > 0 && priceAfter < priceBefore * 0.5;
 
+  // Champs réellement modifiés — pas seulement « quelque chose a bougé ». La
+  // liste part telle quelle dans l'avis de modération : savoir que seule la
+  // photo a changé évite de relire toute l'annonce.
+  const changedFields: string[] = [];
+  if (title !== undefined && title !== listing.title) changedFields.push("title");
+  if (description !== undefined && description !== listing.description) changedFields.push("description");
+  if (images !== undefined && JSON.stringify(images) !== listing.images) changedFields.push("images");
+  if (category !== undefined && category !== listing.category) changedFields.push("category");
+  if (subcategory !== undefined && subcategory !== listing.subcategory) changedFields.push("subcategory");
+  if (location !== undefined && location !== listing.location) changedFields.push("location");
+  if (condition !== undefined && condition !== listing.condition) changedFields.push("condition");
+  if (price !== undefined && priceAfter !== priceBefore) changedFields.push("price");
+
+  // Le prix ne déclenche une revue que s'il s'effondre : un ajustement de
+  // quelques euros n'est pas un contournement de modération.
   const contentChanged =
-    (title !== undefined && title !== listing.title) ||
-    (description !== undefined && description !== listing.description) ||
-    (images !== undefined && JSON.stringify(images) !== listing.images) ||
-    (category !== undefined && category !== listing.category) ||
-    (subcategory !== undefined && subcategory !== listing.subcategory) ||
-    priceCollapsed;
+    changedFields.some((f) =>
+      ["title", "description", "images", "category", "subcategory"].includes(f),
+    ) || priceCollapsed;
 
   // Une annonce déjà sanctionnée repasse toujours par la modération, même pour
   // une virgule : c'est précisément là que se joue la correction demandée.
@@ -173,11 +186,24 @@ export async function PATCH(
   // dans l'index (photos ajoutées) comme l'en faire sortir (texte raccourci).
   onListingUpdated(id).catch(() => {});
 
-  sendPushNotification({
-    userId: updated.userId,
-    template: "listing_pending",
-    variables: { listingTitle: updated.title, listingId: updated.id },
-  }).catch(() => {});
+  if (needsReview) {
+    sendPushNotification({
+      userId: updated.userId,
+      template: "listing_pending",
+      variables: { listingTitle: updated.title, listingId: updated.id },
+    }).catch(() => {});
+
+    // Et surtout : prévenir la modération. Sans cet appel, une annonce
+    // corrigée attendait dans la file qu'un administrateur ouvre le
+    // back-office de lui-même.
+    notifyReviewQueue({
+      listingId: updated.id,
+      actorUserId: userId,
+      previousStatus: listing.status,
+      changedFields,
+      previousReason: listing.rejectionReason,
+    }).catch(() => {});
+  }
 
   return NextResponse.json(updated);
 }

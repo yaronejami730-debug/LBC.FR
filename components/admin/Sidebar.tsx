@@ -20,6 +20,7 @@ const navItems = [
   // commercial : des prospects. Ici, ce sont les comptes qui diffusent.
   { href: "/admin/publicite/annonceurs", icon: "ads_click", label: "Comptes annonceurs", exact: false },
   { href: "/admin/publicite/campagnes", icon: "rate_review", label: "Campagnes pub", exact: false },
+  { href: "/admin/publicite/diffusion", icon: "tune", label: "Diffusion pub", exact: false },
   { href: "/admin/annonceurs", icon: "storefront", label: "Annonceurs", exact: false },
   { href: "/admin/ads", icon: "campaign", label: "Publicités", exact: false },
   { href: "/admin/banniere", icon: "wallpaper", label: "Bannières", exact: false },

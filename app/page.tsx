@@ -7,6 +7,7 @@ import { getImageDimensions } from "@/lib/image-dims";
 import { getActiveAds } from "@/lib/ads";
 import Navbar from "@/components/Navbar";
 import AdCarousel from "@/components/AdCarousel";
+import AdSlot from "@/components/ads/AdSlot";
 import HomeRecommendations from "@/components/HomeRecommendations";
 import AdvertiserLeadSection from "@/components/home/AdvertiserLeadSection";
 import SiteFooter from "@/components/SiteFooter";
@@ -406,6 +407,17 @@ export default async function Home() {
         )}
       </header>
 
+      {/* Bandeau d'accueil, en tête : c'est sa définition. Il vivait au milieu
+          de la page, là où le carrousel maison s'était installé, et se
+          retrouvait collé à l'intercalaire des bonnes affaires — deux encarts
+          sponsorisés d'affilée.
+
+          Régie d'abord, bannières maison ensuite : sans campagne éligible, on
+          garde nos propres mises en avant plutôt qu'un blanc. */}
+      <section className="px-6 pt-6 max-w-7xl mx-auto">
+        <AdSlot placement="HOME_TOP" fallback={ads.length > 0 ? <AdCarousel ads={ads} /> : null} />
+      </section>
+
       {/* Categories: Bento Style */}
       <section className="px-6 py-4 max-w-7xl mx-auto">
         <div className="flex items-end justify-between mb-8">
@@ -498,7 +510,9 @@ export default async function Home() {
         listings={featuredRow}
       />
 
-      {ads.length > 0 && <AdCarousel ads={ads} />}
+      <section className="px-6 pt-6 max-w-7xl mx-auto">
+        <AdSlot placement="HOME_FEED" />
+      </section>
 
       <ListingRow
         title="Bonnes affaires"
@@ -531,6 +545,10 @@ export default async function Home() {
         hrefLabel="Toute la mode"
         listings={modeRow}
       />
+
+      <section className="px-6 pt-6 max-w-7xl mx-auto">
+        <AdSlot placement="HOME_FEED" />
+      </section>
 
       <section className="px-6 py-6 max-w-7xl mx-auto border-t border-surface-container mt-6">
         <div className="flex items-end justify-between mb-4 gap-3">

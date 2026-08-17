@@ -9,7 +9,22 @@
  * Les quatre premiers correspondent aux surfaces qui existent déjà dans
  * l'application — carrousel d'accueil, fil de résultats, encart de fiche
  * annonce, interstitiel mobile. On ne crée pas d'inventaire fictif.
+ *
+ * Une surface reste volontairement vierge : **les brouillons**. Quelqu'un qui
+ * relit une annonce inachevée est en train de travailler pour la place de
+ * marché ; l'interrompre par une réclame le fait abandonner, et un brouillon
+ * abandonné coûte plus cher que l'impression ne rapporte. La règle est écrite
+ * ici et appliquée dans `components/ads/AdSlot`, pour qu'un ajout distrait ne
+ * puisse pas la contourner.
  */
+
+/** Chemins où aucune publicité n'est servie, quelle que soit la campagne. */
+export const AD_FREE_PATHS = ["/brouillons"] as const;
+
+export function isAdFreePath(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return AD_FREE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export const PLACEMENTS = [
   {
@@ -44,6 +59,115 @@ export const PLACEMENTS = [
     format: "Plein écran · 1080 × 1920 px",
     surface: "Application",
   },
+  // ── Messagerie ────────────────────────────────────────────────────────────
+  // Deux encarts, jamais au milieu des conversations : une réclame glissée
+  // entre deux messages se lit comme un message, et c'est exactement ce qu'il
+  // ne faut pas.
+  {
+    key: "MESSAGES_TOP",
+    label: "Haut de la messagerie",
+    description: "Au-dessus de la liste des conversations. Vue à chaque passage dans les messages.",
+    platform: "BOTH",
+    format: "Bandeau · 1200 × 300 px",
+    surface: "Messagerie",
+  },
+  {
+    key: "MESSAGES_BOTTOM",
+    label: "Bas de la messagerie",
+    description: "Sous la liste des conversations, après lecture. Moins vue, moins chère.",
+    platform: "BOTH",
+    format: "Bandeau · 1200 × 300 px",
+    surface: "Messagerie",
+  },
+  // ── Dépôt d'annonce ───────────────────────────────────────────────────────
+  {
+    key: "POST_FORM",
+    label: "Dépôt d'annonce",
+    description: "Sous le formulaire de dépôt. Touche un vendeur, donc un futur acheteur.",
+    platform: "BOTH",
+    format: "Bandeau · 1200 × 300 px",
+    surface: "Dépôt",
+  },
+  // ── Compte ────────────────────────────────────────────────────────────────
+  {
+    key: "PROFILE_BANNER",
+    label: "Bandeau du profil",
+    description: "Dans « Mon compte », entre les annonces et la confidentialité.",
+    platform: "BOTH",
+    format: "Bandeau · 1200 × 300 px",
+    surface: "Compte",
+  },
+  // ── Accueil, entre les rayons ─────────────────────────────────────────────
+  // Une seule clé pour les trois intercalaires de la page d'accueil — avant les
+  // catégories, avant les bonnes affaires, avant les annonces récentes. Trois
+  // clés distinctes donneraient à l'annonceur trois cases à cocher pour une
+  // même idée : « au fil de l'accueil ». La position exacte est un choix
+  // éditorial, pas un produit à vendre séparément.
+  {
+    key: "HOME_FEED",
+    label: "Intercalaire d'accueil",
+    description: "Entre les rayons de la page d'accueil : catégories, bonnes affaires, annonces récentes.",
+    platform: "BOTH",
+    format: "Bandeau large · 1200 × 400 px",
+    surface: "Accueil",
+  },
+  // ── Menu et pages personnelles ────────────────────────────────────────────
+  {
+    key: "MENU_DRAWER",
+    label: "Menu principal",
+    description: "Dans le menu plein écran, au-dessus des rubriques. Vu à chaque ouverture du menu.",
+    platform: "BOTH",
+    format: "Vignette · 600 × 300 px",
+    surface: "Menu",
+  },
+  {
+    key: "FAVORITES",
+    label: "Mes favoris",
+    description: "En bas de la liste des favoris. Public qui a déjà une idée précise en tête.",
+    platform: "BOTH",
+    format: "Bandeau · 1200 × 300 px",
+    surface: "Compte",
+  },
+  {
+    key: "BOOKINGS",
+    label: "Mes réservations",
+    description: "Sur la page des rendez-vous pris. Public local, déjà client d'un professionnel.",
+    platform: "BOTH",
+    format: "Bandeau · 1200 × 300 px",
+    surface: "Compte",
+  },
+  // ── Espace professionnel ──────────────────────────────────────────────────
+  // Public rare et cher : des gérants d'établissement, sur leur outil de
+  // travail. C'est l'inventaire qui intéresse les fournisseurs — logiciels,
+  // grossistes, assurances — pas les mêmes annonceurs que le grand public.
+  {
+    key: "PRO_SPACE",
+    label: "Espace professionnel",
+    description: "Dans le tableau de bord des pros. Public de gérants d'entreprise.",
+    platform: "BOTH",
+    format: "Vignette · 600 × 300 px",
+    surface: "Professionnels",
+  },
+  {
+    key: "PRO_AGENDA",
+    label: "Agenda professionnel",
+    description: "Sur l'agenda des rendez-vous, consulté plusieurs fois par jour.",
+    platform: "BOTH",
+    format: "Vignette · 600 × 300 px",
+    surface: "Professionnels",
+  },
+  // ── E-mail ────────────────────────────────────────────────────────────────
+  // Une plateforme à part : pas de JavaScript, pas d'observateur de visibilité,
+  // et un message qui peut être ouvert trois semaines plus tard. Le moteur le
+  // sait, le jeton dure donc plus longtemps et l'impression se compte au pixel.
+  {
+    key: "EMAIL_BANNER",
+    label: "Encart e-mail",
+    description: "Dans les e-mails Deal&Co, sous le contenu. Hors e-mails de service.",
+    platform: "EMAIL",
+    format: "Vignette · 600 × 300 px",
+    surface: "E-mail",
+  },
 ] as const;
 
 export type PlacementKey = (typeof PLACEMENTS)[number]["key"];
@@ -67,10 +191,32 @@ export function placementLabel(key: string): string {
  * Emplacements proposés pour une plateforme donnée.
  *
  * `BOTH` sort partout : une campagne web ne doit pas se voir proposer le plein
- * écran mobile, et réciproquement.
+ * écran mobile, et réciproquement. L'e-mail ne sort que pour lui-même — un
+ * créatif conçu pour un écran ne tient pas dans un client de messagerie.
  */
-export function placementsFor(platform: "WEB" | "MOBILE"): Placement[] {
+export function placementsFor(platform: "WEB" | "MOBILE" | "EMAIL"): Placement[] {
+  if (platform === "EMAIL") return PLACEMENTS.filter((p) => p.platform === "EMAIL");
   return PLACEMENTS.filter((p) => p.platform === "BOTH" || p.platform === platform);
+}
+
+/**
+ * Inventaire groupé par surface, dans l'ordre de déclaration.
+ *
+ * L'assistant de création affichait une grille plate ; à quatre emplacements
+ * elle se lisait, à dix elle ne se lit plus. Le regroupement dit à l'annonceur
+ * *où* il achète avant de lui demander *quoi*.
+ */
+export function placementsBySurface(
+  platform?: "WEB" | "MOBILE" | "EMAIL",
+): { surface: string; placements: Placement[] }[] {
+  const list = platform ? placementsFor(platform) : [...PLACEMENTS];
+  const groups: { surface: string; placements: Placement[] }[] = [];
+  for (const p of list) {
+    const group = groups.find((g) => g.surface === p.surface);
+    if (group) group.placements.push(p);
+    else groups.push({ surface: p.surface, placements: [p] });
+  }
+  return groups;
 }
 
 /**

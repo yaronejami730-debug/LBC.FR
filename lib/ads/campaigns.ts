@@ -42,6 +42,8 @@ export type CampaignInput = {
   zones: ZoneInput[];
   audienceAges?: string[];
   categories?: string[];
+  /** L'annonceur accepte d'être diffusé selon l'intention du visiteur. */
+  smartTargeting?: boolean;
   creative: {
     title: string;
     description: string;
@@ -135,6 +137,7 @@ export async function createCampaign(advertiserId: string, input: CampaignInput)
       totalBudgetCents: total,
       audienceAges: JSON.stringify(ages),
       categories: JSON.stringify((input.categories ?? []).slice(0, 10)),
+      smartTargeting: input.smartTargeting === true,
       zones: { create: zones },
       placements: { create: placements.map((placement) => ({ placement })) },
       ads: {

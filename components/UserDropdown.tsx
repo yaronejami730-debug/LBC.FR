@@ -18,10 +18,22 @@ type Props = {
   membershipCount?: number;
 };
 
+/**
+ * Ce qu'on vient chercher ici, dans l'ordre où on le cherche.
+ *
+ * Les trois premiers concernent ce qu'on suit — conversations, favoris,
+ * alertes. Les trois suivants ce qu'on a déposé — annonces publiées,
+ * brouillons en cours, réservations prises. Ces derniers n'étaient atteignables
+ * qu'en passant par le profil, alors qu'un vendeur y revient plusieurs fois par
+ * jour.
+ */
 const MENU_ITEMS = [
-  { label: "Messages",       icon: "chat_bubble",   href: "/messages", badge: true },
-  { label: "Favoris",        icon: "favorite",      href: "/favoris",  badge: false },
-  { label: "Mes recherches", icon: "notifications", href: "/recherches", badge: false },
+  { label: "Messages",         icon: "chat_bubble",     href: "/messages",         badge: true },
+  { label: "Favoris",          icon: "favorite",        href: "/favoris",          badge: false },
+  { label: "Mes recherches",   icon: "notifications",   href: "/recherches",       badge: false },
+  { label: "Mes annonces",     icon: "list_alt",        href: "/mes-annonces",     badge: false },
+  { label: "Mes brouillons",   icon: "edit_note",       href: "/brouillons",       badge: false },
+  { label: "Mes réservations", icon: "event_available", href: "/mes-reservations", badge: false },
 ];
 
 export default function UserDropdown({ user, isPro = false, membershipCount = 0 }: Props) {
@@ -162,12 +174,6 @@ export default function UserDropdown({ user, isPro = false, membershipCount = 0 
                     </span>
                   </Link>
                 )}
-                <Link href="/mes-reservations" onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[20px]">event_available</span>
-                  <span className="text-[14px] font-medium flex-1">Mes réservations</span>
-                </Link>
                 {isPro && (
                   <Link href="/profile/api-key" onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
@@ -206,7 +212,7 @@ export default function UserDropdown({ user, isPro = false, membershipCount = 0 
                 <span className="material-symbols-outlined text-[20px]">login</span>
                 <span className="text-[14px] font-medium">Se connecter</span>
               </Link>
-              {MENU_ITEMS.map((item) => (
+              {MENU_ITEMS.slice(0, 3).map((item) => (
                 <Link key={item.href} href={item.href} onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-[#2f6fb8] transition-colors"
                 >

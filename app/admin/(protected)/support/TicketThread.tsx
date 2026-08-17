@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { assignTicket, replyToTicket, setTicketPriority, setTicketStatus } from "./actions";
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  assignTicket,
+  markTicketRead,
+  replyToTicket,
+  setTicketPriority,
+  setTicketStatus,
+} from "./actions";
 
 export type ThreadMessage = {
   id: string;
@@ -66,6 +72,21 @@ export default function TicketThread({ ticket }: { ticket: Ticket }) {
   const [attachment, setAttachment] = useState<{ url: string; name: string; type: string } | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [pending, start] = useTransition();
+  const readSent = useRef(false);
+
+  /**
+   * Ouvrir le fil vaut lecture.
+   *
+   * L'action existait mais n'était appelée nulle part : les messages du client
+   * ne recevaient jamais de `readAt`, et de son côté l'accusé de lecture
+   * restait éternellement sur « envoyé ». Quelqu'un qui a un problème doit voir
+   * que sa demande a été lue — c'est la moitié de ce que le support apporte.
+   */
+  useEffect(() => {
+    if (!open || readSent.current || ticket.unreadForAdmin === 0) return;
+    readSent.current = true;
+    void markTicketRead(ticket.id);
+  }, [open, ticket.id, ticket.unreadForAdmin]);
 
   function run(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setError("");

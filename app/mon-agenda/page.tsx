@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/ads/AdSlot";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
@@ -178,6 +179,10 @@ export default async function MonAgendaPage() {
             </section>
           ))
         )}
+
+        {/* Le planning d'une salariée : même emplacement que l'agenda du
+            gérant, même audience professionnelle. */}
+        <AdSlot placement="PRO_AGENDA" className="mt-8" />
       </main>
     </div>
   );

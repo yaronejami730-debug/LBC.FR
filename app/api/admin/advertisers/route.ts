@@ -38,6 +38,7 @@ export async function GET() {
       loginId: true,
       mustChangePassword: true,
       suspendedAt: true,
+      billingDisabledAt: true,
       balanceCents: true,
       lastLoginAt: true,
       createdAt: true,

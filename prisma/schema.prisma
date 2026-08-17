@@ -697,6 +697,9 @@ model SavedSearch {
   name           String
   filters        String   @default("{}") // JSON: { category, q, minPrice, maxPrice, location, ... }
   lastNotifiedAt DateTime @default(now())
+  /// Dernière ouverture des résultats depuis « Mes recherches ». Sert au
+  /// compteur de nouveautés, qui retombe à zéro une fois les annonces vues.
+  lastViewedAt   DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1110,6 +1113,12 @@ model AdCampaign {
   /// Catégories Deal&Co visées, en JSON. Vide = toutes.
   categories   String @default("[]")
 
+  /// L'annonceur accepte la diffusion suggérée : à emplacement égal, sa
+  /// campagne est servie en priorité aux visiteurs dont l'intention colle, au
+  /// lieu d'un tirage au sort. Sans effet tant que la régie n'a pas activé le
+  /// réglage global `smart_suggestions`.
+  smartTargeting Boolean @default(false)
+
   /// Motif de refus de modération, tel qu'il est montré à l'annonceur.
   reviewNote     String?
   reviewedAt     DateTime?
@@ -1415,6 +1424,19 @@ model AdPlacementPricing {
 }
 
 
+/// Réglage de la régie publicitaire.
+///
+/// Clé/valeur assumé : les réglages d'une régie changent plus souvent que son
+/// schéma, et chacun ne mérite pas une migration. Les valeurs sont lues par
+/// `lib/ads/settings.ts`, qui les typent au moment de l'usage.
+model AdSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+
 /// Un annonceur de la régie Deal&Co Ads.
 ///
 /// Ce n'est **pas** un `User` : un annonceur n'a ni annonces, ni favoris, ni
@@ -1455,6 +1477,13 @@ model Advertiser {
   /// En centimes pour la même raison que partout ailleurs : un budget
   /// publicitaire se compare et se soustrait, jamais en flottant.
   balanceCents Int @default(0)
+
+  /// Portefeuille désactivé : la campagne est diffusée sans être facturée.
+  /// Sert aux partenariats et aux gratuités. Le solde n'est pas touché — on
+  /// n'invente pas de crédits pour simuler la gratuité, sans quoi plus personne
+  /// ne sait ce qui a été payé. Remettre à `null` reprend la facturation.
+  billingDisabledAt     DateTime?
+  billingDisabledReason String?
 
   /// Lead commercial dont il est issu, quand il y en a un.
   leadId String?

@@ -17,6 +17,7 @@ import ProBadge from "@/components/ProBadge";
 import Navbar from "@/components/Navbar";
 import ProfileTabs from "./ProfileTabs";
 import PrivacySection from "./PrivacySection";
+import AdSlot from "@/components/ads/AdSlot";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -241,7 +242,13 @@ export default async function ProfilePage() {
           </Link>
         )}
 
+        {/* Les annonces ont leur page — `/mes-annonces` — mais rester ici reste
+            légitime : on arrive souvent sur son profil pour les regarder. */}
         <ProfileTabs listings={user.listings} />
+
+        {/* Entre ses annonces et ses réglages de confidentialité : une coupure
+            existante dans la page, pas une interruption de lecture. */}
+        <AdSlot placement="PROFILE_BANNER" className="my-8" />
 
         <PrivacySection
           marketingConsent={user.marketingConsent ?? false}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import AdSlot from "@/components/ads/AdSlot";
 import { auth } from "@/lib/auth";
 import Navbar from "@/components/Navbar";
 import ProNav from "../ProNav";
@@ -47,6 +48,8 @@ export default async function AgendaPage({
         {/* Le « aujourd'hui » est celui de Paris, calculé côté serveur : le
             navigateur d'un client à l'étranger ne doit pas décaler l'agenda. */}
         <AgendaBoard initialDay={dayKey(new Date())} />
+
+        <AdSlot placement="PRO_AGENDA" className="mt-8" />
       </main>
     </div>
   );

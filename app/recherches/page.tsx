@@ -23,14 +23,24 @@ export default async function RecherchesPage() {
   const withCounts = await Promise.all(
     searches.map(async (s) => {
       const filters = JSON.parse(s.filters) as Record<string, string>;
-      const matchCount = await prisma.listing.count({
-        where: buildSearchWhere(filters, { includeNonApproved: true }) as any,
-      });
+      const where = buildSearchWhere(filters, { includeNonApproved: true }) as any;
+
+      // Deux chiffres, deux usages. Le total dit ce que vaut la recherche ; les
+      // nouveautés disent s'il y a une raison de l'ouvrir maintenant. Seul le
+      // second retombe à zéro une fois les résultats consultés.
+      const since = s.lastViewedAt ?? s.createdAt;
+      const [matchCount, newCount] = await Promise.all([
+        prisma.listing.count({ where }),
+        prisma.listing.count({ where: { ...where, createdAt: { gt: since } } }),
+      ]);
+
       return {
         ...s,
         createdAt: s.createdAt.toISOString(),
         updatedAt: s.updatedAt.toISOString(),
+        lastViewedAt: s.lastViewedAt?.toISOString() ?? null,
         matchCount,
+        newCount,
       };
     })
   );

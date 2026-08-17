@@ -23,6 +23,10 @@ async function requireAdmin() {
  * Suspendre ne supprime rien : les campagnes, les dépenses et les factures
  * restent. Seul l'accès est coupé, et il se rouvre d'un clic — un impayé se
  * régularise, un compte supprimé ne se répare pas.
+ *
+ * Désactiver le portefeuille est autre chose : le compte reste actif et ses
+ * campagnes tournent, mais rien n'est débité. Deux leviers distincts, parce
+ * qu'offrir la diffusion et couper l'accès n'ont rien à voir.
  */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
@@ -52,8 +56,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       ...(body.suspended !== undefined && {
         suspendedAt: body.suspended === true ? new Date() : null,
       }),
+      // Portefeuille désactivé : diffusion offerte. Le solde n'est pas touché —
+      // on ne crédite pas de faux euros pour simuler la gratuité, sinon plus
+      // personne ne sait ce qui a été payé.
+      ...(body.billingDisabled !== undefined && {
+        billingDisabledAt: body.billingDisabled === true ? new Date() : null,
+        billingDisabledReason:
+          body.billingDisabled === true
+            ? String(body.billingReason ?? "Gratuité accordée").trim().slice(0, 200)
+            : null,
+      }),
     },
-    select: { id: true, suspendedAt: true },
+    select: { id: true, suspendedAt: true, billingDisabledAt: true },
   });
 
   return NextResponse.json({ advertiser });

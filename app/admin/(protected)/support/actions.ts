@@ -52,6 +52,9 @@ export async function replyToTicket(
       attachmentType: attachment?.type ?? null,
       attachmentName: attachment?.name ?? null,
     });
+    // Répondre, c'est avoir lu : sans cela, le client garde un simple accusé
+    // d'envoi sur un message auquel on vient pourtant de répondre.
+    await markRead(ticketId, "admin");
     revalidatePath("/admin/support");
   });
 }

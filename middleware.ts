@@ -2,10 +2,23 @@ import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { INTENT_COOKIE, INTENT_MAX_AGE, encodeIntent, readLandingIntent } from "./lib/ads/intent-cookie";
 
 const { auth } = NextAuth(authConfig);
 
-const PROTECTED = ["/messages", "/profile", "/post", "/favorites", "/brouillons"];
+// « /favorites » est resté d'une ancienne route ; la page vit sur « /favoris ».
+// Les deux figurent : retirer l'ancienne n'apporte rien, la laisser seule
+// laissait la vraie page hors du contrôle.
+const PROTECTED = [
+  "/messages",
+  "/profile",
+  "/post",
+  "/favorites",
+  "/favoris",
+  "/brouillons",
+  "/mes-annonces",
+  "/mes-reservations",
+];
 
 // Scrapers that should not trigger auth middleware (no cookies)
 const SCRAPER_AGENTS = [
@@ -81,8 +94,30 @@ export default auth((req: any) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return withLandingIntent(req, NextResponse.next());
 });
+
+/**
+ * Mémorise l'intention portée par l'arrivée, quand il y en a une.
+ *
+ * Un `utm_term` sur un lien sponsorisé, un `?q=` sur un lien partagé : c'est le
+ * seul moment où l'on sait de quoi la visite parlait avant d'atterrir. Trente
+ * jours, trois mots-clés, aucun identifiant — et on n'écrase pas une intention
+ * déjà connue par une visite qui n'en porte pas.
+ */
+function withLandingIntent(req: NextRequest, res: NextResponse): NextResponse {
+  const keywords = readLandingIntent(req.nextUrl, req.headers.get("referer"));
+  if (keywords.length === 0) return res;
+
+  res.cookies.set(INTENT_COOKIE, encodeIntent(keywords), {
+    maxAge: INTENT_MAX_AGE,
+    sameSite: "lax",
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  });
+  return res;
+}
 
 export const config = {
   matcher: ["/((?!_next|api|opengraph-image|.*\\..*).*)" ],

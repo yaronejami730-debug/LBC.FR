@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { CATEGORIES } from "@/lib/categories";
+import AdSlot from "@/components/ads/AdSlot";
 
 /**
  * Menu principal — plein écran, ouvert par le bouton hamburger.
@@ -32,13 +33,13 @@ const PERSONAL = [
   { href: "/messages", label: "Messages", icon: "chat_bubble", title: "Ma messagerie" },
   { href: "/favoris", label: "Favoris", icon: "favorite", title: "Mes annonces favorites" },
   { href: "/recherches", label: "Mes alertes", icon: "notifications", title: "Mes recherches enregistrées" },
+  { href: "/brouillons", label: "Mes brouillons", icon: "edit_note", title: "Mes annonces non publiées" },
+  { href: "/mes-reservations", label: "Mes réservations", icon: "event_available", title: "Mes rendez-vous réservés" },
 ];
 
-// Les annonces d'un compte vivent sur l'onglet par défaut de `/profile` : pas
-// de route dédiée, donc pas de lien qui promettrait une page inexistante.
 const ACCOUNT = [
   { href: "/profile", label: "Mon compte", icon: "person", title: "Mon compte" },
-  { href: "/profile", label: "Mes annonces", icon: "list_alt", title: "Mes annonces publiées" },
+  { href: "/mes-annonces", label: "Mes annonces", icon: "list_alt", title: "Mes annonces publiées" },
 ];
 
 const PRACTICAL = [
@@ -193,6 +194,13 @@ export default function CategoryDrawer() {
                 </div>
               )}
             </nav>
+
+            {/* Juste avant les rubriques : le menu est parcouru en entier,
+                l'encart est vu, et il ne s'interpose devant aucun des liens
+                pour lesquels on a ouvert le menu. */}
+            <div className="px-6 pt-4">
+              <AdSlot placement="MENU_DRAWER" />
+            </div>
 
             {/* Les rubriques, en bas et en petit : elles servent à flâner, pas
                 à faire ce pour quoi on a ouvert l'application. */}

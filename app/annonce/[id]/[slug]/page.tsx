@@ -9,6 +9,7 @@ import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "../ListingHeader";
 import AdRotator from "../AdRotator";
 import AdSlot from "@/components/ads/AdSlot";
+import { priceUnitSuffix } from "@/lib/listing-price";
 import { getUserResponseTime } from "@/lib/user-stats";
 import SellerActions from "../SellerActions";
 import ReportButton from "../ReportButton";
@@ -202,6 +203,18 @@ export default async function ListingPage({
   const currentUserId = session?.user?.id ?? null;
 
   if (!listing) notFound();
+
+  // Unité du prix : « /mois » pour un loyer, « /nuit » pour un gîte, rien pour
+  // un objet vendu. Déduite d'une seule fonction, partagée avec le reste du
+  // site plutôt que recopiée écran par écran.
+  const priceSuffix = priceUnitSuffix({
+    title: listing.title,
+    description: listing.description,
+    category: listing.category,
+    subcategory: listing.subcategory,
+    price: listing.price,
+    metadata: (listing as { metadata?: string | null }).metadata ?? null,
+  });
 
   const isOwner = currentUserId === listing.userId;
   const role = (session?.user as unknown as Record<string, unknown> | undefined)?.role;
@@ -611,7 +624,14 @@ export default async function ListingPage({
                 {listing.title}
               </h1>
               <div className="flex items-center gap-3 pt-2">
-                <span className="text-4xl font-black text-primary">{listing.price.toLocaleString("fr-FR")} €</span>
+                {/* L'unité fait partie du prix : « 1 200 € » sur une location
+                    laisse croire à un prix de vente. */}
+                <span className="text-4xl font-black text-primary">
+                  {listing.price.toLocaleString("fr-FR")} €
+                  {priceSuffix && (
+                    <span className="text-xl font-extrabold text-primary/70">{priceSuffix}</span>
+                  )}
+                </span>
                 {isOwner && Date.now() - new Date(listing.createdAt).getTime() < 48 * 60 * 60 * 1000 && (
                   <ListingInfoTip />
                 )}

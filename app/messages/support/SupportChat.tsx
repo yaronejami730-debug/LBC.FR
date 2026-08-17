@@ -55,44 +55,50 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
    */
   const [category, setCategory] = useState<string | null>(null);
   /** Discussions closes, consultables : l'historique de ses échanges. */
-  const [history, setHistory] = useState<{ id: string; subject: string; status: string; lastMessageAt: string }[]>([]);
+  const [history, setHistory] = useState<
+    { id: string; subject: string; category: string; status: string; lastMessageAt: string }[]
+  >([]);
   const [reading, setReading] = useState<Ticket | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  /** Charge un fil précis et l'affiche s'il est encore ouvert. */
+  const openTicket = useCallback(async (id: string) => {
+    const data = await fetch(`/api/support/tickets/${id}`).then((r) => r.json());
+    // Discussion close : on n'y retourne pas. L'écran affiche « démarrer une
+    // discussion », et l'ancien échange reste consultable dans l'historique,
+    // en dessous. Rouvrir automatiquement un dossier réglé donnait un fil
+    // qu'on ne pouvait ni poursuivre ni quitter.
+    setTicket(data.ticket && !CLOSED.has(data.ticket.status) ? data.ticket : null);
+  }, []);
+
+  /** Les discussions closes, pour la liste d'historique. */
+  const refreshHistory = useCallback(async () => {
+    const listed = await fetch("/api/support/tickets").then((r) => r.json());
+    const tickets: { id: string; status: string }[] = listed.tickets ?? [];
+    setHistory(tickets.filter((row) => CLOSED.has(row.status)).slice(0, 10) as never);
+    return tickets;
+  }, []);
 
   const load = useCallback(async () => {
     try {
       // Sans identifiant précis : la discussion la plus récente qui soit encore
       // ouverte. Une discussion résolue n'est pas réactivée en silence.
-      const listed = await fetch("/api/support/tickets").then((r) => r.json());
-      const candidates: { id: string; status: string }[] = listed.tickets ?? [];
-      setHistory(
-        (listed.tickets ?? [])
-          .filter((t: { status: string }) => CLOSED.has(t.status))
-          .slice(0, 10),
-      );
-
+      const tickets = await refreshHistory();
       const target =
-        initialTicketId ?? candidates.find((t) => !CLOSED.has(t.status))?.id ?? null;
+        initialTicketId ?? tickets.find((row) => !CLOSED.has(row.status))?.id ?? null;
 
       if (!target) {
         setTicket(null);
         return;
       }
-      const data = await fetch(`/api/support/tickets/${target}`).then((r) => r.json());
-      setTicket(data.ticket ?? null);
-      // Lien d'e-mail vers une discussion déjà close : on l'ouvre en lecture
-      // plutôt que d'afficher un fil vide. La personne venait relire, pas
-      // rouvrir un dossier réglé.
-      if (data.ticket && CLOSED.has(data.ticket.status) && initialTicketId) {
-        setReading((current) => current ?? data.ticket);
-      }
+      await openTicket(target);
     } catch {
       setError("Impossible de charger la discussion");
     } finally {
       setLoading(false);
     }
-  }, [initialTicketId]);
+  }, [initialTicketId, openTicket, refreshHistory]);
 
   useEffect(() => {
     void load();
@@ -106,11 +112,18 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
       if (document.hidden) return;
       fetch(`/api/support/tickets/${ticket.id}`)
         .then((r) => r.json())
-        .then((d) => d.ticket && setTicket(d.ticket))
+        .then((d) => {
+          if (!d.ticket) return;
+          // Clôture décidée pendant qu'on regarde l'écran : on bascule sur
+          // l'accueil du support et l'échange rejoint l'historique, au lieu de
+          // laisser une conversation figée dans laquelle on peut encore taper.
+          if (CLOSED.has(d.ticket.status)) void load();
+          else setTicket(d.ticket);
+        })
         .catch(() => {});
     }, 4000);
     return () => clearInterval(timer);
-  }, [ticket?.id]);
+  }, [ticket?.id, load]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -153,7 +166,12 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
       if (!res.ok) throw new Error(data.error ?? "Envoi impossible");
       setText("");
       setCategory(null);
-      await load();
+      // On bascule sur le fil avec ce que le serveur vient de créer, sans
+      // repasser par la liste : l'enchaînement précédent — recharger la liste,
+      // puis le ticket — laissait revenir l'écran « démarrer une discussion »
+      // une seconde entre les deux, et donnait l'impression d'un bug.
+      if (data.ticket?.id) await openTicket(data.ticket.id);
+      void refreshHistory();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Envoi impossible");
     } finally {
@@ -188,7 +206,7 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
       if (!res.ok) throw new Error(data.error ?? "Envoi impossible");
       setText("");
       setAttachment(null);
-      await load();
+      await openTicket(ticket.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Envoi impossible");
     } finally {
@@ -278,6 +296,14 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
                   >
                     Changer de motif
                   </button>
+
+                  {/* Sans cette flèche, on cherchait où écrire : l'écran vide
+                      ne désignait rien, et le champ du bas ressemblait à une
+                      barre de navigation. */}
+                  <p className="mt-8 flex items-center gap-2 rounded-full bg-[#2f6fb8]/10 px-4 py-2 text-sm font-bold text-[#2f6fb8]">
+                    <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
+                    Écrivez votre message dans le champ en bas de l'écran
+                  </p>
                 </>
               )}
 
@@ -304,7 +330,13 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
                         >
                           <span className="material-symbols-outlined text-[18px] text-slate-400">history</span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-semibold">{h.subject}</span>
+                            {/* Le motif, pas le premier message : « Sécurité,
+                                arnaque » se retrouve dans une liste, « bonjour
+                                j'ai un souci avec… » non. */}
+                            <span className="block truncate text-sm font-semibold">
+                              {SUPPORT_CATEGORIES.find((c) => c.value === h.category)?.label ??
+                                h.subject}
+                            </span>
                             <span className="block text-[11px] text-slate-400">
                               Résolue le{" "}
                               {new Date(h.lastMessageAt).toLocaleDateString("fr-FR", {
@@ -378,7 +410,7 @@ export default function SupportChat({ initialTicketId }: { initialTicketId?: str
                 conversationOpen
                   ? "Écrivez un message..."
                   : category
-                    ? "Décrivez votre problème..."
+                    ? "Écrivez ici : décrivez votre problème…"
                     : "Choisissez d'abord un motif ci-dessus"
               }
               autoComplete="off"
@@ -487,14 +519,17 @@ function Bubble({ m }: { m: Message }) {
                     <span className="flex items-center gap-1 text-[9px] text-slate-400 font-bold px-1 uppercase tracking-tight">
                       {time(m.createdAt)}
                       {mine && (
+                        /* Une coche : parti d'ici. Deux : enregistré côté
+                           support, donc dans la file d'un modérateur. Deux
+                           bleues : ouvert par quelqu'un. Le message existe en
+                           base dès qu'il revient du serveur, la deuxième coche
+                           est donc acquise — c'est la lecture qui se mérite. */
                         <span
                           className={`inline-flex items-center ${m.readAt ? "text-[#4fc3f7]" : "text-slate-400"}`}
-                          title={m.readAt ? "Lu" : "Envoyé"}
+                          title={m.readAt ? "Lu par le support" : "Remis au support"}
                         >
                           <span className="material-symbols-outlined text-[13px] leading-none">check</span>
-                          {m.readAt && (
-                            <span className="material-symbols-outlined text-[13px] leading-none -ml-[7px]">check</span>
-                          )}
+                          <span className="material-symbols-outlined text-[13px] leading-none -ml-[7px]">check</span>
                         </span>
                       )}
                     </span>

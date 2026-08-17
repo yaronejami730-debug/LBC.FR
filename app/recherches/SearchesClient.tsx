@@ -11,7 +11,11 @@ interface SavedSearch {
   name: string;
   filters: string;
   createdAt: string;
+  /** Annonces correspondant à la recherche, tous âges confondus. */
   matchCount: number;
+  /** Arrivées depuis la dernière consultation. Retombe à zéro une fois vues. */
+  newCount: number;
+  lastViewedAt?: string | null;
 }
 
 interface Props {
@@ -31,8 +35,13 @@ function buildSearchUrl(filters: Record<string, string>): string {
   for (const [k, v] of Object.entries(filters)) {
     if (!skip.has(k) && v) params.set(k, v);
   }
-  // Signal to SearchBar to auto-open the filter panel
-  params.set("_filters", "1");
+  // Volontairement **pas** de `_filters=1` ici.
+  //
+  // Ce paramètre ouvrait le panneau de filtres par-dessus les résultats : on
+  // cliquait sur « voir les annonces » et on tombait sur le formulaire qu'on
+  // venait justement d'enregistrer pour ne plus avoir à le remplir. Les
+  // filtres sont déjà dans l'URL, la page les applique — il n'y a rien à
+  // demander.
   return `/search?${params.toString()}`;
 }
 
@@ -66,6 +75,22 @@ function buildFilterChips(filters: Record<string, string>): string[] {
 
 function SearchCard({ search, onDeleted }: { search: SavedSearch; onDeleted: () => void }) {
   const [deleting, setDeleting] = useState(false);
+  /**
+   * Compteur local : il retombe à zéro à l'écran au moment du clic, sans
+   * attendre le retour du serveur ni le rechargement de la page. On quitte
+   * l'écran dans la foulée — un badge qui persisterait le temps de la
+   * navigation donnerait l'impression que le clic n'a rien fait.
+   */
+  const [seen, setSeen] = useState(false);
+  const newCount = seen ? 0 : search.newCount;
+
+  const markViewed = useCallback(() => {
+    setSeen(true);
+    // `keepalive` : la requête survit à la navigation qui démarre au même
+    // instant. Sans cela, le marquage était annulé une fois sur deux.
+    fetch(`/api/saved-searches/${search.id}`, { method: "PATCH", keepalive: true }).catch(() => {});
+  }, [search.id]);
+
   const filters = JSON.parse(search.filters) as Record<string, string>;
   const cat = CATEGORIES.find((c) => c.id === filters.category);
   const chips = buildFilterChips(filters);
@@ -104,15 +129,23 @@ function SearchCard({ search, onDeleted }: { search: SavedSearch; onDeleted: () 
           </div>
         </div>
 
-        {/* Match badge + delete */}
+        {/* Nouveautés d'abord : c'est le seul chiffre qui donne une raison
+            d'ouvrir la recherche maintenant. Le total suit, en gris. */}
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-            search.matchCount > 0
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-slate-100 text-slate-500"
-          }`}>
-            {search.matchCount > 0 ? `${search.matchCount} annonce${search.matchCount > 1 ? "s" : ""}` : "Aucune annonce"}
-          </div>
+          {newCount > 0 ? (
+            <span className="rounded-full bg-[#2f6fb8] px-2.5 py-1 text-xs font-bold text-white shadow-sm shadow-primary/20">
+              {newCount} nouvelle{newCount > 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500">
+              {search.matchCount > 0 ? "À jour" : "Aucune annonce"}
+            </span>
+          )}
+          {search.matchCount > 0 && (
+            <span className="text-[11px] font-semibold tabular-nums text-slate-400">
+              {search.matchCount} au total
+            </span>
+          )}
           <button
             onClick={handleDelete}
             disabled={deleting}
@@ -129,13 +162,11 @@ function SearchCard({ search, onDeleted }: { search: SavedSearch; onDeleted: () 
       <div className="px-4 pb-4">
         <Link
           href={url}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-sm shadow-primary/20 active:scale-[0.98] transition-transform"
+          onClick={markViewed}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-sm shadow-primary/20 transition-transform active:scale-[0.98]"
         >
           <span className="material-symbols-outlined text-base">search</span>
-          Voir les annonces
-          {search.matchCount > 0 && (
-            <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-full text-xs font-bold">{search.matchCount}</span>
-          )}
+          {newCount > 0 ? `Voir les ${newCount} nouvelle${newCount > 1 ? "s" : ""}` : "Voir les annonces"}
         </Link>
       </div>
     </div>

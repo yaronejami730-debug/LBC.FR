@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AGE_RANGES, OBJECTIVES, PLACEMENTS } from "@/lib/ads/placements";
+import { AGE_RANGES, OBJECTIVES, PLACEMENTS, placementsBySurface } from "@/lib/ads/placements";
+import { CATEGORIES } from "@/lib/categories";
 import { COLORS, PRIMARY_GRADIENT, PRIMARY_SHADOW } from "@/lib/ads/theme";
 
 const STEPS = ["Objectif", "Audience", "Localisation", "Budget", "Publicité", "Récapitulatif"];
@@ -49,6 +50,16 @@ export default function CampaignWizard() {
   const [zoneInput, setZoneInput] = useState("");
   const [zoneRadius, setZoneRadius] = useState(10);
   const [placements, setPlacements] = useState<string[]>(["HOME_TOP"]);
+  const [categories, setCategories] = useState<string[]>([]);
+  /**
+   * Diffusion suggérée.
+   *
+   * Activée, la campagne est servie en priorité aux visiteurs dont l'intention
+   * colle — ce qu'ils consultent, ce qu'ils ont cherché — au lieu d'un tirage
+   * au sort. Un vendeur d'ordinateurs finit devant quelqu'un qui compare des
+   * ordinateurs, pas devant quelqu'un qui cherche une voiture.
+   */
+  const [smartTargeting, setSmartTargeting] = useState(true);
   const [dailyEuros, setDailyEuros] = useState(20);
   const [startAt, setStartAt] = useState(inDays(0));
   const [endAt, setEndAt] = useState(inDays(30));
@@ -155,6 +166,8 @@ export default function CampaignWizard() {
           placements,
           zones,
           audienceAges: ages,
+          categories,
+          smartTargeting,
           creative: { title, description, imageUrl, ctaLabel, destinationUrl },
         }),
       });
@@ -352,26 +365,82 @@ export default function CampaignWizard() {
                 </ul>
               )}
 
-              <h3 className="text-sm font-bold pt-2">Où votre publicité doit-elle apparaître ?</h3>
-              <div className="grid sm:grid-cols-2 gap-2">
-                {PLACEMENTS.map((p) => (
+              <h3 className="text-sm font-bold pt-2">Quels univers intéressent vos clients ?</h3>
+              <p className="text-xs text-[#94A3B8] -mt-1">
+                Aucune sélection : votre publicité s'adresse à tout le site.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => (
                   <button
-                    key={p.key}
+                    key={c.id}
                     type="button"
-                    onClick={() => toggle(placements, p.key, setPlacements)}
-                    className="text-left rounded-xl p-3"
+                    onClick={() => toggle(categories, c.id, setCategories)}
+                    className="rounded-full px-3.5 py-2 text-[13px] font-bold"
                     style={
-                      placements.includes(p.key)
-                        ? { border: `1px solid ${COLORS.blue}`, background: COLORS.tint }
-                        : { border: `1px solid ${COLORS.line}`, background: "#fff" }
+                      categories.includes(c.id)
+                        ? { border: `1px solid ${COLORS.blue}`, background: COLORS.tint, color: COLORS.blue }
+                        : { border: `1px solid ${COLORS.line}`, background: "#fff", color: "#475569" }
                     }
                   >
-                    <span className="block font-bold text-sm">{p.label}</span>
-                    <span className="block text-xs text-[#94A3B8] mt-0.5">{p.description}</span>
-                    <span className="block text-[11px] text-[#94A3B8] mt-1">{p.format}</span>
+                    {c.label}
                   </button>
                 ))}
               </div>
+
+              {/* La case dont dépend tout le ciblage fin. Cochée par défaut :
+                  refuser d'être pertinent doit être un choix explicite, pas un
+                  oubli. Sans effet tant que la régie n'a pas activé la
+                  diffusion suggérée — ce qui est assumé, l'option se prépare
+                  avant d'avoir l'inventaire qui la justifie. */}
+              <label
+                className="flex cursor-pointer items-start gap-3 rounded-xl p-3"
+                style={{ border: `1px solid ${smartTargeting ? COLORS.blue : COLORS.line}`, background: smartTargeting ? COLORS.tint : "#fff" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={smartTargeting}
+                  onChange={(e) => setSmartTargeting(e.target.checked)}
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  <span className="block text-sm font-bold">Diffusion suggérée</span>
+                  <span className="block text-xs text-[#94A3B8] mt-0.5">
+                    Votre publicité est montrée en priorité aux visiteurs dont les recherches
+                    récentes correspondent à votre activité, plutôt qu'au hasard.
+                  </span>
+                </span>
+              </label>
+
+              <h3 className="text-sm font-bold pt-2">Où votre publicité doit-elle apparaître ?</h3>
+              {/* Groupé par surface : à quatre emplacements une grille plate
+                  se lisait, à dix elle ne se lit plus. L'annonceur choisit
+                  d'abord *où*, ensuite *quoi*. */}
+              {placementsBySurface().map((group) => (
+                <div key={group.surface} className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                    {group.surface}
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {group.placements.map((p) => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => toggle(placements, p.key, setPlacements)}
+                        className="text-left rounded-xl p-3"
+                        style={
+                          placements.includes(p.key)
+                            ? { border: `1px solid ${COLORS.blue}`, background: COLORS.tint }
+                            : { border: `1px solid ${COLORS.line}`, background: "#fff" }
+                        }
+                      >
+                        <span className="block font-bold text-sm">{p.label}</span>
+                        <span className="block text-xs text-[#94A3B8] mt-0.5">{p.description}</span>
+                        <span className="block text-[11px] text-[#94A3B8] mt-1">{p.format}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </>
           )}
 

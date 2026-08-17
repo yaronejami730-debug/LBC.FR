@@ -9,6 +9,8 @@ import { buildSearchWhere } from "@/lib/search-where";
 import SearchBar from "./SearchBar";
 import HistoryTracker from "@/components/HistoryTracker";
 import GridAdCard from "@/components/GridAdCard";
+import AdSlot from "@/components/ads/AdSlot";
+import { adPositions } from "@/lib/ads/rhythm";
 import ListingCard from "@/components/home/ListingCard";
 import { Suspense } from "react";
 import SaveSearchButton from "./SaveSearchButton";
@@ -97,6 +99,10 @@ export default async function SearchPage({
 
   const totalPages = Math.ceil(total / perPage);
 
+  // Cadence irrégulière — 5, 7, 10, 6 cartes — et décalée d'une page à l'autre :
+  // un encart toujours à la même position finit par être sauté d'office.
+  const adSlots = adPositions(listings.length, page);
+
   const activeCategory = category || "All";
 
   return (
@@ -162,16 +168,29 @@ export default async function SearchPage({
           ) : (
             listings.map((listing, i) => {
               const adIndex = Math.floor(i / 5);
-              const ad = i % 5 === 4 ? ads[adIndex] ?? null : null;
+              const ad = adSlots.has(i) ? ads[adIndex % Math.max(ads.length, 1)] ?? null : null;
               return (
                 <Fragment key={listing.id}>
-                  {ad && (
-                    <GridAdCard
-                      id={ad.id}
-                      title={ad.title}
-                      description={ad.description}
-                      imageUrl={ad.imageUrl}
-                      destinationUrl={ad.destinationUrl}
+                  {/* Une case sur cinq du fil : au format d'une annonce, mais
+                      badgée « Publicité ». Se fondre est le but, tromper ne
+                      l'est pas. */}
+                  {adSlots.has(i) && (
+                    <AdSlot
+                      placement="SEARCH_GRID"
+                      variant="card"
+                      city={params.location ?? null}
+                      category={params.category ?? null}
+                      fallback={
+                        ad ? (
+                          <GridAdCard
+                            id={ad.id}
+                            title={ad.title}
+                            description={ad.description}
+                            imageUrl={ad.imageUrl}
+                            destinationUrl={ad.destinationUrl}
+                          />
+                        ) : null
+                      }
                     />
                   )}
                   <ListingCard listing={listing} priority={i === 0} />

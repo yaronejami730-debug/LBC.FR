@@ -21,6 +21,32 @@ import { prisma } from "@/lib/prisma";
 import { verifyAdToken } from "./engine";
 import { chargeEvent, eventCost, pricing } from "./billing";
 
+/**
+ * La campagne appartient-elle à un annonceur en gratuité ?
+ *
+ * Lecture par campagne, mise en cache très court : la question se pose à chaque
+ * événement, et la réponse ne change qu'au moment où quelqu'un clique sur
+ * « réactiver le portefeuille ».
+ */
+const freeCache = new Map<string, { at: number; free: boolean }>();
+const FREE_TTL_MS = 30_000;
+
+async function isBillingDisabled(campaignId: string): Promise<boolean> {
+  const cached = freeCache.get(campaignId);
+  if (cached && Date.now() - cached.at < FREE_TTL_MS) return cached.free;
+
+  const row = await prisma.adCampaign
+    .findUnique({
+      where: { id: campaignId },
+      select: { advertiser: { select: { billingDisabledAt: true } } },
+    })
+    .catch(() => null);
+
+  const free = Boolean(row?.advertiser.billingDisabledAt);
+  freeCache.set(campaignId, { at: Date.now(), free });
+  return free;
+}
+
 export type EventType = "IMPRESSION" | "CLICK" | "CONVERSION";
 
 /** Empreinte stable d'un événement. */
@@ -61,7 +87,11 @@ export async function recordAdEvent(input: {
   // impression sur une campagne au clic — s'enregistre quand même : il compte
   // dans les statistiques, pas dans la facture.
   const grid = await pricing();
-  const costCents = eventCost(input.type, grid.get(payload.placement));
+  // Gratuité déclarée : l'événement compte dans les statistiques — l'annonceur
+  // doit voir ce que sa campagne produit — mais il ne coûte rien. On enregistre
+  // donc un coût nul plutôt que de sauter l'écriture.
+  const free = await isBillingDisabled(payload.campaignId);
+  const costCents = free ? 0 : eventCost(input.type, grid.get(payload.placement));
 
   const at = new Date();
   const key = dedupKey({
