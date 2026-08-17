@@ -223,6 +223,13 @@ model Listing {
   immoSurface         Float?
   immoRooms           Int?
   phone               String?
+  /// Ce numéro est joignable sur WhatsApp, d'après le vendeur lui-même.
+  ///
+  /// Le bouton s'affichait dès qu'un numéro existait : sur une ligne fixe ou un
+  /// mobile sans compte, l'acheteur tombait sur une impasse et c'est le vendeur
+  /// qui paraissait injoignable. Faux par défaut — on ne promet que ce qui a
+  /// été confirmé.
+  phoneOnWhatsapp     Boolean     @default(false)
   phoneHash           String?
   hidePhone           Boolean     @default(false)
   /// PARTICULIER | PRO — sous quelle casquette l'annonce est publiée.
@@ -469,6 +476,11 @@ model ConversationParticipant {
   id             String       @id @default(cuid())
   userId         String
   conversationId String
+  /// Écrit en ce moment, jusqu'à cette date.
+  ///
+  /// Une échéance plutôt qu'un booléen : un onglet fermé brutalement laisserait
+  /// « écrit… » affiché indéfiniment.
+  typingUntil    DateTime?
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
 
@@ -481,6 +493,13 @@ model Message {
   senderId       String
   conversationId String
   read           Boolean      @default(false)
+  /// Récupéré par l'appareil du destinataire — la deuxième coche.
+  ///
+  /// `read` ne suffisait pas : sans cette date, l'expéditeur ne distinguait pas
+  /// un message perdu d'un message simplement pas encore ouvert.
+  deliveredAt    DateTime?
+  /// Ouvert par le destinataire — les deux coches bleues.
+  readAt         DateTime?
   createdAt      DateTime     @default(now())
   riskScore      Int          @default(0)
   flagged        Boolean      @default(false)
@@ -525,6 +544,7 @@ model SupportTicket {
   /// Date du dernier message, quel qu'en soit l'auteur : c'est l'ordre de la
   /// file, et il ne se déduit pas de `updatedAt`, que tout changement de statut
   /// ferait remonter.
+  attachments   SupportAttachment[]
   lastMessageAt DateTime @default(now())
   /// Messages non lus de chaque côté. Compter à la volée coûterait une requête
   /// par ligne de liste.
@@ -542,6 +562,28 @@ model SupportTicket {
 }
 
 /// Un message d'un fil de support.
+/// Pièce jointe d'une discussion de support.
+///
+/// Stockée en base plutôt que dans le stockage public des photos d'annonces :
+/// ce qu'un utilisateur envoie au support est presque toujours privé — une
+/// facture, une capture de conversation, parfois une pièce d'identité. La
+/// lecture passe par une route qui vérifie l'appartenance à la discussion.
+model SupportAttachment {
+  id       String        @id @default(cuid())
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  uploaderId  String
+  fileName    String
+  contentType String
+  sizeBytes   Int
+  bytes       Bytes
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+}
+
 model SupportMessage {
   id       String        @id @default(cuid())
   ticketId String
@@ -555,8 +597,13 @@ model SupportMessage {
   fromSupport Boolean @default(false)
 
   content        String
+  /// Chemin interne de la pièce jointe (`/api/support/attachment/<id>`), jamais
+  /// une URL publique : une capture de support contient souvent une facture ou
+  /// une pièce d'identité.
   attachmentUrl  String?
   attachmentType String?
+  /// Nom d'origine, pour que le fil reste lisible.
+  attachmentName String?
 
   readAt    DateTime?
   createdAt DateTime  @default(now())
@@ -1180,6 +1227,27 @@ model AdEvent {
 
   @@index([campaignId, type, createdAt])
   @@index([createdAt])
+}
+
+
+/// Pièce justificative stockée en base, en dernier recours.
+///
+/// Le stockage nominal est le Blob privé. Ce modèle existe parce qu'un dépôt
+/// qui échoue bloque entièrement la vérification professionnelle : sans pièce,
+/// pas de compte pro. Quand le Blob refuse — non configuré, accès privé
+/// indisponible, incident réseau — le document est conservé ici, jamais
+/// exposé publiquement, et relu par la même route protégée.
+model KycDocument {
+  /// Même identifiant que côté Blob : `kyc/<userId>/<kind>-<horodatage>.<ext>`.
+  path        String @id
+  userId      String
+  contentType String
+  bytes       Bytes
+  sizeBytes   Int
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 

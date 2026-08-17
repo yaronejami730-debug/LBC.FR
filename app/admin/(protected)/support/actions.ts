@@ -33,11 +33,25 @@ async function guard(label: string, fn: () => Promise<void>): Promise<ActionResu
 }
 
 /** Répond au client. Le fil repasse « en attente du client ». */
-export async function replyToTicket(ticketId: string, content: string): Promise<ActionResult> {
+export async function replyToTicket(
+  ticketId: string,
+  content: string,
+  attachment?: { url: string; name: string; type: string } | null,
+): Promise<ActionResult> {
   return guard("reply", async () => {
     const adminId = await requireAdmin();
-    if (content.trim().length < 2) throw new Error("Message vide");
-    await postMessage({ ticketId, senderId: adminId, content, fromSupport: true });
+    // Un document seul est une réponse : « voici l'attestation » n'a pas besoin
+    // d'être écrit pour être utile.
+    if (content.trim().length < 2 && !attachment) throw new Error("Message vide");
+    await postMessage({
+      ticketId,
+      senderId: adminId,
+      content,
+      fromSupport: true,
+      attachmentUrl: attachment?.url ?? null,
+      attachmentType: attachment?.type ?? null,
+      attachmentName: attachment?.name ?? null,
+    });
     revalidatePath("/admin/support");
   });
 }

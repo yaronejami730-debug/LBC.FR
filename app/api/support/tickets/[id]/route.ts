@@ -57,6 +57,28 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     // Un administrateur qui consulte sans être propriétaire lit côté support.
     await markRead(id, isAdmin && !isOwner ? "admin" : "user");
 
+    /**
+     * L'équipe support parle d'une seule voix.
+     *
+     * L'interface affichait déjà « Support Deal&Co », mais la réponse portait
+     * le nom et l'avatar du modérateur : lisibles dans les outils de
+     * développement, et donc publics. Qui traite un dossier ne regarde pas
+     * l'utilisateur — c'est une règle de protection des équipes, pas de
+     * présentation. On retire l'identité avant l'envoi, jamais à l'affichage.
+     */
+    if (!isAdmin && ticket) {
+      const anonymized = {
+        ...ticket,
+        assignedTo: null,
+        messages: ticket.messages.map((m) =>
+          m.fromSupport
+            ? { ...m, senderId: "support", sender: { id: "support", name: "Support Deal&Co", avatar: null } }
+            : m,
+        ),
+      };
+      return NextResponse.json({ ticket: anonymized });
+    }
+
     return NextResponse.json({ ticket });
   } catch (error) {
     return errorResponse(error);
@@ -77,6 +99,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       // Un administrateur qui écrit dans son propre ticket reste un client.
       fromSupport: isAdmin && !isOwner,
       attachmentUrl: body.attachmentUrl ? String(body.attachmentUrl) : null,
+      attachmentType: body.attachmentType ? String(body.attachmentType) : null,
+      attachmentName: body.attachmentName ? String(body.attachmentName) : null,
     });
 
     return NextResponse.json({ message }, { status: 201 });

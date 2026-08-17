@@ -14,25 +14,18 @@ import { sendPushNotification } from "@/lib/notifications/send";
 import { sendEmail } from "@/lib/email";
 import { baseEmail } from "@/lib/emails/base";
 
-/** Rubriques proposées à l'ouverture. Libellés affichés tels quels. */
-export const SUPPORT_CATEGORIES = [
-  { value: "compte", label: "Mon compte" },
-  { value: "annonce", label: "Une annonce" },
-  { value: "securite", label: "Sécurité, arnaque" },
-  { value: "paiement", label: "Paiement, facturation" },
-  { value: "pro", label: "Compte professionnel" },
-  { value: "technique", label: "Problème technique" },
-  { value: "autre", label: "Autre" },
-] as const;
-
-export const SUPPORT_STATUSES = {
-  OPEN: "À traiter",
-  WAITING_USER: "En attente du client",
-  RESOLVED: "Résolu",
-  CLOSED: "Clos",
-} as const;
-
-export type SupportStatus = keyof typeof SUPPORT_STATUSES;
+// Réexport : les libellés vivent dans un module sans dépendance serveur pour
+// que l'interface puisse les afficher sans embarquer Prisma.
+export {
+  SUPPORT_CATEGORIES,
+  SUPPORT_STATUSES,
+  type SupportStatus,
+} from "@/lib/support/constants";
+import {
+  SUPPORT_CATEGORIES,
+  SUPPORT_STATUSES,
+  type SupportStatus,
+} from "@/lib/support/constants";
 
 const MAX_SUBJECT = 140;
 const MAX_MESSAGE = 4000;
@@ -110,9 +103,13 @@ export async function postMessage(input: {
   content: string;
   fromSupport?: boolean;
   attachmentUrl?: string | null;
+  attachmentType?: string | null;
+  attachmentName?: string | null;
 }) {
   const content = input.content.trim().slice(0, MAX_MESSAGE);
-  if (content.length < 1) throw new SupportError("Message vide.", 400);
+  // Une pièce jointe seule est un message : « voici ma facture » n'a pas
+  // besoin d'être écrit pour être compris.
+  if (content.length < 1 && !input.attachmentUrl) throw new SupportError("Message vide.", 400);
 
   const ticket = await prisma.supportTicket.findUnique({
     where: { id: input.ticketId },
@@ -129,6 +126,8 @@ export async function postMessage(input: {
       fromSupport,
       content,
       attachmentUrl: input.attachmentUrl || null,
+      attachmentType: input.attachmentType || null,
+      attachmentName: input.attachmentName || null,
     },
   });
 
@@ -144,10 +143,16 @@ export async function postMessage(input: {
     },
   });
 
+  // Le corps de l'e-mail annonce la pièce jointe : sans cela, un message
+  // réduit à « voici le document » paraît vide au destinataire.
+  const notice = input.attachmentName
+    ? `${content}${content ? "\n\n" : ""}📎 Pièce jointe : ${input.attachmentName}`
+    : content;
+
   if (fromSupport) {
-    await notifyUserOfReply(ticket.user, ticket.id, ticket.subject, content);
+    await notifyUserOfReply(ticket.user, ticket.id, ticket.subject, notice);
   } else {
-    await alertAdmins(ticket.id, ticket.subject, content, input.senderId);
+    await alertAdmins(ticket.id, ticket.subject, notice, input.senderId);
   }
 
   return message;

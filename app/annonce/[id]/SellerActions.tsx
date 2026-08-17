@@ -9,11 +9,14 @@ export default function SellerActions({
   sellerId,
   phone,
   hidePhone,
+  phoneOnWhatsapp,
 }: {
   listingId: string;
   sellerId: string;
   phone: string | null;
   hidePhone: boolean;
+  /** Le vendeur a confirmé que ce numéro répond sur WhatsApp. */
+  phoneOnWhatsapp?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -22,7 +25,14 @@ export default function SellerActions({
   const [phoneRevealed, setPhoneRevealed] = useState(false);
 
   const hasPhone = !!phone && !hidePhone;
-  const hasWhatsApp = !!phone && !hidePhone;
+  /**
+   * Le bouton n'apparaît que si le vendeur l'a confirmé.
+   *
+   * Il s'affichait auparavant dès qu'un numéro existait : sur une ligne fixe
+   * ou un mobile sans compte, l'acheteur tombait sur « ce numéro n'est pas sur
+   * WhatsApp » et c'est le vendeur qui passait pour injoignable.
+   */
+  const hasWhatsApp = !!phone && !hidePhone && phoneOnWhatsapp === true;
 
   async function startConversation() {
     setLoading(true);

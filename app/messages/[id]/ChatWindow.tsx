@@ -42,6 +42,15 @@ export default function ChatWindow({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  /**
+   * État de remise de mes propres messages : `id → deliveredAt / readAt`.
+   *
+   * Tenu à part de la liste des messages, qui n'est complétée qu'en ajout :
+   * une coche qui passe au bleu n'est pas un nouveau message, c'est le même
+   * qui change d'état.
+   */
+  const [receipts, setReceipts] = useState<Record<string, { delivered: boolean; read: boolean }>>({});
+  const [otherTyping, setOtherTyping] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -97,9 +106,25 @@ export default function ChatWindow({
       if (paused) return;
       const after = lastIdRef.current ? `&after=${lastIdRef.current}` : "";
       try {
-        const res = await fetch(`/api/messages?conversationId=${conversationId}${after}`);
+        const res = await fetch(`/api/messages?conversationId=${conversationId}${after}&state=1`);
         if (!res.ok) return;
-        const newMsgs: Message[] = await res.json();
+        const data = await res.json();
+        const newMsgs: Message[] = data.messages ?? data;
+
+        // Coches et « écrit… » se rafraîchissent même sans nouveau message :
+        // c'est justement quand rien n'arrive qu'on regarde si l'autre a lu.
+        if (Array.isArray(data.receipts)) {
+          setReceipts(
+            Object.fromEntries(
+              (data.receipts as { id: string; deliveredAt: string | null; readAt: string | null }[]).map((r) => [
+                r.id,
+                { delivered: Boolean(r.deliveredAt ?? r.readAt), read: Boolean(r.readAt) },
+              ]),
+            ),
+          );
+        }
+        setOtherTyping(Boolean(data.typing));
+
         if (newMsgs.length === 0) return;
         setMessages((prev) => {
           const existingIds = new Set(prev.map((m) => m.id));
@@ -127,6 +152,24 @@ export default function ChatWindow({
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [conversationId]);
+
+  /**
+   * Prévient l'autre qu'on écrit, au plus une fois toutes les trois secondes.
+   *
+   * Une requête par touche serait absurde ; le serveur garde de toute façon
+   * l'information six secondes, largement le temps de la frappe suivante.
+   */
+  const lastTypingPing = useRef(0);
+  function pingTyping() {
+    const now = Date.now();
+    if (now - lastTypingPing.current < 3000) return;
+    lastTypingPing.current = now;
+    fetch("/api/messages/typing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId }),
+    }).catch(() => {});
+  }
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -255,13 +298,31 @@ export default function ChatWindow({
                   >
                     {msg.content}
                   </div>
-                  <span className="text-[9px] text-slate-400 font-bold px-1 uppercase tracking-tight">
+                  <span className="flex items-center gap-1 text-[9px] text-slate-400 font-bold px-1 uppercase tracking-tight">
                     {formatTime(msg.createdAt)}
+                    {isMe && <Ticks state={receipts[msg.id]} />}
                   </span>
                 </div>
               </div>
             );
           })}
+          {otherTyping && (
+            <div className="flex justify-start gap-2">
+              <div className="w-8 h-8 flex-shrink-0" />
+              <div className="bg-white rounded-[20px] rounded-bl-[5px] px-4 py-3 shadow-sm">
+                {/* Trois points qui respirent : le signe universel de la frappe. */}
+                <span className="flex gap-1">
+                  {[0, 150, 300].map((delay) => (
+                    <span
+                      key={delay}
+                      className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </span>
+              </div>
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
       </div>
@@ -279,7 +340,10 @@ export default function ChatWindow({
             <input
               ref={inputRef}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                pingTyping();
+              }}
               className="flex-1 bg-transparent border-none focus:ring-0 text-base outline-none text-on-surface placeholder:text-slate-400"
               placeholder="Écrivez un message..."
               autoComplete="off"
@@ -304,5 +368,34 @@ export default function ChatWindow({
         </form>
       </div>
     </div>
+  );
+}
+
+/**
+ * Accusés de remise, à la manière des messageries courantes.
+ *
+ *   une coche         → parti de chez vous
+ *   deux coches       → arrivé sur l'appareil du destinataire
+ *   deux coches bleues → ouvert
+ *
+ * Sans le deuxième état, un message resté sans réponse ne dit pas s'il n'est
+ * jamais arrivé ou s'il n'a pas encore été lu — et c'est exactement la question
+ * que se pose un vendeur.
+ */
+function Ticks({ state }: { state?: { delivered: boolean; read: boolean } }) {
+  const read = state?.read ?? false;
+  const delivered = state?.delivered ?? false;
+
+  return (
+    <span
+      className={`inline-flex items-center ${read ? "text-[#4fc3f7]" : "text-slate-400"}`}
+      title={read ? "Lu" : delivered ? "Remis" : "Envoyé"}
+      aria-label={read ? "Lu" : delivered ? "Remis" : "Envoyé"}
+    >
+      <span className="material-symbols-outlined text-[13px] leading-none">check</span>
+      {(delivered || read) && (
+        <span className="material-symbols-outlined text-[13px] leading-none -ml-[7px]">check</span>
+      )}
+    </span>
   );
 }

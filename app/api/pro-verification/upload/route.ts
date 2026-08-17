@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const data = Buffer.from(await file.arrayBuffer());
-    const stored = await storeKycDocument(pathname, data, contentType);
+    const stored = await storeKycDocument(pathname, data, contentType, session.user.id as string);
     return NextResponse.json({ ok: true, path: stored });
   } catch (err) {
     if (err instanceof KycStorageUnavailableError) {

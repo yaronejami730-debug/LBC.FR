@@ -6,6 +6,9 @@ import { assignTicket, replyToTicket, setTicketPriority, setTicketStatus } from 
 export type ThreadMessage = {
   id: string;
   content: string;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
+  attachmentName?: string | null;
   fromSupport: boolean;
   createdAt: string;
   sender: { id: string; name: string | null };
@@ -60,6 +63,8 @@ export default function TicketThread({ ticket }: { ticket: Ticket }) {
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [attachment, setAttachment] = useState<{ url: string; name: string; type: string } | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const [pending, start] = useTransition();
 
   function run(fn: () => Promise<{ ok: true } | { ok: false; error: string }>) {
@@ -133,7 +138,25 @@ export default function TicketThread({ ticket }: { ticket: Ticket }) {
                       m.fromSupport ? "bg-[#2f6fb8] text-white ml-auto" : "bg-slate-100 text-slate-900"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                    {m.content && <p className="text-sm whitespace-pre-wrap">{m.content}</p>}
+                    {m.attachmentUrl && (
+                      <a
+                        href={m.attachmentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 block overflow-hidden rounded-lg bg-white/80"
+                      >
+                        {m.attachmentType?.startsWith("image/") ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.attachmentUrl} alt={m.attachmentName ?? "Pièce jointe"} className="max-h-52 w-full object-cover" />
+                        ) : (
+                          <span className="flex items-center gap-2 px-3 py-2 text-sm font-semibold">
+                            <span className="material-symbols-outlined text-[18px]">description</span>
+                            <span className="truncate">{m.attachmentName ?? "Document"}</span>
+                          </span>
+                        )}
+                      </a>
+                    )}
                     <p className={`text-[10px] mt-1 ${m.fromSupport ? "text-white/70" : "text-slate-500"}`}>
                       {m.fromSupport ? (m.sender.name ?? "Support") : ticket.user.name} ·{" "}
                       {new Date(m.createdAt).toLocaleString("fr-FR", {
@@ -145,17 +168,59 @@ export default function TicketThread({ ticket }: { ticket: Ticket }) {
                 ))}
               </div>
 
+              {attachment && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                  <span className="material-symbols-outlined text-[18px] text-[#2f6fb8]">attach_file</span>
+                  <span className="flex-1 truncate font-semibold">{attachment.name}</span>
+                  <button type="button" onClick={() => setAttachment(null)} className="text-slate-400 hover:text-rose-600">
+                    ×
+                  </button>
+                </div>
+              )}
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   const content = reply.trim();
-                  if (content.length < 2) return;
+                  // Un document seul suffit : attestation, capture, facture.
+                  if (content.length < 2 && !attachment) return;
+                  const joined = attachment;
                   setReply("");
+                  setAttachment(null);
                   setSent(true);
-                  run(() => replyToTicket(ticket.id, content));
+                  run(() => replyToTicket(ticket.id, content, joined));
                 }}
                 className="mt-3 flex items-end gap-2"
               >
+                <label
+                  className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full border border-[#eceef0] text-slate-500 hover:border-[#2f6fb8] hover:text-[#2f6fb8]"
+                  title="Joindre une photo ou un PDF"
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {attaching ? "hourglass_empty" : "attach_file"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      setAttaching(true);
+                      try {
+                        const body = new FormData();
+                        body.append("file", file);
+                        body.append("ticketId", ticket.id);
+                        const res = await fetch("/api/support/attachment", { method: "POST", body });
+                        const data = await res.json();
+                        if (res.ok) setAttachment({ url: data.url, name: data.name, type: data.type });
+                      } finally {
+                        setAttaching(false);
+                      }
+                    }}
+                  />
+                </label>
                 <textarea
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
@@ -165,7 +230,7 @@ export default function TicketThread({ ticket }: { ticket: Ticket }) {
                 />
                 <button
                   type="submit"
-                  disabled={pending || reply.trim().length < 2}
+                  disabled={pending || attaching || (reply.trim().length < 2 && !attachment)}
                   className="rounded-full bg-[#2f6fb8] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
                 >
                   {pending ? "Envoi…" : "Répondre"}

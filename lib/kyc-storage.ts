@@ -104,22 +104,62 @@ export async function storeKycDocument(
   pathname: string,
   data: Buffer,
   contentType: string,
+  userId?: string,
 ): Promise<string> {
   if (isBlobConfigured()) {
-    const blob = await put(pathname, data, {
-      access: "private",
-      contentType,
-      addRandomSuffix: false,
-    });
-    return blob.pathname;
+    try {
+      const blob = await put(pathname, data, {
+        access: "private",
+        contentType,
+        addRandomSuffix: false,
+      });
+      return blob.pathname;
+    } catch (err) {
+      /**
+       * Le Blob a refusé — store sans accès privé, quota, incident réseau.
+       *
+       * On ne remonte pas l'erreur : une pièce d'identité qui ne part pas,
+       * c'est un professionnel qui ne peut pas se faire vérifier du tout. On
+       * bascule en base, qui n'expose rien publiquement et se relit par la
+       * même route protégée.
+       */
+      console.error("[kyc-storage] Blob refusé, bascule en base :", err);
+      return storeInDatabase(pathname, data, contentType, userId);
+    }
   }
 
-  if (isEphemeralFilesystem()) throw new KycStorageUnavailableError();
+  if (isEphemeralFilesystem()) return storeInDatabase(pathname, data, contentType, userId);
 
   const abs = localFile(pathname);
   if (!abs) throw new Error(`Chemin de pièce invalide : ${pathname}`);
   await mkdir(path.dirname(abs), { recursive: true });
   await writeFile(abs, data);
+  return pathname;
+}
+
+/** Dépôt de secours en base. Le chemin reste identique, l'appelant l'ignore. */
+async function storeInDatabase(
+  pathname: string,
+  data: Buffer,
+  contentType: string,
+  userId?: string,
+): Promise<string> {
+  const { prisma } = await import("@/lib/prisma");
+  // Prisma attend un `Uint8Array` adossé à un `ArrayBuffer` : le `Buffer` de
+  // Node peut reposer sur un `SharedArrayBuffer`, que son typage n'accepte pas.
+  // La copie coûte quelques mégaoctets une fois par pièce déposée.
+  const bytes = Uint8Array.from(data);
+  await prisma.kycDocument.upsert({
+    where: { path: pathname },
+    update: { bytes, contentType, sizeBytes: data.byteLength },
+    create: {
+      path: pathname,
+      userId: userId ?? pathname.split("/")[1] ?? "inconnu",
+      bytes,
+      contentType,
+      sizeBytes: data.byteLength,
+    },
+  });
   return pathname;
 }
 
@@ -135,13 +175,21 @@ export async function readKycDocument(
   if (!isValidKycPath(pathname)) return null;
 
   if (isBlobConfigured()) {
-    const blob = await get(pathname, { access: "private" });
-    if (!blob || blob.statusCode !== 200) return null;
-    return {
-      body: blob.stream,
-      contentType: blob.blob.contentType ?? contentTypeFromPath(pathname),
-    };
+    const blob = await get(pathname, { access: "private" }).catch(() => null);
+    if (blob && blob.statusCode === 200) {
+      return {
+        body: blob.stream,
+        contentType: blob.blob.contentType ?? contentTypeFromPath(pathname),
+      };
+    }
+    // Pièce déposée pendant une indisponibilité du Blob : elle est en base.
   }
+
+  const { prisma } = await import("@/lib/prisma");
+  const row = await prisma.kycDocument
+    .findUnique({ where: { path: pathname }, select: { bytes: true, contentType: true } })
+    .catch(() => null);
+  if (row) return { body: Buffer.from(row.bytes), contentType: row.contentType };
 
   const abs = localFile(pathname);
   if (!abs) return null;
@@ -160,6 +208,14 @@ export async function readKycDocument(
 export async function deleteKycDocuments(paths: string[]): Promise<void> {
   const valid = paths.filter(isValidKycPath);
   if (valid.length === 0) return;
+
+  // Les pièces peuvent vivre aux deux endroits selon l'état du Blob au moment
+  // du dépôt : on purge partout, sans quoi une pièce d'identité survivrait à la
+  // décision de modération.
+  const { prisma } = await import("@/lib/prisma");
+  await prisma.kycDocument
+    .deleteMany({ where: { path: { in: valid } } })
+    .catch((err) => console.error("[kyc-storage] suppression base:", err));
 
   if (isBlobConfigured()) {
     await del(valid).catch((err) => console.error("[kyc-storage] suppression blob:", err));

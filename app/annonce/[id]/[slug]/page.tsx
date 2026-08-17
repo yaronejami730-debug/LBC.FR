@@ -1171,6 +1171,7 @@ export default async function ListingPage({
                     sellerId={listing.userId}
                     phone={(listing as any).phone ?? null}
                     hidePhone={(listing as any).hidePhone ?? false}
+                    phoneOnWhatsapp={(listing as any).phoneOnWhatsapp ?? false}
                   />
                 )}
                 {isOwner && (

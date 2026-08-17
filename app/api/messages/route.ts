@@ -48,33 +48,68 @@ export async function GET(req: NextRequest) {
     include: { sender: { select: { id: true, name: true, avatar: true } } },
   });
 
-  // Mark newly fetched messages from others as read
+  // Récupérer un message vaut réception **et** lecture : cette route n'est
+  // appelée que par la fenêtre de discussion ouverte. Les deux dates sont
+  // distinctes malgré tout, parce qu'une future notification les séparera.
   if (messages.length > 0) {
+    const now = new Date();
     const unreadIds = messages
       .filter((m) => m.senderId !== userId && !m.read)
       .map((m) => m.id);
     if (unreadIds.length > 0) {
       await prisma.message.updateMany({
         where: { id: { in: unreadIds } },
-        data: { read: true },
+        data: { read: true, readAt: now, deliveredAt: now },
       });
     }
   }
 
-  return NextResponse.json(
-    messages.map((m) => ({
+  const payload = messages.map((m) => ({
+    id: m.id,
+    content: m.content,
+    senderId: m.senderId,
+    senderName: m.sender.name,
+    senderAvatar: m.sender.avatar,
+    createdAt: m.createdAt.toISOString(),
+    flagged: (m as any).flagged ?? false,
+    attachmentUrl: (m as any).attachmentUrl ?? null,
+    attachmentType: (m as any).attachmentType ?? null,
+    attachmentName: (m as any).attachmentName ?? null,
+    deliveredAt: m.deliveredAt?.toISOString() ?? null,
+    readAt: m.readAt?.toISOString() ?? null,
+  }));
+
+  /**
+   * Ancien contrat conservé : la fenêtre de discussion demande explicitement
+   * l'état (`state=1`) et reçoit un objet ; tout autre appelant continue de
+   * recevoir un tableau, comme avant.
+   */
+  if (searchParams.get("state") !== "1") return NextResponse.json(payload);
+
+  // État de mes propres envois récents : ce sont eux qui portent les coches.
+  const mine = await prisma.message.findMany({
+    where: { conversationId, senderId: userId },
+    orderBy: { createdAt: "desc" },
+    take: 40,
+    select: { id: true, deliveredAt: true, readAt: true, read: true },
+  });
+
+  // L'autre est-il en train d'écrire ?
+  const others = await prisma.conversationParticipant.findMany({
+    where: { conversationId, userId: { not: userId } },
+    select: { typingUntil: true },
+  });
+  const typing = others.some((o) => o.typingUntil && o.typingUntil > new Date());
+
+  return NextResponse.json({
+    messages: payload,
+    receipts: mine.map((m) => ({
       id: m.id,
-      content: m.content,
-      senderId: m.senderId,
-      senderName: m.sender.name,
-      senderAvatar: m.sender.avatar,
-      createdAt: m.createdAt.toISOString(),
-      flagged: (m as any).flagged ?? false,
-      attachmentUrl: (m as any).attachmentUrl ?? null,
-      attachmentType: (m as any).attachmentType ?? null,
-      attachmentName: (m as any).attachmentName ?? null,
-    }))
-  );
+      deliveredAt: m.deliveredAt?.toISOString() ?? null,
+      readAt: m.readAt?.toISOString() ?? (m.read ? m.deliveredAt?.toISOString() ?? null : null),
+    })),
+    typing,
+  });
 }
 
 export async function POST(req: NextRequest) {

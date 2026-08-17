@@ -430,6 +430,8 @@ export default function PostForm() {
   const [location,    setLocation]    = useState("");
   const [condition,   setCondition]   = useState("Bon état");
   const [phone,       setPhone]       = useState("");
+  /** Ce numéro répond-il sur WhatsApp ? Demandé, jamais supposé. */
+  const [phoneOnWhatsapp, setPhoneOnWhatsapp] = useState(false);
   const [hidePhone,   setHidePhone]   = useState(false);
 
   /**
@@ -695,6 +697,7 @@ export default function PostForm() {
         if (typeof d.location === "string") setLocation(d.location);
         if (typeof d.condition === "string") setCondition(d.condition);
         if (typeof d.phone === "string") setPhone(d.phone);
+        if (typeof d.phoneOnWhatsapp === "boolean") setPhoneOnWhatsapp(d.phoneOnWhatsapp);
         if (typeof d.hidePhone === "boolean") setHidePhone(d.hidePhone);
         if (d.vehicle && typeof d.vehicle === "object") setVehicle((v) => ({ ...v, ...(d.vehicle as object) }));
         if (d.immo && typeof d.immo === "object") setImmo((v) => ({ ...v, ...(d.immo as object) }));
@@ -731,7 +734,7 @@ export default function PostForm() {
     const completeness = Math.round((filledRequired / 5) * 100);
     const payload = JSON.stringify({
       title, price, categoryId, subcategory, description, location,
-      condition, phone, hidePhone, vehicle, immo, images, formStep,
+      condition, phone, hidePhone, phoneOnWhatsapp, vehicle, immo, images, formStep,
     });
 
     if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
@@ -747,7 +750,7 @@ export default function PostForm() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, price, categoryId, subcategory, description, location, condition,
-      phone, hidePhone, vehicle, immo, images, formStep, session?.user]);
+      phone, hidePhone, phoneOnWhatsapp, vehicle, immo, images, formStep, session?.user]);
 
   function setI<K extends keyof ImmobilierFields>(field: K, value: ImmobilierFields[K]) {
     setImmo((v) => ({ ...v, [field]: value }));
@@ -1010,6 +1013,7 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
             ? JSON.stringify({ fields: extraFields })
             : "{}",
           phone: phone.trim() || null, hidePhone,
+          phoneOnWhatsapp: phone.trim() ? phoneOnWhatsapp : false,
         }),
       });
       if (res.status === 401) { router.push("/login?callbackUrl=/post"); return; }
@@ -2450,14 +2454,30 @@ async function detectAndBlurPlates(file: File): Promise<{ file: File; platesFoun
                     placeholder="06 12 34 56 78" />
                 </div>
                 {phone.trim() && (
-                  <ToggleField
-                    checked={hidePhone}
-                    onChange={setHidePhone}
-                    icon="visibility_off"
-                    label="Masquer mon numéro"
-                    description={hidePhone ? "Messagerie uniquement" : "Numéro visible sur l'annonce"}
-                    className="pt-2"
-                  />
+                  <>
+                    <ToggleField
+                      checked={hidePhone}
+                      onChange={setHidePhone}
+                      icon="visibility_off"
+                      label="Masquer mon numéro"
+                      description={hidePhone ? "Messagerie uniquement" : "Numéro visible sur l'annonce"}
+                      className="pt-2"
+                    />
+                    {/* Sans cette question, le bouton WhatsApp s'affichait sur
+                        tous les numéros : l'acheteur tombait sur une impasse,
+                        et c'est le vendeur qui semblait injoignable. */}
+                    <ToggleField
+                      checked={phoneOnWhatsapp}
+                      onChange={setPhoneOnWhatsapp}
+                      icon="chat"
+                      label="Ce numéro est sur WhatsApp"
+                      description={
+                        phoneOnWhatsapp
+                          ? "Un bouton WhatsApp sera proposé aux acheteurs"
+                          : "Aucun bouton WhatsApp ne sera affiché"
+                      }
+                    />
+                  </>
                 )}
               </div>
             </div>

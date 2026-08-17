@@ -100,6 +100,37 @@ export async function PATCH(
     // doit être relue vite — c'est nous qui avons mis l'annonce en pause.
     listing.status === "UNDER_REVIEW";
 
+  /**
+   * Toute modification ne vaut pas nouvelle modération.
+   *
+   * La règle précédente renvoyait l'annonce en attente à **chaque** écriture :
+   * corriger une faute de frappe, baisser le prix de 10 €, ajouter l'étage
+   * dans l'adresse suffisait à la retirer du site jusqu'à une nouvelle
+   * validation. C'est ce que voyaient les administrateurs — la même annonce
+   * revenant en file plusieurs jours de suite — et le vendeur, lui, perdait sa
+   * visibilité sans comprendre pourquoi.
+   *
+   * Seul ce qu'un modérateur regarde justifie une relecture : le texte, les
+   * photos, la catégorie. Le prix en fait partie — il porte l'essentiel des
+   * arnaques — mais uniquement s'il baisse fortement, un ajustement de quelques
+   * euros n'apprenant rien à personne.
+   */
+  const priceBefore = listing.price ?? 0;
+  const priceAfter = price !== undefined ? parseFloat(price) : priceBefore;
+  const priceCollapsed = priceBefore > 0 && priceAfter < priceBefore * 0.5;
+
+  const contentChanged =
+    (title !== undefined && title !== listing.title) ||
+    (description !== undefined && description !== listing.description) ||
+    (images !== undefined && JSON.stringify(images) !== listing.images) ||
+    (category !== undefined && category !== listing.category) ||
+    (subcategory !== undefined && subcategory !== listing.subcategory) ||
+    priceCollapsed;
+
+  // Une annonce déjà sanctionnée repasse toujours par la modération, même pour
+  // une virgule : c'est précisément là que se joue la correction demandée.
+  const needsReview = wasSanctioned || contentChanged;
+
   const updated = await prisma.listing.update({
     where: { id },
     data: {
@@ -113,7 +144,7 @@ export async function PATCH(
       ...(category !== undefined && { category }),
       ...(subcategory !== undefined && { subcategory }),
       ...(metadata !== undefined && { metadata }),
-      status: "PENDING",
+      ...(needsReview ? { status: "PENDING" } : {}),
       ...(wasSanctioned && { reviewPriority: 100, shadowBanned: false }),
     },
   });

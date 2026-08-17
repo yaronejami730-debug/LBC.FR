@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { title, price, category, subcategory, description, location: rawLocation, condition, images, metadata, phone, hidePhone, postedAs: postedAsRaw } = body;
+    const { title, price, category, subcategory, description, location: rawLocation, condition, images, metadata, phone, hidePhone, phoneOnWhatsapp, postedAs: postedAsRaw } = body;
 
     if (!title || price === undefined || price === null || !category || !description || !rawLocation) {
       return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
@@ -594,6 +594,8 @@ export async function POST(req: NextRequest) {
         phone: phone || null,
         phoneHash: phoneCheck.hash,
         hidePhone: hidePhone === true,
+        // Promesse explicite du vendeur : sans elle, aucun bouton WhatsApp.
+        phoneOnWhatsapp: phoneOnWhatsapp === true && Boolean(phone),
         postedAs,
         addressLine,
         userId: session.user.id,
