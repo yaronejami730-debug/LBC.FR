@@ -4,7 +4,15 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Link from "next/link";
 
-export default function AdminMobileHeader({ adminName }: { adminName: string }) {
+export default function AdminMobileHeader({
+  adminName,
+  sections,
+  teamLabel,
+}: {
+  adminName: string;
+  sections?: string[];
+  teamLabel?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -37,7 +45,7 @@ export default function AdminMobileHeader({ adminName }: { adminName: string }) 
 
       {/* Mobile Sidebar Drawer */}
       <div className={`lg:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out transform w-64 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar adminName={adminName} isMobile onClose={() => setIsOpen(false)} />
+        <Sidebar adminName={adminName} sections={sections} teamLabel={teamLabel} isMobile onClose={() => setIsOpen(false)} />
       </div>
     </>
   );

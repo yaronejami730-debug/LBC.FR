@@ -117,6 +117,7 @@ model User {
   // Moteur de recommandation locale
   locationProfiles UserLocationProfile[]
   categoryInterests UserCategoryInterest[]
+  staffMemberships  StaffMembership[]
   recommendations  ListingRecommendationLog[]
 
   @@index([watchedAt])
@@ -1421,6 +1422,53 @@ model AdPlacementPricing {
 
   updatedAt DateTime @updatedAt
   updatedBy String?
+}
+
+
+/// Une équipe interne — qui fait quoi dans l'administration.
+///
+/// Le rôle `User.role = "ADMIN"` reste la porte d'entrée : il dit *si* on entre
+/// dans l'administration. L'équipe dit *ce qu'on y fait*. Sans cette
+/// distinction, quelqu'un embauché pour répondre au support pouvait supprimer
+/// des comptes et lire les pièces d'identité des professionnels.
+model StaffTeam {
+  id String @id @default(cuid())
+
+  /// Identifiant stable utilisé dans le code, jamais le libellé : renommer
+  /// « Modération » en « Confiance & Sécurité » ne doit rien casser.
+  slug        String  @unique
+  label       String
+  description String?
+
+  /// Sections ouvertes à l'équipe (JSON, clés de `lib/admin/sections.ts`).
+  /// `["*"]` donne tout — réservé à la direction.
+  sections String @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members StaffMembership[]
+}
+
+/// Appartenance d'un compte à une équipe interne.
+///
+/// Plusieurs équipes par personne, volontairement : quelqu'un fait souvent
+/// deux choses — support *et* modération — et un rôle unique obligerait à
+/// inventer des rôles combinés qui se multiplient.
+model StaffMembership {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId String
+  team   StaffTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  /// Qui a accordé l'accès. Un droit sans trace ne se retire pas avec confiance.
+  grantedBy String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, teamId])
+  @@index([teamId])
 }
 
 

@@ -94,8 +94,22 @@ export default auth((req: any) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  return withLandingIntent(req, NextResponse.next());
+  return withLandingIntent(req, nextWithPathname(req));
 });
+
+/**
+ * Transmet le chemin demandé aux composants serveur.
+ *
+ * Une mise en page n'a pas accès à l'URL courante : elle reçoit des enfants
+ * déjà résolus. L'administration en a besoin pour vérifier qu'un compte a le
+ * droit d'ouvrir le chapitre demandé — masquer un lien dans la barre latérale
+ * n'a jamais fermé une porte, l'adresse reste tapable.
+ */
+function nextWithPathname(req: NextRequest): NextResponse {
+  const headers = new Headers(req.headers);
+  headers.set("x-pathname", req.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
+}
 
 /**
  * Mémorise l'intention portée par l'arrivée, quand il y en a une.

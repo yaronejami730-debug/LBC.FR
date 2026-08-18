@@ -2,6 +2,9 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/admin/Sidebar";
 import AdminMobileHeader from "@/components/admin/AdminMobileHeader";
+import { headers } from "next/headers";
+import { canAccess, staffAccess } from "@/lib/admin/staff";
+import { sectionForPath } from "@/lib/admin/sections";
 
 export const metadata = { title: "Administration — Deal & Co" };
 
@@ -13,15 +16,39 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const adminName = session.user.name ?? "Admin";
 
+  /**
+   * Ce que ce compte a le droit d'ouvrir.
+   *
+   * `role === "ADMIN"` dit qu'on entre ; l'équipe dit ce qu'on y fait. Un
+   * administrateur sans équipe garde l'accès complet — sinon la première mise
+   * en service aurait fermé l'administration à tout le monde.
+   */
+  const access = await staffAccess(session.user.id as string);
+  const teamLabel = access.implicit
+    ? undefined
+    : access.teams.map((t) => t.label).join(" · ") || "Sans équipe";
+
+  /**
+   * Le droit se vérifie ici, pas seulement dans la barre latérale.
+   *
+   * Masquer un lien n'a jamais fermé une porte : l'adresse reste tapable. Le
+   * chapitre de la page demandée est comparé aux droits effectifs, et un
+   * chapitre non accordé renvoie au tableau de bord.
+   */
+  const requested = sectionForPath((await headers()).get("x-pathname") ?? "");
+  if (requested && !canAccess(access, requested.key) && requested.key !== "vue") {
+    redirect("/admin");
+  }
+
   return (
     <div className="min-h-screen bg-[#f7f9fb]">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
-        <Sidebar adminName={adminName} />
+        <Sidebar adminName={adminName} sections={access.sections} teamLabel={teamLabel} />
       </div>
 
       {/* Mobile Top Bar */}
-      <AdminMobileHeader adminName={adminName} />
+      <AdminMobileHeader adminName={adminName} sections={access.sections} teamLabel={teamLabel} />
 
       {/* Main Content */}
       <div className="lg:ml-64 min-h-screen flex flex-col transition-all duration-300">
