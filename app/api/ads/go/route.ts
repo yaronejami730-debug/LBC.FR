@@ -27,7 +27,12 @@ export async function GET(req: NextRequest) {
   if (!token || !sessionId) return NextResponse.redirect(BASE, { status: 302 });
 
   const [, destination] = await Promise.all([
-    recordAdEvent({ type: "CLICK", token, sessionId }).catch(() => null),
+    recordAdEvent({
+      type: "CLICK",
+      token,
+      sessionId,
+      userAgent: req.headers.get("user-agent"),
+    }).catch(() => null),
     clickDestination(token),
   ]);
 

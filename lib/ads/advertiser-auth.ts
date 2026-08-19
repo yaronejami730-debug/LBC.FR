@@ -78,6 +78,8 @@ export type ActiveAdvertiser = {
   loginId: string;
   mustChangePassword: boolean;
   balanceCents: number;
+  /** Part du solde déjà engagée par les campagnes en cours. */
+  reservedCents: number;
   /** Gratuité déclarée : la diffusion tourne, rien n'est facturé. */
   billingDisabledAt: Date | null;
 };
@@ -107,6 +109,7 @@ export async function requireActiveAdvertiser(): Promise<ActiveAdvertiser | null
       suspendedAt: true,
       passwordHash: true,
       balanceCents: true,
+      reservedCents: true,
       billingDisabledAt: true,
     },
   });
@@ -124,6 +127,7 @@ export async function requireActiveAdvertiser(): Promise<ActiveAdvertiser | null
     loginId: advertiser.loginId,
     mustChangePassword: advertiser.mustChangePassword,
     balanceCents: advertiser.balanceCents,
+    reservedCents: advertiser.reservedCents,
     billingDisabledAt: advertiser.billingDisabledAt,
   };
 }

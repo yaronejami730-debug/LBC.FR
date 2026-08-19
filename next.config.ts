@@ -27,7 +27,7 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "tr
 const CSP_REPORT_ONLY = [
   "default-src 'self'",
   // Régies et mesure d'audience.
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://va.vercel-scripts.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google https://va.vercel-scripts.com",
   // Google Fonts + styles en ligne (attributs `style` de React, next/image).
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
@@ -35,15 +35,14 @@ const CSP_REPORT_ONLY = [
   // ici couperait la monétisation pour un gain de sécurité quasi nul, une image
   // n'exécutant rien.
   "img-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.googlesyndication.com https://*.doubleclick.net https://vitals.vercel-insights.com https://exp.host",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.google-analytics.com https://*.analytics.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://vitals.vercel-insights.com https://exp.host",
   // Cartes Google sur les fiches d'annonces + cadres publicitaires.
-  "frame-src 'self' https://maps.google.com https://www.google.com https://*.googlesyndication.com https://*.doubleclick.net",
+  "frame-src 'self' https://maps.google.com https://www.google.com https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google",
   "media-src 'self' blob: data:",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-ancestors 'self'",
   "report-uri /api/csp-report",
   "report-to csp",
 ].join("; ");
@@ -55,6 +54,10 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // `frame-ancestors` est ignoré dans une policy Report-Only : la seule
+  // directive du lot qu'on applique donc pour de vrai, en doublon moderne de
+  // X-Frame-Options.
+  { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
   { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
   // Canal moderne de signalement ; `report-uri` reste pour les navigateurs
   // qui ne l'implémentent pas encore.

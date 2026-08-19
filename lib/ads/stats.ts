@@ -70,6 +70,7 @@ export async function rollupAdStats(sinceHours = 48): Promise<RollupResult> {
       placement: true,
       citySlug: true,
       costCents: true,
+      validationStatus: true,
       createdAt: true,
     },
   });
@@ -85,8 +86,11 @@ export async function rollupAdStats(sinceHours = 48): Promise<RollupResult> {
       placement: string;
       citySlug: string;
       impressions: number;
+      loads: number;
+      renders: number;
       clicks: number;
       conversions: number;
+      invalidEvents: number;
       costCents: number;
     }
   >();
@@ -103,12 +107,24 @@ export async function rollupAdStats(sinceHours = 48): Promise<RollupResult> {
         placement: e.placement,
         citySlug: city,
         impressions: 0,
+        loads: 0,
+        renders: 0,
         clicks: 0,
         conversions: 0,
+        invalidEvents: 0,
         costCents: 0,
       };
 
-    if (e.type === "IMPRESSION") bucket.impressions++;
+    // Un événement écarté ne compte dans aucune métrique de performance : il a
+    // sa propre colonne. Le fondre dans les impressions gonflerait le
+    // dénominateur du taux de clic et ferait passer une campagne saine pour
+    // mauvaise.
+    if (e.validationStatus !== "VALID") bucket.invalidEvents++;
+    // `IMPRESSION` est l'ancien nom, d'avant la mesure de visibilité : les
+    // lignes existantes restent lisibles.
+    else if (e.type === "VIEWABLE_IMPRESSION" || e.type === "IMPRESSION") bucket.impressions++;
+    else if (e.type === "LOAD") bucket.loads++;
+    else if (e.type === "RENDER") bucket.renders++;
     else if (e.type === "CLICK") bucket.clicks++;
     else if (e.type === "CONVERSION") bucket.conversions++;
     bucket.costCents += e.costCents;
@@ -127,10 +143,17 @@ export async function rollupAdStats(sinceHours = 48): Promise<RollupResult> {
         },
       },
       // Écrasement, pas incrément : c'est ce qui rend le roulement rejouable.
+      // Écrasement des compteurs d'événements, jamais des compteurs d'enchères :
+      // ceux-là sont incrémentés par le moteur au fil des sélections et ne se
+      // recalculent pas depuis les événements — une enchère perdue ne laisse
+      // aucune trace ailleurs.
       update: {
         impressions: b.impressions,
+        loads: b.loads,
+        renders: b.renders,
         clicks: b.clicks,
         conversions: b.conversions,
+        invalidEvents: b.invalidEvents,
         costCents: b.costCents,
       },
       create: b,
@@ -144,17 +167,38 @@ export async function rollupAdStats(sinceHours = 48): Promise<RollupResult> {
 // ── Lecture ─────────────────────────────────────────────────────────────────
 
 export type Totals = {
+  /** Impressions **visibles**. C'est le seul dénominateur honnête d'un CTR. */
   impressions: number;
+  /** Publicités chargées et rendues : jamais facturées, jamais confondues. */
+  loads: number;
+  renders: number;
   clicks: number;
   conversions: number;
+  /** Événements écartés — robots, doubles clics, visibilité insuffisante. */
+  invalidEvents: number;
   costCents: number;
   /** `null` sans impression : un taux de clic sur zéro affichage ne veut rien dire. */
   ctr: number | null;
   /** Coût par clic réel, `null` sans clic. */
   cpcCents: number | null;
+  /** Part des publicités chargées qui atteignent réellement l'écran. */
+  viewabilityRate: number | null;
+  /** Coût par conversion, `null` sans conversion. */
+  costPerConversionCents: number | null;
+  /** Enchères disputées et gagnées, et rang moyen des enchères gagnées. */
+  auctionEntries: number;
+  auctionWins: number;
+  winRate: number | null;
+  avgAdRank: number | null;
 };
 
-export type DayPoint = { day: string; impressions: number; clicks: number; costCents: number };
+export type DayPoint = {
+  day: string;
+  impressions: number;
+  loads: number;
+  clicks: number;
+  costCents: number;
+};
 export type CityRow = { citySlug: string; impressions: number; clicks: number; costCents: number };
 
 /**
@@ -168,27 +212,64 @@ export type CityRow = { citySlug: string; impressions: number; clicks: number; c
 export type PlacementRow = {
   placement: string;
   impressions: number;
+  loads: number;
   clicks: number;
   conversions: number;
   costCents: number;
   ctr: number | null;
   cpcCents: number | null;
+  /** Part des chargements devenus des impressions visibles, en pourcentage. */
+  viewabilityRate: number | null;
+  /** Part des enchères disputées qui ont été gagnées, en pourcentage. */
+  winRate: number | null;
   /** Impressions de la période précédente, pour situer l'évolution. */
   previousImpressions: number;
 };
 
-function totalsFrom(rows: { impressions: number; clicks: number; conversions: number; costCents: number }[]): Totals {
-  const impressions = rows.reduce((s, r) => s + r.impressions, 0);
-  const clicks = rows.reduce((s, r) => s + r.clicks, 0);
-  const conversions = rows.reduce((s, r) => s + r.conversions, 0);
-  const costCents = rows.reduce((s, r) => s + r.costCents, 0);
+type StatRow = {
+  impressions: number;
+  loads: number;
+  renders: number;
+  clicks: number;
+  conversions: number;
+  invalidEvents: number;
+  costCents: number;
+  auctionEntries: number;
+  auctionWins: number;
+  adRankSum: number;
+};
+
+function totalsFrom(rows: StatRow[]): Totals {
+  const sum = (pick: (r: StatRow) => number) => rows.reduce((acc, r) => acc + pick(r), 0);
+
+  const impressions = sum((r) => r.impressions);
+  const loads = sum((r) => r.loads);
+  const clicks = sum((r) => r.clicks);
+  const conversions = sum((r) => r.conversions);
+  const costCents = sum((r) => r.costCents);
+  const auctionEntries = sum((r) => r.auctionEntries);
+  const auctionWins = sum((r) => r.auctionWins);
+  const adRankSum = sum((r) => r.adRankSum);
+
   return {
     impressions,
+    loads,
+    renders: sum((r) => r.renders),
     clicks,
     conversions,
+    invalidEvents: sum((r) => r.invalidEvents),
     costCents,
+    // Le taux de clic se calcule sur les impressions **visibles**, jamais sur
+    // les publicités chargées : diviser par les chargements ferait paraître
+    // mauvaise une campagne servie sur des encarts jamais atteints.
     ctr: impressions > 0 ? (clicks / impressions) * 100 : null,
     cpcCents: clicks > 0 ? Math.round(costCents / clicks) : null,
+    viewabilityRate: loads > 0 ? Math.min(1, impressions / loads) * 100 : null,
+    costPerConversionCents: conversions > 0 ? Math.round(costCents / conversions) : null,
+    auctionEntries,
+    auctionWins,
+    winRate: auctionEntries > 0 ? (auctionWins / auctionEntries) * 100 : null,
+    avgAdRank: auctionWins > 0 ? adRankSum / auctionWins : null,
   };
 }
 
@@ -225,14 +306,20 @@ export async function advertiserStats(advertiserId: string, days = 30) {
         citySlug: true,
         placement: true,
         impressions: true,
+        loads: true,
+        renders: true,
         clicks: true,
         conversions: true,
+        invalidEvents: true,
         costCents: true,
+        auctionEntries: true,
+        auctionWins: true,
+        adRankSum: true,
       },
       orderBy: { day: "asc" },
     }),
     prisma.adEvent.groupBy({
-      by: ["placement", "citySlug", "type"],
+      by: ["placement", "citySlug", "type", "validationStatus"],
       where: { campaign: { advertiserId }, createdAt: { gte: todayStart } },
       _count: { _all: true },
       _sum: { costCents: true },
@@ -250,12 +337,23 @@ export async function advertiserStats(advertiserId: string, days = 30) {
         citySlug,
         placement: g.placement,
         impressions: 0,
+        loads: 0,
+        renders: 0,
         clicks: 0,
         conversions: 0,
+        invalidEvents: 0,
         costCents: 0,
+        // Les compteurs d'enchères du jour ne sont pas relus ici : le moteur
+        // les écrit directement dans l'agrégat, y compris pour aujourd'hui.
+        auctionEntries: 0,
+        auctionWins: 0,
+        adRankSum: 0,
       };
     const count = g._count._all;
-    if (g.type === "IMPRESSION") row.impressions += count;
+    if (g.validationStatus !== "VALID") row.invalidEvents += count;
+    else if (g.type === "VIEWABLE_IMPRESSION" || g.type === "IMPRESSION") row.impressions += count;
+    else if (g.type === "LOAD") row.loads += count;
+    else if (g.type === "RENDER") row.renders += count;
     else if (g.type === "CLICK") row.clicks += count;
     else if (g.type === "CONVERSION") row.conversions += count;
     row.costCents += g._sum.costCents ?? 0;
@@ -275,6 +373,7 @@ export async function advertiserStats(advertiserId: string, days = 30) {
     byDay.set(d.toISOString().slice(0, 10), {
       day: d.toISOString().slice(0, 10),
       impressions: 0,
+      loads: 0,
       clicks: 0,
       costCents: 0,
     });
@@ -284,6 +383,7 @@ export async function advertiserStats(advertiserId: string, days = 30) {
     const point = byDay.get(key);
     if (!point) continue;
     point.impressions += r.impressions;
+    point.loads += r.loads;
     point.clicks += r.clicks;
     point.costCents += r.costCents;
   }
@@ -291,13 +391,37 @@ export async function advertiserStats(advertiserId: string, days = 30) {
   // Ventilation par emplacement, période courante et précédente. Le même
   // accumulateur sert aux deux : la seule différence est la fenêtre de jours.
   const accPlacements = (source: typeof current) => {
-    const m = new Map<string, { impressions: number; clicks: number; conversions: number; costCents: number }>();
+    const m = new Map<
+      string,
+      {
+        impressions: number;
+        loads: number;
+        clicks: number;
+        conversions: number;
+        costCents: number;
+        auctionEntries: number;
+        auctionWins: number;
+      }
+    >();
     for (const r of source) {
-      const row = m.get(r.placement) ?? { impressions: 0, clicks: 0, conversions: 0, costCents: 0 };
+      const row =
+        m.get(r.placement) ??
+        {
+          impressions: 0,
+          loads: 0,
+          clicks: 0,
+          conversions: 0,
+          costCents: 0,
+          auctionEntries: 0,
+          auctionWins: 0,
+        };
       row.impressions += r.impressions;
+      row.loads += r.loads;
       row.clicks += r.clicks;
       row.conversions += r.conversions;
       row.costCents += r.costCents;
+      row.auctionEntries += r.auctionEntries;
+      row.auctionWins += r.auctionWins;
       m.set(r.placement, row);
     }
     return m;
@@ -310,11 +434,14 @@ export async function advertiserStats(advertiserId: string, days = 30) {
     .map(([placement, r]) => ({
       placement,
       impressions: r.impressions,
+      loads: r.loads,
       clicks: r.clicks,
       conversions: r.conversions,
       costCents: r.costCents,
       ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
       cpcCents: r.clicks > 0 ? Math.round(r.costCents / r.clicks) : null,
+      viewabilityRate: r.loads > 0 ? Math.min(1, r.impressions / r.loads) * 100 : null,
+      winRate: r.auctionEntries > 0 ? (r.auctionWins / r.auctionEntries) * 100 : null,
       previousImpressions: previousPlacements.get(placement)?.impressions ?? 0,
     }))
     .sort((a, b) => b.impressions - a.impressions);

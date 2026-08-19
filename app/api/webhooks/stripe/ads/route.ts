@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/ads/stripe";
 import { creditTopUp } from "@/lib/ads/wallet";
+import { resumeAdvertiserCampaigns } from "@/lib/ads/billing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,7 +60,16 @@ export async function POST(req: NextRequest) {
           amountCentsTTC: session.amount_total ?? Number(session.metadata?.dealco_amount_ttc ?? 0),
           stripeSessionId: session.id,
         });
-        console.info("[ads/webhook] recharge", session.id, result.credited ? "créditée" : "déjà traitée");
+        // Une recharge ne sert à rien si les campagnes arrêtées faute de solde
+        // restent arrêtées : la reprise fait partie du paiement, pas d'une
+        // tâche de fond que l'annonceur devrait attendre.
+        const resumed = result.credited ? await resumeAdvertiserCampaigns(advertiserId) : 0;
+        console.info(
+          "[ads/webhook] recharge",
+          session.id,
+          result.credited ? "créditée" : "déjà traitée",
+          `campagnes relancées : ${resumed}`,
+        );
       }
     }
 

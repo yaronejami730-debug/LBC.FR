@@ -15,6 +15,13 @@ export type ModeratedCampaign = {
   totalBudgetCents: number;
   spentCents: number;
   reviewNote: string | null;
+  /** Exonération de facturation en cours, le cas échéant. */
+  billingExemptAt: string | null;
+  billingExemptReason: string | null;
+  /** Enchère de la campagne, et modèle qui va avec. */
+  maxBidCents: number;
+  billingModel: string;
+  qualityScore: number;
   advertiser: string;
   email: string;
   zones: { label: string; radiusKm: number }[];
@@ -40,8 +47,11 @@ const STATUS_TONE: Record<string, string> = {
   PENDING_REVIEW: "bg-amber-50 text-amber-700",
   REJECTED: "bg-[#fbe6e4] text-[#ba1a1a]",
   PAUSED: "bg-slate-100 text-slate-600",
+  PAUSED_BUDGET: "bg-amber-50 text-amber-700",
+  PAUSED_INSUFFICIENT_FUNDS: "bg-[#fbe6e4] text-[#ba1a1a]",
   ENDED: "bg-slate-100 text-slate-600",
   DRAFT: "bg-slate-100 text-slate-500",
+  ARCHIVED: "bg-slate-100 text-slate-400",
 };
 
 /**
@@ -62,6 +72,16 @@ export default function CampaignModeration({
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Campagnes que la validation en cours doit exonérer.
+   *
+   * La décision se prend au moment où l'on regarde la campagne : c'est le seul
+   * instant où quelqu'un a le contexte — quel annonceur, quelle contrepartie,
+   * quel accord commercial. Un écran séparé serait un écran qu'on n'ouvre
+   * jamais.
+   */
+  const [exempt, setExempt] = useState<Record<string, boolean>>({});
+  const [exemptReason, setExemptReason] = useState<Record<string, string>>({});
 
   async function decide(id: string, approve: boolean) {
     setBusy(id);
@@ -70,7 +90,12 @@ export default function CampaignModeration({
       const res = await fetch(`/api/admin/campaigns/${id}/decision`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approve, note: approve ? null : note }),
+        body: JSON.stringify({
+          approve,
+          note: approve ? null : note,
+          billingExempt: approve ? Boolean(exempt[id]) : undefined,
+          exemptReason: exemptReason[id] ?? null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -79,6 +104,27 @@ export default function CampaignModeration({
       }
       setRejecting(null);
       setNote("");
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Bascule l'exonération d'une campagne déjà décidée. */
+  async function toggleExemption(id: string, next: boolean, reason: string) {
+    setBusy(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/campaigns/${id}/exemption`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exempt: next, reason: reason || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Modification impossible");
+        return;
+      }
       router.refresh();
     } finally {
       setBusy(null);
@@ -204,7 +250,43 @@ export default function CampaignModeration({
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 space-y-3">
+                      {/* Exonération : décidée avant que la campagne parte, et
+                          réversible ensuite. La campagne est diffusée et mesurée
+                          normalement — seul le débit du portefeuille est
+                          suspendu, et l'annonceur le lit sur sa campagne. */}
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+                        <label className="flex items-start gap-2.5 text-sm font-bold text-emerald-900">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(exempt[c.id])}
+                            onChange={(e) =>
+                              setExempt((prev) => ({ ...prev, [c.id]: e.target.checked }))
+                            }
+                            className="mt-0.5 h-4 w-4 accent-emerald-600"
+                          />
+                          <span>
+                            Exonérer cette campagne de paiement
+                            <span className="block text-[11.5px] font-normal text-emerald-800">
+                              Diffusée et mesurée normalement, mais rien n&apos;est déduit du
+                              portefeuille de l&apos;annonceur tant que vous ne rétablissez pas la
+                              facturation.
+                            </span>
+                          </span>
+                        </label>
+                        {exempt[c.id] && (
+                          <input
+                            value={exemptReason[c.id] ?? ""}
+                            onChange={(e) =>
+                              setExemptReason((prev) => ({ ...prev, [c.id]: e.target.value }))
+                            }
+                            placeholder="Motif affiché à l'annonceur — « Offert pour votre lancement »"
+                            className="mt-2 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs outline-none"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => decide(c.id, true)}
@@ -220,6 +302,7 @@ export default function CampaignModeration({
                       >
                         Refuser
                       </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -238,7 +321,7 @@ export default function CampaignModeration({
             <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {["Campagne", "Annonceur", "Statut", "Période", "Budget", "Dépensé"].map((h) => (
+                  {["Campagne", "Annonceur", "Statut", "Période", "Budget", "Dépensé", "Facturation"].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       {h}
                     </th>
@@ -263,8 +346,43 @@ export default function CampaignModeration({
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                       {day(c.startAt)} → {day(c.endAt)}
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{euros(c.totalBudgetCents)}</td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {euros(c.totalBudgetCents)}
+                      <span className="block text-[11px] text-slate-400">
+                        enchère max. {euros(c.maxBidCents)}
+                        {c.billingModel === "CPM" ? " / 1 000 vues" : " / clic"} · qualité{" "}
+                        {c.qualityScore}/100
+                      </span>
+                    </td>
                     <td className="px-4 py-3 tabular-nums">{euros(c.spentCents)}</td>
+                    {/* L'interrupteur d'exonération vit ici, campagne par
+                        campagne : un annonceur peut avoir une campagne offerte
+                        et trois qu'il paie. */}
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        disabled={busy === c.id}
+                        onClick={() =>
+                          toggleExemption(c.id, !c.billingExemptAt, exemptReason[c.id] ?? "")
+                        }
+                        className={`rounded-full px-3 py-1 text-[11px] font-bold disabled:opacity-50 ${
+                          c.billingExemptAt
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {busy === c.id
+                          ? "…"
+                          : c.billingExemptAt
+                            ? "Offerte — rétablir la facturation"
+                            : "Facturée — exonérer"}
+                      </button>
+                      {c.billingExemptReason && (
+                        <span className="block text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                          {c.billingExemptReason}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

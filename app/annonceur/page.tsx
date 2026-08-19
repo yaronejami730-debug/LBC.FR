@@ -20,7 +20,10 @@ const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
   REJECTED: { bg: "#FEE2E2", fg: "#B91C1C" },
   DRAFT: { bg: "#F1F5FC", fg: "#64748B" },
   PAUSED: { bg: "#F1F5FC", fg: "#64748B" },
+  PAUSED_BUDGET: { bg: "#FEF3C7", fg: "#B45309" },
+  PAUSED_INSUFFICIENT_FUNDS: { bg: "#FEE2E2", fg: "#B91C1C" },
   ENDED: { bg: "#F1F5FC", fg: "#64748B" },
+  ARCHIVED: { bg: "#F1F5FC", fg: "#94A3B8" },
 };
 
 /**
@@ -50,6 +53,10 @@ export default async function AdvertiserDashboardPage() {
         status: true,
         spentCents: true,
         totalBudgetCents: true,
+        qualityScore: true,
+        maxBidCents: true,
+        billingModel: true,
+        billingExemptAt: true,
       },
     }),
     advertiserStats(advertiser.id, 30),
@@ -64,6 +71,11 @@ export default async function AdvertiserDashboardPage() {
 
   const { totals, previous, series, cities, placements } = stats;
 
+  // Diffusable = solde moins ce que les campagnes en cours ont déjà engagé.
+  // Afficher le seul solde laisserait croire qu'une nouvelle campagne peut
+  // consommer un argent déjà promis à une autre.
+  const availableCents = Math.max(0, advertiser.balanceCents - advertiser.reservedCents);
+
   const kpis = [
     {
       label: "Dépenses",
@@ -72,7 +84,7 @@ export default async function AdvertiserDashboardPage() {
       delta: variation(totals.costCents, previous.costCents),
     },
     {
-      label: "Impressions",
+      label: "Impressions visibles",
       value: totals.impressions.toLocaleString("fr-FR"),
       icon: "visibility",
       delta: variation(totals.impressions, previous.impressions),
@@ -94,6 +106,47 @@ export default async function AdvertiserDashboardPage() {
       value: totals.cpcCents === null ? "—" : euros(totals.cpcCents),
       icon: "sell",
       delta: null,
+    },
+  ];
+
+  // Second rang d'indicateurs : ce que la mesure de visibilité et l'enchère
+  // ajoutent. Ils ne remplacent pas les premiers, ils les expliquent — « peu
+  // d'impressions » et « peu d'enchères gagnées » n'appellent pas la même
+  // décision.
+  const engineKpis = [
+    {
+      label: "Publicités chargées",
+      value: totals.loads.toLocaleString("fr-FR"),
+      hint: "Envoyées au navigateur, facturées seulement si elles atteignent l'écran.",
+    },
+    {
+      label: "Taux de visibilité",
+      value:
+        totals.viewabilityRate === null
+          ? "—"
+          : `${totals.viewabilityRate.toFixed(0)} %`,
+      hint: "Part des publicités chargées réellement vues : la moitié du bloc, une seconde.",
+    },
+    {
+      label: "Enchères gagnées",
+      value:
+        totals.winRate === null
+          ? "—"
+          : `${totals.winRate.toFixed(0)} % (${totals.auctionWins.toLocaleString("fr-FR")})`,
+      hint: `Sur ${totals.auctionEntries.toLocaleString("fr-FR")} enchères disputées. Un taux bas signale une enchère trop basse, pas un manque de trafic.`,
+    },
+    {
+      label: "Conversions",
+      value: totals.conversions.toLocaleString("fr-FR"),
+      hint:
+        totals.costPerConversionCents === null
+          ? "Appels, e-mails, messages et rendez-vous attribués à vos publicités."
+          : `Soit ${euros(totals.costPerConversionCents)} par contact obtenu.`,
+    },
+    {
+      label: "Événements écartés",
+      value: totals.invalidEvents.toLocaleString("fr-FR"),
+      hint: "Robots, doubles clics, affichages jamais vus. Comptés, jamais facturés.",
     },
   ];
 
@@ -133,6 +186,23 @@ export default async function AdvertiserDashboardPage() {
                   {k.delta.toFixed(1).replace(".", ",")} % sur 30 jours
                 </p>
               )}
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+          {engineKpis.map((k) => (
+            <div key={k.label} className={card} style={cardStyle}>
+              <span
+                className="text-[11.5px] font-bold uppercase tracking-wide"
+                style={{ color: COLORS.muted }}
+              >
+                {k.label}
+              </span>
+              <p className="mt-2 text-[22px] font-extrabold tabular-nums leading-none">{k.value}</p>
+              <p className="mt-1.5 text-[11.5px] leading-snug" style={{ color: COLORS.muted }}>
+                {k.hint}
+              </p>
             </div>
           ))}
         </section>
@@ -254,6 +324,19 @@ export default async function AdvertiserDashboardPage() {
                       </div>
                       <p className="mt-1 text-[11.5px] tabular-nums" style={{ color: COLORS.muted }}>
                         {euros(c.spentCents)} sur {euros(c.totalBudgetCents)}
+                        {c.maxBidCents > 0 && (
+                          <>
+                            {" · "}
+                            enchère max. {euros(c.maxBidCents)}
+                            {c.billingModel === "CPM" ? " / 1 000 vues" : " / clic"}
+                          </>
+                        )}
+                        {" · "}
+                        {/* Le score qualité est affiché parce qu'il décide du rang :
+                            le cacher reviendrait à faire subir un classement dont
+                            l'annonceur ne peut rien faire. */}
+                        qualité {c.qualityScore}/100
+                        {c.billingExemptAt && " · offerte"}
                       </p>
                     </div>
                     <span
@@ -274,10 +357,10 @@ export default async function AdvertiserDashboardPage() {
             <p className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: COLORS.muted }}>
               Solde disponible
             </p>
-            <p className="mt-1.5 text-[26px] font-extrabold tabular-nums">{euros(advertiser.balanceCents)}</p>
-            <p className="mt-1 text-[12.5px]" style={{ color: COLORS.muted }}>
-              La recharge en ligne ouvre avec la facturation. D&apos;ici là, votre interlocuteur
-              Deal&amp;Co crédite votre compte.
+            <p className="mt-1.5 text-[26px] font-extrabold tabular-nums">{euros(availableCents)}</p>
+            <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: COLORS.muted }}>
+              {euros(advertiser.balanceCents)} au portefeuille, dont{" "}
+              {euros(advertiser.reservedCents)} déjà engagés par vos campagnes en cours.
             </p>
           </div>
           <div className={card} style={cardStyle}>

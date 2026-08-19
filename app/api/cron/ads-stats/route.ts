@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { rollupAdStats } from "@/lib/ads/stats";
+import { flushAuctionStats } from "@/lib/ads/auction-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,10 @@ export async function GET(req: NextRequest) {
   }
 
   const started = Date.now();
+  // Les compteurs d'enchères vivent en mémoire entre deux écritures : on les
+  // vide avant le roulement, sinon la dernière tranche d'heure manquerait au
+  // tableau de bord de l'annonceur.
+  await flushAuctionStats().catch(() => null);
   const result = await rollupAdStats(48);
   return NextResponse.json({ ...result, ms: Date.now() - started });
 }

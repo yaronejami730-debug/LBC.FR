@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { recordAdEvent } from "@/lib/ads/tracking";
+import { EMAIL_VIEWABILITY } from "@/lib/ads/viewability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +31,14 @@ export async function GET(req: NextRequest) {
   const sessionId = (req.nextUrl.searchParams.get("s") ?? "").slice(0, 64);
 
   if (token && sessionId) {
-    await recordAdEvent({ type: "IMPRESSION", token, sessionId }).catch(() => null);
+    await recordAdEvent({
+      type: "VIEWABLE_IMPRESSION",
+      token,
+      sessionId,
+      viewportPct: EMAIL_VIEWABILITY.viewportPct,
+      visibleMs: EMAIL_VIEWABILITY.visibleMs,
+      userAgent: req.headers.get("user-agent"),
+    }).catch(() => null);
   }
 
   return new NextResponse(PIXEL, {

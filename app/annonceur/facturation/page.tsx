@@ -89,10 +89,16 @@ export default async function BillingPage({
               Solde disponible
             </p>
             <p className="mt-1.5 text-[28px] font-extrabold tabular-nums leading-none">
-              {euros(advertiser.balanceCents)}
+              {euros(Math.max(0, advertiser.balanceCents - advertiser.reservedCents))}
             </p>
-            <p className="mt-1 text-[12px]" style={{ color: COLORS.muted }}>
-              Hors taxes, dépensable immédiatement.
+            {/* Deux chiffres, pas un : le portefeuille et ce qui reste à
+                engager. Afficher le seul solde laisserait croire qu'une
+                nouvelle campagne peut consommer un argent déjà promis à une
+                autre — et la seconde s'arrêterait en milieu de semaine. */}
+            <p className="mt-1 text-[12px] tabular-nums" style={{ color: COLORS.muted }}>
+              {euros(advertiser.balanceCents)} au portefeuille, dont{" "}
+              {euros(advertiser.reservedCents)} engagés par vos campagnes en cours. Montants hors
+              taxes.
             </p>
           </div>
           <div className={card} style={cardStyle}>

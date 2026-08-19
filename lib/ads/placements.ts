@@ -303,15 +303,25 @@ export function objectiveLabel(key: string): string {
 /** Tranches d'âge proposées au ciblage. Vide = tout le monde. */
 export const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"] as const;
 
-/** Statuts de campagne, dans l'ordre du cycle de vie. */
+/**
+ * Statuts de campagne, dans l'ordre du cycle de vie.
+ *
+ * Trois pauses différentes, et il faut les distinguer : « suspendue » est une
+ * décision de l'annonceur, « plafond du jour atteint » repart tout seul demain,
+ * « portefeuille épuisé » attend une recharge. Un statut unique obligerait
+ * l'annonceur à deviner s'il doit cliquer, attendre ou payer.
+ */
 export const CAMPAIGN_STATUSES = {
   DRAFT: "Brouillon",
   PENDING_REVIEW: "En validation",
   SCHEDULED: "Programmée",
   ACTIVE: "Active",
   PAUSED: "Suspendue",
+  PAUSED_BUDGET: "Plafond du jour atteint",
+  PAUSED_INSUFFICIENT_FUNDS: "Portefeuille épuisé",
   ENDED: "Terminée",
   REJECTED: "Refusée",
+  ARCHIVED: "Archivée",
 } as const;
 
 export type CampaignStatus = keyof typeof CAMPAIGN_STATUSES;

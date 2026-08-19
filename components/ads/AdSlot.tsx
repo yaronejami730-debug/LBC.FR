@@ -4,16 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { isAdFreePath } from "@/lib/ads/placements";
 import { getTopCategories } from "@/lib/search-history";
+import { currentPageViewId, sendAdEvent, watchViewability } from "@/lib/ads/client-tracking";
+import { rememberAdClick } from "@/lib/ads/conversion-client";
 
 /**
  * Emplacement publicitaire branché sur Deal&Co Ads.
  *
  * Trois règles, et elles expliquent tout le composant :
  *
- *  - **l'impression n'est comptée qu'à l'apparition réelle à l'écran.** Un
- *    encart rendu en bas de page mais jamais atteint n'est pas une publicité
- *    vue, et un annonceur n'a pas à la payer. D'où `IntersectionObserver`
- *    plutôt qu'un compteur au montage ;
+ *  - **l'impression n'est comptée qu'à l'apparition réelle à l'écran, et
+ *    tenue.** Un encart rendu en bas de page mais jamais atteint n'est pas une
+ *    publicité vue ; un encart traversé au scroll en trois dixièmes de seconde
+ *    non plus. Il faut la moitié du bloc à l'écran pendant une seconde cumulée,
+ *    onglet au premier plan. Le chargement et le rendu sont remontés à part,
+ *    sans jamais être facturés : ils disent quelle part de l'inventaire
+ *    n'atteint jamais l'écran ;
  *  - **le client ne décide de rien.** Il envoie son contexte, il reçoit une
  *    publicité et un jeton. La destination du clic est relue côté serveur ;
  *  - **sans campagne éligible, l'emplacement disparaît.** Pas de cadre vide,
@@ -44,22 +49,6 @@ type ServedAd = {
   house?: boolean;
   destinationUrl?: string | null;
 };
-
-/** Identifiant d'affichage : anonyme, éphémère, jamais lié à un compte. */
-function sessionId(): string {
-  const KEY = "dco_ad_session";
-  try {
-    const existing = sessionStorage.getItem(KEY);
-    if (existing) return existing;
-    const fresh = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    sessionStorage.setItem(KEY, fresh);
-    return fresh;
-  } catch {
-    // Navigation privée ou stockage refusé : on reste anonyme, la
-    // déduplication se fera sur cette valeur volatile.
-    return "anon-" + Math.random().toString(36).slice(2);
-  }
-}
 
 /**
  * Créatifs déjà affichés sur cette page.
@@ -107,6 +96,9 @@ export default function AdSlot({
   const [loaded, setLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const seen = useRef(false);
+  // Un identifiant par chargement de page, partagé par tous les encarts : c'est
+  // l'unité de déduplication côté serveur.
+  const pageViewId = currentPageViewId(pathname);
 
   useEffect(() => {
     if (adFree) return;
@@ -143,28 +135,36 @@ export default function AdSlot({
     };
   }, [placement, city, category, adFree]);
 
-  // Impression : au premier moment où l'encart est réellement visible.
+  // Chargement : la publicité est arrivée dans le client. Jamais facturé —
+  // c'est le dénominateur qui dira quelle part de l'inventaire atteint l'écran.
+  useEffect(() => {
+    if (!ad?.token) return;
+    void sendAdEvent({ type: "LOAD", token: ad.token, pageViewId });
+  }, [ad, pageViewId]);
+
+  // Rendu, puis visibilité réelle. Le rendu est immédiat : le nœud est dans la
+  // page. La visibilité, elle, se mérite — la moitié du bloc, une seconde.
   useEffect(() => {
     if (!ad?.token || !ref.current || seen.current) return;
     const node = ref.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.some((e) => e.isIntersecting && e.intersectionRatio >= 0.5);
-        if (!visible || seen.current) return;
-        seen.current = true;
-        observer.disconnect();
-        fetch("/api/ads/impression", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: ad.token, sessionId: sessionId() }),
-          keepalive: true,
-        }).catch(() => {});
-      },
-      { threshold: [0.5] },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [ad]);
+    const token = ad.token;
+
+    void sendAdEvent({ type: "RENDER", token, pageViewId });
+
+    const watcher = watchViewability(node, ({ viewportPct, visibleMs }) => {
+      if (seen.current) return;
+      seen.current = true;
+      void sendAdEvent({
+        type: "VIEWABLE_IMPRESSION",
+        token,
+        pageViewId,
+        viewportPct,
+        visibleMs,
+      });
+    });
+
+    return () => watcher.disconnect();
+  }, [ad, pageViewId]);
 
   const click = useCallback(async () => {
     if (!ad) return;
@@ -174,20 +174,17 @@ export default function AdSlot({
       if (ad.destinationUrl) window.open(ad.destinationUrl, "_blank", "noopener,noreferrer");
       return;
     }
-    try {
-      const res = await fetch("/api/ads/click", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: ad.token, sessionId: sessionId() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      // La destination vient du serveur : un lien fabriqué côté client
-      // enverrait les visiteurs n'importe où sous couvert de publicité.
-      if (data.destination) window.open(data.destination, "_blank", "noopener,noreferrer");
-    } catch {
-      /* un clic perdu ne doit pas casser la page */
-    }
-  }, [ad]);
+    // La destination vient du serveur : un lien fabriqué côté client enverrait
+    // les visiteurs n'importe où sous couvert de publicité. Un clic écarté par
+    // l'anti-fraude ouvre quand même la destination — la personne a le droit
+    // d'arriver, c'est la facture qui change.
+    // Le clic est mémorisé avant l'ouverture : le nouvel onglet hérite d'une
+    // copie du stockage de session, et pourra rattacher un appel ou un message
+    // à cette publicité plutôt qu'au hasard.
+    rememberAdClick(ad.token, ad.adId);
+    const data = await sendAdEvent({ type: "CLICK", token: ad.token, pageViewId });
+    if (data?.destination) window.open(data.destination, "_blank", "noopener,noreferrer");
+  }, [ad, pageViewId]);
 
   // Surface sans publicité : ni campagne, ni bannière maison. La règle vaut
   // pour tout ce qui passe par ce composant, y compris un encart ajouté plus

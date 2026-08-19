@@ -3,30 +3,55 @@
  *
  * Un seul moteur pour le site et pour l'application : le client envoie un
  * contexte — emplacement, ville, catégorie, plateforme — et reçoit une
- * publicité accompagnée d'un jeton d'impression. Aucune règle de ciblage ne
- * descend dans le client, sans quoi le web et le mobile finiraient par
- * facturer deux choses différentes.
+ * publicité accompagnée d'un jeton. Aucune règle de ciblage ne descend dans le
+ * client, sans quoi le web et le mobile finiraient par facturer deux choses
+ * différentes.
+ *
+ * Chaque appel est une **enchère** (`lib/ads/auction.ts`) : les campagnes
+ * éligibles se présentent avec leur plafond et leur score qualité, une seule
+ * est servie, et le prix qu'elle paiera est décidé ici, côté serveur, puis
+ * scellé dans le jeton. Le navigateur transporte ce prix sans pouvoir le lire
+ * ni le modifier — c'est la garantie qu'un clic ne coûtera jamais autre chose
+ * que ce que l'enchère a décidé.
  *
  * Le jeton est ce qui sépare une régie d'un compteur : sans lui, n'importe qui
  * peut appeler la route de tracking en boucle et vider le budget d'un
- * annonceur. Signé, à usage unique, valable une minute.
+ * annonceur. Signé, à durée courte, lié à un affichage précis.
  */
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { distanceKm } from "@/lib/geo/distance";
 import { resolveLocation } from "@/lib/geo/communes";
 import { normalizeToken } from "@/lib/seo/city";
 import { isPlacement, type PlacementKey } from "./placements";
-import { pricing, withinDailyBudget } from "./billing";
+import { floorsOf, legacyBidCents, pricing, spentToday, startOfDayParis } from "./billing";
 import { affinity, buildIntentProfile, type IntentProfile } from "./audience";
 import { smartSuggestionsEnabled } from "./settings";
 import { categoryIdFromListing } from "@/lib/recommendations/category-interest";
+import { runAuction, type AuctionCandidate, type BillingModel } from "./auction";
+import { objectiveMultiplier, performanceSnapshot } from "./performance";
+import { recordAuction } from "./auction-stats";
 
 const SECRET = process.env.AUTH_SECRET;
 if (!SECRET) throw new Error("AUTH_SECRET missing");
 
 /** Une minute : le temps qu'une publicité s'affiche, pas davantage. */
 const TOKEN_LIFETIME_SECONDS = 60;
+
+/**
+ * Trente minutes pour le jeton d'un affichage web.
+ *
+ * Une impression se mesure dans la seconde, mais le reste du parcours prend le
+ * temps qu'il prend : on lit une page, on revient, on clique, puis on appelle
+ * le vendeur dix minutes plus tard. Un jeton d'une minute perdrait ces clics et
+ * toutes les conversions — et l'annonceur ne verrait jamais ce que sa campagne
+ * a réellement produit.
+ *
+ * Ce que cette durée n'ouvre pas : la fabrication d'impressions en boucle. La
+ * déduplication porte l'affichage de page, et l'anti-fraude plafonne le nombre
+ * d'affichages d'un même créatif pour une même session.
+ */
+const CLICK_TOKEN_LIFETIME_SECONDS = 1800;
 
 /**
  * Trente jours pour l'e-mail.
@@ -51,6 +76,8 @@ export type AdRequestContext = {
   landingKeywords?: string[];
   /** Créatifs déjà affichés sur cette page : à éviter si autre chose existe. */
   excludeAdIds?: string[];
+  /** Tranche d'âge déclarée du visiteur, quand elle est réellement connue. */
+  ageRange?: string | null;
 };
 
 export type ServedAd = {
@@ -64,11 +91,11 @@ export type ServedAd = {
   destinationUrl: string | null;
   listingId: string | null;
   placement: PlacementKey;
-  /** À renvoyer tel quel sur `/api/ads/impression` puis `/api/ads/click`. */
+  /** À renvoyer tel quel sur `/api/ads/event`. */
   token: string;
 };
 
-// ── Jeton d'impression ──────────────────────────────────────────────────────
+// ── Jeton d'affichage ───────────────────────────────────────────────────────
 
 type TokenPayload = {
   adId: string;
@@ -76,8 +103,19 @@ type TokenPayload = {
   placement: string;
   citySlug: string | null;
   platform: string;
+  /** Enchère qui a produit cet affichage. */
+  auctionId: string;
+  /** Prix décidé par l'enchère, en centimes. Jamais recalculé côté client. */
+  priceCents: number;
+  /** Plafond consenti par l'annonceur, conservé pour la traçabilité. */
+  bidCents: number;
+  model: BillingModel;
+  qualityScore: number;
+  adRank: number;
   exp: number;
 };
+
+export type AdToken = TokenPayload;
 
 export function signAdToken(
   payload: Omit<TokenPayload, "exp">,
@@ -115,15 +153,10 @@ export function verifyAdToken(token: string): TokenPayload | null {
 /**
  * Tirage reproductible, semé par l'emplacement et le quart d'heure.
  *
- * Deux exigences qui semblent s'opposer : chaque emplacement doit montrer autre
- * chose que son voisin — sinon la même bannière occupe la page entière et
- * lasse en deux visites — mais un même emplacement ne doit pas changer de
- * publicité à chaque re-rendu, sans quoi l'impression déjà comptée ne
- * correspond plus à ce qui est affiché.
- *
- * La graine résout les deux : elle contient l'emplacement, donc deux encarts
- * d'une même page divergent ; et une tranche de cinq minutes, donc l'affichage
- * est stable le temps d'une visite, puis tourne.
+ * L'enchère décide qui est servi ; il reste à choisir *quel visuel* d'une même
+ * campagne, et à départager deux rangs identiques. La graine contient
+ * l'emplacement — deux encarts d'une page divergent — et une tranche de cinq
+ * minutes — un même encart reste stable le temps d'une visite.
  */
 function seed(text: string): number {
   let h = 2166136261;
@@ -150,41 +183,24 @@ function seededRandom(s: number): () => number {
   };
 }
 
-/**
- * Tirage sans remise, pondéré.
- *
- * Le poids est le budget quotidien : un annonceur qui engage dix fois plus
- * qu'un autre est servi dix fois plus souvent. C'est la règle la plus simple
- * qui reste défendable devant les deux — proportionnelle à ce que chacun met,
- * sans qu'un gros budget écrase totalement un petit.
- */
-function weightedOrder<T>(items: T[], weightOf: (item: T) => number, rand: () => number): T[] {
-  const pool = items.map((item) => ({ item, weight: Math.max(1, weightOf(item)) }));
-  const out: T[] = [];
+// ── Inventaire servable ─────────────────────────────────────────────────────
 
-  while (pool.length > 0) {
-    const total = pool.reduce((sum, row) => sum + row.weight, 0);
-    let ticket = rand() * total;
-    let index = pool.length - 1;
-    for (let i = 0; i < pool.length; i++) {
-      ticket -= pool[i].weight;
-      if (ticket <= 0) {
-        index = i;
-        break;
-      }
-    }
-    out.push(pool[index].item);
-    pool.splice(index, 1);
-  }
+type CachedAd = {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  imageUrlWide: string | null;
+  ctaLabel: string;
+  destinationUrl: string | null;
+  listingId: string | null;
+  qualityScore: number;
+};
 
-  return out;
-}
-
-// ── Sélection ───────────────────────────────────────────────────────────────
-
-/** Campagnes servables, mises en cache très court pour ne pas requêter à chaque affichage. */
 type CachedCampaign = {
   id: string;
+  advertiserId: string;
+  objective: string;
   /** Solde de l'annonceur au moment du chargement du cache. */
   balanceCents: number;
   suspended: boolean;
@@ -193,20 +209,14 @@ type CachedCampaign = {
   dailyBudgetCents: number;
   totalBudgetCents: number;
   spentCents: number;
+  maxBidCents: number;
+  billingModel: BillingModel;
   categories: string[];
+  audienceAges: string[];
   smartTargeting: boolean;
   placements: string[];
   zones: { lat: number; lng: number; radiusKm: number; citySlug: string }[];
-  ads: {
-    id: string;
-    title: string;
-    description: string;
-    imageUrl: string;
-    imageUrlWide: string | null;
-    ctaLabel: string;
-    destinationUrl: string | null;
-    listingId: string | null;
-  }[];
+  ads: CachedAd[];
 };
 
 let cache: { at: number; campaigns: CachedCampaign[] } | null = null;
@@ -228,11 +238,16 @@ async function servableCampaigns(): Promise<CachedCampaign[]> {
     select: {
       id: true,
       advertiserId: true,
+      objective: true,
       advertiser: { select: { balanceCents: true, suspendedAt: true, billingDisabledAt: true } },
+      billingExemptAt: true,
       dailyBudgetCents: true,
       totalBudgetCents: true,
       spentCents: true,
+      maxBidCents: true,
+      billingModel: true,
       categories: true,
+      audienceAges: true,
       smartTargeting: true,
       placements: { select: { placement: true } },
       zones: { select: { lat: true, lng: true, radiusKm: true, citySlug: true } },
@@ -247,6 +262,7 @@ async function servableCampaigns(): Promise<CachedCampaign[]> {
           ctaLabel: true,
           destinationUrl: true,
           listingId: true,
+          qualityScore: true,
         },
       },
     },
@@ -255,13 +271,21 @@ async function servableCampaigns(): Promise<CachedCampaign[]> {
 
   const campaigns: CachedCampaign[] = rows.map((c) => ({
     id: c.id,
+    advertiserId: c.advertiserId,
+    objective: c.objective,
     balanceCents: c.advertiser.balanceCents,
     suspended: Boolean(c.advertiser.suspendedAt),
-    billingDisabled: Boolean(c.advertiser.billingDisabledAt),
+    // Deux exonérations, une seule conséquence : la campagne est diffusée sans
+    // rien débiter. L'une couvre tout un compte, l'autre une campagne précise —
+    // un lancement offert à un annonceur qui paie ses trois autres campagnes.
+    billingDisabled: Boolean(c.advertiser.billingDisabledAt) || Boolean(c.billingExemptAt),
     dailyBudgetCents: c.dailyBudgetCents,
     totalBudgetCents: c.totalBudgetCents,
     spentCents: c.spentCents,
+    maxBidCents: c.maxBidCents,
+    billingModel: (c.billingModel === "CPM" ? "CPM" : "CPC") as BillingModel,
     categories: parseList(c.categories),
+    audienceAges: parseList(c.audienceAges),
     smartTargeting: c.smartTargeting,
     placements: c.placements.map((p) => p.placement),
     zones: c.zones,
@@ -293,7 +317,10 @@ function parseList(raw: string): string[] {
  * campagne ciblée ne s'affiche pas : mieux vaut ne rien servir que facturer
  * une impression hors zone.
  */
-function coversCity(campaign: CachedCampaign, city: { lat: number; lng: number; slug: string } | null): boolean {
+function coversCity(
+  campaign: CachedCampaign,
+  city: { lat: number; lng: number; slug: string } | null,
+): boolean {
   if (campaign.zones.length === 0) return true;
   if (!city) return false;
 
@@ -305,64 +332,31 @@ function coversCity(campaign: CachedCampaign, city: { lat: number; lng: number; 
 }
 
 /**
- * Choisit la publicité à servir.
+ * L'âge du visiteur entre-t-il dans la cible ?
  *
- * Classement volontairement simple tant qu'il n'y a pas d'historique : à
- * éligibilité égale, on répartit au hasard plutôt que de toujours servir la
- * même — sinon la première campagne créée consommerait tout l'inventaire.
- * Le classement par performance viendra avec les données de la phase 4.
+ * Une campagne sans tranche visée touche tout le monde. Une campagne qui en a
+ * choisi une n'est **pas** écartée quand l'âge est inconnu : Deal&Co ne demande
+ * pas de date de naissance, et refuser de servir faute d'une donnée qu'on ne
+ * collecte pas viderait l'inventaire. La tranche affine quand elle est connue,
+ * elle ne prétend pas à une précision qui n'existe pas.
  */
-/**
- * Ordre de passage des campagnes éligibles.
- *
- * Ce n'est plus un tirage au sort. Deux critères, dans cet ordre :
- *
- *  - **le budget engagé**, qui donne la part de voix. Un annonceur qui met dix
- *    fois plus est servi dix fois plus souvent. C'est la seule règle qu'on
- *    puisse défendre devant les deux à la fois ;
- *  - **la pertinence**, quand la diffusion suggérée est active : la campagne
- *    dont les univers collent à l'intention du visiteur remonte. Elle ne rafle
- *    pas tout pour autant — le rang budgétaire pèse encore trois dixièmes,
- *    sinon un petit annonceur bien ciblé occuperait tout l'inventaire.
- *
- * Une campagne qui n'a pas coché la diffusion suggérée n'est pas pénalisée :
- * elle reçoit une pertinence moyenne. Ne pas cocher une case n'est pas une
- * faute.
- */
-async function rankCampaigns(
-  eligible: CachedCampaign[],
-  ctx: AdRequestContext,
-  rand: () => number,
-): Promise<CachedCampaign[]> {
-  // Part de voix proportionnelle au budget du jour, tirage semé par
-  // l'emplacement : deux encarts d'une même page ne tombent pas sur la même
-  // campagne, et un gros budget passe plus souvent sans écraser les autres.
-  const ordered = weightedOrder(eligible, (c) => c.dailyBudgetCents, rand);
-
-  const smart = await smartSuggestionsEnabled();
-  if (!smart || !eligible.some((c) => c.smartTargeting)) return ordered;
-
-  const profile: IntentProfile = await buildIntentProfile({
-    userId: ctx.userId,
-    contextCategory: ctx.category,
-    recentCategories: ctx.recentCategories,
-    landingKeywords: ctx.landingKeywords,
-  });
-
-  // La pertinence reclasse, le budget garde son mot à dire : le rang issu du
-  // tirage pondéré entre dans le score, sinon la campagne la mieux ciblée
-  // raflerait tout l'inventaire quel que soit son engagement.
-  return ordered
-    .map((c, rank) => ({
-      campaign: c,
-      score:
-        (c.smartTargeting ? affinity(c.categories, profile) : 0.45) * 0.7 +
-        (1 - rank / Math.max(ordered.length, 1)) * 0.3,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .map((row) => row.campaign);
+function matchesAge(campaign: CachedCampaign, ageRange: string | null | undefined): boolean {
+  if (campaign.audienceAges.length === 0) return true;
+  if (!ageRange) return true;
+  return campaign.audienceAges.includes(ageRange);
 }
 
+// ── Sélection ───────────────────────────────────────────────────────────────
+
+/**
+ * Choisit la publicité à servir, et le prix qu'elle paiera.
+ *
+ * L'ordre des contrôles n'est pas indifférent : tout ce qui écarte une campagne
+ * sans requête (statut, emplacement, zone, budget total) passe avant ce qui
+ * coûte une lecture (dépense du jour), et l'enchère ne voit que des candidats
+ * réellement servables. Faire l'inverse reviendrait à classer des campagnes
+ * pour découvrir ensuite qu'aucune n'avait le droit d'être là.
+ */
 export async function selectAd(ctx: AdRequestContext): Promise<ServedAd | null> {
   if (!isPlacement(ctx.placement)) return null;
 
@@ -370,7 +364,9 @@ export async function selectAd(ctx: AdRequestContext): Promise<ServedAd | null> 
   // « fermer à la vente » ne ferait que retirer une case dans un formulaire
   // pendant que les campagnes déjà créées continueraient de tourner.
   const grid = await pricing();
-  if (grid.get(ctx.placement)?.isOpen === false) return null;
+  const gridRow = grid.get(ctx.placement);
+  if (gridRow?.isOpen === false) return null;
+  const floors = floorsOf(gridRow);
 
   // Une seule résolution par requête : `resolveLocation` couvre les 35 000
   // communes et retombe sur le département si le libellé est approximatif.
@@ -380,14 +376,12 @@ export async function selectAd(ctx: AdRequestContext): Promise<ServedAd | null> 
     : null;
 
   const contextCategoryId = ctx.category ? categoryIdFromListing(ctx.category) : null;
-
-  // Graine : l'emplacement et la tranche de cinq minutes. Deux encarts d'une
-  // même page divergent, un même encart reste stable le temps de la visite.
   const rand = seededRandom(seed(`${ctx.placement}|${rotationSlot()}`));
-
   const excluded = new Set(ctx.excludeAdIds ?? []);
 
   const campaigns = await servableCampaigns();
+
+  // ── Éligibilité ──────────────────────────────────────────────────────────
   const eligible = campaigns.filter((c) => {
     if (!c.placements.includes(ctx.placement)) return false;
     // Compte suspendu : on ne sert pas quelqu'un dont l'accès a été coupé.
@@ -399,50 +393,100 @@ export async function selectAd(ctx: AdRequestContext): Promise<ServedAd | null> 
     if (c.spentCents >= c.totalBudgetCents) return false;
     // Comparaison sur l'identifiant de catalogue : le contexte arrive tantôt en
     // libellé (« Véhicules », tel qu'il est stocké sur l'annonce), tantôt en
-    // identifiant (« vehicules », tel qu'il circule dans les URLs). Comparer les
-    // chaînes brutes faisait échouer un ciblage pourtant correct.
+    // identifiant (« vehicules », tel qu'il circule dans les URLs).
     if (c.categories.length > 0 && contextCategoryId) {
       const targeted = c.categories.map((v) => categoryIdFromListing(v) ?? v);
       if (!targeted.includes(contextCategoryId)) return false;
     }
+    if (!matchesAge(c, ctx.ageRange)) return false;
     if (!coversCity(c, city)) return false;
     return c.ads.length > 0;
   });
 
   if (eligible.length === 0) return null;
 
-  // Les campagnes dont tous les créatifs sont déjà à l'écran passent en
-  // dernier : on ne les interdit pas — avec un seul annonceur, les interdire
-  // viderait la page — mais tout le reste passe avant.
-  const fresh = eligible.filter((c) => c.ads.some((a) => !excluded.has(a.id)));
-  const stale = eligible.filter((c) => !fresh.includes(c));
+  // ── Plafond du jour ──────────────────────────────────────────────────────
+  // Une seule agrégation pour tous les candidats : une requête par campagne
+  // multipliait le coût d'un affichage par le nombre d'annonceurs actifs.
+  const withinDay = await filterByDailyBudget(eligible);
+  if (withinDay.length === 0) return null;
 
-  const ordered = [
-    ...(await rankCampaigns(fresh, ctx, rand)),
-    ...(await rankCampaigns(stale, ctx, rand)),
-  ];
+  // ── Enchère ──────────────────────────────────────────────────────────────
+  const perf = await performanceSnapshot();
+  const smart = await smartSuggestionsEnabled();
+  const profile: IntentProfile | null =
+    smart && withinDay.some((c) => c.smartTargeting)
+      ? await buildIntentProfile({
+          userId: ctx.userId,
+          contextCategory: ctx.category,
+          recentCategories: ctx.recentCategories,
+          landingKeywords: ctx.landingKeywords,
+        })
+      : null;
 
-  // Plafond du jour : vérifié ici, sinon on le constaterait au lieu de
-  // l'appliquer. Une seule agrégation, sur la campagne retenue.
-  const shuffled = ordered;
-  let campaign: CachedCampaign | null = null;
-  for (const candidate of shuffled) {
-    if (await withinDailyBudget(candidate)) {
-      campaign = candidate;
-      break;
-    }
+  const candidates: (AuctionCandidate & { campaign: CachedCampaign; ad: CachedAd })[] = [];
+
+  for (const campaign of withinDay) {
+    // Un créatif par campagne : c'est la campagne qui enchérit, pas chacun de
+    // ses visuels. On présente le meilleur que la page n'a pas déjà montré —
+    // sinon un annonceur seul à l'enchère verrait le même encart deux fois.
+    const unseen = campaign.ads.filter((a) => !excluded.has(a.id));
+    const pool = unseen.length > 0 ? unseen : campaign.ads;
+    const best = pickCreative(pool, rand);
+    if (!best) continue;
+
+    const bid =
+      campaign.maxBidCents > 0
+        ? campaign.maxBidCents
+        : legacyBidCents(campaign.billingModel, gridRow);
+
+    // Pertinence : l'intention du visiteur quand la diffusion suggérée est
+    // active, et l'objectif de la campagne dans tous les cas. Les deux
+    // multiplient, aucun ne remplace l'enchère.
+    const intent = profile && campaign.smartTargeting ? 0.7 + affinity(campaign.categories, profile) * 0.6 : 1;
+    const objective = objectiveMultiplier({
+      objective: campaign.objective,
+      placement: ctx.placement,
+      campaignId: campaign.id,
+      snapshot: perf,
+    });
+    // Un créatif déjà à l'écran sur cette page passe derrière, sans être exclu :
+    // l'interdire viderait la page quand un seul annonceur est en lice.
+    const freshness = unseen.length > 0 ? 1 : 0.75;
+
+    candidates.push({
+      campaignId: campaign.id,
+      adId: best.id,
+      maxBidCents: bid,
+      qualityScore: best.qualityScore,
+      billingModel: campaign.billingModel,
+      relevance: intent * objective * freshness,
+      observedCtr: perf.byAd.get(best.id)?.ctr ?? null,
+      campaign,
+      ad: best,
+    });
   }
-  if (!campaign) return null;
-  // Créatif : d'abord ceux que la page n'a pas déjà montrés, et un choix semé
-  // par l'emplacement — un annonceur qui fournit trois visuels en voit trois
-  // tourner, au lieu du même partout.
-  const unseen = campaign.ads.filter((a) => !excluded.has(a.id));
-  const pool = unseen.length > 0 ? unseen : campaign.ads;
-  const ad = pool[Math.floor(rand() * pool.length) % pool.length];
+
+  if (candidates.length === 0) return null;
+
+  const result = runAuction(candidates, floors, { baselineCtr: perf.baselineCtr });
+
+  // Compteurs d'enchères : ce qui permettra de dire à un annonceur qu'il perd
+  // parce que son plafond est bas, et non parce que le trafic a baissé.
+  recordAuction({
+    placement: ctx.placement,
+    entrants: candidates.map((c) => ({ campaignId: c.campaignId })),
+    winner: result ? { campaignId: result.winner.campaignId, adRank: result.adRank } : null,
+  });
+
+  if (!result) return null;
+
+  const won = candidates.find((c) => c.adId === result.winner.adId)!;
+  const ad = won.ad;
 
   return {
     adId: ad.id,
-    campaignId: campaign.id,
+    campaignId: won.campaignId,
     title: ad.title,
     description: ad.description,
     imageUrl: ad.imageUrl,
@@ -454,12 +498,69 @@ export async function selectAd(ctx: AdRequestContext): Promise<ServedAd | null> 
     token: signAdToken(
       {
         adId: ad.id,
-        campaignId: campaign.id,
+        campaignId: won.campaignId,
         placement: ctx.placement,
         citySlug: city?.slug ?? null,
         platform: ctx.platform,
+        auctionId: result.auctionId,
+        priceCents: result.priceCents,
+        bidCents: won.maxBidCents,
+        model: won.billingModel,
+        qualityScore: ad.qualityScore,
+        adRank: Math.round(result.adRank * 100) / 100,
       },
-      ctx.platform === "EMAIL" ? EMAIL_TOKEN_LIFETIME_SECONDS : TOKEN_LIFETIME_SECONDS,
+      ctx.platform === "EMAIL" ? EMAIL_TOKEN_LIFETIME_SECONDS : CLICK_TOKEN_LIFETIME_SECONDS,
     ),
   };
 }
+
+/**
+ * Meilleur créatif d'une campagne : le mieux noté, à égalité près.
+ *
+ * Le tirage ne départage que les scores identiques — ce qui est le cas normal
+ * d'une campagne neuve, dont tous les visuels partent à 70. Sans lui, le
+ * premier créatif enregistré prendrait toute la diffusion et les autres ne
+ * seraient jamais évalués.
+ */
+function pickCreative(pool: CachedAd[], rand: () => number): CachedAd | null {
+  if (pool.length === 0) return null;
+  const best = Math.max(...pool.map((a) => a.qualityScore));
+  const top = pool.filter((a) => a.qualityScore === best);
+  return top[Math.floor(rand() * top.length) % top.length];
+}
+
+/**
+ * Écarte les campagnes ayant consommé leur plafond du jour.
+ *
+ * Vérifié au moment de servir, pas seulement à l'écriture de l'événement :
+ * c'est ce qui empêche de dépasser le plafond au lieu de le constater. Les
+ * campagnes offertes ne sont pas concernées — sans débit, il n'y a pas de
+ * plafond à tenir.
+ */
+async function filterByDailyBudget(campaigns: CachedCampaign[]): Promise<CachedCampaign[]> {
+  const billable = campaigns.filter((c) => !c.billingDisabled);
+  if (billable.length === 0) return campaigns;
+
+  const spend = await prisma.adEvent.groupBy({
+    by: ["campaignId"],
+    where: {
+      campaignId: { in: billable.map((c) => c.id) },
+      billingStatus: "BILLED",
+      createdAt: { gte: startOfDayParis() },
+    },
+    _sum: { costCents: true },
+  });
+
+  const spentByCampaign = new Map(spend.map((s) => [s.campaignId, s._sum.costCents ?? 0]));
+  return campaigns.filter(
+    (c) => c.billingDisabled || (spentByCampaign.get(c.id) ?? 0) < c.dailyBudgetCents,
+  );
+}
+
+/** Identifiant d'affichage de page, quand le client n'en fournit pas. */
+export function newPageViewId(): string {
+  return randomUUID();
+}
+
+/** Ré-export : la dépense du jour est lue au même endroit par tout le monde. */
+export { spentToday };

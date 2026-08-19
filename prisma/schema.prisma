@@ -1120,6 +1120,55 @@ model AdCampaign {
   /// réglage global `smart_suggestions`.
   smartTargeting Boolean @default(false)
 
+  /// Stratégie d'enchère : `MANUAL` (l'annonceur pose son plafond) ou `AUTO`
+  /// (la régie ajuste sous le plafond du budget). Seul `MANUAL` est branché ;
+  /// la colonne existe pour que l'automatique n'ait pas à migrer les données
+  /// déjà en place le jour où il arrive.
+  bidStrategy String @default("MANUAL")
+
+  /// Enchère maximale, en centimes : par clic en CPC, pour mille impressions
+  /// visibles en CPM. C'est un **plafond**, pas un prix : l'enchère au second
+  /// prix fait presque toujours payer moins.
+  ///
+  /// 0 pour les campagnes créées avant les enchères : elles retombent sur le
+  /// tarif de la grille, sinon elles cesseraient d'être servies du jour au
+  /// lendemain.
+  maxBidCents Int @default(0)
+
+  /// Modèle de facturation, déduit de l'objectif à la création : la visibilité
+  /// se paie à l'impression visible, tout le reste au clic. Figé sur la
+  /// campagne pour qu'un changement d'objectif ne réécrive pas le prix de ce
+  /// qui a déjà été diffusé.
+  billingModel String @default("CPC")
+
+  /// Score qualité de la campagne : moyenne de ses créatifs, 0–100. Recalculé
+  /// par le cron à partir des événements réels, jamais saisi à la main.
+  qualityScore   Int       @default(70)
+  qualityScoreAt DateTime?
+
+  /// Instant où le plafond du jour a été atteint. Sert à distinguer « en pause
+  /// parce que le budget du jour est consommé » de « en pause parce que
+  /// l'annonceur l'a voulu » : le premier repart seul demain.
+  dailyCapAt DateTime?
+
+  /// Diffusion offerte, campagne par campagne — décidée par la régie, jamais
+  /// par l'annonceur.
+  ///
+  /// L'exonération existe déjà au niveau du compte (`Advertiser`), mais elle
+  /// est trop large : un annonceur peut avoir une campagne offerte — un
+  /// lancement, un partenariat, un dédommagement — et trois autres qu'il paie.
+  /// Décider au niveau du compte obligeait à couper la facturation de tout ce
+  /// qu'il diffuse, ou à ne rien offrir du tout.
+  ///
+  /// La campagne est diffusée normalement : elle entre dans les enchères, elle
+  /// compte ses impressions et ses clics, elle apparaît dans les statistiques.
+  /// Seul le débit du portefeuille est suspendu, et l'annonceur le voit écrit
+  /// en toutes lettres avant de lancer. Remettre à `null` reprend la
+  /// facturation dès l'événement suivant — jamais rétroactivement.
+  billingExemptAt     DateTime?
+  billingExemptReason String?
+  billingExemptBy     String?
+
   /// Motif de refus de modération, tel qu'il est montré à l'annonceur.
   reviewNote     String?
   reviewedAt     DateTime?
@@ -1194,6 +1243,20 @@ model Ad {
   listingId      String?
 
   isActive  Boolean  @default(true)
+
+  /// Score qualité du créatif, 0–100.
+  ///
+  /// C'est lui qui entre dans le classement, pas celui de la campagne : deux
+  /// visuels du même annonceur ne méritent pas le même rang si l'un est cliqué
+  /// dix fois plus que l'autre. 70 au départ — un neutre assumé — puis calculé
+  /// sur les événements réels dès qu'il y en a assez pour que ce soit autre
+  /// chose qu'un accident.
+  qualityScore   Int       @default(70)
+  qualityScoreAt DateTime?
+  /// Détail du score, en JSON, tel qu'il est montré à l'annonceur. Un score
+  /// sans explication est un chiffre qu'on subit.
+  qualityFactors String    @default("{}")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1210,7 +1273,13 @@ model Ad {
 model AdEvent {
   id String @id @default(cuid())
 
-  /// IMPRESSION | CLICK | CONVERSION
+  /// LOAD | RENDER | VIEWABLE_IMPRESSION | CLICK | CONVERSION
+  ///
+  /// Quatre états d'une même publicité, et ils ne valent pas la même chose :
+  /// chargée n'est pas rendue, rendue n'est pas vue, vue n'est pas cliquée.
+  /// Les confondre revient à facturer un annonceur pour un encart que personne
+  /// n'a jamais eu à l'écran. `IMPRESSION` reste lu en lecture seule : c'est
+  /// le nom que portaient les lignes écrites avant la mesure de visibilité.
   type String
 
   campaignId String
@@ -1230,12 +1299,62 @@ model AdEvent {
 
   /// Empreinte de déduplication : la base refuse le doublon, aucune logique
   /// applicative à écrire. Construite sur (session, créatif, emplacement,
-  /// minute) — un rafraîchissement en boucle ne facture qu'une fois.
+  /// affichage de page) — un rafraîchissement en boucle ne facture qu'une fois.
   dedupKey String @unique
+
+  // ── Mesure de visibilité ────────────────────────────────────────────────
+  /// Part de l'encart réellement dans la fenêtre, 0–1, au moment où le seuil a
+  /// été franchi. Mesurée par le navigateur, **revalidée par le serveur** : un
+  /// client qui annonce 100 % pendant une heure n'est pas cru.
+  viewportPct Float?
+  /// Durée cumulée de visibilité, en millisecondes.
+  visibleMs   Int?
+
+  /// Affichage de page : une valeur par chargement, côté client. C'est l'unité
+  /// qui empêche qu'un même encart compte deux fois quand on scrolle vers lui,
+  /// puis ailleurs, puis de nouveau vers lui.
+  pageViewId  String?
+  /// Session d'affichage, pseudonymisée (empreinte tronquée). Ni compte, ni
+  /// adresse IP : de quoi dédupliquer et détecter une boucle, rien de plus.
+  sessionHash String?
+
+  /// VALID | PENDING | INVALID | FRAUD_REVIEW.
+  ///
+  /// Un événement invalide est **conservé** et non facturé : le supprimer
+  /// reviendrait à ne plus pouvoir expliquer un écart entre ce que l'annonceur
+  /// a vu passer et ce qu'il a payé.
+  validationStatus String  @default("VALID")
+  /// Motif d'invalidation, en clair : « double clic », « robot », « visibilité
+  /// insuffisante ».
+  invalidReason    String?
+  /// NONE | BILLED | REFUNDED — l'événement a-t-il touché le portefeuille ?
+  billingStatus    String  @default("NONE")
+
+  // ── Enchère ─────────────────────────────────────────────────────────────
+  /// Enchère qui a produit cet affichage. Deux événements d'un même affichage
+  /// (impression visible puis clic) la partagent : c'est ce qui permet de
+  /// facturer le clic au prix décidé au moment de la sélection, et non au prix
+  /// du moment où l'on clique.
+  auctionId  String?
+  /// Plafond de l'annonceur au moment de l'enchère, en centimes.
+  bidCents   Int?
+  /// Prix dégagé par l'enchère, en centimes. C'est lui qui est facturé, jamais
+  /// une valeur envoyée par le navigateur.
+  priceCents Int?
+  /// Score qualité et rang au moment de l'enchère, figés : ils bougeront, la
+  /// facture émise non.
+  qualityScore Int?
+  adRank       Float?
+
+  /// Nature de la conversion : PHONE | EMAIL | MESSAGE | FORM | BOOKING.
+  conversionType String?
 
   createdAt DateTime @default(now())
 
   @@index([campaignId, type, createdAt])
+  @@index([campaignId, validationStatus, createdAt])
+  @@index([pageViewId, adId])
+  @@index([sessionHash, createdAt])
   @@index([createdAt])
 }
 
@@ -1318,16 +1437,30 @@ model AdWalletTransaction {
   advertiserId String
   advertiser   Advertiser @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
 
-  /// RECHARGE | SPEND | REFUND | ADJUSTMENT
+  /// RECHARGE | SPEND | REFUND | ADJUSTMENT | RESERVATION | RELEASE | BONUS
+  ///
   /// `ADJUSTMENT` couvre le geste commercial et la correction d'erreur : les
   /// deux existent, autant les nommer plutôt que de bricoler une recharge.
+  /// `RESERVATION` et `RELEASE` ne déplacent pas d'argent : ils font passer
+  /// une somme du disponible au réservé, et retour. Sans eux, deux campagnes
+  /// de 400 € pourraient être lancées sur un portefeuille de 500 €.
   type String
 
   /// Positif pour une entrée, négatif pour une sortie. En centimes.
   amountCents Int
-  /// Solde après ce mouvement, figé : il rend l'historique lisible sans
-  /// recalculer toute la suite à chaque affichage.
-  balanceAfterCents Int
+  /// Solde avant et après ce mouvement, figés : ils rendent l'historique
+  /// lisible sans rejouer toute la suite, et rendent une divergence visible
+  /// au lieu de silencieuse.
+  balanceBeforeCents Int @default(0)
+  balanceAfterCents  Int
+
+  /// Clé d'idempotence : deux écritures portant la même clé ne peuvent pas
+  /// aboutir toutes les deux. C'est la base qui tranche, pas une lecture
+  /// préalable — donc aucune fenêtre de concurrence.
+  idempotencyKey String? @unique
+  /// Événement publicitaire à l'origine d'une dépense. Un euro dépensé doit
+  /// pouvoir être remonté jusqu'au clic qui l'a produit.
+  adEventId String?
 
   label String
   /// Campagne concernée, pour une dépense.
@@ -1339,6 +1472,7 @@ model AdWalletTransaction {
 
   @@index([advertiserId, createdAt])
   @@index([type, createdAt])
+  @@index([adEventId])
 }
 
 /// Facture émise à la recharge du portefeuille.
@@ -1391,10 +1525,31 @@ model AdStatDaily {
   /// même jour et le même emplacement — et le cumul serait faux.
   citySlug   String   @default("")
 
+  /// Impressions **visibles** : celles qui remplissent les critères de
+  /// visibilité. C'est la seule qui compte dans un taux de clic honnête, et la
+  /// seule facturable en CPM.
   impressions Int @default(0)
+  /// Publicités chargées, puis rendues. Elles ne sont jamais facturées : elles
+  /// disent seulement quelle part de l'inventaire n'a jamais atteint l'écran.
+  loads       Int @default(0)
+  renders     Int @default(0)
   clicks      Int @default(0)
   conversions Int @default(0)
+  /// Événements écartés — robots, doubles clics, visibilité insuffisante.
+  /// Affichés à l'annonceur : un chiffre retiré sans explication passe pour
+  /// une erreur de comptage.
+  invalidEvents Int @default(0)
   costCents   Int @default(0)
+
+  /// Enchères disputées et gagnées sur ce jour, cet emplacement.
+  ///
+  /// Le taux de victoire est ce qui dit à un annonceur si son plafond est trop
+  /// bas : « vous étiez en lice 4 000 fois, servi 300 fois » se comprend, « vos
+  /// impressions ont baissé » ne se comprend pas.
+  auctionEntries Int @default(0)
+  auctionWins    Int @default(0)
+  /// Somme des rangs des enchères gagnées, pour en tirer une moyenne lisible.
+  adRankSum      Float @default(0)
 
   updatedAt DateTime @updatedAt
 
@@ -1414,9 +1569,22 @@ model AdPlacementPricing {
   placement String @id
 
   /// CPC (coût par clic) ou CPM (coût pour mille impressions).
+  ///
+  /// Ne dicte plus le prix depuis les enchères : le modèle d'une campagne vient
+  /// de son objectif. La colonne reste le tarif de repli des campagnes créées
+  /// avant les enchères, qui n'ont pas de plafond à elles.
   model String @default("CPC")
   /// Prix en centimes : par clic en CPC, pour mille impressions en CPM.
   priceCents Int @default(25)
+
+  /// Prix planchers de l'emplacement, en centimes.
+  ///
+  /// Une enchère sans plancher se vide toute seule : le jour où un seul
+  /// annonceur est en lice, le second prix vaut zéro, et l'inventaire part
+  /// pour rien. Le plancher est ce en dessous de quoi Deal&Co ne vend pas —
+  /// c'est aussi l'enchère minimale acceptée à la création d'une campagne.
+  floorCpcCents Int @default(15)
+  floorCpmCents Int @default(200)
   /// Emplacement ouvert à la vente. Fermé, il ne sert plus aucune campagne.
   isOpen Boolean @default(true)
 
@@ -1525,6 +1693,26 @@ model Advertiser {
   /// En centimes pour la même raison que partout ailleurs : un budget
   /// publicitaire se compare et se soustrait, jamais en flottant.
   balanceCents Int @default(0)
+
+  /// Part du solde engagée par les campagnes en cours.
+  ///
+  /// Sans elle, un portefeuille de 500 € accepterait deux campagnes de 400 € :
+  /// chacune verrait « 500 € disponibles » et les deux seraient lancées. Ce
+  /// n'est pas de l'argent en moins — c'est de l'argent déjà promis. Le
+  /// diffusable est `balanceCents - reservedCents`.
+  reservedCents Int @default(0)
+
+  /// Recharge automatique — conçue, jamais activée par défaut.
+  ///
+  /// Prélever quelqu'un sans qu'il ait cliqué demande un consentement explicite
+  /// et un moyen de paiement conservé chez Stripe. Les colonnes existent pour
+  /// que la fonctionnalité n'oblige pas à migrer un portefeuille en production ;
+  /// tant que `autoTopUpEnabled` est faux, rien ne se déclenche.
+  autoTopUpEnabled        Boolean @default(false)
+  autoTopUpThresholdCents Int?
+  autoTopUpAmountCents    Int?
+  /// Client Stripe, pour un prélèvement sans nouvelle saisie de carte.
+  stripeCustomerId        String?
 
   /// Portefeuille désactivé : la campagne est diffusée sans être facturée.
   /// Sert aux partenariats et aux gratuités. Le solde n'est pas touché — on

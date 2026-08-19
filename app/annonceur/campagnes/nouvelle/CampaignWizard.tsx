@@ -6,7 +6,7 @@ import { AGE_RANGES, OBJECTIVES, PLACEMENTS, placementsBySurface } from "@/lib/a
 import { CATEGORIES } from "@/lib/categories";
 import { COLORS, PRIMARY_GRADIENT, PRIMARY_SHADOW } from "@/lib/ads/theme";
 
-const STEPS = ["Objectif", "Audience", "Localisation", "Budget", "Publicité", "Récapitulatif"];
+const STEPS = ["Objectif", "Audience", "Localisation", "Budget", "Enchère", "Publicité", "Récapitulatif"];
 
 const field = "w-full rounded-xl bg-white px-3.5 py-2.5 text-[14px] outline-none";
 const fieldStyle = { border: `1px solid ${COLORS.line}` };
@@ -61,6 +61,17 @@ export default function CampaignWizard() {
    */
   const [smartTargeting, setSmartTargeting] = useState(true);
   const [dailyEuros, setDailyEuros] = useState(20);
+  /**
+   * Enchère maximale, en euros.
+   *
+   * Un plafond, jamais un prix : l'enchère au second prix fait payer ce qu'il
+   * faut pour passer devant le suivant, pas ce que l'annonceur a consenti. Le
+   * champ est initialisé bas et corrigé par le plancher réel dès que le serveur
+   * l'a renvoyé — proposer un montant élevé « par défaut » reviendrait à faire
+   * payer plus cher ceux qui n'y connaissent rien.
+   */
+  const [maxBidEuros, setMaxBidEuros] = useState(0.5);
+  const [bidTouched, setBidTouched] = useState(false);
   const [startAt, setStartAt] = useState(inDays(0));
   const [endAt, setEndAt] = useState(inDays(30));
   const [title, setTitle] = useState("");
@@ -91,6 +102,14 @@ export default function CampaignWizard() {
     | null
   >(null);
 
+  const [auction, setAuction] = useState<{
+    model: "CPC" | "CPM";
+    floorCents: number;
+    medianPriceCents: number | null;
+    competitors: number;
+    note: string;
+  } | null>(null);
+
   const zonesKey = zones.map((z) => `${z.label}:${z.radiusKm}`).join("|");
   const placementsKey = placements.join("|");
 
@@ -107,11 +126,23 @@ export default function CampaignWizard() {
           placements,
           zones,
           dailyBudgetCents: Math.round(dailyEuros * 100),
+          objective,
         }),
         signal: controller.signal,
       })
         .then((r) => r.json())
-        .then((d) => setEstimate(d.estimate ?? null))
+        .then((d) => {
+          setEstimate(d.estimate ?? null);
+          setAuction(d.auction ?? null);
+          // Tant que l'annonceur n'a pas touché au champ, on l'aligne sur ce
+          // que le marché montre : le prix médian constaté, à défaut le
+          // plancher. Une valeur en dessous du plancher serait refusée à
+          // l'enregistrement, et il l'apprendrait trois écrans plus loin.
+          if (!bidTouched && d.auction) {
+            const suggested = d.auction.medianPriceCents ?? d.auction.floorCents;
+            setMaxBidEuros(Math.max(d.auction.floorCents, suggested) / 100);
+          }
+        })
         .catch(() => {});
     }, 350);
     return () => {
@@ -119,7 +150,7 @@ export default function CampaignWizard() {
       window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, placementsKey, zonesKey, dailyEuros]);
+  }, [step, placementsKey, zonesKey, dailyEuros, objective]);
 
   const days = useMemo(() => {
     const d = Math.ceil(
@@ -134,6 +165,7 @@ export default function CampaignWizard() {
     true, // l'audience est facultative : « tout le monde » est un choix valable
     true, // pas de zone = France entière
     dailyEuros >= 2 && days > 0,
+    Math.round(maxBidEuros * 100) >= (auction?.floorCents ?? 0) && maxBidEuros > 0,
     title.trim().length >= 3 && imageUrl.trim().length > 0 && destinationUrl.trim().length > 0,
     true,
   ][step];
@@ -163,6 +195,7 @@ export default function CampaignWizard() {
           endAt: new Date(endAt).toISOString(),
           dailyBudgetCents: Math.round(dailyEuros * 100),
           totalBudgetCents: totalCents,
+          maxBidCents: Math.round(maxBidEuros * 100),
           placements,
           zones,
           audienceAges: ages,
@@ -491,6 +524,73 @@ export default function CampaignWizard() {
 
           {step === 4 && (
             <>
+              <h2 className="text-lg font-extrabold font-['Manrope']">
+                Combien acceptez-vous de payer{auction?.model === "CPM" ? " pour mille affichages vus" : " pour une visite"} ?
+              </h2>
+              <p className="text-sm text-[#64748B]">
+                {auction?.model === "CPM"
+                  ? "Votre objectif est la visibilité : vous payez les affichages réellement vus — au moins la moitié du bloc à l'écran pendant une seconde. Un affichage jamais atteint ne vous coûte rien."
+                  : "Vous ne payez que lorsque quelqu'un clique. Un affichage sans clic ne vous coûte rien."}
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={legend} style={legendStyle} htmlFor="bid">
+                    {auction?.model === "CPM" ? "Enchère maximale pour 1 000 affichages vus (€)" : "Enchère maximale par clic (€)"}
+                  </label>
+                  <input
+                    id="bid"
+                    type="number"
+                    min={(auction?.floorCents ?? 15) / 100}
+                    step={0.05}
+                    value={maxBidEuros}
+                    onChange={(e) => {
+                      setBidTouched(true);
+                      setMaxBidEuros(Number(e.target.value));
+                    }}
+                    className={field + " mt-1 tabular-nums"}
+                    style={fieldStyle}
+                  />
+                  {auction && (
+                    <p className="mt-1 text-xs text-[#94A3B8]">
+                      Minimum accepté : {euros(auction.floorCents)}.
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-xl bg-[#F1F5FC] px-4 py-3 text-sm">
+                  <p className="font-semibold">Vous paierez presque toujours moins.</p>
+                  <p className="mt-1 text-[13px] text-[#475569]">
+                    Ce montant est un plafond. Chaque affichage donne lieu à une mise en
+                    concurrence : vous payez le prix qu&apos;il fallait pour passer devant
+                    l&apos;annonceur suivant, plus un centime — jamais votre plafond.
+                  </p>
+                </div>
+              </div>
+
+              {auction && (
+                <p className="text-sm text-[#475569]">
+                  {auction.note}
+                  {auction.competitors > 0 && (
+                    <>
+                      {" "}
+                      {auction.competitors} campagne{auction.competitors > 1 ? "s" : ""} en
+                      concurrence sur ces emplacements aujourd&apos;hui.
+                    </>
+                  )}
+                </p>
+              )}
+
+              <p className="text-xs text-[#94A3B8]">
+                La qualité compte autant que le montant : un visuel clair, une destination
+                qui tient sa promesse et un bon taux de clic vous font passer devant une
+                enchère plus élevée. Votre score qualité se construit sur vos résultats
+                réels — il démarre à 70 sur 100, sans avantage ni pénalité.
+              </p>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
               <h2 className="text-lg font-extrabold font-['Manrope']">Créez votre publicité</h2>
               <div>
                 <label className={legend} style={legendStyle} htmlFor="title">Titre</label>
@@ -550,7 +650,7 @@ export default function CampaignWizard() {
             </>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <>
               <h2 className="text-lg font-extrabold font-['Manrope']">Votre campagne</h2>
               <dl className="text-sm divide-y divide-slate-100">
@@ -568,6 +668,12 @@ export default function CampaignWizard() {
                     placements.map((p) => PLACEMENTS.find((x) => x.key === p)?.label ?? p).join(", "),
                   ],
                   ["Budget", `${euros(dailyEuros * 100)}/jour · ${euros(totalCents)} au total`],
+                  [
+                    "Enchère maximale",
+                    auction?.model === "CPM"
+                      ? `${euros(Math.round(maxBidEuros * 100))} pour 1 000 affichages vus`
+                      : `${euros(Math.round(maxBidEuros * 100))} par clic`,
+                  ],
                   ["Durée", `${days} jour${days > 1 ? "s" : ""}`],
                 ].map(([k, v]) => (
                   <div key={k} className="flex gap-4 py-2">

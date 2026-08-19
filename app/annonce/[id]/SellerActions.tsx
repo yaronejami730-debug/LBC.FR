@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { reportAdConversion } from "@/lib/ads/conversion-client";
 
 export default function SellerActions({
   listingId,
@@ -53,6 +54,10 @@ export default function SellerActions({
         return;
       }
       const data = await res.json();
+      // Contact abouti : s'il fait suite à un clic publicitaire, l'annonceur
+      // doit le voir comme tel. Sans cette remontée, une campagne « recevoir
+      // plus de contacts » ne mesurerait que des clics.
+      void reportAdConversion("MESSAGE");
       router.push(`/messages/${data.id}`);
     } catch {
       setError("Une erreur est survenue.");
@@ -95,7 +100,13 @@ export default function SellerActions({
               </a>
             ) : (
               <button
-                onClick={() => setPhoneRevealed(true)}
+                onClick={() => {
+                  setPhoneRevealed(true);
+                  // Le numéro affiché est le contact : le clic sur « appeler »
+                  // qui suit part vers l'application téléphone et ne revient
+                  // jamais dans la page.
+                  void reportAdConversion("PHONE");
+                }}
                 className="w-full py-4 px-4 rounded-2xl bg-white border border-slate-200 text-[#2f6fb8] font-bold flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm text-sm"
               >
                 <span className="material-symbols-outlined text-[18px]">call</span>

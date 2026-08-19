@@ -12,7 +12,8 @@
  */
 import { prisma } from "@/lib/prisma";
 import { parisDay } from "./stats";
-import { pricing } from "./billing";
+import { floorsOf, modelForObjective, pricing } from "./billing";
+import type { BillingModel } from "./auction";
 
 /** En dessous, l'échantillon ne dit rien : deux clics ne font pas un taux. */
 const MIN_IMPRESSIONS = 1000;
@@ -146,4 +147,88 @@ export async function estimateCampaign(input: {
       : "Estimation fondée sur les performances observées tous territoires confondus : vos zones " +
         "n'ont pas encore assez d'historique propre.",
   };
+}
+
+
+// ── Contexte d'enchère ──────────────────────────────────────────────────────
+
+export type AuctionContext = {
+  model: BillingModel;
+  /** Enchère minimale acceptée sur les emplacements retenus, en centimes. */
+  floorCents: number;
+  /**
+   * Prix médian réellement payé sur ces emplacements ces trente derniers jours,
+   * en centimes. `null` tant qu'il n'y a pas assez d'historique — on ne suggère
+   * pas un prix qu'on n'a pas observé.
+   */
+  medianPriceCents: number | null;
+  /** Nombre de campagnes en concurrence sur au moins un de ces emplacements. */
+  competitors: number;
+  /** Phrase affichée telle quelle sous le champ d'enchère. */
+  note: string;
+};
+
+/**
+ * Ce qu'il faut savoir avant de poser une enchère.
+ *
+ * Un champ « enchère maximale » sans repère est un piège : l'annonceur met
+ * 1 000 € par prudence, ou 5 centimes et ne comprend pas pourquoi il n'est
+ * jamais servi. On lui donne donc le plancher — un fait — et le prix médian
+ * réellement payé — une observation. Jamais une promesse.
+ */
+export async function auctionContext(input: {
+  placements: string[];
+  objective: string;
+}): Promise<AuctionContext> {
+  const model = modelForObjective(input.objective);
+  const grid = await pricing();
+
+  const placements = input.placements.filter(Boolean);
+  const floorCents = placements.length
+    ? Math.max(
+        ...placements.map((p) => {
+          const f = floorsOf(grid.get(p));
+          return model === "CPM" ? f.cpmCents : f.cpcCents;
+        }),
+      )
+    : model === "CPM"
+      ? 200
+      : 15;
+
+  const since = new Date(Date.now() - 30 * 86_400_000);
+
+  // Prix médian : lu sur les événements réellement facturés, pas sur les
+  // plafonds déclarés. Ce sont deux choses différentes, et c'est justement le
+  // sujet d'une enchère au second prix.
+  const [billed, competitors] = await Promise.all([
+    prisma.adEvent.findMany({
+      where: {
+        placement: { in: placements.length ? placements : undefined },
+        type: model === "CPM" ? { in: ["VIEWABLE_IMPRESSION", "IMPRESSION"] } : "CLICK",
+        billingStatus: "BILLED",
+        createdAt: { gte: since },
+        priceCents: { gt: 0 },
+      },
+      select: { priceCents: true },
+      take: 2000,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.adCampaign.count({
+      where: {
+        status: "ACTIVE",
+        billingModel: model,
+        ...(placements.length ? { placements: { some: { placement: { in: placements } } } } : {}),
+      },
+    }),
+  ]);
+
+  const prices = billed.map((b) => b.priceCents ?? 0).filter((v) => v > 0).sort((a, b) => a - b);
+  const medianPriceCents = prices.length >= 20 ? prices[Math.floor(prices.length / 2)] : null;
+
+  const unit = model === "CPM" ? "pour mille impressions visibles" : "par clic";
+  const note = medianPriceCents
+    ? `Prix médian constaté sur ces emplacements : ${(medianPriceCents / 100).toFixed(2)} € ${unit}. Votre enchère est un plafond : vous payez le prix qu'il faut pour passer devant le suivant, jamais plus.`
+    : `Pas encore assez d'historique sur ces emplacements pour afficher un prix constaté. Le minimum accepté est de ${(floorCents / 100).toFixed(2)} € ${unit}.`;
+
+  return { model, floorCents, medianPriceCents, competitors, note };
 }

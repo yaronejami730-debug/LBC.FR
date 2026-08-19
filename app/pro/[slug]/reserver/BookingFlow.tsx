@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { reportAdConversion } from "@/lib/ads/conversion-client";
 
 export type FlowService = {
   id: string;
@@ -201,6 +202,10 @@ export default function BookingFlow({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Réservation impossible");
+      // Rendez-vous pris : c'est la conversion que vise une campagne
+      // « plus de réservations ». Rapportée seulement si un clic publicitaire
+      // l'a précédée — sinon elle n'appartient à personne.
+      void reportAdConversion("BOOKING");
       setConfirmed({ id: data.booking.id, status: data.booking.status });
     } catch (e) {
       setError((e as Error).message);

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireActiveAdvertiser } from "@/lib/ads/advertiser-auth";
-import { estimateCampaign } from "@/lib/ads/estimate";
+import { auctionContext, estimateCampaign } from "@/lib/ads/estimate";
 import { resolveLocation } from "@/lib/geo/communes";
 import { normalizeToken } from "@/lib/seo/city";
 
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     placements?: unknown;
     zones?: unknown;
     dailyBudgetCents?: unknown;
+    objective?: unknown;
   };
 
   const placements = Array.isArray(body.placements) ? body.placements.map(String) : [];
@@ -31,11 +32,17 @@ export async function POST(req: NextRequest) {
     .filter(Boolean)
     .map((r) => normalizeToken(r!.city));
 
-  const estimate = await estimateCampaign({
-    placements,
-    citySlugs,
-    dailyBudgetCents: Math.max(0, Math.round(Number(body.dailyBudgetCents) || 0)),
-  });
+  const [estimate, auction] = await Promise.all([
+    estimateCampaign({
+      placements,
+      citySlugs,
+      dailyBudgetCents: Math.max(0, Math.round(Number(body.dailyBudgetCents) || 0)),
+    }),
+    // Contexte d'enchère : le plancher et le prix médian constaté. Ils
+    // accompagnent le champ « enchère maximale », qui sans repère ne veut rien
+    // dire pour quelqu'un dont ce n'est pas le métier.
+    auctionContext({ placements, objective: String(body.objective ?? "VISITES") }),
+  ]);
 
-  return NextResponse.json({ estimate }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ estimate, auction }, { headers: { "Cache-Control": "no-store" } });
 }

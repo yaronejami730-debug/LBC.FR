@@ -21,7 +21,10 @@ const TONE: Record<string, { bg: string; fg: string }> = {
   REJECTED: { bg: "#FEE2E2", fg: "#B91C1C" },
   DRAFT: { bg: "#F1F5FC", fg: "#64748B" },
   PAUSED: { bg: "#F1F5FC", fg: "#64748B" },
+  PAUSED_BUDGET: { bg: "#FEF3C7", fg: "#B45309" },
+  PAUSED_INSUFFICIENT_FUNDS: { bg: "#FEE2E2", fg: "#B91C1C" },
   ENDED: { bg: "#F1F5FC", fg: "#64748B" },
+  ARCHIVED: { bg: "#F1F5FC", fg: "#94A3B8" },
 };
 
 /** Campagnes de l'annonceur. */
@@ -92,7 +95,28 @@ export default async function AdvertiserCampaignsPage() {
                   </p>
                 )}
 
-                <dl className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                {/* Diffusion offerte : dit en toutes lettres, et avant le
+                    lancement. Un annonceur ne doit jamais découvrir après coup
+                    qu'il n'a pas été débité — ni craindre de l'être. */}
+                {c.billingExemptAt && (
+                  <p
+                    className="mt-3 rounded-xl px-3 py-2 text-[13px] font-semibold"
+                    style={{ background: "#DCFCE7", color: "#15803D" }}
+                  >
+                    Cette publicité ne sera pas déduite de votre portefeuille.
+                    {c.billingExemptReason ? ` ${c.billingExemptReason}` : ""}
+                  </p>
+                )}
+
+                {/* Un arrêt automatique s'explique là où il se constate. */}
+                {(c.status === "PAUSED_BUDGET" || c.status === "PAUSED_INSUFFICIENT_FUNDS") &&
+                  c.pausedReason && (
+                    <p className="mt-3 rounded-xl px-3 py-2 text-xs" style={{ background: "#FEF3C7", color: "#B45309" }}>
+                      {c.pausedReason}
+                    </p>
+                  )}
+
+                <dl className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
                   <div>
                     <dt className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Budget</dt>
                     <dd className="tabular-nums">{euros(c.dailyBudgetCents)}/j</dd>
@@ -101,6 +125,16 @@ export default async function AdvertiserCampaignsPage() {
                     <dt className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Dépensé</dt>
                     <dd className="tabular-nums">
                       {euros(c.spentCents)} <span className="text-[#94A3B8]">/ {euros(c.totalBudgetCents)}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                      Enchère max.
+                    </dt>
+                    <dd className="tabular-nums">
+                      {c.maxBidCents > 0
+                        ? `${euros(c.maxBidCents)}${c.billingModel === "CPM" ? " / 1 000 vues" : " / clic"}`
+                        : "Tarif grille"}
                     </dd>
                   </div>
                   <div>

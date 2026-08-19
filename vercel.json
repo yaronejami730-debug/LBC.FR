@@ -48,6 +48,14 @@
     {
       "path": "/api/cron/draft-relance",
       "schedule": "20,50 * * * *"
+    },
+    {
+      "path": "/api/cron/ads-lifecycle",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/ads-quality",
+      "schedule": "40 3 * * *"
     }
   ]
 }

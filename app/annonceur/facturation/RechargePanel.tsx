@@ -4,7 +4,7 @@ import { useState } from "react";
 import { COLORS, PRIMARY_GRADIENT, PRIMARY_SHADOW } from "@/lib/ads/theme";
 
 /** Montants proposés, en euros hors taxes. */
-const PRESETS = [50, 100, 250, 500];
+const PRESETS = [50, 100, 250, 500, 1000];
 const VAT = 0.2;
 
 /**
