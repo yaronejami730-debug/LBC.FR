@@ -34,6 +34,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau large · 1200 × 400 px",
     surface: "Accueil",
+    previewPath: "/",
   },
   {
     key: "SEARCH_GRID",
@@ -42,6 +43,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Carré · 800 × 800 px",
     surface: "Recherche",
+    previewPath: "/search",
   },
   {
     key: "LISTING_ROTATOR",
@@ -50,6 +52,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Vertical · 600 × 800 px",
     surface: "Annonce",
+    previewPath: null,
   },
   {
     key: "MOBILE_INTERSTITIAL",
@@ -58,6 +61,7 @@ export const PLACEMENTS = [
     platform: "MOBILE",
     format: "Plein écran · 1080 × 1920 px",
     surface: "Application",
+    previewPath: null,
   },
   // ── Messagerie ────────────────────────────────────────────────────────────
   // Deux encarts, jamais au milieu des conversations : une réclame glissée
@@ -70,6 +74,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau · 1200 × 300 px",
     surface: "Messagerie",
+    previewPath: "/messages",
   },
   {
     key: "MESSAGES_BOTTOM",
@@ -78,6 +83,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau · 1200 × 300 px",
     surface: "Messagerie",
+    previewPath: "/messages",
   },
   // ── Dépôt d'annonce ───────────────────────────────────────────────────────
   {
@@ -87,6 +93,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau · 1200 × 300 px",
     surface: "Dépôt",
+    previewPath: "/post",
   },
   // ── Compte ────────────────────────────────────────────────────────────────
   {
@@ -96,6 +103,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau · 1200 × 300 px",
     surface: "Compte",
+    previewPath: "/profile",
   },
   // ── Accueil, entre les rayons ─────────────────────────────────────────────
   // Une seule clé pour les trois intercalaires de la page d'accueil — avant les
@@ -110,6 +118,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau large · 1200 × 400 px",
     surface: "Accueil",
+    previewPath: "/",
   },
   // ── Menu et pages personnelles ────────────────────────────────────────────
   {
@@ -119,6 +128,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Vignette · 600 × 300 px",
     surface: "Menu",
+    previewPath: "/",
   },
   {
     key: "FAVORITES",
@@ -127,6 +137,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau · 1200 × 300 px",
     surface: "Compte",
+    previewPath: "/favoris",
   },
   {
     key: "BOOKINGS",
@@ -135,6 +146,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Bandeau · 1200 × 300 px",
     surface: "Compte",
+    previewPath: "/mes-reservations",
   },
   // ── Espace professionnel ──────────────────────────────────────────────────
   // Public rare et cher : des gérants d'établissement, sur leur outil de
@@ -147,6 +159,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Vignette · 600 × 300 px",
     surface: "Professionnels",
+    previewPath: "/profile/espace-pro",
   },
   {
     key: "PRO_AGENDA",
@@ -155,6 +168,7 @@ export const PLACEMENTS = [
     platform: "BOTH",
     format: "Vignette · 600 × 300 px",
     surface: "Professionnels",
+    previewPath: "/mon-agenda",
   },
   // ── E-mail ────────────────────────────────────────────────────────────────
   // Une plateforme à part : pas de JavaScript, pas d'observateur de visibilité,
@@ -167,6 +181,7 @@ export const PLACEMENTS = [
     platform: "EMAIL",
     format: "Vignette · 600 × 300 px",
     surface: "E-mail",
+    previewPath: null,
   },
 ] as const;
 
@@ -185,6 +200,17 @@ export function placement(key: string): Placement | null {
 
 export function placementLabel(key: string): string {
   return BY_KEY.get(key as PlacementKey)?.label ?? key;
+}
+
+/**
+ * Page publique où l'emplacement s'affiche, quand elle existe.
+ *
+ * « Bandeau du profil » ne dit rien tant qu'on n'a pas vu la page. `null` pour
+ * ce qui n'a pas d'URL : le plein écran de l'application, l'encart e-mail, et
+ * l'encart de fiche annonce qui dépend d'une annonce précise.
+ */
+export function placementPreviewPath(key: string): string | null {
+  return BY_KEY.get(key as PlacementKey)?.previewPath ?? null;
 }
 
 /**

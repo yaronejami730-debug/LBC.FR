@@ -46,6 +46,7 @@ import { article as estimerPrixVoiture } from "./posts/estimer-prix-voiture-occa
 import { article as voitureSansCT } from "./posts/voiture-sans-controle-technique-2026";
 import { article as combienTempsVendreVoiture } from "./posts/combien-de-temps-vendre-voiture";
 import { article as ouInvestirImmo2026 } from "./posts/ou-investir-immobilier-locatif-2026";
+import { article as papiersVendreVoiture } from "./posts/papiers-pour-vendre-une-voiture-entre-particuliers";
 import { article as trottinetteDebridee } from "./posts/trottinette-electrique-debridee-loi-2026";
 
 const articles: BlogArticle[] = [
@@ -97,6 +98,7 @@ const articles: BlogArticle[] = [
   combienTempsVendreVoiture,
   ouInvestirImmo2026,
   trottinetteDebridee,
+  papiersVendreVoiture,
 ].sort(
   (a, b) => (a.publishedAt < b.publishedAt ? 1 : -1),
 );

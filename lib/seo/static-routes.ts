@@ -53,6 +53,9 @@ export const STATIC_PAGES = [
   { path: "/", changeFrequency: "daily", priority: 1 },
   { path: "/nouveautes", changeFrequency: "hourly", priority: 0.9 },
   { path: "/annonces", changeFrequency: "daily", priority: 0.9 },
+  // Page d'acquisition vendeurs. Distincte de `/annonces`, qui sert l'intention
+  // d'achat : deux intentions, deux pages, un lien croisé entre elles.
+  { path: "/vente-objets-occasion-particuliers", changeFrequency: "weekly", priority: 0.8 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
   { path: "/comparatif", changeFrequency: "weekly", priority: 0.7 },
   { path: "/voiture-budget", changeFrequency: "weekly", priority: 0.7 },

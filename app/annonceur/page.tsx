@@ -5,6 +5,7 @@ import { requireActiveAdvertiser } from "@/lib/ads/advertiser-auth";
 import { CAMPAIGN_STATUSES } from "@/lib/ads/placements";
 import { advertiserStats, variation } from "@/lib/ads/stats";
 import PerformanceChart from "./PerformanceChart";
+import PlacementBreakdown from "./PlacementBreakdown";
 import AdvertiserShell, { COLORS } from "./AdvertiserShell";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function AdvertiserDashboardPage() {
   // Les chiffres viennent des agrégats, jamais des événements bruts : sur une
   // campagne qui tourne, c'est la différence entre quatre lignes lues et
   // plusieurs centaines de milliers.
-  const [campaigns, stats] = await Promise.all([
+  const [campaigns, stats, apercuListing] = await Promise.all([
     prisma.adCampaign.findMany({
       where: { advertiserId: advertiser.id },
       orderBy: { createdAt: "desc" },
@@ -52,9 +53,16 @@ export default async function AdvertiserDashboardPage() {
       },
     }),
     advertiserStats(advertiser.id, 30),
+    // Une annonce en ligne, uniquement pour l'aperçu de l'encart de fiche
+    // annonce : cet emplacement n'a pas d'URL fixe, il vit sur des annonces.
+    prisma.listing.findFirst({
+      where: { status: "APPROVED", deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    }),
   ]);
 
-  const { totals, previous, series, cities } = stats;
+  const { totals, previous, series, cities, placements } = stats;
 
   const kpis = [
     {
@@ -81,6 +89,12 @@ export default async function AdvertiserDashboardPage() {
       icon: "trending_up",
       delta: null,
     },
+    {
+      label: "Coût par clic",
+      value: totals.cpcCents === null ? "—" : euros(totals.cpcCents),
+      icon: "sell",
+      delta: null,
+    },
   ];
 
   const card = "rounded-[18px] bg-white p-[18px]";
@@ -96,7 +110,7 @@ export default async function AdvertiserDashboardPage() {
       action={{ href: "/annonceur/campagnes/nouvelle", label: "Nouvelle campagne" }}
     >
       <div className="flex flex-col gap-5">
-        <section className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-4 grid-cols-2 lg:grid-cols-5">
           {kpis.map((k) => (
             <div key={k.label} className={card} style={cardStyle}>
               <div className="flex items-center justify-between">
@@ -136,6 +150,27 @@ export default async function AdvertiserDashboardPage() {
         <section className={card} style={cardStyle}>
           <PerformanceChart series={series} />
         </section>
+
+        {/* Sans cette ligne, un annonceur en gratuité lit « 0,00 € » partout
+            et en conclut que le comptage est cassé. Ce n'est pas le comptage :
+            c'est la facturation qui est volontairement coupée sur son compte. */}
+        {advertiser.billingDisabledAt && totals.impressions > 0 && (
+          <p
+            className="rounded-[18px] px-4 py-3 text-[13px] font-semibold"
+            style={{ background: "#DCFCE7", color: "#15803D" }}
+          >
+            Diffusion offerte sur votre compte depuis le{" "}
+            {advertiser.billingDisabledAt.toLocaleDateString("fr-FR")} : impressions et clics sont
+            comptés normalement, mais rien ne vous est facturé. C&apos;est pourquoi la dépense et le
+            coût par clic restent à zéro.
+          </p>
+        )}
+
+        <PlacementBreakdown
+          rows={placements}
+          totalImpressions={totals.impressions}
+          listingHref={apercuListing ? `/annonce/${apercuListing.id}` : null}
+        />
 
         {cities.length > 0 && (
           <section className={`${card} p-0 overflow-hidden`} style={cardStyle}>

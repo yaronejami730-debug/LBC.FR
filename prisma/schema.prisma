@@ -1626,6 +1626,13 @@ model ProVerification {
   companyDocType     String
   companyDocPath     String
 
+  /// Date d'effacement des pièces justificatives.
+  ///
+  /// Renseignée à l'approbation (le contrôle a eu lieu, la preuve n'a plus
+  /// d'objet) ou par la purge des 14 mois. Les chemins deviennent alors
+  /// « deleted:… » : cf. lib/pro-documents.ts.
+  documentsDeletedAt DateTime?
+
   submittedAt DateTime @default(now())
 
   /// Conservé pour compatibilité : miroir de approvedAt/rejectedAt.

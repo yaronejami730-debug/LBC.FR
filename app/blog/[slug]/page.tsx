@@ -153,7 +153,7 @@ export default async function BlogArticlePage({
               {article.category}
             </span>
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface leading-tight mt-2">
-              {article.title}
+              {article.h1 ?? article.title}
             </h1>
             <div className="mt-4 text-sm text-outline flex items-center gap-3">
               <time dateTime={article.publishedAt}>

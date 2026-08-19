@@ -262,9 +262,43 @@ export default async function AnnoncesGeoPage({
   const baseUrl = `/annonces/${cat.id}/${slug.join("/")}`;
 
   const total = await prisma.listing.count({ where: whereClause });
-  // Page vide : on NE 404 PAS — l'utilisateur voit l'état « aucune annonce »
-  // (rendu plus bas). Le `noindex` est posé dans generateMetadata pour ne pas
-  // gaspiller le budget de crawl Google sur des pages sans contenu.
+
+  /**
+   * Stock nul → 404. C'est le renversement de la décision précédente, qui
+   * disait « on NE 404 PAS, l'utilisateur voit l'état aucune annonce ».
+   *
+   * Pourquoi ce renversement. `noindex` + 200 est une combinaison **stable** :
+   * Google lit la directive, n'indexe pas, garde l'URL dans son inventaire, et
+   * revient la vérifier indéfiniment — parce qu'une page qui répond 200 existe.
+   * Search Console la classe alors « Exclue par la balise noindex », et l'y
+   * laisse pour toujours. Au 19/08/2026 le rapport en comptait plus de 1 500,
+   * inchangé depuis le 12/08 malgré la coupe du maillage interne : couper les
+   * liens arrête la découverte de *nouvelles* URL, cela ne retire pas celles
+   * que Google connaît déjà.
+   *
+   * La matrice exposable de cette route est de 12 555 URL (15 catégories +
+   * 66 sous-catégories, × 154 communes). Le stock en couvre 17. Les autres ne
+   * sont pas des pages sous leur seuil : ce sont des pages **sans contenu**.
+   * Un 404 est la réponse exacte, et c'est la seule que Google traite comme un
+   * ordre de retrait : l'URL sort du rapport et cesse d'être explorée.
+   *
+   * Ce que ce 404 ne concerne pas — et c'est ce qui le rend sûr :
+   *   - une ville réelle avec 1 à 4 annonces répond toujours 200 (`noindex`,
+   *     hors sitemap, non liée) : il y a du contenu, un visiteur venu d'un
+   *     favori doit le voir ;
+   *   - la pagination lit le total, pas la page : `?page=2` d'une page pleine
+   *     n'est jamais concerné.
+   *
+   * Contrepartie assumée : l'état vide « publiez la première annonce à X »
+   * disparaît sur ces couples. Il ne coûte rien — ces pages ne sont ni
+   * indexées, ni liées, ni visitées. Le même appel à publier reste sur la page
+   * catégorie (`app/annonces/[categorie]/page.tsx`), elle bien indexée.
+   *
+   * Les autres familles de liste appliquent déjà cette règle : `/ville/[slug]`
+   * et `/annonces/vehicules/[marque]` 404 à stock nul. Cette route était la
+   * dernière exception — et la seule dont l'espace d'URL se compte en milliers.
+   */
+  if (total === 0) notFound();
 
   const listings = await prisma.listing.findMany({
     where: whereClause,

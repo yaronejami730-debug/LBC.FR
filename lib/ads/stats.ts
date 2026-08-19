@@ -29,6 +29,27 @@ export function parisDay(at: Date): Date {
   return new Date(`${get("year")}-${get("month")}-${get("day")}T00:00:00.000Z`);
 }
 
+/**
+ * Instant absolu du dernier minuit parisien.
+ *
+ * `parisDay` renvoie un repère de jour, pas un instant : il sert à ranger des
+ * lignes d'agrégat. Pour interroger `AdEvent`, il faut le vrai bord de la
+ * journée, décalage horaire compris — sinon la « journée » commence à 2 h du
+ * matin en été et les chiffres du jour partent faux.
+ */
+function parisMidnightInstant(now = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZoneName: "longOffset",
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  const offset = get("timeZoneName").replace("GMT", "") || "+00:00";
+  return new Date(`${get("year")}-${get("month")}-${get("day")}T00:00:00${offset}`);
+}
+
 export type RollupResult = { days: number; rows: number; events: number };
 
 /**
@@ -136,6 +157,26 @@ export type Totals = {
 export type DayPoint = { day: string; impressions: number; clicks: number; costCents: number };
 export type CityRow = { citySlug: string; impressions: number; clicks: number; costCents: number };
 
+/**
+ * Une ligne par emplacement : ce que cette bannière-là a réellement produit.
+ *
+ * Un total global ne dit pas quoi couper. Deux emplacements peuvent afficher
+ * le même nombre d'impressions et n'avoir rien à voir : l'un ramène des clics
+ * à 12 centimes, l'autre brûle le budget sans être cliqué. C'est cette
+ * comparaison que l'annonceur vient chercher.
+ */
+export type PlacementRow = {
+  placement: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  costCents: number;
+  ctr: number | null;
+  cpcCents: number | null;
+  /** Impressions de la période précédente, pour situer l'évolution. */
+  previousImpressions: number;
+};
+
 function totalsFrom(rows: { impressions: number; clicks: number; conversions: number; costCents: number }[]): Totals {
   const impressions = rows.reduce((s, r) => s + r.impressions, 0);
   const clicks = rows.reduce((s, r) => s + r.clicks, 0);
@@ -162,22 +203,66 @@ export async function advertiserStats(advertiserId: string, days = 30) {
   const from = parisDay(new Date(Date.now() - (days - 1) * 86_400_000));
   const previousFrom = parisDay(new Date(Date.now() - (days * 2 - 1) * 86_400_000));
 
-  const rows = await prisma.adStatDaily.findMany({
-    where: {
-      campaign: { advertiserId },
-      day: { gte: previousFrom },
-    },
-    select: {
-      day: true,
-      citySlug: true,
-      placement: true,
-      impressions: true,
-      clicks: true,
-      conversions: true,
-      costCents: true,
-    },
-    orderBy: { day: "asc" },
-  });
+  // Aujourd'hui ne passe pas par les agrégats.
+  //
+  // Le roulement tourne à l'heure : un annonceur qui vient de voir sa bannière
+  // s'afficher trouvait un tableau inchangé pendant cinquante minutes, et en
+  // concluait — légitimement — que rien n'était compté. Les jours clos se
+  // lisent donc dans `AdStatDaily`, la journée en cours directement dans
+  // `AdEvent`. Le volume d'un seul jour reste petit, et le roulement écrasera
+  // la même valeur cette nuit : les deux sources ne peuvent pas diverger.
+  const today = parisDay(new Date());
+  const todayStart = parisMidnightInstant();
+
+  const [stored, liveGroups] = await Promise.all([
+    prisma.adStatDaily.findMany({
+      where: {
+        campaign: { advertiserId },
+        day: { gte: previousFrom, lt: today },
+      },
+      select: {
+        day: true,
+        citySlug: true,
+        placement: true,
+        impressions: true,
+        clicks: true,
+        conversions: true,
+        costCents: true,
+      },
+      orderBy: { day: "asc" },
+    }),
+    prisma.adEvent.groupBy({
+      by: ["placement", "citySlug", "type"],
+      where: { campaign: { advertiserId }, createdAt: { gte: todayStart } },
+      _count: { _all: true },
+      _sum: { costCents: true },
+    }),
+  ]);
+
+  const liveByKey = new Map<string, (typeof stored)[number]>();
+  for (const g of liveGroups) {
+    const citySlug = g.citySlug ?? "";
+    const key = `${g.placement}|${citySlug}`;
+    const row =
+      liveByKey.get(key) ??
+      {
+        day: today,
+        citySlug,
+        placement: g.placement,
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        costCents: 0,
+      };
+    const count = g._count._all;
+    if (g.type === "IMPRESSION") row.impressions += count;
+    else if (g.type === "CLICK") row.clicks += count;
+    else if (g.type === "CONVERSION") row.conversions += count;
+    row.costCents += g._sum.costCents ?? 0;
+    liveByKey.set(key, row);
+  }
+
+  const rows = [...stored, ...liveByKey.values()];
 
   const current = rows.filter((r) => r.day >= from);
   const previous = rows.filter((r) => r.day < from);
@@ -203,6 +288,37 @@ export async function advertiserStats(advertiserId: string, days = 30) {
     point.costCents += r.costCents;
   }
 
+  // Ventilation par emplacement, période courante et précédente. Le même
+  // accumulateur sert aux deux : la seule différence est la fenêtre de jours.
+  const accPlacements = (source: typeof current) => {
+    const m = new Map<string, { impressions: number; clicks: number; conversions: number; costCents: number }>();
+    for (const r of source) {
+      const row = m.get(r.placement) ?? { impressions: 0, clicks: 0, conversions: 0, costCents: 0 };
+      row.impressions += r.impressions;
+      row.clicks += r.clicks;
+      row.conversions += r.conversions;
+      row.costCents += r.costCents;
+      m.set(r.placement, row);
+    }
+    return m;
+  };
+
+  const currentPlacements = accPlacements(current);
+  const previousPlacements = accPlacements(previous);
+
+  const placements: PlacementRow[] = [...currentPlacements.entries()]
+    .map(([placement, r]) => ({
+      placement,
+      impressions: r.impressions,
+      clicks: r.clicks,
+      conversions: r.conversions,
+      costCents: r.costCents,
+      ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
+      cpcCents: r.clicks > 0 ? Math.round(r.costCents / r.clicks) : null,
+      previousImpressions: previousPlacements.get(placement)?.impressions ?? 0,
+    }))
+    .sort((a, b) => b.impressions - a.impressions);
+
   const byCity = new Map<string, CityRow>();
   for (const r of current) {
     const key = r.citySlug || "";
@@ -216,6 +332,7 @@ export async function advertiserStats(advertiserId: string, days = 30) {
   return {
     totals: totalsFrom(current),
     previous: totalsFrom(previous),
+    placements,
     series: [...byDay.values()],
     cities: [...byCity.values()].sort((a, b) => b.impressions - a.impressions).slice(0, 12),
   };

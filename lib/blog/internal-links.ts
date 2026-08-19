@@ -3,7 +3,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { TOP_CITIES, FRENCH_CITIES, citySlug } from "@/lib/cities";
 import { CAR_BRANDS } from "@/lib/carBrands";
 import { subcategoryToSlug } from "@/lib/seo-content";
-import { getSeoInventory } from "@/lib/seo/inventory";
+import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 
 export type InternalLink = { label: string; href: string };
@@ -98,6 +98,40 @@ function detectCityLinks(article: BlogArticle, sub: InternalLink | null, max: nu
 }
 
 /**
+ * Articles qui parlent de *vendre* un objet — pas d'en acheter un.
+ *
+ * Ils doivent pointer vers la page d'acquisition vendeurs plutôt que vers une
+ * page de catégorie : un lecteur qui cherche comment revendre son canapé n'a
+ * rien à faire dans une grille d'annonces à acheter.
+ */
+const SELLER_PAGE: InternalLink = {
+  label: "Vendre vos objets d'occasion gratuitement",
+  href: "/vente-objets-occasion-particuliers",
+};
+
+const SELLER_INTENT = /vendre|revendre|estimer le prix|estimation|se d[ée]barrasser|donner une seconde vie/i;
+
+/** Catégories d'objets : un bien immobilier ou un emploi n'est pas concerné. */
+const SELLER_CATEGORIES = new Set([
+  "maison",
+  "multimedia",
+  "mode",
+  "loisirs",
+  "bebe-enfant",
+  "materiel-pro",
+  "divers",
+]);
+
+function detectSellerLink(article: BlogArticle): InternalLink | null {
+  const haystack = `${article.title} ${article.description} ${article.keywords.join(" ")}`;
+  if (!SELLER_INTENT.test(haystack)) return null;
+  // Sans catégorie rattachée, on ne devine pas : mieux vaut aucun lien qu'un
+  // lien qui envoie un vendeur de voiture sur une page d'objets.
+  if (!article.relatedCategoryId || !SELLER_CATEGORIES.has(article.relatedCategoryId)) return null;
+  return SELLER_PAGE;
+}
+
+/**
  * Liens internes d'un article de blog.
  *
  * Le blog est aujourd'hui le meilleur actif du site en référencement — donc
@@ -114,9 +148,37 @@ function detectCityLinks(article: BlogArticle, sub: InternalLink | null, max: nu
 export async function getArticleInternalLinks(article: BlogArticle): Promise<InternalLink[]> {
   const links: InternalLink[] = [];
 
-  const sub = detectSubcategoryLink(article);
-  const brand = detectBrandLink(article);
   const inventory = await getSeoInventory().catch(() => null);
+
+  /**
+   * Sous-catégorie et marque passent par le même filtre que les villes.
+   *
+   * Ils ne l'avaient pas, et c'était déjà faux pour la marque : une page marque
+   * 404 depuis toujours à stock nul (`app/annonces/vehicules/[marque]`), donc un
+   * article citant une marque non représentée offrait un lien mort. Le stock de
+   * cette route s'est étendu aux sous-catégories, ce qui étend le même risque à
+   * `detectSubcategoryLink`.
+   *
+   * Le seuil retenu est `isIndexable`, pas « au moins une annonce » : le blog
+   * est le meilleur actif du domaine, et un lien depuis une page indexée vers
+   * une page `noindex` dépense du budget d'exploration sans rien rapporter.
+   * Sous le seuil, on n'émet rien — le lien de repli vers la page catégorie,
+   * ajouté plus bas, reste toujours disponible.
+   */
+  const keep = (link: InternalLink | null, count: number | undefined): InternalLink | null =>
+    link && inventory && isIndexable(count ?? 0) ? link : null;
+
+  const subDetected = detectSubcategoryLink(article);
+  const brandDetected = detectBrandLink(article);
+  const sub = keep(
+    subDetected,
+    subDetected ? inventory?.byCategorySub[subDetected.href.replace("/annonces/", "")] : 0,
+  );
+  const brand = keep(
+    brandDetected,
+    brandDetected ? inventory?.byBrand[brandDetected.href.split("/")[3]] : 0,
+  );
+
   const cities = inventory
     ? detectCityLinks(article, sub, 4).filter((link) => {
         // `/annonces/{cat}/{ville}` ou `/annonces/{cat}/{sub}/{ville}`
@@ -127,6 +189,8 @@ export async function getArticleInternalLinks(article: BlogArticle): Promise<Int
       })
     : [];
 
+  const seller = detectSellerLink(article);
+  if (seller) links.push(seller);
   if (sub) links.push(sub);
   if (brand && brand.href !== sub?.href) links.push(brand);
   links.push(...cities);
