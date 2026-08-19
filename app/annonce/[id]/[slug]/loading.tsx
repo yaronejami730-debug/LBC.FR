@@ -54,3 +54,23 @@ export default function ListingLoading() {
     </div>
   );
 }
+
+/**
+ * Ce squelette vivait sur le segment parent `app/annonce/[id]/`.
+ *
+ * Un `loading.tsx` place le segment **et tous ses enfants** derrière une
+ * frontière Suspense : Next envoie la coquille immédiatement, donc le statut
+ * HTTP 200 est déjà écrit quand le composant s'exécute. Or `app/annonce/[id]/page.tsx`
+ * appelle `permanentRedirect()` vers l'URL avec slug. La redirection ne pouvait
+ * plus changer le statut : elle se dégradait en redirection côté client.
+ *
+ * Mesuré en production le 19/08/2026 sur trois annonces : `/annonce/{id}`
+ * répondait **200** au lieu de **308**. Chaque annonce exposait donc deux URL
+ * explorables renvoyant la même page — la balise canonique limitait le risque
+ * d'indexation, pas le coût d'exploration, qui doublait.
+ *
+ * Descendu ici, le squelette couvre la vraie page d'annonce et laisse la route
+ * de redirection répondre avant tout envoi. `edit/` et `republier/` perdent ce
+ * squelette : il dessinait une galerie photo, pas un formulaire, et ces deux
+ * pages sont derrière authentification.
+ */

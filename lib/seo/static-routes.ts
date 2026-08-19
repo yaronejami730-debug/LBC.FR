@@ -57,6 +57,11 @@ export const STATIC_PAGES = [
   // d'achat : deux intentions, deux pages, un lien croisé entre elles.
   { path: "/vente-objets-occasion-particuliers", changeFrequency: "weekly", priority: 0.8 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
+  // Offre fondateurs. Page indexable assumée (voir `app/early-adopter/layout.tsx`)
+  // et pourtant absente d'ici : elle était donc indexable sans jamais être
+  // soumise. Une page qu'on accepte d'indexer et qu'on ne recommande pas est
+  // une contradiction dans les deux sens — on la déclare.
+  { path: "/early-adopter", changeFrequency: "weekly", priority: 0.6 },
   { path: "/comparatif", changeFrequency: "weekly", priority: 0.7 },
   { path: "/voiture-budget", changeFrequency: "weekly", priority: 0.7 },
   { path: "/a-propos", changeFrequency: "monthly", priority: 0.6 },

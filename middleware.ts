@@ -38,13 +38,66 @@ function isScraperBot(userAgent: string): boolean {
   return SCRAPER_AGENTS.some((agent) => userAgent.includes(agent));
 }
 
-export default auth((req: any) => {
+/**
+ * Chemins qui exigent réellement une session.
+ *
+ * ── Pourquoi cette liste existe ───────────────────────────────────────────
+ *
+ * Le middleware était intégralement enveloppé dans `auth()`. Conséquence
+ * mesurée le 19/08/2026 en production, sur `/`, `/blog`, `/annonces`,
+ * `/ville/paris` et une fiche d'annonce, aussi bien pour Googlebot que pour un
+ * navigateur ordinaire :
+ *
+ *     cache-control: private, no-cache, no-store, max-age=0, must-revalidate
+ *     set-cookie: __Host-authjs.csrf-token=…
+ *
+ * NextAuth touche la session à chaque requête, pose un cookie, et la réponse
+ * devient non stockable. Deux effets, tous deux invisibles en développement :
+ *
+ *   1. les en-têtes `public, s-maxage=3600, stale-while-revalidate=86400`
+ *      déclarés dans `next.config.ts` pour `/annonces/:path*` et `/ville/:slug`
+ *      n'atteignaient jamais le CDN — ils étaient écrasés ;
+ *   2. le cache de Vercel ne pouvait servir aucune page. Chaque visite de
+ *      Googlebot repartait à l'origine, rejouait les requêtes Prisma et payait
+ *      le TTFB correspondant. Or le taux d'exploration de Google est indexé sur
+ *      ce temps de réponse : un site lent est exploré moins souvent. C'est le
+ *      mécanisme qui affamait le budget de crawl, pendant qu'on cherchait la
+ *      cause dans `robots.txt`.
+ *
+ * ── Ce que la correction ne fait pas ──────────────────────────────────────
+ *
+ * Elle ne traite pas Googlebot autrement qu'un visiteur : ce serait du
+ * cloaking, et la branche `isScraperBot` existante en frôle déjà la limite.
+ * Elle retire `auth()` du chemin des pages **publiques, pour tout le monde** —
+ * un visiteur anonyme sur `/blog` n'a aucune raison de déclencher une lecture
+ * de session.
+ *
+ * Le reste du middleware — bascule Pet, en-tête `x-pathname`, cookie
+ * d'intention — continue de s'exécuter sur toutes les routes, session ou non.
+ *
+ * ⚠️ Toute nouvelle route exigeant une session doit être ajoutée ici **et**
+ * garder sa propre vérification côté serveur : le middleware ferme la porte,
+ * il n'est pas la serrure.
+ */
+const AUTH_PREFIXES = [...PROTECTED, "/admin"];
+
+function needsSession(pathname: string): boolean {
+  return AUTH_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+/**
+ * Traitements communs à toutes les requêtes, avec ou sans session.
+ *
+ * Renvoie une réponse à servir telle quelle, ou `null` pour « poursuivre ».
+ * Rendre l'ordre explicite est délibéré : la bascule Pet doit passer avant tout
+ * contrôle de session, sinon une route Pet désactivée renverrait une
+ * redirection de connexion au lieu d'un 404.
+ */
+function commonRouting(req: NextRequest): NextResponse | null {
   const { pathname } = req.nextUrl;
   const userAgent = req.headers.get("user-agent") || "";
   const host = req.headers.get("host") || "";
 
-  // Deal&Co Pet is deployed but kept hidden until launch. While PET_PUBLIC is
-  // not "true", every pet route and the pet. subdomain render a 404.
   const petEnabled = process.env.PET_PUBLIC === "true";
   const isPetSubdomain = host.startsWith("pet.");
   const isPetPath = pathname === "/pet" || pathname.startsWith("/pet/");
@@ -54,41 +107,37 @@ export default auth((req: any) => {
     return NextResponse.rewrite(url);
   }
 
-  // Deal&Co Pet runs on the `pet.` subdomain. Rewrite root requests onto the
-  // /pet/* segment so the same Next.js app serves both universes from one
-  // deployment. Skips assets, API routes, and paths that already start with
-  // /pet to avoid recursive rewrites.
   if (isPetSubdomain && !pathname.startsWith("/pet") && !pathname.startsWith("/api") && !pathname.startsWith("/_next")) {
     const url = req.nextUrl.clone();
     url.pathname = `/pet${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
   }
 
-  // Skip auth entirely for OG image routes — prevents AuthJS cookies
   if (pathname.includes("/opengraph-image")) {
     return NextResponse.next();
   }
 
-  // Skip auth middleware for scrapers — prevents AuthJS cookies
   if (isScraperBot(userAgent)) {
     const response = NextResponse.next();
-    // Override cache-control for bots — allow caching of public pages
     response.headers.set("cache-control", "public, max-age=3600");
     return response;
   }
 
+  return null;
+}
+
+/** Branche avec session : inchangée, mais réservée aux chemins qui l'exigent. */
+const withSession = auth((req: any) => {
+  const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
 
-  const isProtected = PROTECTED.some((p) => pathname.startsWith(p));
-  const isAdmin = pathname.startsWith("/admin");
-
-  if (isAdmin && pathname !== "/admin/login") {
+  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     if (!isLoggedIn) return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
     const role = (req.auth?.user as any)?.role;
     if (role !== "ADMIN") return NextResponse.redirect(new URL("/admin/login", req.nextUrl.origin));
   }
 
-  if (isProtected && !isLoggedIn) {
+  if (PROTECTED.some((p) => pathname.startsWith(p)) && !isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
@@ -96,6 +145,17 @@ export default auth((req: any) => {
 
   return withLandingIntent(req, nextWithPathname(req));
 });
+
+export default function middleware(req: NextRequest, ctx: any) {
+  const common = commonRouting(req);
+  if (common) return common;
+
+  if (needsSession(req.nextUrl.pathname)) {
+    return (withSession as any)(req, ctx);
+  }
+
+  return withLandingIntent(req, nextWithPathname(req));
+}
 
 /**
  * Transmet le chemin demandé aux composants serveur.

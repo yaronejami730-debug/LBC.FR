@@ -34,6 +34,7 @@
     "test:city-category": "tsx scripts/test-city-category.ts",
     "seo:sweep": "tsx -r ./scripts/load-env.ts scripts/seo-http-sweep.ts",
     "seo:exclusions": "tsx -r ./scripts/load-env.ts scripts/seo-exclusion-report.ts",
+    "seo:audit": "tsx scripts/seo-audit.ts",
     "test:toponymes": "tsx scripts/test-classifier-toponyms.ts",
     "intent:backfill": "tsx scripts/backfill-offer-intent.ts",
     "geo:build-communes": "tsx scripts/build-communes-dataset.ts",

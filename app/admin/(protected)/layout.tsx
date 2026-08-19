@@ -6,7 +6,18 @@ import { headers } from "next/headers";
 import { canAccess, staffAccess } from "@/lib/admin/staff";
 import { sectionForPath } from "@/lib/admin/sections";
 
-export const metadata = { title: "Administration — Deal & Co" };
+/**
+ * `robots` explicite plutôt qu'hérité.
+ *
+ * Ces écrans héritaient du `robots: { index: true }` du layout racine. En
+ * pratique ils sont hors de portée — `robots.txt` ferme `/admin` et le
+ * middleware redirige tout non-administrateur — mais l'héritage voulait dire
+ * qu'aucune de ces trois barrières n'était l'indexation elle-même. On l'écrit.
+ */
+export const metadata = {
+  title: "Administration — Deal & Co",
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
