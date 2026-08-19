@@ -158,14 +158,42 @@ export default function middleware(req: NextRequest, ctx: any) {
 }
 
 /**
- * Transmet le chemin demandé aux composants serveur.
+ * Transmet le chemin demandé aux composants serveur — **uniquement** là où on
+ * s'en sert.
  *
  * Une mise en page n'a pas accès à l'URL courante : elle reçoit des enfants
  * déjà résolus. L'administration en a besoin pour vérifier qu'un compte a le
  * droit d'ouvrir le chapitre demandé — masquer un lien dans la barre latérale
  * n'a jamais fermé une porte, l'adresse reste tapable.
+ *
+ * ── Pourquoi la restriction ───────────────────────────────────────────────
+ *
+ * `NextResponse.next({ request: { headers } })` ne se contente pas d'ajouter un
+ * en-tête : il déclare que la requête servie à la route n'est plus celle qui est
+ * arrivée. Next doit donc réexécuter la route à l'origine, et la réponse cesse
+ * d'être servie depuis le cache — y compris pour une page prérendue.
+ *
+ * Cet appel était fait sur **toutes** les requêtes. Mesure du 19/08/2026, après
+ * avoir déjà retiré `auth()` du chemin public :
+ *
+ *     /ville/paris        → ● prérendue au build
+ *     réponse servie      → cache-control: private, no-cache, no-store
+ *                           x-vercel-cache: MISS
+ *
+ * Une page statique qui ne se cache pas : la contradiction ne venait pas de
+ * NextAuth mais d'ici. `x-pathname` ne sert qu'à `/admin` — le reste du site
+ * payait un surcoût pour un en-tête que personne ne lisait.
+ *
+ * ⚠️ Avant de lire `x-pathname` depuis une nouvelle route, l'ajouter à
+ * `PATHNAME_HEADER_PREFIXES`. L'en-tête est absent partout ailleurs, et son
+ * absence est silencieuse.
  */
+const PATHNAME_HEADER_PREFIXES = ["/admin"];
+
 function nextWithPathname(req: NextRequest): NextResponse {
+  if (!PATHNAME_HEADER_PREFIXES.some((p) => req.nextUrl.pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
   const headers = new Headers(req.headers);
   headers.set("x-pathname", req.nextUrl.pathname);
   return NextResponse.next({ request: { headers } });
