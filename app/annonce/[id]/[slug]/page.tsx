@@ -296,6 +296,26 @@ export default async function ListingPage({
    * la page rend en ~340 ms de base, et ses blocs lourds — annonces similaires,
    * recommandations — gardent leurs propres frontières Suspense, donc le
    * streaming continue là où il sert vraiment.
+   *
+   * ── L'invariant dont dépend le caractère permanent ────────────────────────
+   *
+   * Une redirection 308 est mise en cache durablement par les navigateurs et
+   * par Google : elle n'est défendable que si l'ancienne URL ne peut jamais
+   * désigner autre chose. Ce qui la garantit ici :
+   *
+   *   - **l'identifiant est la clé, le slug est décoratif.** Rien dans le code
+   *     ne cherche une annonce par son slug ; la cible est calculée à partir du
+   *     titre de l'annonce portant cet identifiant. Un slug périmé ne peut donc
+   *     mener qu'à l'annonce à qui l'identifiant appartient ;
+   *   - **l'identifiant n'est jamais réattribué.** `Listing.id` est un
+   *     `@default(cuid())` et aucun chemin de création ne le pose à la main
+   *     (administration, API publique, API v1, import externe). Un identifiant
+   *     supprimé n'est pas recyclé ;
+   *   - **un identifiant disparu tombe en 404**, pas en redirection :
+   *     `getListing` renvoie `null` et `notFound()` s'applique plus haut.
+   *
+   * Si l'un de ces trois points devait changer — un identifiant réutilisable,
+   * une recherche par slug — cette redirection devrait redevenir temporaire.
    */
   const correctSlug = listingSlug(listing.title);
   if (slug !== correctSlug) {
