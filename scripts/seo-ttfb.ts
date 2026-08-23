@@ -21,6 +21,11 @@
  * Google, pas une liste écrite à la main qui dériverait.
  */
 
+// Sans import ni export, TypeScript traiterait ce fichier comme un script
+// global : ses constantes entreraient en collision avec celles des autres
+// scripts. `export {}` en fait un module, et le problème disparaît.
+export {};
+
 const arg = (name: string, fallback: string) =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 

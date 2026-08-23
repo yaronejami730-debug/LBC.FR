@@ -1,8 +1,6 @@
-import { auth } from "@/lib/auth";
-import { membershipsOf } from "@/lib/pro/memberships";
 import Link from "next/link";
 import CategoryDrawer from "./CategoryDrawer";
-import UserDropdown from "./UserDropdown";
+import NavbarUser from "./NavbarUser";
 import NavSearch from "./NavSearch";
 
 // Use canonical SEO routes (indexable, with full content) rather than search
@@ -23,32 +21,28 @@ const CATEGORIES = [
   { label: "Guides",               href: "/blog" },
 ];
 
-export default async function Navbar({
+/**
+ * Barre de navigation — **sans session**, et c'est tout l'enjeu.
+ *
+ * Ce composant lisait `auth()`, donc un cookie. Conséquence invisible en
+ * développement et coûteuse en production : toute page l'affichant basculait en
+ * rendu dynamique, et les familles SEO perdaient la génération statique
+ * qu'elles déclaraient. Mesure du 23/08/2026 avant correction — 18 pages
+ * pré-rendues sur l'ensemble du site, `x-vercel-cache: MISS` sur `/ville/*`,
+ * `/annonces/*`, `/voiture-budget/*`, contre `PRERENDER` sur `/comparatif/*`,
+ * la seule famille qui n'affichait pas cette barre.
+ *
+ * Ce qui dépend de la personne connectée vit désormais dans `NavbarUser`, côté
+ * client. Le reste — logo, recherche, catégories — est identique pour tout le
+ * monde et peut donc être mis en cache pour tout le monde.
+ */
+export default function Navbar({
   active,
   right,
 }: {
   active?: string;
   right?: React.ReactNode;
 }) {
-  const session = await auth();
-  const user = session?.user;
-
-  // Récupérer isPro pour le menu API
-  let isPro = false;
-  let membershipCount = 0;
-  if (user?.id) {
-    const { prisma } = await import("@/lib/prisma");
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { isPro: true },
-    }).catch(() => null);
-    isPro = dbUser?.isPro ?? false;
-    // Appartenances d'équipe encore vivantes : c'est ce qui fait apparaître
-    // « Mon agenda » chez une salariée, et le fait disparaître le jour où le
-    // salon lui retire son accès.
-    membershipCount = (await membershipsOf(user.id).catch(() => [])).length;
-  }
-
   return (
     <nav className="fixed top-0 w-full z-50 bg-white border-b border-slate-200 shadow-sm">
       <div className="w-full max-w-[1248px] mx-auto px-4 lg:px-6">
@@ -79,7 +73,7 @@ export default async function Navbar({
 
           {/* Right Action Icons */}
           <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
-            <UserDropdown user={user} isPro={isPro} membershipCount={membershipCount} />
+            <NavbarUser />
           </div>
         </div>
 
