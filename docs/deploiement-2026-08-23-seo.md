@@ -25,9 +25,25 @@ d'un coup. Mesuré en local avant déploiement, TTFB 0,20 à 0,26 s, et les bloc
 lourds de la page (annonces similaires, recommandations) gardent leurs propres
 frontières Suspense.
 
-**À surveiller après mise en ligne** : le TTFB des fiches annonces. S'il
-dépassait durablement la seconde, le retrait du squelette deviendrait sensible
-et il faudrait arbitrer autrement.
+**À surveiller après mise en ligne** : le TTFB des fiches annonces.
+
+```bash
+npm run seo:ttfb
+```
+
+Le script tire ses URL du sitemap servi, mesure fiches et pages de liste, et
+sort en erreur si les fiches doublent la référence. Mesure du 23/08/2026, après
+déploiement, depuis un poste extérieur :
+
+```
+fiches annonces    min 0.24s · médiane 0.28s · p90 0.34s · max 0.88s
+pages de liste     min 0.20s · médiane 0.43s · p90 0.51s · max 0.61s
+```
+
+L'audit relevait jusqu'à 1,9 s sur les fiches contre 0,3 à 0,7 s sur les listes.
+Le rapport est désormais inversé : les fiches répondent plus vite que les pages
+de liste. C'est ce qui rend le retrait du squelette tenable — il n'y a plus
+d'attente à masquer.
 
 ## Vérification, une fois déployé
 
