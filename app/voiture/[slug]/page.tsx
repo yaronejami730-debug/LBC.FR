@@ -207,7 +207,10 @@ export async function generateMetadata({
   }
 
   const canonical = `${BASE}/voiture/${slug}`;
-  const title = `${cluster.label} — ${count.toLocaleString("fr-FR")} annonces entre particuliers — Deal&Co`;
+  // Sans « — Deal&Co » : le `template` du layout racine l'ajoute au titre de
+  // page. Il reste écrit à la main dans l'Open Graph ci-dessous, où le
+  // `template` ne s'applique pas.
+  const title = `${cluster.label} — ${count.toLocaleString("fr-FR")} annonces entre particuliers`;
   const description = `${count} annonces de ${cluster.label.toLowerCase()} entre particuliers en France. Sans commission, contact direct vendeur. Comparez les prix sur Deal&Co.`;
 
   return {
@@ -215,7 +218,14 @@ export async function generateMetadata({
     description,
     alternates: { canonical },
     robots: page > 1 ? { index: false, follow: true } : undefined,
-    openGraph: { title, description, url: canonical, siteName: "Deal&Co", type: "website", locale: "fr_FR" },
+    openGraph: {
+      title: `${title} — Deal&Co`,
+      description,
+      url: canonical,
+      siteName: "Deal&Co",
+      type: "website",
+      locale: "fr_FR",
+    },
     twitter: { card: "summary_large_image", title, description },
   };
 }

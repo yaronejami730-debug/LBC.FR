@@ -1,5 +1,5 @@
 import { cache, Suspense } from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -273,10 +273,33 @@ export default async function ListingPage({
     notFound();
   }
 
-  // Canonical slug correction — redirect if slug in URL doesn't match title
+  /**
+   * Correction du slug — redirection **permanente** vers l'URL canonique.
+   *
+   * Deux points, et le second explique l'absence de `loading.tsx` sur cette
+   * route.
+   *
+   * `permanentRedirect` plutôt que `redirect` : un slug qui change parce que le
+   * titre a été corrigé ne redeviendra pas l'ancien. Le 307 laissait Google
+   * conserver l'ancienne URL et n'y transférer aucun signal.
+   *
+   * Et surtout : cette redirection ne peut porter un code HTTP que si rien n'a
+   * encore été envoyé au client. Un `loading.tsx` sur ce segment crée une
+   * frontière Suspense, Next vide le shell immédiatement, et toute redirection
+   * ultérieure — y compris depuis `generateMetadata` — se dégrade en
+   * redirection JavaScript renvoyée avec un **200**. Mesuré le 23/08/2026 : sur
+   * `/annonce/{id}/slug-erroné`, la réponse était 200 avec le corps « cette
+   * annonce n'est plus disponible » — un soft 404 sur un espace d'URL illimité,
+   * exactement ce qu'un crawler ne doit pas trouver.
+   *
+   * Le squelette de chargement a donc été retiré. Ce qu'on perd est modeste :
+   * la page rend en ~340 ms de base, et ses blocs lourds — annonces similaires,
+   * recommandations — gardent leurs propres frontières Suspense, donc le
+   * streaming continue là où il sert vraiment.
+   */
   const correctSlug = listingSlug(listing.title);
   if (slug !== correctSlug) {
-    redirect(`/annonce/${id}/${correctSlug}`);
+    permanentRedirect(`/annonce/${id}/${correctSlug}`);
   }
 
   /**

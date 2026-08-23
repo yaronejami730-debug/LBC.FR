@@ -7,7 +7,7 @@ import { safeJsonLd } from "@/lib/json-ld";
 const BASE = "https://www.dealandcompany.fr";
 
 export const metadata: Metadata = {
-  title: "À propos de Deal&Co — Petites annonces gratuites entre particuliers",
+  title: "À propos — Petites annonces gratuites entre particuliers",
   description:
     "Deal&Co est la plateforme française de petites annonces gratuites entre particuliers. Sans commission, sans algorithme de visibilité payant — achetez et vendez directement.",
   alternates: { canonical: `${BASE}/a-propos` },

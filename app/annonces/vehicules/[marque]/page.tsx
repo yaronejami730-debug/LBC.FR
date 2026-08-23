@@ -97,7 +97,7 @@ export async function generateMetadata({
       where: { status: "APPROVED", deletedAt: null, category: "Véhicules", subcategory: subLabel } as any,
     }).catch(() => 0);
     return {
-      title: `${subLabel} d'occasion entre particuliers — ${subCount} annonce${subCount !== 1 ? "s" : ""} — Deal&Co`,
+      title: `${subLabel} d'occasion entre particuliers — ${subCount} annonce${subCount !== 1 ? "s" : ""}`,
       description: `Achetez ou vendez ${subLabel.toLowerCase()} d'occasion entre particuliers en France. ${subCount} annonce${subCount !== 1 ? "s" : ""} disponible${subCount !== 1 ? "s" : ""} sur Deal&Co, sans commission.`,
       alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
       robots: listingPageRobots(subCount, page),
@@ -114,7 +114,7 @@ export async function generateMetadata({
   }).catch(() => 0);
 
   return {
-    title: `${brand.name} occasion entre particuliers — ${count} annonce${count !== 1 ? "s" : ""} — Deal&Co`,
+    title: `${brand.name} occasion entre particuliers — ${count} annonce${count !== 1 ? "s" : ""}`,
     description: `Achetez une ${brand.name} d'occasion entre particuliers en France. ${count} annonce${count !== 1 ? "s" : ""} de particuliers sans commission. Toutes les ${brand.name} disponibles sur Deal&Co.`,
     alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
     robots: listingPageRobots(count, page),
