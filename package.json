@@ -58,7 +58,8 @@
     "test:ads:wallet": "ADS_TEST_WRITE=1 tsx -r ./scripts/load-env.ts scripts/test-ads-wallet.ts",
     "test:listing-meta": "tsx -r ./scripts/load-env.ts scripts/test-listing-meta.ts",
     "seo:sublinks": "tsx -r ./scripts/load-env.ts scripts/seo-subcategory-links.ts",
-    "profile:listing": "tsx -r ./scripts/load-env.ts scripts/profile-listing-page.ts"
+    "profile:listing": "tsx -r ./scripts/load-env.ts scripts/profile-listing-page.ts",
+    "seo:coverage": "tsx -r ./scripts/load-env.ts scripts/seo-sitemap-coverage.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",
