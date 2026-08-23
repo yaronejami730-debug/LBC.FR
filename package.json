@@ -34,6 +34,7 @@
     "test:city-category": "tsx scripts/test-city-category.ts",
     "seo:sweep": "tsx -r ./scripts/load-env.ts scripts/seo-http-sweep.ts",
     "seo:exclusions": "tsx -r ./scripts/load-env.ts scripts/seo-exclusion-report.ts",
+    "jobs:sync": "tsx -r ./scripts/load-env.ts scripts/sync-jobs.ts",
     "seo:audit": "tsx scripts/seo-audit.ts",
     "test:toponymes": "tsx scripts/test-classifier-toponyms.ts",
     "intent:backfill": "tsx scripts/backfill-offer-intent.ts",
@@ -54,7 +55,8 @@
     "test:ads:auction": "tsx -r ./scripts/load-env.ts scripts/test-ads-auction.ts",
     "test:ads:viewability": "tsx -r ./scripts/load-env.ts scripts/test-ads-viewability.ts",
     "test:ads:quality": "tsx -r ./scripts/load-env.ts scripts/test-ads-quality.ts",
-    "test:ads:wallet": "ADS_TEST_WRITE=1 tsx -r ./scripts/load-env.ts scripts/test-ads-wallet.ts"
+    "test:ads:wallet": "ADS_TEST_WRITE=1 tsx -r ./scripts/load-env.ts scripts/test-ads-wallet.ts",
+    "test:listing-meta": "tsx -r ./scripts/load-env.ts scripts/test-listing-meta.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

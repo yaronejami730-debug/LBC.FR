@@ -33,6 +33,7 @@ import ShareListing from "@/components/ShareListing";
 import { RemovedNotice } from "@/components/listing/RemovedNotice";
 import { evaluateListing } from "@/lib/seo/indexability";
 import { displayCity, resolveCity } from "@/lib/seo/city";
+import { buildListingMeta } from "@/lib/seo/listing-meta";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import { subcategoryToSlug } from "@/lib/seo-content";
@@ -73,6 +74,33 @@ export async function generateMetadata({
    */
   const selfCanonical = { canonical: pageUrl } as const;
 
+  /**
+   * Titre et description, construits **avant** le verdict d'indexation.
+   *
+   * C'est le correctif du crawl du 23/08/2026 : les branches `noindex`
+   * ci-dessous ne renvoyaient que `robots` et `alternates`, et un objet
+   * `Metadata` sans `title` hérite de celui du layout racine. Trente-trois
+   * fiches annonçaient donc « Deal&Co — Petites annonces gratuites entre
+   * particuliers en France », toutes la même chose, aucune la sienne.
+   *
+   * Ne pas indexer une page et la nommer correctement sont deux questions
+   * distinctes. Une page `noindex` reste ouverte au partage, visitée depuis un
+   * favori, affichée dans un onglet : elle mérite son titre.
+   */
+  const meta = buildListingMeta({
+    title: listing.title,
+    description: listing.description,
+    location: listing.location,
+    price: listing.price,
+    category: listing.category,
+    subcategory: listing.subcategory,
+  });
+  const baseMeta = {
+    title: meta.title,
+    description: meta.description,
+    alternates: selfCanonical,
+  } as const;
+
   // Une annonce qui n'est pas en ligne ne s'indexe pas, quelle que soit la
   // raison : en attente de modération, refusée, retirée, vendue, supprimée.
   //
@@ -83,7 +111,7 @@ export async function generateMetadata({
   // visiteurs non propriétaires — mais `generateMetadata` s'exécute avant, et
   // un signal d'indexation ne doit jamais dépendre de qui consulte la page.
   if (listing.status !== "APPROVED" || ld.shadowBanned || ld.deletedAt) {
-    return { alternates: selfCanonical, robots: { index: false, follow: false } };
+    return { ...baseMeta, robots: { index: false, follow: false } };
   }
 
   /**
@@ -120,28 +148,14 @@ export async function generateMetadata({
     // `follow` : les liens sortants (catégorie, ville, annonces similaires)
     // restent suivis. La page ne s'indexe pas, mais elle continue de faire
     // circuler le signal vers celles qui le méritent.
-    return { alternates: selfCanonical, robots: { index: false, follow: true } };
+    return { ...baseMeta, robots: { index: false, follow: true } };
   }
 
-  const priceLabel = listing.price && listing.price > 0
-    ? listing.price.toLocaleString("fr-FR") + " €"
-    : "Prix à débattre";
-  const priceStr = priceLabel;
-  const cityShort = displayCity(listing.location) || (listing.location ?? "");
-
-  const SUFFIX = " | Deal&Co";
-  const CAP = 60;
-  const rawTitle = cityShort
-    ? `${listing.title} à ${cityShort} — ${priceLabel}`
-    : `${listing.title} — ${priceLabel}`;
-  const budget = CAP - SUFFIX.length;
-  const titleSeo =
-    rawTitle.length <= budget
-      ? rawTitle + SUFFIX
-      : rawTitle.slice(0, budget - 1).trimEnd() + "…" + SUFFIX;
-
-  const descBase = `${listing.description.slice(0, 155)}${listing.description.length > 155 ? "…" : ""}`;
-  const desc = `${descBase} · ${listing.location} · ${priceStr}`;
+  // Titre et description viennent du constructeur partagé (`baseMeta`), déjà
+  // calculés plus haut : une seule définition du format, la même pour une page
+  // indexable et pour une page qui ne l'est pas.
+  const titleSeo = meta.title;
+  const desc = meta.description;
 
   // Direct image (fast, cached on CDN) — fallback to dynamic OG renderer.
   // WhatsApp scraper has a ~10s timeout and won't wait on the runtime

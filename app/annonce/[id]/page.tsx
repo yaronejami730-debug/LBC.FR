@@ -1,6 +1,7 @@
 import { notFound, permanentRedirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { listingSlug } from "@/lib/listing-slug";
+import { buildListingMeta } from "@/lib/seo/listing-meta";
 import type { Metadata } from "next";
 
 const BASE = "https://www.dealandcompany.fr";
@@ -13,7 +14,15 @@ export async function generateMetadata({
   const { id } = await params;
   const listing = await prisma.listing.findUnique({
     where: { id },
-    select: { title: true, description: true, images: true, price: true, location: true },
+    select: {
+      title: true,
+      description: true,
+      images: true,
+      price: true,
+      location: true,
+      category: true,
+      subcategory: true,
+    },
   }).catch(() => null);
 
   if (!listing) return {};
@@ -21,17 +30,33 @@ export async function generateMetadata({
   const imgs = JSON.parse(listing.images) as string[];
   const rawImg = imgs[0] ?? "";
   const mainImg = rawImg.startsWith("http") ? rawImg : `${BASE}${rawImg}`;
-  const priceStr = listing.price.toLocaleString("fr-FR") + " €";
   const pageUrl = `${BASE}/annonce/${id}/${listingSlug(listing.title)}`;
-  const desc = `${listing.description.slice(0, 150)}${listing.description.length > 150 ? "…" : ""} · ${listing.location} · ${priceStr}`;
   const ogImage = `${BASE}/annonce/${id}/opengraph-image`;
 
+  /**
+   * Même constructeur que la page avec slug.
+   *
+   * Cette route ne fait que rediriger — mais un partage sur une messagerie ou
+   * un réseau social lit la metadata **avant** de suivre la redirection, et
+   * cette version-ci affichait un format différent : sans ville, sans suffixe
+   * de marque, et « 0 € » quand le prix n'était pas donné.
+   */
+  const meta = buildListingMeta({
+    title: listing.title,
+    description: listing.description,
+    location: listing.location,
+    price: listing.price,
+    category: listing.category,
+    subcategory: listing.subcategory,
+  });
+  const desc = meta.description;
+
   return {
-    title: `${listing.title} — ${priceStr}`,
+    title: meta.title,
     description: desc,
     alternates: { canonical: pageUrl },
     openGraph: {
-      title: `${listing.title} — ${priceStr}`,
+      title: meta.title,
       description: desc,
       url: pageUrl,
       siteName: "Deal&Co",
@@ -43,7 +68,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${listing.title} — ${priceStr}`,
+      title: meta.title,
       description: desc,
       images: [ogImage],
     },
