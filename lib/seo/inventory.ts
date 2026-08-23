@@ -383,6 +383,35 @@ export const getSeoInventory = unstable_cache(buildInventory, ["seo-inventory-v3
   tags: ["listings"],
 });
 
+/**
+ * Une sous-catégorie a-t-elle de quoi être liée ?
+ *
+ * `/annonces/{categorie}/{sous-categorie}` répond **404** à stock nul — décision
+ * assumée dans `app/annonces/[categorie]/[...slug]/page.tsx` : ces pages ne sont
+ * pas des pages sous leur seuil, ce sont des pages sans contenu, et le 404 est
+ * la seule réponse que Google traite comme un ordre de retrait.
+ *
+ * La contrepartie, c'est qu'aucun lien du site ne doit y mener. Le crawl du
+ * 23/08/2026 en a trouvé trois — `/annonces/maison/bricolage`,
+ * `/annonces/maison/electromenager`, `/annonces/maison/jardinage` — liées
+ * depuis les puces de la page catégorie, qui affichait la taxonomie entière
+ * sans regarder le stock. Un lien interne vers une 404 dépense du budget
+ * d'exploration et fait passer le site pour mal tenu ; c'est aussi, pour un
+ * visiteur, un cul-de-sac.
+ *
+ * Le seuil est **une** annonce indexable, pas trois : il ne s'agit pas de
+ * décider si la page mérite l'index — elle porte déjà sa propre balise — mais
+ * seulement si elle existe. Un compteur d'inventaire non nul garantit au moins
+ * une annonce publiée, donc une page qui répond 200.
+ */
+export function subcategoryHasStock(
+  inv: Pick<SeoInventory, "byCategorySub">,
+  categoryId: string,
+  subSlug: string,
+): boolean {
+  return (inv.byCategorySub[`${categoryId}/${subSlug}`] ?? 0) > 0;
+}
+
 /** Une page de liste mérite-t-elle l'index ? */
 export function isIndexable(count: number): boolean {
   return count >= MIN_INDEXABLE_LISTINGS;

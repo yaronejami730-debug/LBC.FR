@@ -7,7 +7,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { TOP_CITIES } from "@/lib/cities";
 import { subcategoryToSlug, fallbackContent } from "@/lib/seo-content";
 import { getRelatedBlogPosts } from "@/lib/blog/category-links";
-import { listingPageRobots, getSeoInventory, isIndexable } from "@/lib/seo/inventory";
+import { listingPageRobots, getSeoInventory, isIndexable, subcategoryHasStock } from "@/lib/seo/inventory";
 import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
@@ -149,6 +149,25 @@ export default async function CategoryPage({
     : [];
 
   /**
+   * Sous-catégories réellement visitables.
+   *
+   * La page d'une sous-catégorie sans stock renvoie 404 — voir
+   * `app/annonces/[categorie]/[...slug]/page.tsx`. Les puces affichaient
+   * pourtant la taxonomie entière : sur « Maison », sept puces pour quatre
+   * pages existantes, donc trois liens morts remontés par le crawl du
+   * 23/08/2026.
+   *
+   * Sans inventaire — base injoignable — on n'affiche aucune puce plutôt que
+   * de risquer un lien mort : la page catégorie reste entièrement utilisable,
+   * elle liste déjà les annonces.
+   */
+  const linkableSubs = inv
+    ? cat.subcategories
+        .map((label) => ({ label, slug: subcategoryToSlug(label) }))
+        .filter(({ slug }) => subcategoryHasStock(inv, cat.id, slug))
+    : [];
+
+  /**
    * Marques de véhicules ayant assez de stock pour mériter leur page.
    *
    * Ces pages existaient, étaient au sitemap, et **aucun lien du site n'y
@@ -247,24 +266,29 @@ export default async function CategoryPage({
           <p className="text-outline text-sm">
             {total.toLocaleString("fr-FR")} annonce{total > 1 ? "s" : ""} disponible{total > 1 ? "s" : ""}
           </p>
-          {/* Subcategory chips */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            <Link
-              href={`/annonces/${cat.id}`}
-              className="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-white"
-            >
-              Toutes
-            </Link>
-            {cat.subcategories.map((sub) => (
+          {/* Sous-catégories — seulement celles qui ont du stock.
+              La page d'une sous-catégorie vide renvoie 404 : afficher la
+              taxonomie entière produisait trois liens morts sur « Maison »
+              (bricolage, électroménager, jardinage) au crawl du 23/08/2026. */}
+          {linkableSubs.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
               <Link
-                key={sub}
-                href={`/annonces/${cat.id}/${subcategoryToSlug(sub)}`}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                href={`/annonces/${cat.id}`}
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-white"
               >
-                {sub}
+                Toutes
               </Link>
-            ))}
-          </div>
+              {linkableSubs.map(({ label, slug }) => (
+                <Link
+                  key={label}
+                  href={`/annonces/${cat.id}/${slug}`}
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surface-container border border-outline-variant/10 text-on-surface-variant hover:bg-slate-100 transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Grid */}

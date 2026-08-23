@@ -11,7 +11,12 @@ import {
   slugToSubcategoryLabel,
 } from "@/lib/seo-content";
 import { getRelatedBlogPostsForCity } from "@/lib/blog/category-links";
-import { getSeoInventory, isIndexable, listingPageRobots } from "@/lib/seo/inventory";
+import {
+  getSeoInventory,
+  isIndexable,
+  listingPageRobots,
+  subcategoryHasStock,
+} from "@/lib/seo/inventory";
 import { isCityCategoryIndexable } from "@/lib/seo/city-category";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
@@ -345,10 +350,19 @@ export default async function AnnoncesGeoPage({
         : isCityCategoryIndexable(inv, c.id, shape.citySlug),
     )
     .slice(0, 8);
-  const siblingSubs =
+  /**
+   * Sœurs de la sous-catégorie courante — celles qui ont du stock.
+   *
+   * Cette route renvoie 404 à stock nul (voir plus bas). Lier la taxonomie
+   * entière produisait donc autant de culs-de-sac que de sous-catégories vides,
+   * et c'est l'un des deux émetteurs relevés par le crawl du 23/08/2026 —
+   * l'autre étant les puces de la page catégorie.
+   */
+  const siblingSubs = (
     shape.kind === "sub-city" || shape.kind === "sub"
       ? cat.subcategories.filter((s) => subcategoryToSlug(s) !== shape.subcategorySlug)
-      : cat.subcategories;
+      : cat.subcategories
+  ).filter((s) => subcategoryHasStock(inv, cat.id, subcategoryToSlug(s)));
 
   /** Sous-catégories dont la déclinaison sur **cette** ville s'indexe. */
   const linkableSubsHere =
