@@ -184,6 +184,7 @@ export async function generateMetadata({
   // calculés plus haut : une seule définition du format, la même pour une page
   // indexable et pour une page qui ne l'est pas.
   const titleSeo = meta.title;
+  const titleSocial = meta.titleWithBrand;
   const desc = meta.description;
 
   // Direct image (fast, cached on CDN) — fallback to dynamic OG renderer.
@@ -214,7 +215,9 @@ export async function generateMetadata({
       "product:condition": listing.condition === "Neuf" ? "new" : "used",
     },
     openGraph: {
-      title: titleSeo,
+      // Le `template` du layout ne s'applique qu'à `title` : sur les réseaux,
+      // le nom du site doit donc être écrit explicitement.
+      title: titleSocial,
       description: desc,
       url: pageUrl,
       siteName: "Deal&Co",
@@ -223,7 +226,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: titleSeo,
+      title: titleSocial,
       description: desc,
       images: directImg ? [directImg] : [dynamicOg],
     },

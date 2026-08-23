@@ -56,7 +56,7 @@ export async function generateMetadata({
     description: desc,
     alternates: { canonical: pageUrl },
     openGraph: {
-      title: meta.title,
+      title: meta.titleWithBrand,
       description: desc,
       url: pageUrl,
       siteName: "Deal&Co",
@@ -68,7 +68,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: meta.title,
+      title: meta.titleWithBrand,
       description: desc,
       images: [ogImage],
     },

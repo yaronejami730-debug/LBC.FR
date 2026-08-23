@@ -4,7 +4,7 @@ import Link from "next/link";
 const SUPPORT_EMAIL = "support@dealandcompany.fr";
 
 export const metadata: Metadata = {
-  title: "Contact — Deal&Co",
+  title: "Contact",
   description:
     "Contactez l'équipe Deal&Co : support utilisateurs, signalement d'annonces, partenariats, presse, demandes juridiques. Réponse sous 48 h.",
   alternates: { canonical: "https://www.dealandcompany.fr/contact" },

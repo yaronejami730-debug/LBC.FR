@@ -6,7 +6,7 @@ import SiteFooter from "@/components/SiteFooter";
 const BASE = "https://www.dealandcompany.fr";
 
 export const metadata: Metadata = {
-  title: "Conditions Générales d'Utilisation — Deal&Co",
+  title: "Conditions Générales d'Utilisation",
   description:
     "Conditions générales d'utilisation de Deal&Co, plateforme de petites annonces entre particuliers et professionnels en France.",
   alternates: { canonical: `${BASE}/cgu` },

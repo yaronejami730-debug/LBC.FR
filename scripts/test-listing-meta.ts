@@ -36,8 +36,13 @@ section("Format nominal");
   });
 
   equal(
-    "titre au format « {annonce} à {ville} — {prix} | Deal&Co »",
+    "le titre de page ne porte pas la marque : le layout l'ajoute",
     norm(meta.title),
+    "Volkswagen GOLF 1.6 TDI à Lille — 1 500 €",
+  );
+  equal(
+    "la version réseaux sociaux la porte, elle",
+    norm(meta.titleWithBrand),
     "Volkswagen GOLF 1.6 TDI à Lille — 1 500 € | Deal&Co",
   );
   check("la description commence par celle de l'annonce", meta.description.startsWith("Golf 1.6 TDI de 2015"));
@@ -128,8 +133,13 @@ section("Troncature");
     price: 349_000,
   });
 
-  check("le titre respecte le plafond d'affichage", long.title.length <= TITLE_CAP, `${long.title.length} caractères`);
-  check("le nom du site survit à la troncature", long.title.endsWith(" | Deal&Co"));
+  check(
+    "le titre tient dans le plafond une fois la marque ajoutée",
+    long.titleWithBrand.length <= TITLE_CAP,
+    `${long.titleWithBrand.length} caractères`,
+  );
+  check("le nom du site survit à la troncature", long.titleWithBrand.endsWith(" | Deal&Co"));
+  check("et n'apparaît jamais deux fois", !long.titleWithBrand.replace(" | Deal&Co", "").includes("Deal&Co"));
   check("la coupe se fait entre deux mots", !/\S…/.test(long.title.replace("…", " …")) || long.title.includes("… |"));
 }
 

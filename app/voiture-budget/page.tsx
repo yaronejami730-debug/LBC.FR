@@ -17,7 +17,7 @@ const BUDGETS = [
 ];
 
 export const metadata: Metadata = {
-  title: "Voiture d'occasion par budget — Deal&Co",
+  title: "Voiture d'occasion par budget",
   description: "Trouvez une voiture d'occasion entre particuliers selon votre budget : moins de 3 000, 5 000, 8 000, 12 000 ou 20 000 €.",
   alternates: { canonical: `${BASE}/voiture-budget` },
 };

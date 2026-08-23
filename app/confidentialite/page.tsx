@@ -6,7 +6,7 @@ import SiteFooter from "@/components/SiteFooter";
 const BASE = "https://www.dealandcompany.fr";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité — Deal&Co",
+  title: "Politique de confidentialité",
   description:
     "Politique de confidentialité et protection des données personnelles de Deal&Co, conformément au RGPD (Règlement Général sur la Protection des Données).",
   alternates: { canonical: `${BASE}/confidentialite` },

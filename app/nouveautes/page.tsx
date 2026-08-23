@@ -12,7 +12,7 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 1800;
 
 export const metadata: Metadata = {
-  title: "Nouvelles annonces du jour — Deal&Co",
+  title: "Nouvelles annonces du jour",
   description:
     "Découvrez les dernières petites annonces publiées aujourd'hui sur Deal&Co. Mode, multimédia, maison, véhicules — nouveautés en temps réel.",
   alternates: { canonical: `${BASE}/nouveautes` },

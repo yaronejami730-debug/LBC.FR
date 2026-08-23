@@ -23,7 +23,7 @@ const PAIRS = [
 ];
 
 export const metadata: Metadata = {
-  title: "Comparatifs voitures d'occasion — Deal&Co",
+  title: "Comparatifs voitures d'occasion",
   description: "Comparatifs de voitures d'occasion entre particuliers : prix moyens, nombre d'annonces, écarts. Choisissez le bon modèle avant d'acheter.",
   alternates: { canonical: `${BASE}/comparatif` },
 };

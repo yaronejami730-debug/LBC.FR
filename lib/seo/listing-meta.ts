@@ -34,7 +34,23 @@ import { displayCity } from "@/lib/seo/city";
 
 /** Longueur de titre au-delà de laquelle Google tronque dans ses résultats. */
 export const TITLE_CAP = 60;
-const SUFFIX = " | Deal&Co";
+
+/**
+ * Suffixe de marque — ajouté **par le layout racine**, jamais ici.
+ *
+ * `app/layout.tsx` déclare `title: { template: "%s | Deal&Co" }` : Next colle
+ * donc le suffixe à tout titre de page rendu sous ce layout. Le construire ici
+ * en plus produisait « … — 130 € | Deal&Co | Deal&Co », visible en production
+ * le 23/08/2026 sur toutes les fiches annonces. Le défaut préexistait à la
+ * refonte de ce module — l'ancienne version ajoutait déjà le suffixe à la main
+ * — mais il s'est étendu à toutes les fiches en même temps que le correctif
+ * des titres génériques.
+ *
+ * La constante reste utilisée à deux endroits : pour réserver la place du
+ * suffixe dans la troncature, et pour composer les titres Open Graph et
+ * Twitter, auxquels le `template` ne s'applique pas.
+ */
+export const BRAND_SUFFIX = " | Deal&Co";
 
 /**
  * Longueur cible d'une description.
@@ -88,8 +104,16 @@ export function titleCaseCity(value: string): string {
 }
 
 export type ListingMeta = {
-  /** Titre complet, suffixe de marque compris, tronqué proprement. */
+  /**
+   * Titre de la page, **sans** le suffixe de marque : c'est le `template` du
+   * layout racine qui l'ajoute. Le poser ici le doublerait.
+   */
   title: string;
+  /**
+   * Le même, suffixe compris, pour Open Graph et Twitter — où le `template` ne
+   * s'applique pas et où le nom du site doit figurer.
+   */
+  titleWithBrand: string;
   description: string;
   /** « 1 500 € » ou « Prix à débattre » — jamais « 0 € ». */
   priceLabel: string;
@@ -116,15 +140,18 @@ export function priceLabelOf(price: number | null | undefined): string {
  * du titre qui construise quelque chose sur la durée.
  */
 function truncateTitle(raw: string): string {
-  const budget = TITLE_CAP - SUFFIX.length;
-  if (raw.length <= budget) return raw + SUFFIX;
+  // Le budget réserve la place du suffixe que le layout ajoutera : c'est le
+  // titre complet, une fois le `template` appliqué, qui doit tenir dans la
+  // largeur d'affichage.
+  const budget = TITLE_CAP - BRAND_SUFFIX.length;
+  if (raw.length <= budget) return raw;
 
   const cut = raw.slice(0, budget - 1);
   const lastSpace = cut.lastIndexOf(" ");
   // Un dernier espace trop tôt signifierait un mot unique très long : mieux
   // vaut alors couper net que de renvoyer trois lettres.
   const body = lastSpace > budget * 0.6 ? cut.slice(0, lastSpace) : cut;
-  return body.trimEnd() + "…" + SUFFIX;
+  return body.trimEnd() + "…";
 }
 
 /**
@@ -145,9 +172,11 @@ export function buildListingMeta(input: ListingMetaInput): ListingMeta {
   const city = rawCity ? titleCaseCity(rawCity) : "";
 
   const rawTitle = city ? `${title} à ${city} — ${priceLabel}` : `${title} — ${priceLabel}`;
+  const truncated = truncateTitle(rawTitle);
 
   return {
-    title: truncateTitle(rawTitle),
+    title: truncated,
+    titleWithBrand: truncated + BRAND_SUFFIX,
     description: buildDescription(input, { city, priceLabel }),
     priceLabel,
     city,
