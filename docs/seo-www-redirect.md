@@ -1,6 +1,11 @@
 # Redirection `dealandcompany.fr` → `www.dealandcompany.fr`
 
-## Constat
+> **État au 23/08/2026 : corrigé.** Le domaine du projet Vercel a été basculé en
+> redirection permanente, et l'edge sert bien un 308 en conservant le chemin.
+> Ce document garde le raisonnement et la procédure — la même bascule sera à
+> refaire si un domaine est ajouté un jour.
+
+## Constat d'origine
 
 Le crawl du 23/08/2026 a mesuré :
 
@@ -28,10 +33,11 @@ bloc `has: [{ type: "host", value: "dealandcompany.fr" }]`. Elle prend le relais
 si l'apex est un jour servi par le projet au lieu d'être redirigé à l'edge, et
 elle rend l'application correcte sur tout autre hébergement.
 
-## Ce qu'il reste à faire, dans le compte qui détient le domaine
+## La bascule, dans le compte qui détient le domaine
 
-Le compte Vercel connecté sur ce poste (`V's projects`) n'a pas accès au
-domaine : la manip doit être faite depuis celui qui l'héberge.
+Faite le 23/08/2026. Le compte Vercel connecté sur le poste de développement
+(`V's projects`) n'a pas accès au domaine : la manip se fait depuis celui qui
+l'héberge.
 
 ### Par l'interface
 
@@ -55,12 +61,28 @@ appartenir au compte propriétaire du domaine.
 ## Vérification
 
 ```bash
-curl -sI https://dealandcompany.fr/            | head -3   # attendu : 308
-curl -sI https://dealandcompany.fr/annonces    | head -3   # attendu : 308 vers www
-curl -sI https://www.dealandcompany.fr/        | head -3   # attendu : 200
+curl -sD - -o /dev/null https://dealandcompany.fr/ | grep -iE '^HTTP|^location'
 ```
 
-Le chemin doit être conservé dans la redirection : `dealandcompany.fr/annonces`
-doit mener à `www.dealandcompany.fr/annonces`, pas à la page d'accueil. Une
-redirection qui écrase le chemin est aussi coûteuse qu'un 404 pour les liens
-entrants profonds.
+Mesure du 23/08/2026, après bascule :
+
+```
+HTTP/2 308
+location: https://www.dealandcompany.fr/
+```
+
+**Le chemin doit être conservé.** `dealandcompany.fr/annonces/maison` doit mener
+à `www.dealandcompany.fr/annonces/maison`, pas à la page d'accueil : une
+redirection qui écrase le chemin coûte autant qu'un 404 sur tous les liens
+entrants profonds, et c'est le défaut le plus courant de ce type de réglage.
+Vérifié sur trois profondeurs — racine, page de liste, fiche annonce — les trois
+conservent leur chemin.
+
+## Reste ouvert, sans rapport avec la redirection
+
+L'interface Vercel signale « DNS Change Recommended » sur les deux entrées :
+elle recommande `A @ 216.150.1.1` et `CNAME www → 75a3fac3d8e6c6da.vercel-dns-017.com`.
+C'est une extension de plage d'adresses, pas une panne — Vercel précise que les
+enregistrements actuels (`cname.vercel-dns.com`, `76.76.21.21`) continuent de
+fonctionner. Aucun effet SEO tant que les deux domaines répondent ; à faire au
+prochain passage sur le registrar, pas en urgence.
