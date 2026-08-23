@@ -106,6 +106,20 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   },
 
   {
+    key: "sondage",
+    label: "Sondage",
+    icon: "poll",
+    entries: [
+      {
+        href: "/admin/sondage",
+        label: "Comment nous ont-ils connus",
+        icon: "poll",
+        hint: "Acquisition déclarée par les utilisateurs",
+      },
+    ],
+  },
+
+  {
     key: "equipes",
     label: "Équipes",
     icon: "admin_panel_settings",
