@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 export type AdRow = {
@@ -28,3 +29,20 @@ export async function getActiveAds(take = 100): Promise<AdRow[]> {
   `;
   return rows;
 }
+
+/**
+ * Même inventaire, mis en cache une minute.
+ *
+ * Ces bannières maison changent quand quelqu'un les modifie en administration,
+ * c'est-à-dire quelques fois par mois — et elles étaient relues à chaque
+ * affichage de fiche annonce, la page la plus demandée du site. Une minute
+ * suffit à absorber le trafic sans que la régie ait l'impression que ses
+ * changements n'arrivent pas.
+ *
+ * Le client filtre toujours par horodatage à l'affichage : une bannière
+ * programmée démarre à l'heure prévue, cache ou pas.
+ */
+export const getActiveAdsCached = unstable_cache(getActiveAds, ["active-house-ads-v1"], {
+  revalidate: 60,
+  tags: ["house-ads"],
+});

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { getActiveAds } from "@/lib/ads";
+import { getActiveAdsCached } from "@/lib/ads";
 import { auth } from "@/lib/auth";
 import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "../ListingHeader";
@@ -41,11 +41,40 @@ import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
 
+/**
+ * L'annonce et son vendeur, en une lecture partagée.
+ *
+ * `cache()` déduplique l'appel entre `generateMetadata` et le rendu : les deux
+ * s'exécutent dans la même requête, et sans lui la fiche interrogeait deux fois
+ * la base pour la même ligne.
+ *
+ * Le vendeur est **sélectionné champ par champ** plutôt que chargé en entier.
+ * `include: { user: true }` rapatriait toute la ligne `User` — empreinte du mot
+ * de passe, jeton de session poussée, adresse, données de vérification — dans
+ * une page publique qui n'en lit que six champs. Rien n'était exposé au
+ * navigateur, mais transporter un secret là où il n'a rien à faire est la
+ * première marche d'une fuite, et c'était aussi de la charge inutile.
+ */
 const getListing = cache((id: string) =>
-  prisma.listing.findUnique({
-    where: { id },
-    include: { user: true },
-  }).catch(() => null)
+  prisma.listing
+    .findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            verified: true,
+            memberSince: true,
+            isPro: true,
+            siret: true,
+            companyName: true,
+          },
+        },
+      },
+    })
+    .catch(() => null),
 );
 
 export async function generateMetadata({
@@ -212,8 +241,6 @@ export default async function ListingPage({
     auth(),
   ]);
 
-  const ads = await getActiveAds().catch(() => []);
-
   const currentUserId = session?.user?.id ?? null;
 
   if (!listing) notFound();
@@ -249,13 +276,33 @@ export default async function ListingPage({
     redirect(`/annonce/${id}/${correctSlug}`);
   }
 
-  const isFavorite = currentUserId
-    ? !!(await prisma.favorite.findUnique({
-        where: { userId_listingId: { userId: currentUserId, listingId: id } },
-      }))
-    : false;
-
-  const responseTime = await getUserResponseTime(listing.userId);
+  /**
+   * Le reste des données, en un seul aller-retour groupé.
+   *
+   * Ces quatre lectures étaient enchaînées — bannières, favori, délai de
+   * réponse, inventaire SEO — et aucune n'attend le résultat d'une autre. À
+   * 87 ms d'aller-retour vers la base (mesure du 23/08/2026, fonctions à Paris,
+   * base à `us-east-1`), les mettre en file coûtait un tiers de seconde de
+   * rendu HTML pour rien.
+   *
+   * Le fil d'Ariane et les blocs de maillage lisent `inventory` plus bas ; il
+   * est demandé ici parce que c'est ici qu'il est gratuit — l'instantané est de
+   * toute façon mis en cache six heures.
+   */
+  const [ads, isFavorite, responseTime, inventory] = await Promise.all([
+    getActiveAdsCached().catch(() => []),
+    currentUserId
+      ? prisma.favorite
+          .findUnique({
+            where: { userId_listingId: { userId: currentUserId, listingId: id } },
+            select: { userId: true },
+          })
+          .then((row) => !!row)
+          .catch(() => false)
+      : Promise.resolve(false),
+    getUserResponseTime(listing.userId).catch(() => null),
+    getSeoInventory(),
+  ]);
 
   type VehicleMeta = {
     marque?: string; modele?: string; annee?: string; kilometrage?: string;
@@ -427,7 +474,6 @@ export default async function ListingPage({
    * plus vers la page locale correspondante.
    */
   const crumbCity = resolveCity(listing.location);
-  const inventory = await getSeoInventory();
   const cityCrumb =
     cat && crumbCity && isCityCategoryIndexable(inventory, cat.id, crumbCity.slug)
       ? { slug: crumbCity.slug, name: crumbCity.name }
