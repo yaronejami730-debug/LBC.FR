@@ -646,6 +646,12 @@ export default async function AnnoncesGeoPage({
           </section>
           )
         ) : shape.kind === "sub" ? (
+          // Le filtrage par stock peut ne rien laisser : un titre « Autres
+          // maison » suivi du vide se lit comme un bloc cassé. Le garde est
+          // posé ici et non dans la condition de branche, sinon la branche
+          // suivante cesse d'être vue comme une page de ville et perd l'accès
+          // à `shape.citySlug`.
+          siblingSubs.length === 0 ? null : (
           <section className="mt-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">Autres {cat.label.toLowerCase()}</h2>
             <div className="flex flex-wrap gap-2">
@@ -660,6 +666,7 @@ export default async function AnnoncesGeoPage({
               ))}
             </div>
           </section>
+          )
         ) : otherCategories.length > 0 ? (
           <section className="mt-8">
             <h2 className="text-lg font-bold text-on-surface mb-3">Autres catégories à {cityLabel}</h2>
