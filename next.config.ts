@@ -210,6 +210,31 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      /**
+       * Domaine sans www → domaine canonique, en **308 permanent**.
+       *
+       * Le crawl du 23/08/2026 a mesuré un 307 sur `https://dealandcompany.fr/`.
+       * Un 307 est temporaire : Google garde l'ancienne URL dans son index,
+       * n'y transfère pas le signal, et continue de vérifier les deux versions.
+       * Sur un domaine jeune, c'est l'autorité qui reste coupée en deux.
+       *
+       * Attention à ce que cette règle couvre et ne couvre pas. Le 307 constaté
+       * est émis par Vercel **avant** l'application, au niveau du domaine du
+       * projet : la requête n'atteint jamais ce fichier, et cette règle ne le
+       * corrige donc pas à elle seule. Le réglage se change dans le projet
+       * Vercel qui détient le domaine (voir `docs/seo-www-redirect.md`).
+       *
+       * Elle reste utile pour deux raisons : le jour où l'apex est rattaché au
+       * projet comme domaine servi plutôt que comme redirection, la
+       * redirection permanente existe déjà ; et tout autre hébergement de cette
+       * application se comporte correctement sans configuration.
+       */
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "dealandcompany.fr" }],
+        destination: "https://www.dealandcompany.fr/:path*",
+        permanent: true,
+      },
       { source: "/listing/:id", destination: "/annonce/:id", permanent: true },
       { source: "/listing/:id/edit", destination: "/annonce/:id/edit", permanent: true },
       // Short brand aliases — funnel SEO juice to canonical /annonces/vehicules/{marque}
