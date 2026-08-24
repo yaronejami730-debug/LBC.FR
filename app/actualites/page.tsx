@@ -72,7 +72,7 @@ export default async function ActualitesPage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       <Navbar />
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 pt-32 pb-16">
         <header className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
             Actualité automobile

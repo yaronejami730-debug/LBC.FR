@@ -101,7 +101,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }} />
       <Navbar />
 
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-3xl px-4 pt-32 pb-16">
         <nav className="mb-4 text-xs text-outline">
           <Link href="/actualites" className="hover:text-primary">
             Actualité automobile
