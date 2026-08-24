@@ -23,6 +23,8 @@ import ListingCard from "@/components/home/ListingCard";
 import PriceAlertForm from "@/components/PriceAlertForm";
 import { safeJsonLd } from "@/lib/json-ld";
 import { getPriceQuote, isPriceQuoteIndexable } from "@/lib/seo/price";
+import ModelNews from "@/components/news/ModelNews";
+import { brandModelFromPriceSlug } from "@/lib/news/select";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -92,6 +94,11 @@ export default async function PrixPage({
   if (!quote) notFound();
 
   const { title, query, observations, average, min, max, activeCount } = quote;
+
+  // Marque et modèle défaits du slug — c'est la clé du rattachement presse.
+  // `null` pour une page dont la marque ne figure pas au catalogue : le bloc
+  // d'actualité ne s'affiche simplement pas.
+  const news = brandModelFromPriceSlug(slug);
 
   const listings =
     activeCount > 0
@@ -253,6 +260,11 @@ export default async function PrixPage({
             <PriceAlertForm label={`${title} d'occasion`} query={query} />
           </section>
         )}
+
+        {/* La presse, après les annonces et jamais avant : le visiteur vient
+            pour la cote et le stock. L'actualité est le contexte, pas l'offre.
+            Le bloc disparaît de lui-même s'il n'y a rien de récent à citer. */}
+        {news && <ModelNews brandSlug={news.brandSlug} modelSlug={news.modelSlug} label={title} />}
       </main>
 
       <SiteFooter />

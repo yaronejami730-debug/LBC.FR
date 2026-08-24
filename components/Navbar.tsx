@@ -19,6 +19,7 @@ const CATEGORIES = [
   { label: "Animaux",              href: "/annonces/animaux" },
   { label: "Bons plans !",         href: "/nouveautes" },
   { label: "Guides",               href: "/blog" },
+  { label: "Actualité auto",       href: "/actualites" },
 ];
 
 /**

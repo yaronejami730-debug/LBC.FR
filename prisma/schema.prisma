@@ -2835,3 +2835,71 @@ model SatisfactionSetting {
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
+
+/// Article de presse automobile, capté par flux RSS.
+///
+/// ── Ce que ce modèle est, et ce qu'il n'est pas ───────────────────────────
+///
+/// C'est un **signal**, jamais un contenu à republier. Deal&Co ne crée aucune
+/// page à partir de ces lignes : le texte appartient au média qui l'a écrit, et
+/// une page bâtie dessus serait du contenu syndiqué — exactement ce que Google
+/// écarte, et exactement le motif qui exclut déjà 129 annonces importées de
+/// notre propre index.
+///
+/// Ce qu'on en tire, en revanche, vaut cher :
+///
+///   - **la fraîcheur au bon endroit.** Trois titres datés sur `/prix/renault-clio-occasion`
+///     avec le lien vers la source : la page reste à jour sans qu'on écrive une
+///     ligne, et elle cite ses sources plutôt que de les recopier ;
+///   - **ce dont la presse parle.** Croisé avec notre stock, cela dit quel
+///     sujet éditorial écrire cette semaine — celui où l'intérêt monte et où
+///     nous avons des annonces à montrer.
+model NewsItem {
+  id String @id @default(cuid())
+
+  /// Flux d'origine, tel que déclaré dans `lib/news/sources.ts`.
+  source String
+  /// URL canonique de l'article : c'est elle qui fait l'unicité. Un flux
+  /// republie le même article quand son titre change, et deux lignes pour un
+  /// article fausseraient le comptage des sujets.
+  url   String @unique
+
+  title       String
+  /// Résumé du flux, conservé pour le classement interne — jamais affiché en
+  /// entier sur une page indexable.
+  summary     String?
+  publishedAt DateTime
+
+  /// Marque et modèle reconnus dans le titre, quand ils le sont. `null` pour
+  /// une actualité générale — elle reste stockée, elle n'est simplement
+  /// rattachée à aucune page.
+  brandSlug String?
+  modelSlug String?
+  /// Rubriques du flux, en JSON. Servent à écarter le sponsorisé.
+  categories String @default("[]")
+
+  /// Visuel fourni **par le flux lui-même** (`<enclosure>`), jamais récupéré
+  /// en aspirant la page. C'est la différence entre afficher ce qu'un média
+  /// publie pour être repris et se servir dans ce qu'il ne propose pas.
+  imageUrl String?
+
+  /// Signature réelle de l'article, quand le média la publie.
+  ///
+  /// Les flux d'articles de Motor1 ne portent aucun auteur, mais le média
+  /// publie un flux par journaliste : les recouper redonne la signature. Sans
+  /// correspondance, la page affiche la rédaction — jamais rien d'inventé, et
+  /// jamais un nom Deal&Co.
+  authorName String?
+
+  /// Adresse de la page Deal&Co qui présente cet article.
+  /// Unique et stable : elle est construite une fois, à la première captation,
+  /// et ne bouge plus même si le média retouche son titre — sinon chaque
+  /// retouche créerait une URL de plus et casserait la précédente.
+  slug String? @unique
+
+  fetchedAt DateTime @default(now())
+
+  @@index([brandSlug, publishedAt])
+  @@index([brandSlug, modelSlug, publishedAt])
+  @@index([publishedAt])
+}

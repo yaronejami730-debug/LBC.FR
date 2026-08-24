@@ -102,6 +102,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
       { href: "/admin/recommandations", label: "Recommandations", icon: "near_me", hint: "Suggestions locales" },
       { href: "/admin/behavioral", label: "Moteur comportemental", icon: "psychology", hint: "Relances et intentions" },
       { href: "/admin/crm", label: "CRM", icon: "contacts", hint: "Relation commerciale" },
+      { href: "/admin/veille", label: "Veille presse", icon: "newspaper", hint: "Ce dont la presse parle, face à notre stock" },
     ],
   },
 

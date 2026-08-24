@@ -61,7 +61,9 @@
     "profile:listing": "tsx -r ./scripts/load-env.ts scripts/profile-listing-page.ts",
     "seo:coverage": "tsx -r ./scripts/load-env.ts scripts/seo-sitemap-coverage.ts",
     "seo:ttfb": "tsx scripts/seo-ttfb.ts",
-    "survey:attribution": "tsx -r ./scripts/load-env.ts scripts/send-attribution-survey.ts"
+    "survey:attribution": "tsx -r ./scripts/load-env.ts scripts/send-attribution-survey.ts",
+    "news:ingest": "tsx -r ./scripts/load-env.ts scripts/news-ingest.ts",
+    "test:news": "tsx scripts/test-news.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

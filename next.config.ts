@@ -124,6 +124,11 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.paruvendu.fr" },
       // CDN public mutualisé utilisé par plusieurs sources importées.
       { protocol: "https", hostname: "**.cloudfront.net" },
+      // Revue de presse : visuels publiés par les médias dans leurs propres
+      // flux (`<enclosure>`) et miniatures YouTube. Deux hôtes connus, pas de
+      // joker de domaine — la règle du fichier reste la même.
+      { protocol: "https", hostname: "cdn.motor1.com" },
+      { protocol: "https", hostname: "**.ytimg.com" },
     ],
   },
   async headers() {

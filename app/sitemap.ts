@@ -39,6 +39,7 @@ import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { getEditorialEligibility } from "@/lib/seo/editorial";
 import { getIndexablePriceSlugs } from "@/lib/seo/price";
 import { STATIC_PAGES } from "@/lib/seo/static-routes";
+import { indexableNewsBrands } from "@/lib/news/articles";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -46,10 +47,11 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 21600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [inv, editorial, priceSlugs] = await Promise.all([
+  const [inv, editorial, priceSlugs, newsBrands] = await Promise.all([
     getSeoInventory(),
     getEditorialEligibility(),
     getIndexablePriceSlugs(),
+    indexableNewsBrands(),
   ]);
 
   const now = new Date();
@@ -211,6 +213,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entries.push({
       url: `${BASE}/annonces/vehicules/${key}`,
       lastModified: stockLastMod,
+      changeFrequency: "daily",
+      priority: 0.6,
+    });
+  }
+
+  // --- Revue de presse ------------------------------------------------------
+  //
+  // Hubs par marque uniquement, et seulement au-dessus de leur seuil. Les
+  // pages d'article, elles, n'entrent pas ici : la plupart répondent
+  // `noindex` (voir `isArticleIndexable`), et un sitemap qui recommande des
+  // pages qui refusent l'index abîme la confiance accordée à tout le fichier.
+  // Leur fraîcheur passe par `/actualites/feed.xml`, déclaré dans robots.txt.
+  for (const brand of newsBrands) {
+    entries.push({
+      url: `${BASE}/actualites/marque/${brand.brandSlug}`,
+      lastModified: brand.lastAt,
       changeFrequency: "daily",
       priority: 0.6,
     });

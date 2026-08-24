@@ -14,6 +14,7 @@ import GeoListingPage, {
 } from "@/app/annonces/[categorie]/[...slug]/page";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
+import ModelNews from "@/components/news/ModelNews";
 import ListingCard from "@/components/home/ListingCard";
 import { safeJsonLd } from "@/lib/json-ld";
 import { parsePageParam } from "@/lib/pagination";
@@ -402,6 +403,12 @@ export default async function MarquePage({
             </div>
           </section>
         )}
+
+        {/* La presse, sur la première page seulement : répéter les mêmes trois
+            titres en bas de la page 2 puis de la page 3 n'apporte rien au
+            visiteur et donne à Google trois pages qui se ressemblent un peu
+            plus. */}
+        {page === 1 && <ModelNews brandSlug={slugifyValue(brand.name)} label={brand.name} />}
 
         {/* Other brands */}
         <section className="mt-10">
