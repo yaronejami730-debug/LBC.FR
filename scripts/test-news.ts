@@ -112,7 +112,10 @@ check(
 );
 check(
   "l'auto ne figure pas dans les rubriques de Deal&Co Info",
-  !INFO_SECTIONS.some((s) => s.slug === AUTO_SECTION),
+  // Comparaison élargie volontairement : les types prouvent déjà que ces deux
+  // ensembles ne se croisent pas, et TypeScript refuse la comparaison stricte.
+  // La garder à l'exécution protège du jour où quelqu'un élargira le type.
+  !INFO_SECTIONS.some((s) => (s.slug as string) === AUTO_SECTION),
 );
 check(
   "les deux univers ne partagent aucun flux",
