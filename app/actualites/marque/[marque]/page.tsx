@@ -80,8 +80,8 @@ export default async function BrandNewsPage({
 
       <main className="mx-auto max-w-6xl px-4 pt-32 pb-16">
         <nav className="mb-4 text-xs text-outline">
-          <Link href="/actualites" className="hover:text-primary">
-            Actualité automobile
+          <Link href="/actualites/auto" className="hover:text-primary">
+            Deal&amp;Co Auto
           </Link>
           <span className="mx-1.5">›</span>
           <span>{name}</span>

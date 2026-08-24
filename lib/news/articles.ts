@@ -22,7 +22,7 @@
 
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { sourceByKey } from "@/lib/news/sources";
+import { sourceByKey, sourceKeysOfSection } from "@/lib/news/sources";
 import { youtubeIdOf } from "@/lib/news/parse";
 import type { NewsKind } from "@/lib/news/sources";
 
@@ -30,6 +30,8 @@ export type Article = {
   slug: string;
   title: string;
   summary: string | null;
+  /** Citation bornée du corps, quand le flux le publie. */
+  excerpt: string | null;
   url: string;
   imageUrl: string | null;
   publishedAt: Date;
@@ -40,6 +42,8 @@ export type Article = {
   kind: NewsKind;
   /** Signature réelle, ou `null` si le média ne la publie pas. */
   authorName: string | null;
+  /** Rubrique de Deal&Co Info, héritée du flux d'origine. */
+  section: string;
   /** Identifiant YouTube quand l'article est une vidéo — sert au lecteur intégré. */
   videoId: string | null;
 };
@@ -48,6 +52,7 @@ const SELECT = {
   slug: true,
   title: true,
   summary: true,
+  excerpt: true,
   url: true,
   imageUrl: true,
   publishedAt: true,
@@ -61,6 +66,7 @@ type Row = {
   slug: string | null;
   title: string;
   summary: string | null;
+  excerpt: string | null;
   url: string;
   imageUrl: string | null;
   publishedAt: Date;
@@ -79,6 +85,7 @@ function toArticle(row: Row): Article | null {
     slug: row.slug,
     title: row.title,
     summary: row.summary,
+    excerpt: row.excerpt,
     url: row.url,
     imageUrl: row.imageUrl,
     publishedAt: row.publishedAt,
@@ -88,6 +95,7 @@ function toArticle(row: Row): Article | null {
     publisherHome: source.homepage,
     kind: source.kind,
     authorName: row.authorName,
+    section: source.section,
     videoId: source.kind === "video" ? youtubeIdOf(row.url) : null,
   };
 }
@@ -99,12 +107,18 @@ function toArticle(row: Row): Article | null {
  * photo dans le flux n'a rien à faire dans un mur d'images. Il reste en base et
  * continue de compter dans la veille.
  */
-async function computeFeed(brandSlug: string | null, take: number, skip: number) {
+async function computeFeed(
+  brandSlug: string | null,
+  take: number,
+  skip: number,
+  section: string | string[] | null = null,
+) {
   const rows = await prisma.newsItem.findMany({
     where: {
       imageUrl: { not: null },
       slug: { not: null },
       ...(brandSlug ? { brandSlug } : {}),
+      ...(section ? { source: { in: sourceKeysOfSection(section) } } : {}),
     },
     orderBy: { publishedAt: "desc" },
     take,
@@ -124,10 +138,21 @@ function reviveDates(articles: Article[]): Article[] {
   return articles.map((a) => ({ ...a, publishedAt: new Date(a.publishedAt) }));
 }
 
-export async function getNewsFeed(brandSlug: string | null, take = 24, skip = 0) {
+export async function getNewsFeed(
+  brandSlug: string | null,
+  take = 24,
+  skip = 0,
+  section: string | string[] | null = null,
+) {
   const cached = await unstable_cache(
-    () => computeFeed(brandSlug, take, skip),
-    ["news-feed", brandSlug ?? "-", String(take), String(skip)],
+    () => computeFeed(brandSlug, take, skip, section),
+    [
+      "news-feed",
+      brandSlug ?? "-",
+      String(take),
+      String(skip),
+      Array.isArray(section) ? section.join("+") : (section ?? "-"),
+    ],
     { revalidate: 1800, tags: ["news"] },
   )();
   return reviveDates(cached);
@@ -264,4 +289,143 @@ export async function indexableNewsBrands(
   return rows
     .filter((r) => r._count._all >= min && r._max.publishedAt)
     .map((r) => ({ brandSlug: r.brandSlug!, lastAt: r._max.publishedAt! }));
+}
+
+/**
+ * Une vidéo de notre base sur le même sujet, à intégrer dans un article écrit.
+ *
+ * Le modèle exact d'abord, la marque ensuite. Rien si la vidéo est l'article
+ * lui-même — inutile de l'afficher deux fois.
+ */
+export async function videoFor(article: Article): Promise<Article | null> {
+  if (article.kind === "video" || !article.brandSlug) return null;
+
+  const pick = async (where: Record<string, unknown>) => {
+    const row = await prisma.newsItem.findFirst({
+      where: { ...where, slug: { not: null } },
+      orderBy: { publishedAt: "desc" },
+      select: SELECT,
+    });
+    return row ? toArticle(row) : null;
+  };
+
+  const videoSources = { source: { in: ["motor1-fr-video"] } };
+  if (article.modelSlug) {
+    const exact = await pick({
+      ...videoSources,
+      brandSlug: article.brandSlug,
+      modelSlug: article.modelSlug,
+    });
+    if (exact) return exact;
+  }
+  return pick({ ...videoSources, brandSlug: article.brandSlug });
+}
+
+/**
+ * Ce que notre marché dit de la marque : combien d'annonces, à quel prix.
+ *
+ * Chiffres réels, calculés sur les annonces en ligne. C'est la partie de la
+ * page qu'aucun média ne peut écrire, et celle qui justifie qu'elle existe.
+ */
+export async function brandStats(brandSlug: string): Promise<{
+  count: number;
+  avgPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  name: string;
+} | null> {
+  const { CAR_BRANDS } = await import("@/lib/carBrands");
+  const { normalizeToken } = await import("@/lib/seo/city");
+  const brand = CAR_BRANDS.find((b) => normalizeToken(b.name) === brandSlug);
+  if (!brand) return null;
+
+  const agg = await prisma.listing
+    .aggregate({
+      where: {
+        status: "APPROVED",
+        deletedAt: null,
+        category: "Véhicules",
+        price: { gt: 0 },
+        metadata: { contains: brand.name, mode: "insensitive" },
+      } as never,
+      _count: { _all: true },
+      _avg: { price: true },
+      _min: { price: true },
+      _max: { price: true },
+    })
+    .catch(() => null);
+
+  // Aucune annonce : pas de bloc plutôt qu'un bloc à zéro.
+  if (!agg || agg._count._all === 0) return null;
+
+  return {
+    count: agg._count._all,
+    avgPrice: Math.round(agg._avg.price ?? 0),
+    minPrice: Math.round(agg._min.price ?? 0),
+    maxPrice: Math.round(agg._max.price ?? 0),
+    name: brand.name,
+  };
+}
+
+/** Le fil récent de la marque, en version compacte. */
+export async function brandTimeline(
+  brandSlug: string,
+  exceptSlug: string,
+  take = 6,
+): Promise<Article[]> {
+  const rows = await prisma.newsItem.findMany({
+    where: { brandSlug, slug: { not: null }, NOT: { slug: exceptSlug } },
+    orderBy: { publishedAt: "desc" },
+    take,
+    select: SELECT,
+  });
+  return rows.map(toArticle).filter((a): a is Article => a !== null);
+}
+
+export type FeedHealth = {
+  key: string;
+  publisher: string;
+  section: string;
+  url: string;
+  articles: number;
+  /** Dernière fois que ce flux a été lu par la captation. */
+  lastFetch: Date | null;
+  /** Date du plus récent article capté sur ce flux. */
+  lastArticle: Date | null;
+};
+
+/**
+ * État de chaque flux, tel qu'on peut le prouver depuis la base.
+ *
+ * ── Ce que cet écran répond ───────────────────────────────────────────────
+ *
+ * « Comment être sûr que c'est branché ? » Un flux branché laisse deux traces
+ * qu'on ne peut pas simuler : une **heure de dernière lecture** qui avance à
+ * chaque passage, et un **dernier article** dont la date suit ce que le média
+ * publie. Les deux sont lues ici directement dans la table, sans cache.
+ *
+ * Un flux dont la dernière lecture remonte à plus de deux heures est en panne :
+ * le cron passe toutes les heures.
+ */
+export async function feedHealth(): Promise<FeedHealth[]> {
+  const { NEWS_SOURCES } = await import("@/lib/news/sources");
+
+  const rows = await prisma.newsItem.groupBy({
+    by: ["source"],
+    _count: { _all: true },
+    _max: { fetchedAt: true, publishedAt: true },
+  });
+
+  return NEWS_SOURCES.map((source) => {
+    const row = rows.find((r) => r.source === source.key);
+    return {
+      key: source.key,
+      publisher: source.publisher,
+      section: source.section,
+      url: source.url,
+      articles: row?._count._all ?? 0,
+      lastFetch: row?._max.fetchedAt ?? null,
+      lastArticle: row?._max.publishedAt ?? null,
+    };
+  });
 }

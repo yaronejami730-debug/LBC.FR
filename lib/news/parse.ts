@@ -30,7 +30,32 @@ export type FeedItem = {
    * serait une aspiration — et ce module n'ouvre jamais la page d'un article.
    */
   imageUrl: string | null;
+  /**
+   * Signature publiée par le flux, quand il en publie une.
+   *
+   * Motor1 n'en met aucune dans ses flux d'articles ; 20 Minutes met un
+   * `<author>` sur chaque item. Là où elle existe, elle vaut mieux que
+   * n'importe quel recoupement : c'est le média qui le dit.
+   */
+  author: string | null;
+  /**
+   * Extrait du corps de l'article, quand le flux le publie.
+   *
+   * Certains flux — 20 Minutes, par exemple — livrent l'article entier dans un
+   * `<body>`. Le livrer n'est pas le céder : ces mêmes flux portent une mention
+   * de copyright explicite. On en garde donc une **citation bornée**, qui sera
+   * présentée comme telle et attribuée, avec le renvoi vers l'original.
+   */
+  excerpt: string | null;
 };
+
+/**
+ * Longueur de la citation.
+ *
+ * Assez pour que la page ait de la matière et que le lecteur sache de quoi
+ * parle l'article ; assez court pour rester une citation et non une reprise.
+ */
+export const EXCERPT_CHARS = 700;
 
 /** Entités XML rencontrées dans les flux, plus les entités numériques. */
 function decodeEntities(input: string): string {
@@ -57,6 +82,39 @@ function text(block: string, tag: string): string | null {
     .replace(/\s+/g, " ")
     .trim();
   return plain.length > 0 ? plain : null;
+}
+
+/**
+ * Citation tirée du corps de l'article.
+ *
+ * La coupe se fait sur une fin de phrase quand il y en a une assez loin :
+ * une citation qui s'arrête au milieu d'un mot donne l'impression d'une page
+ * cassée plutôt que d'un extrait.
+ */
+function excerptOf(block: string): string | null {
+  const raw =
+    block.match(/<body(?:\s[^>]*)?>([\s\S]*?)<\/body>/i)?.[1] ??
+    block.match(/<content:encoded(?:\s[^>]*)?>([\s\S]*?)<\/content:encoded>/i)?.[1] ??
+    null;
+  if (!raw) return null;
+
+  const inner = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
+  // Les blocs non textuels partent en premier : un script ou une iframe
+  // réduits en texte laisseraient des morceaux de code dans la citation.
+  const plain = decodeEntities(
+    inner
+      .replace(/<(script|style|iframe|figure|blockquote)[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " "),
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (plain.length === 0) return null;
+  if (plain.length <= EXCERPT_CHARS) return plain;
+
+  const cut = plain.slice(0, EXCERPT_CHARS);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return stop > EXCERPT_CHARS * 0.5 ? `${cut.slice(0, stop + 1)} […]` : `${cut.trimEnd()} […]`;
 }
 
 function allText(block: string, tag: string): string[] {
@@ -129,7 +187,12 @@ function parseAtom(xml: string): FeedItem[] {
       summary: text(block, "media:description"),
       publishedAt,
       categories: [],
+      // Dans Atom, `<author>` enveloppe un `<name>`.
       imageUrl: imageOf(block),
+      author: text(block, "name"),
+      // Un flux de chaîne ne publie pas de corps d'article : la description
+      // de la vidéo est déjà dans `summary`.
+      excerpt: null,
     });
   }
 
@@ -172,6 +235,8 @@ export function parseFeed(xml: string): FeedItem[] {
       publishedAt,
       categories: allText(block, "category"),
       imageUrl: imageOf(block),
+      author: text(block, "author") ?? text(block, "dc:creator"),
+      excerpt: excerptOf(block),
     });
   }
 

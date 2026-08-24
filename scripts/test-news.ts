@@ -5,7 +5,7 @@
  * flux mal lu, ou un titre rattaché au mauvais modèle. Le reste du système
  * (cache, upsert, cron) n'a pas de comportement propre à vérifier.
  */
-import { parseFeed, youtubeIdOf } from "../lib/news/parse";
+import { parseFeed, youtubeIdOf, EXCERPT_CHARS } from "../lib/news/parse";
 import {
   detectBrand,
   detectModel,
@@ -18,7 +18,11 @@ import {
   isExcludedCategory,
   NEWS_SOURCES,
   MAX_AGE_DAYS,
+  SECTIONS,
+  INFO_SECTIONS,
+  AUTO_SECTION,
   sourceKeysOfKind,
+  sourceKeysOfSection,
 } from "../lib/news/sources";
 import { brandModelFromPriceSlug } from "../lib/news/select";
 import { check, equal, section, report } from "./test-helpers";
@@ -73,6 +77,49 @@ check(
 section("Rubriques écartées");
 check("un contenu sponsorisé est écarté", isExcludedCategory(["Sponsorisé"]));
 check("une rubrique normale passe", !isExcludedCategory(["Essais", "Renault"]));
+
+section("Signature du flux");
+const AVEC_AUTEUR = `<rss version="2.0"><channel><item>
+  <title>Orages : une tornade s'abat sur l'Aude</title>
+  <link>https://www.20minutes.fr/faits_divers/4240756-orages/</link>
+  <pubDate>Mon, 24 Aug 2026 18:44:45 GMT</pubDate>
+  <description>A Pomas, des toitures ont été arrachées.</description>
+  <author>C. A. avec AFP</author>
+  <body><![CDATA[<p>Le corps complet de l'article, qui ne doit jamais être repris.</p>]]></body>
+  <enclosure url="https://img.20mn.fr/abc/1200x768_tornade" type="image/jpeg" length="0"/>
+</item></channel></rss>`;
+const avecAuteur = parseFeed(AVEC_AUTEUR);
+equal("la signature du flux est lue", avecAuteur[0].author, "C. A. avec AFP");
+// La citation est bornée : un corps long en ressort tronqué, jamais entier.
+const LONG = AVEC_AUTEUR.replace(
+  "<p>Le corps complet de l'article, qui ne doit jamais être repris.</p>",
+  "<p>" + "Phrase de remplissage bien réelle. ".repeat(60) + "</p>",
+);
+equal("le résumé reste le chapô du flux", avecAuteur[0].summary, "A Pomas, des toitures ont été arrachées.");
+check("le corps donne une citation bornée", (avecAuteur[0].excerpt ?? "").length > 0 && (avecAuteur[0].excerpt ?? "").length <= EXCERPT_CHARS);
+check("la citation ne dépasse jamais la borne", parseFeed(LONG).every((i) => (i.excerpt ?? "").length <= EXCERPT_CHARS + 6));
+check("un flux sans corps ne fabrique pas de citation", items[0].excerpt === null);
+check("aucune signature là où le flux n'en publie pas", items[0].author === null);
+
+section("Rubriques");
+check(
+  "chaque flux déclare une rubrique connue",
+  NEWS_SOURCES.every((s) => SECTIONS.some((sec) => sec.slug === s.section)),
+);
+check(
+  "chaque rubrique a au moins un flux",
+  SECTIONS.every((sec) => sourceKeysOfSection(sec.slug).length > 0),
+);
+check(
+  "l'auto ne figure pas dans les rubriques de Deal&Co Info",
+  !INFO_SECTIONS.some((s) => s.slug === AUTO_SECTION),
+);
+check(
+  "les deux univers ne partagent aucun flux",
+  sourceKeysOfSection(AUTO_SECTION).every(
+    (k) => !sourceKeysOfSection(INFO_SECTIONS.map((s) => s.slug)).includes(k),
+  ),
+);
 
 section("Nature des flux");
 check(

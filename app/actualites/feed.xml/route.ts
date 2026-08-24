@@ -52,7 +52,7 @@ export async function GET() {
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>Deal&amp;Co — Actualité automobile</title>
+  <title>Deal&amp;Co Info</title>
   <link rel="alternate" href="${BASE}/actualites"/>
   <link rel="self" href="${BASE}/actualites/feed.xml"/>
   <id>${BASE}/actualites</id>

@@ -2883,6 +2883,14 @@ model NewsItem {
   /// publie pour être repris et se servir dans ce qu'il ne propose pas.
   imageUrl String?
 
+  /// Extrait cité de l'article, quand le flux publie son corps.
+  ///
+  /// Volontairement borné (voir `EXCERPT_CHARS`). Certains flux livrent
+  /// l'article entier ; le livrer n'est pas le céder — les flux concernés
+  /// portent une mention de copyright explicite. Ce champ contient donc une
+  /// citation, présentée comme telle et attribuée, jamais l'article.
+  excerpt String?
+
   /// Signature réelle de l'article, quand le média la publie.
   ///
   /// Les flux d'articles de Motor1 ne portent aucun auteur, mais le média

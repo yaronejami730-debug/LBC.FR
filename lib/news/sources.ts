@@ -32,10 +32,59 @@
  */
 export type NewsKind = "actualite" | "essai" | "video";
 
+/**
+ * Rubriques.
+ *
+ * Elles ne viennent pas d'une analyse du texte mais du flux d'où l'article
+ * sort : c'est le média qui range ses articles, et il le fait mieux qu'un
+ * classement deviné après coup.
+ *
+ * ── Deux univers, deux entrées ────────────────────────────────────────────
+ *
+ * L'automobile est traitée à part, et ce n'est pas un détail d'organisation.
+ * Un essai de Clio et un article sur la rentrée scolaire n'ont ni le même
+ * lecteur, ni la même utilité pour le site : le premier se lit à côté d'une
+ * cote et d'annonces, le second se lit pour lui-même. Les mélanger dans une
+ * seule grille donnait une page qui ne s'adressait à personne.
+ *
+ * `AUTO_SECTION` alimente donc **Deal&Co Auto** (`/actualites/auto`), et
+ * `INFO_SECTIONS` alimente **Deal&Co Info** (`/actualites`).
+ */
+export const AUTO_SECTION = "auto";
+
+export const INFO_SECTIONS = [
+  { slug: "general", label: "À la une" },
+  { slug: "societe", label: "Société" },
+  { slug: "economie", label: "Économie" },
+  { slug: "tech", label: "High-Tech" },
+  { slug: "sport", label: "Sport" },
+] as const;
+
+/** Toutes rubriques confondues — sert aux vérifications de cohérence. */
+export const SECTIONS = [
+  { slug: AUTO_SECTION, label: "Auto" },
+  ...INFO_SECTIONS,
+] as const;
+
+export const INFO_SECTION_SLUGS: string[] = INFO_SECTIONS.map((s) => s.slug);
+
+export type SectionSlug = (typeof SECTIONS)[number]["slug"];
+
+export function sectionLabel(slug: string): string | null {
+  return SECTIONS.find((s) => s.slug === slug)?.label ?? null;
+}
+
+/** Clés de flux d'une rubrique, ou de plusieurs. */
+export function sourceKeysOfSection(slug: string | string[]): string[] {
+  const wanted = Array.isArray(slug) ? new Set(slug) : new Set([slug]);
+  return NEWS_SOURCES.filter((s) => wanted.has(s.section)).map((s) => s.key);
+}
+
 export type NewsSource = {
   /** Clé stable, stockée en base. Ne change jamais. */
   key: string;
   kind: NewsKind;
+  section: SectionSlug;
   /** Nom du média, affiché à côté de chaque titre cité. */
   publisher: string;
   url: string;
@@ -63,6 +112,15 @@ export const NEWS_SOURCES: NewsSource[] = [
   motor1("motor1-fr-guide-achat", "category/guide-achat-anciennes", "essai"),
   motor1("motor1-fr-consommation", "category/consommation-reelle", "essai"),
   youtube("motor1-fr-video", "Motor1 France", "UCQnSDNHHPHjwZyY6d2Jstcg"),
+
+  // 20 Minutes — actualité générale. Deal&Co n'est pas un site automobile :
+  // on y vend aussi mode, maison, multimédia, loisirs et animaux. Une revue de
+  // presse qui ne parlerait que de voitures serait plus étroite que le site.
+  vingtMinutes("20minutes-une", "rss-une", "general"),
+  vingtMinutes("20minutes-societe", "rss-societe", "societe"),
+  vingtMinutes("20minutes-economie", "rss-economie", "economie"),
+  vingtMinutes("20minutes-high-tech", "rss-high-tech", "tech"),
+  vingtMinutes("20minutes-sport", "rss-sport", "sport"),
 ];
 
 /**
@@ -73,6 +131,7 @@ function motor1(key: string, path: string, kind: NewsKind): NewsSource {
   return {
     key,
     kind,
+    section: "auto",
     publisher: "Motor1 France",
     url: `https://fr.motor1.com/rss/${path}/`,
     homepage: "https://fr.motor1.com/",
@@ -93,6 +152,7 @@ function youtube(key: string, publisher: string, channelId: string): NewsSource 
   return {
     key,
     kind: "video",
+    section: "auto",
     publisher,
     url: `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`,
     homepage: `https://www.youtube.com/channel/${channelId}`,
@@ -128,6 +188,26 @@ export function authorFeedUrl(slug: string): string {
 
 /** Signature affichée quand le recoupement n'a rien donné. */
 export const DEFAULT_BYLINE = "La rédaction";
+
+/**
+ * Un flux 20 Minutes.
+ *
+ * Ces flux publient le corps complet de l'article dans une balise `<body>`.
+ * Il n'est ni lu ni stocké : le flux porte `<copyright>20minutes.fr</copyright>`,
+ * et un texte intégral livré n'est pas un texte intégral cédé. Ce qu'on reprend
+ * reste ce que reprend n'importe quel agrégateur — titre, chapô, visuel,
+ * signature, date — avec le lien vers l'article.
+ */
+function vingtMinutes(key: string, path: string, section: SectionSlug): NewsSource {
+  return {
+    key,
+    kind: "actualite",
+    section,
+    publisher: "20 Minutes",
+    url: `https://www.20minutes.fr/feeds/${path}.xml`,
+    homepage: "https://www.20minutes.fr/",
+  };
+}
 
 export function sourceByKey(key: string): NewsSource | null {
   return NEWS_SOURCES.find((s) => s.key === key) ?? null;

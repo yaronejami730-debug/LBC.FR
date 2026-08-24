@@ -61,6 +61,7 @@ export const STATIC_PAGES = [
   // formule : le cron capte les flux toutes les heures et la page change
   // réellement à ce rythme.
   { path: "/actualites", changeFrequency: "hourly", priority: 0.8 },
+  { path: "/actualites/auto", changeFrequency: "hourly", priority: 0.8 },
   // Offre fondateurs. Page indexable assumée (voir `app/early-adopter/layout.tsx`)
   // et pourtant absente d'ici : elle était donc indexable sans jamais être
   // soumise. Une page qu'on accepte d'indexer et qu'on ne recommande pas est

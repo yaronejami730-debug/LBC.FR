@@ -30,7 +30,11 @@ import {
   relatedArticles,
   relatedListings,
   isArticleIndexable,
+  videoFor,
+  brandStats,
+  brandTimeline,
 } from "@/lib/news/articles";
+import { getPriceQuote } from "@/lib/seo/price";
 import { byline, frDate, frTime } from "@/lib/news/format";
 import { safeJsonLd } from "@/lib/json-ld";
 
@@ -54,7 +58,7 @@ export async function generateMetadata({
     title: article.title,
     description:
       article.summary ??
-      `${article.title} — revue de presse Deal&Co, publié par ${article.publisher}.`,
+      `${article.title} — Deal&Co Info, publié par ${article.publisher}.`,
     alternates: { canonical: `${BASE}/actualites/${article.slug}` },
     robots: indexable ? undefined : { index: false, follow: true },
     openGraph: {
@@ -75,23 +79,32 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = await getArticle(slug);
   if (!article) notFound();
 
-  const [listings, others] = await Promise.all([
-    relatedListings(article, 8),
-    relatedArticles(article, 3),
-  ]);
-
   const marque = article.brandSlug?.replace(/-/g, " ");
   const modele = article.modelSlug?.replace(/-/g, " ");
-  const priceSlug = article.brandSlug && article.modelSlug
-    ? `${article.brandSlug}-${article.modelSlug}-occasion`
-    : null;
+  const priceSlug =
+    article.brandSlug && article.modelSlug
+      ? `${article.brandSlug}-${article.modelSlug}-occasion`
+      : null;
+
+  // Tout ce que la page ajoute à l'article vient d'ici, et tout est réel :
+  // notre stock, notre cote, nos vidéos. Rien n'est rédigé pour faire volume.
+  const [listings, others, video, stats, timeline, quote] = await Promise.all([
+    relatedListings(article, 8),
+    relatedArticles(article, 3),
+    videoFor(article),
+    article.brandSlug ? brandStats(article.brandSlug) : null,
+    article.brandSlug ? brandTimeline(article.brandSlug, article.slug, 6) : [],
+    priceSlug ? getPriceQuote(priceSlug).catch(() => null) : null,
+  ]);
+
+  const euros = (n: number) => `${n.toLocaleString("fr-FR")} €`;
 
   const breadcrumb = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
-      { "@type": "ListItem", position: 2, name: "Actualité automobile", item: `${BASE}/actualites` },
+      { "@type": "ListItem", position: 2, name: "Deal&Co Info", item: `${BASE}/actualites` },
       { "@type": "ListItem", position: 3, name: article.title, item: `${BASE}/actualites/${article.slug}` },
     ],
   };
@@ -104,7 +117,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <main className="mx-auto max-w-3xl px-4 pt-32 pb-16">
         <nav className="mb-4 text-xs text-outline">
           <Link href="/actualites" className="hover:text-primary">
-            Actualité automobile
+            Deal&amp;Co Info
           </Link>
           {marque && (
             <>
@@ -167,7 +180,28 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           )}
 
           {article.summary && (
-            <p className="mt-5 text-base leading-relaxed text-on-surface-variant">{article.summary}</p>
+            <p className="mt-5 text-base font-medium leading-relaxed text-on-surface">
+              {article.summary}
+            </p>
+          )}
+
+          {/* ── L'extrait ────────────────────────────────────────────────────
+              Le flux de certains médias livre l'article entier. Le livrer n'est
+              pas le céder : ces flux portent une mention de copyright. Ce qui
+              s'affiche ici est donc une citation bornée, encadrée comme telle,
+              suivie du renvoi vers l'article complet. C'est ce que le droit de
+              courte citation autorise, et c'est où s'arrête ce que nous
+              publions du travail d'un autre. */}
+          {article.excerpt && (
+            <figure className="mt-6">
+              <blockquote className="border-l-4 border-surface-container pl-5 text-base leading-relaxed text-on-surface-variant">
+                {article.excerpt}
+              </blockquote>
+              <figcaption className="mt-2 pl-5 text-xs text-outline">
+                Extrait de l&apos;article de {article.publisher}
+                {article.authorName ? `, par ${article.authorName}` : ""}.
+              </figcaption>
+            </figure>
           )}
 
           <div className="mt-6 rounded-2xl border border-surface-container bg-white p-5">
@@ -196,6 +230,84 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           </div>
         </article>
 
+        {/* ── La cote ──────────────────────────────────────────────────────
+            Le chiffre que le média n'a pas : ce que le modèle vaut réellement
+            sur notre marché, vendues comprises. */}
+        {quote && (
+          <section className="mt-10">
+            <h2 className="text-xl font-bold text-on-surface">
+              Combien vaut un{modele ? ` ${marque} ${modele}` : ""} d&apos;occasion ?
+            </h2>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Cote établie sur {quote.observations.toLocaleString("fr-FR")} annonces entre
+              particuliers, annonces vendues comprises.
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {[
+                { label: "Prix le plus bas", value: quote.min },
+                { label: "Prix moyen", value: quote.average, highlight: true },
+                { label: "Prix le plus haut", value: quote.max },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className={`rounded-2xl border p-4 text-center ${
+                    stat.highlight
+                      ? "border-primary bg-primary text-white shadow-lg shadow-primary/20"
+                      : "border-surface-container bg-white"
+                  }`}
+                >
+                  <p
+                    className={`text-xl font-extrabold ${stat.highlight ? "text-white" : "text-primary"}`}
+                  >
+                    {euros(stat.value)}
+                  </p>
+                  <p className={`mt-1 text-xs ${stat.highlight ? "text-white/80" : "text-outline"}`}>
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {priceSlug && (
+              <Link
+                href={`/prix/${priceSlug}`}
+                className="mt-3 inline-block text-sm font-semibold text-primary hover:underline"
+              >
+                Voir la cote détaillée {marque} {modele} →
+              </Link>
+            )}
+          </section>
+        )}
+
+        {/* ── La vidéo du même sujet ───────────────────────────────────────
+            Prise dans notre propre base, jamais cherchée à la volée : ce qui
+            s'affiche ici a été capté, daté et signé comme le reste. */}
+        {video && video.videoId && (
+          <section className="mt-10">
+            <h2 className="text-xl font-bold text-on-surface">
+              {marque ? <span className="capitalize">{marque}</span> : "Sur le même sujet"} en vidéo
+            </h2>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-surface-container">
+              <div className="relative aspect-video">
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${video.videoId}`}
+                  title={video.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full border-0"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-sm font-semibold text-on-surface">{video.title}</p>
+            <p className="text-xs text-outline">
+              {byline(video.authorName, video.publisher)} —{" "}
+              <time dateTime={video.publishedAt.toISOString()}>
+                {frDate(video.publishedAt)} à {frTime(video.publishedAt)}
+              </time>
+            </p>
+          </section>
+        )}
+
         {listings.length > 0 && (
           <section className="mt-10">
             <h2 className="text-xl font-bold text-on-surface">
@@ -218,6 +330,64 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 Voir la cote {marque} {modele} d&apos;occasion →
               </Link>
             )}
+          </section>
+        )}
+
+        {/* ── Le marché de la marque chez nous ────────────────────────── */}
+        {stats && (
+          <section className="mt-10 rounded-2xl border border-surface-container bg-white p-6">
+            <h2 className="text-lg font-bold text-on-surface">
+              Le marché {stats.name} d&apos;occasion sur Deal&amp;Co
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">
+              {stats.count} annonce{stats.count > 1 ? "s" : ""} {stats.name} en ligne
+              aujourd&apos;hui, entre {euros(stats.minPrice)} et {euros(stats.maxPrice)},
+              pour un prix moyen de <strong>{euros(stats.avgPrice)}</strong>. Toutes sont
+              publiées par des particuliers, sans commission.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={`/annonces/vehicules/${article.brandSlug}`}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-transform active:scale-95"
+              >
+                Voir les {stats.name} d&apos;occasion
+              </Link>
+              <Link
+                href={`/actualites/marque/${article.brandSlug}`}
+                className="rounded-full border border-surface-container bg-white px-5 py-2.5 text-sm font-semibold text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                Toute l&apos;actualité {stats.name}
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {/* ── Le fil de la marque ──────────────────────────────────────────
+            Une liste datée, pas des cartes : elle donne la chronologie d'un
+            coup d'œil, ce qu'une grille d'images ne fait pas. */}
+        {timeline.length > 2 && (
+          <section className="mt-10">
+            <h2 className="text-xl font-bold text-on-surface">
+              Le fil <span className="capitalize">{marque}</span>
+            </h2>
+            <ol className="mt-4 space-y-3">
+              {timeline.map((t) => (
+                <li key={t.slug} className="border-t border-surface-container pt-3 first:border-t-0 first:pt-0">
+                  <Link
+                    href={`/actualites/${t.slug}`}
+                    className="text-sm font-semibold text-on-surface hover:text-primary hover:underline"
+                  >
+                    {t.title}
+                  </Link>
+                  <p className="mt-0.5 text-[11px] text-outline">
+                    {byline(t.authorName, t.publisher)} —{" "}
+                    <time dateTime={t.publishedAt.toISOString()}>
+                      {frDate(t.publishedAt)} à {frTime(t.publishedAt)}
+                    </time>
+                  </p>
+                </li>
+              ))}
+            </ol>
           </section>
         )}
 

@@ -1,11 +1,15 @@
 /**
- * Le fil d'actualité automobile de Deal&Co.
+ * Deal&Co Info — la une.
  *
  * ── Ce que cette page est ─────────────────────────────────────────────────
  *
  * Une revue de presse, tenue à jour toutes les heures à partir des flux que les
  * médias publient pour être repris. Chaque entrée porte sa signature, sa date
  * et son heure, et mène à une page qui renvoie à l'article d'origine.
+ *
+ * Elle n'est pas que automobile, et c'est délibéré : Deal&Co vend aussi mode,
+ * maison, multimédia, loisirs et animaux. Une revue de presse limitée aux
+ * voitures serait plus étroite que le site qui la porte.
  *
  * ── Pourquoi elle s'indexe, elle ──────────────────────────────────────────
  *
@@ -22,6 +26,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ArticleCard from "@/components/news/ArticleCard";
 import { getNewsFeed, coveredBrands, countArticles } from "@/lib/news/articles";
+import { INFO_SECTIONS, INFO_SECTION_SLUGS } from "@/lib/news/sources";
 import { frDateTime } from "@/lib/news/format";
 import { safeJsonLd } from "@/lib/json-ld";
 
@@ -31,16 +36,16 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 900;
 
 export const metadata: Metadata = {
-  title: "Actualité automobile — essais, nouveautés et vidéos",
+  title: "Deal&Co Info — l'actualité du jour",
   description:
-    "La revue de presse automobile de Deal&Co : essais, nouveautés et vidéos de la presse spécialisée, mis à jour chaque heure, avec les annonces d'occasion correspondantes.",
+    "Deal&Co Info : l'actualité française et automobile, mise à jour chaque heure à partir des flux de la presse. Essais, nouveautés, société, économie, high-tech et sport, avec les annonces correspondantes.",
   alternates: {
     canonical: `${BASE}/actualites`,
     types: { "application/atom+xml": `${BASE}/actualites/feed.xml` },
   },
   openGraph: {
-    title: "Actualité automobile — Deal&Co",
-    description: "Essais, nouveautés et vidéos de la presse spécialisée, mis à jour chaque heure.",
+    title: "Deal&Co Info",
+    description: "L'actualité du jour, mise à jour chaque heure à partir des flux de la presse.",
     url: `${BASE}/actualites`,
     siteName: "Deal&Co",
     locale: "fr_FR",
@@ -49,21 +54,30 @@ export const metadata: Metadata = {
 };
 
 export default async function ActualitesPage() {
-  const [articles, brands, total] = await Promise.all([
-    getNewsFeed(null, 25),
+  const [articles, brands, total, sections] = await Promise.all([
+    getNewsFeed(null, 13, 0, INFO_SECTION_SLUGS),
     coveredBrands(2),
     countArticles(null),
+    // Une rubrique par flux d'origine : c'est le média qui range ses articles,
+    // et il le fait mieux qu'un classement deviné après coup.
+    Promise.all(
+      INFO_SECTIONS.map(async (section) => ({
+        ...section,
+        articles: await getNewsFeed(null, 4, 0, section.slug),
+      })),
+    ),
   ]);
 
   const [lead, ...rest] = articles;
+  const leadUrls = new Set(articles.map((a) => a.slug));
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: "Actualité automobile",
+    name: "Deal&Co Info",
     url: `${BASE}/actualites`,
     description:
-      "Revue de presse automobile : essais, nouveautés et vidéos de la presse spécialisée.",
+      "Revue de presse : actualité française et automobile, mise à jour chaque heure.",
     ...(lead ? { dateModified: lead.publishedAt.toISOString() } : {}),
   };
 
@@ -75,12 +89,16 @@ export default async function ActualitesPage() {
       <main className="mx-auto max-w-6xl px-4 pt-32 pb-16">
         <header className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-on-surface md:text-4xl">
-            Actualité automobile
+            Deal&amp;Co Info
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-on-surface-variant">
-            Notre revue de la presse spécialisée : essais, nouveautés et vidéos, avec
-            pour chaque sujet les annonces d&apos;occasion que nous avons en ligne.
-            Chaque article renvoie à sa source.
+            L&apos;actualité du jour, reprise des flux que la presse publie pour être
+            reprise. Chaque article porte sa signature, sa date, son heure, et renvoie
+            à sa source. Pour l&apos;automobile, c&apos;est{" "}
+            <Link href="/actualites/auto" className="font-semibold text-primary hover:underline">
+              Deal&amp;Co Auto
+            </Link>
+            .
           </p>
           {lead && (
             <p className="mt-2 text-xs text-outline">
@@ -96,6 +114,29 @@ export default async function ActualitesPage() {
           </p>
         ) : (
           <>
+            <nav aria-label="Rubriques" className="mb-8 flex flex-wrap gap-2 border-b border-surface-container pb-4">
+              {sections
+                .filter((s) => s.articles.length > 0)
+                .map((s) => (
+                  <Link
+                    key={s.slug}
+                    href={`/actualites/rubrique/${s.slug}`}
+                    className="rounded-full bg-surface-container px-4 py-2 text-xs font-bold uppercase tracking-wide text-on-surface transition-colors hover:bg-primary hover:text-white"
+                  >
+                    {s.label}
+                  </Link>
+                ))}
+              {/* L'auto sort de la grille : elle a sa propre une, avec ses
+                  cotes et ses annonces. Le lien reste, parce qu'un lecteur qui
+                  passe par ici doit pouvoir y aller. */}
+              <Link
+                href="/actualites/auto"
+                className="rounded-full border border-primary px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary hover:text-white"
+              >
+                Deal&amp;Co Auto →
+              </Link>
+            </nav>
+
             {brands.length > 0 && (
               <nav aria-label="Marques suivies" className="mb-8 flex flex-wrap gap-2">
                 {brands.slice(0, 16).map((b) => (
@@ -132,6 +173,34 @@ export default async function ActualitesPage() {
                 <ArticleCard key={a.slug} article={a} />
               ))}
             </div>
+
+            {/* Une bande par rubrique. Les articles déjà en tête de page en
+                sont retirés : voir deux fois le même titre à trente centimètres
+                d'écart donne l'impression d'un site mal tenu. */}
+            {sections.map((section) => {
+              const items = section.articles.filter((a) => !leadUrls.has(a.slug)).slice(0, 3);
+              if (items.length === 0) return null;
+              return (
+                <section key={section.slug} className="mt-12">
+                  <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-surface-container pb-2">
+                    <h2 className="text-xl font-extrabold tracking-tight text-on-surface">
+                      {section.label}
+                    </h2>
+                    <Link
+                      href={`/actualites/rubrique/${section.slug}`}
+                      className="shrink-0 text-sm font-semibold text-primary hover:underline"
+                    >
+                      Tout voir →
+                    </Link>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((a) => (
+                      <ArticleCard key={a.slug} article={a} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </>
         )}
       </main>

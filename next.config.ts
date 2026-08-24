@@ -129,6 +129,7 @@ const nextConfig: NextConfig = {
       // joker de domaine — la règle du fichier reste la même.
       { protocol: "https", hostname: "cdn.motor1.com" },
       { protocol: "https", hostname: "**.ytimg.com" },
+      { protocol: "https", hostname: "img.20mn.fr" },
     ],
   },
   async headers() {

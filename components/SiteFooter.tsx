@@ -7,7 +7,8 @@ import { getIndexablePriceSlugs } from "@/lib/seo/price";
 const LEGAL_LINKS = [
   { label: "À propos", href: "/a-propos" },
   { label: "Blog", href: "/blog" },
-  { label: "Actualité auto", href: "/actualites" },
+  { label: "Deal&Co Info", href: "/actualites" },
+  { label: "Deal&Co Auto", href: "/actualites/auto" },
   { label: "Contact", href: "/contact" },
   { label: "Mentions légales", href: "/mentions-legales" },
   { label: "CGU", href: "/cgu" },

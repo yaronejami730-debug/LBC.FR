@@ -19,7 +19,8 @@ const CATEGORIES = [
   { label: "Animaux",              href: "/annonces/animaux" },
   { label: "Bons plans !",         href: "/nouveautes" },
   { label: "Guides",               href: "/blog" },
-  { label: "Actualité auto",       href: "/actualites" },
+  { label: "Deal&Co Info",         href: "/actualites" },
+  { label: "Actu auto",            href: "/actualites/auto" },
 ];
 
 /**

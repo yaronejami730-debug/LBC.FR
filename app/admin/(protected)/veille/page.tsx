@@ -1,4 +1,6 @@
 import { newsTrends } from "@/lib/news/select";
+import { feedHealth } from "@/lib/news/articles";
+import FeedStatus from "./FeedStatus";
 import { prisma } from "@/lib/prisma";
 import { NEWS_SOURCES } from "@/lib/news/sources";
 
@@ -26,11 +28,25 @@ const dateFr = (d: Date) =>
  * il ne recopie pas.
  */
 export default async function AdminVeillePage() {
-  const [trends, total, dernier] = await Promise.all([
+  const [trends, total, dernier, feeds] = await Promise.all([
     newsTrends(30),
     prisma.newsItem.count(),
     prisma.newsItem.findFirst({ orderBy: { fetchedAt: "desc" }, select: { fetchedAt: true } }),
+    feedHealth(),
   ]);
+
+  // Le cron passe toutes les heures : au-delà de deux, le flux est en panne.
+  const STALE_MS = 2 * 3600 * 1000;
+  const dateHeure = (d: Date | null) =>
+    d
+      ? d.toLocaleString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/Paris",
+        })
+      : "jamais";
 
   const aEcrire = trends.filter((t) => t.articles >= 2 && t.listings > 0);
   const aRecruter = trends.filter((t) => t.articles >= 2 && t.listings === 0);
@@ -45,6 +61,78 @@ export default async function AdminVeillePage() {
           {dernier ? ` · dernière captation le ${dateFr(dernier.fetchedAt)}` : " · aucune captation"}.
         </p>
       </header>
+
+      {/* ── État des flux ────────────────────────────────────────────────
+          Un flux branché laisse deux traces qu'on ne peut pas simuler : une
+          heure de dernière lecture qui avance à chaque passage, et un dernier
+          article dont la date suit ce que le média publie. */}
+      <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">État des flux</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Captation automatique toutes les heures. Un flux lu il y a plus de deux
+              heures est en panne.
+            </p>
+          </div>
+          <FeedStatus />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-3 font-semibold">Flux</th>
+                <th className="py-2 pr-3 font-semibold">Rubrique</th>
+                <th className="py-2 pr-3 text-right font-semibold">Articles</th>
+                <th className="py-2 pr-3 font-semibold">Dernière lecture</th>
+                <th className="py-2 pr-3 font-semibold">Dernier article</th>
+                <th className="py-2 font-semibold">État</th>
+              </tr>
+            </thead>
+            <tbody>
+              {feeds.map((f) => {
+                const stale =
+                  !f.lastFetch || Date.now() - f.lastFetch.getTime() > STALE_MS;
+                return (
+                  <tr key={f.key} className="border-b border-slate-100 last:border-0">
+                    <td className="py-2 pr-3">
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noopener"
+                        className="font-medium text-[#2f6fb8] hover:underline"
+                      >
+                        {f.key}
+                      </a>
+                      <span className="ml-2 text-xs text-slate-400">{f.publisher}</span>
+                    </td>
+                    <td className="py-2 pr-3 text-slate-600">{f.section}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-slate-700">
+                      {f.articles}
+                    </td>
+                    <td className="py-2 pr-3 tabular-nums text-slate-600">
+                      {dateHeure(f.lastFetch)}
+                    </td>
+                    <td className="py-2 pr-3 tabular-nums text-slate-600">
+                      {dateHeure(f.lastArticle)}
+                    </td>
+                    <td className="py-2">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          stale ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {stale ? "à vérifier" : "connecté"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {total === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">

@@ -157,6 +157,10 @@ export async function ingestSource(
       modelSlug,
       categories: JSON.stringify(item.categories.slice(0, 8)),
       imageUrl: item.imageUrl,
+      // Signature du flux quand il en publie une. Sinon `null`, et le
+      // recoupement par flux d'auteur prendra le relais s'il existe.
+      authorName: item.author?.slice(0, 120) ?? null,
+      excerpt: item.excerpt,
     };
 
     // `upsert` sur l'URL : un média retouche régulièrement le titre d'un
@@ -179,6 +183,8 @@ export async function ingestSource(
         // calculé ici que pour les lignes captées avant l'existence de la
         // colonne, qui n'en ont encore aucun.
         ...(before?.slug ? {} : { slug: newsSlug(item.title, item.url) }),
+        // Une signature déjà en base ne se fait pas écraser par un `null`.
+        ...(item.author ? {} : { authorName: undefined }),
       },
     });
     if (before) report.updated++;
