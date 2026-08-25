@@ -13,7 +13,7 @@
 import { NEWS_SOURCES } from "../lib/news/sources";
 import { parseFeed } from "../lib/news/parse";
 import { matchTitle } from "../lib/news/match";
-import { attachAuthors, buildModelCatalogue, ingestAll, purgeOldNews } from "../lib/news/ingest";
+import { attachAuthors, buildModelCatalogue, ingestAll, makeQuoteBudget, purgeOldNews } from "../lib/news/ingest";
 import { newsTrends } from "../lib/news/select";
 import { prisma } from "../lib/prisma";
 
@@ -70,14 +70,17 @@ async function main() {
   if (has("report")) return report();
   if (!has("run")) return dryRun();
 
-  const reports = await ingestAll();
+  // En ligne de commande, rien ne contraint la durée : le budget de lecture des
+  // pages est large, de quoi rattraper d'un coup tout ce que le cron étale sur
+  // plusieurs passages.
+  const reports = await ingestAll(makeQuoteBudget(400, 10 * 60_000));
   for (const r of reports) {
     if (r.error) {
       console.log(`${r.source} : échec — ${r.error}`);
       continue;
     }
     console.log(
-      `${r.source} : ${r.fetched} lus, ${r.created} nouveaux, ${r.updated} mis à jour, ${r.skipped} écartés, ${r.matchedBrand} marques, ${r.matchedModel} modèles`,
+      `${r.source} : ${r.fetched} lus, ${r.created} nouveaux, ${r.updated} mis à jour, ${r.skipped} écartés, ${r.quoted} cités, ${r.matchedBrand} marques, ${r.matchedModel} modèles`,
     );
   }
   const authors = await attachAuthors();

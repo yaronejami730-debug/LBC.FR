@@ -1,4 +1,4 @@
-/**
+tèà!y)/**
  * Temps de réponse des pages publiques, mesuré depuis l'extérieur.
  *
  *     npm run seo:ttfb
@@ -24,7 +24,7 @@
 // Sans import ni export, TypeScript traiterait ce fichier comme un script
 // global : ses constantes entreraient en collision avec celles des autres
 // scripts. `export {}` en fait un module, et le problème disparaît.
-export {};
+export { };
 
 const arg = (name: string, fallback: string) =>
   process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;

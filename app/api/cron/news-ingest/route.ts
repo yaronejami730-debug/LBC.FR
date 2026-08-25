@@ -5,13 +5,18 @@ import { pingIndexNow } from "@/lib/indexnow";
 import { getNewsFeed } from "@/lib/news/articles";
 
 /**
- * Captation des flux de presse, toutes les heures.
+ * Captation des flux de presse, tous les quarts d'heure.
  *
- * ── Pourquoi cette fréquence, et ce qu'elle achète ────────────────────────
+ * ── Pourquoi ce rythme, et ce qu'il achète ────────────────────────────────
  *
- * Un article paru à 9 h doit être sur le site à 10 h, pas le lendemain : c'est
- * ce qui rend le fil crédible pour un visiteur, et c'est ce qui donne au fil un
- * rythme de mise à jour qu'un moteur peut apprendre.
+ * Un article paru à 9 h doit être sur le site à 9 h 15, pas le lendemain :
+ * c'est ce qui rend le fil crédible pour un visiteur, et c'est ce qui donne au
+ * fil une cadence qu'un moteur peut apprendre.
+ *
+ * Descendre encore — toutes les minutes — n'apporterait rien : les rédactions
+ * republient leur flux à un rythme de l'ordre du quart d'heure, et taper quatre
+ * fois plus souvent chez un média qui nous rend service en publiant un flux
+ * ouvert est le meilleur moyen de s'en faire refuser l'accès.
  *
  * Chaque passage fait trois choses au-delà de la captation :
  *
@@ -32,6 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   const reports = await ingestAll();
+  const quoted = reports.reduce((n, r) => n + r.quoted, 0);
   const authors = await attachAuthors();
   const purged = await purgeOldNews();
 
@@ -59,6 +65,9 @@ export async function GET(req: NextRequest) {
       authors,
       purged,
       created,
+      // Citations obtenues en ouvrant la page du média : le budget d'un passage
+      // est borné, ce chiffre dit ce qu'il en reste à rattraper au suivant.
+      quoted,
     },
     // Un flux en échec ne casse pas le cron : 200 avec `ok: false`, le
     // détail est dans le corps. Un 500 déclencherait une alerte pour une

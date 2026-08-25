@@ -3,18 +3,27 @@
  *
  * ── Ce que cette page affiche, et sous quel nom ───────────────────────────
  *
- * Le visuel et le résumé publiés par le média dans son flux, sa signature, la
- * date **et l'heure** de publication, puis un renvoi bien visible vers
- * l'article complet chez lui. Le texte intégral n'est jamais repris : il n'est
- * pas dans le flux, et l'aspirer serait de la contrefaçon.
+ * Le visuel du flux, le chapô, puis une **citation d'une quinzaine de lignes**
+ * du corps de l'article, encadrée comme telle et suivie du renvoi vers
+ * l'original. La signature reste celle du média, la date porte l'heure, et un
+ * bouton bien visible mène à l'article complet chez lui.
  *
- * Aucune signature Deal&Co n'apparaît, et aucun balisage `NewsArticle` n'est
- * émis : nous ne sommes pas l'auteur, le déclarer à Google serait faux.
+ * La citation vient du flux quand le média y publie son texte — un seul le fait
+ * sur les seize mesurés — et de la page publique de l'article sinon. Dans les
+ * deux cas elle est bornée à la même proportion : 45 % du texte, 1 500
+ * caractères au plus, jamais plus de 60 % d'un article court. Voir
+ * `lib/news/fulltext.ts` pour ce que cette lecture fait et ne fait pas.
+ *
+ * Aucune signature Deal&Co n'apparaît nulle part. Le balisage `NewsArticle`
+ * nomme le journaliste en `author`, son média en `publisher`, et pointe
+ * l'original en `isBasedOn` : un moteur y lit une revue de presse attribuée,
+ * ce qu'elle est.
  *
  * ── Ce que la page ajoute ─────────────────────────────────────────────────
  *
- * Les annonces que nous avons sur le sujet, et la cote du modèle. C'est ce qui
- * la rend utile — et, au-delà d'un seuil d'annonces, indexable.
+ * Les annonces que nous avons sur le sujet, la cote du modèle, le fil de la
+ * marque. C'est ce qui la rend utile, et ce qui justifie qu'elle demande
+ * l'index — sans seuil, désormais : voir `lib/news/seo.ts`.
  */
 
 import type { Metadata } from "next";
@@ -29,16 +38,15 @@ import {
   getArticle,
   relatedArticles,
   relatedListings,
-  isArticleIndexable,
   videoFor,
   brandStats,
   brandTimeline,
 } from "@/lib/news/articles";
+import { newsMetadata, breadcrumbJsonLd, articleJsonLd } from "@/lib/news/seo";
 import { getPriceQuote } from "@/lib/seo/price";
-import { byline, frDate, frTime } from "@/lib/news/format";
+import { byline, frDate, frTime, paragraphs } from "@/lib/news/format";
+import { sectionLabel } from "@/lib/news/sources";
 import { safeJsonLd } from "@/lib/json-ld";
-
-const BASE = "https://www.dealandcompany.fr";
 
 export const revalidate = 3600;
 
@@ -51,27 +59,22 @@ export async function generateMetadata({
   const article = await getArticle(slug);
   if (!article) return {};
 
-  const listings = await relatedListings(article, 3);
-  const indexable = isArticleIndexable(listings.length);
+  // La description reprend le chapô du média quand il en publie un, et le
+  // début de la citation sinon. Jamais un texte fabriqué pour remplir : une
+  // description inventée finit par décrire une page qui n'existe pas.
+  const description =
+    article.summary ??
+    article.excerpt?.split("\n")[0].slice(0, 300) ??
+    `${article.title} — revue de presse Deal&Co, article publié par ${article.publisher}.`;
 
-  return {
+  return newsMetadata({
     title: article.title,
-    description:
-      article.summary ??
-      `${article.title} — Deal&Co Info, publié par ${article.publisher}.`,
-    alternates: { canonical: `${BASE}/actualites/${article.slug}` },
-    robots: indexable ? undefined : { index: false, follow: true },
-    openGraph: {
-      title: article.title,
-      description: article.summary ?? undefined,
-      url: `${BASE}/actualites/${article.slug}`,
-      siteName: "Deal&Co",
-      locale: "fr_FR",
-      type: "article",
-      publishedTime: article.publishedAt.toISOString(),
-      images: article.imageUrl ? [article.imageUrl] : undefined,
-    },
-  };
+    description,
+    path: `/actualites/${article.slug}`,
+    image: article.imageUrl,
+    publishedAt: article.publishedAt,
+    type: "article",
+  });
 }
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -99,19 +102,23 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   const euros = (n: number) => `${n.toLocaleString("fr-FR")} €`;
 
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: BASE },
-      { "@type": "ListItem", position: 2, name: "Deal&Co Info", item: `${BASE}/actualites` },
-      { "@type": "ListItem", position: 3, name: article.title, item: `${BASE}/actualites/${article.slug}` },
-    ],
-  };
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Accueil", path: "" },
+    { name: "Deal&Co Info", path: "/actualites" },
+    ...(article.section === "auto"
+      ? [{ name: "Deal&Co Auto", path: "/actualites/auto" }]
+      : [{ name: sectionLabel(article.section) ?? "Actualités", path: `/actualites/rubrique/${article.section}` }]),
+    { name: article.title, path: `/actualites/${article.slug}` },
+  ]);
+
+  // Ce balisage n'affirme que des choses vraies : l'auteur est le journaliste,
+  // l'éditeur est son média, l'original est chez lui. Voir `lib/news/seo.ts`.
+  const newsJsonLd = articleJsonLd(article, article.excerpt?.length ?? 0);
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(newsJsonLd) }} />
       <Navbar />
 
       <main className="mx-auto max-w-3xl px-4 pt-32 pb-16">
@@ -194,12 +201,17 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               publions du travail d'un autre. */}
           {article.excerpt && (
             <figure className="mt-6">
-              <blockquote className="border-l-4 border-surface-container pl-5 text-base leading-relaxed text-on-surface-variant">
-                {article.excerpt}
+              <blockquote className="space-y-4 border-l-4 border-primary/30 pl-5 text-[17px] leading-[1.75] text-on-surface">
+                {paragraphs(article.excerpt).map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
               </blockquote>
-              <figcaption className="mt-2 pl-5 text-xs text-outline">
+              <figcaption className="mt-3 pl-5 text-xs text-outline">
                 Extrait de l&apos;article de {article.publisher}
-                {article.authorName ? `, par ${article.authorName}` : ""}.
+                {article.authorName ? `, par ${article.authorName}` : ""}.{" "}
+                <a href={article.url} target="_blank" rel="noopener" className="font-semibold text-primary hover:underline">
+                  Lire la suite chez {article.publisher} ↗
+                </a>
               </figcaption>
             </figure>
           )}

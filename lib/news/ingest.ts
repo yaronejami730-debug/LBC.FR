@@ -32,6 +32,7 @@ import {
   type NewsSource,
 } from "@/lib/news/sources";
 import { parseFeed, type FeedItem } from "@/lib/news/parse";
+import { fetchArticleExtras } from "@/lib/news/fulltext";
 import { matchTitle, type ModelCatalogue, type ModelEntry } from "@/lib/news/match";
 import { normalizeToken } from "@/lib/seo/city";
 import { newsSlug } from "@/lib/news/slug";
@@ -99,6 +100,40 @@ async function fetchFeed(source: NewsSource): Promise<FeedItem[]> {
   return parseFeed(await res.text());
 }
 
+/**
+ * Budget de lecture des pages d'article, pour un passage de captation.
+ *
+ * ── Pourquoi un budget, et pas « on lit tout » ────────────────────────────
+ *
+ * Ouvrir la page d'un article prend entre une demi-seconde et deux secondes.
+ * Le cron dispose de 120 secondes (`maxDuration`), et il a d'autres choses à
+ * faire que lire des pages : capter treize flux, recouper les signatures,
+ * purger. Sans plafond, un passage un peu lent se ferait couper au milieu, et
+ * ce sont les derniers flux de la liste qui n'entreraient jamais.
+ *
+ * Le budget est donc double, et les deux bornes comptent :
+ *
+ *   · `remaining` — un nombre de pages par passage. Les articles non lus cette
+ *     fois-ci le seront au passage suivant : leur ligne existe déjà en base,
+ *     avec son `excerpt` à `null`, et c'est précisément ce que la condition de
+ *     lecture cherche ;
+ *   · `deadline` — une heure au-delà de laquelle on ne commence plus rien. Elle
+ *     protège la fin de la captation même si les pages répondent lentement.
+ *
+ * Conséquence assumée : un article peut être en ligne avec son seul chapô
+ * pendant une heure avant de recevoir sa citation longue. C'est préférable à un
+ * article absent.
+ */
+export type QuoteBudget = { remaining: number; deadline: number };
+
+export function makeQuoteBudget(pages = 60, msAvailable = 75_000): QuoteBudget {
+  return { remaining: pages, deadline: Date.now() + msAvailable };
+}
+
+function budgetAllows(budget: QuoteBudget | null): budget is QuoteBudget {
+  return budget !== null && budget.remaining > 0 && Date.now() < budget.deadline;
+}
+
 export type IngestReport = {
   source: string;
   fetched: number;
@@ -107,12 +142,17 @@ export type IngestReport = {
   skipped: number;
   matchedBrand: number;
   matchedModel: number;
+  /** Citations obtenues en ouvrant la page du média, faute de corps dans le flux. */
+  quoted: number;
+  /** Visuels relevés sur la page du média, faute d'image dans le flux. */
+  illustrated: number;
   error?: string;
 };
 
 export async function ingestSource(
   source: NewsSource,
   catalogue: ModelCatalogue,
+  budget: QuoteBudget | null = null,
 ): Promise<IngestReport> {
   const report: IngestReport = {
     source: source.key,
@@ -122,6 +162,8 @@ export async function ingestSource(
     skipped: 0,
     matchedBrand: 0,
     matchedModel: 0,
+    quoted: 0,
+    illustrated: 0,
   };
 
   let items: FeedItem[];
@@ -148,6 +190,55 @@ export async function ingestSource(
     if (brandSlug) report.matchedBrand++;
     if (modelSlug) report.matchedModel++;
 
+    // `upsert` sur l'URL : un média retouche régulièrement le titre d'un
+    // article publié. On veut la version à jour, pas deux lignes.
+    const before = await prisma.newsItem.findUnique({
+      where: { url: item.url },
+      select: { id: true, slug: true, excerpt: true, imageUrl: true },
+    });
+
+    /**
+     * La citation longue, dans l'ordre des sources les plus légitimes.
+     *
+     *   1. le corps publié **par le flux** — un média qui met son texte dans
+     *      son RSS le met là pour être repris, il n'y a rien à discuter ;
+     *   2. celle déjà en base — on ne relit jamais deux fois la même page ;
+     *   3. la page publique de l'article, dans la limite du budget du passage.
+     *
+     * Le troisième cas est celui de presque tous les médias français : mesuré
+     * le 24/08/2026, un seul flux sur seize publie le corps de ses articles.
+     * Sans lui, la moitié du site afficherait deux lignes sous une photo.
+     */
+    let excerpt = item.excerpt ?? before?.excerpt ?? null;
+
+    /**
+     * Le visuel, dans le même ordre de légitimité que la citation : celui du
+     * flux, puis celui déjà en base, puis celui que la page déclare en
+     * `og:image`.
+     *
+     * Cette troisième voie n'est pas un confort. Le fil n'affiche que les
+     * articles illustrés — une carte sans visuel casse une grille — et
+     * plusieurs flux, dont Courrier Cadres, ne publient aucune image tout en
+     * ayant une photo sur chaque article. Sans elle, une rubrique entière
+     * resterait invisible malgré des articles captés.
+     */
+    let imageUrl = item.imageUrl ?? before?.imageUrl ?? null;
+
+    // Une seule ouverture de page pour les deux manques : on n'y va que s'il
+    // en reste au moins un, et jamais deux fois.
+    if ((!excerpt || !imageUrl) && budgetAllows(budget)) {
+      budget.remaining--;
+      const extras = await fetchArticleExtras(item.url);
+      if (!excerpt && extras.quote) {
+        excerpt = extras.quote;
+        report.quoted++;
+      }
+      if (!imageUrl && extras.imageUrl) {
+        imageUrl = extras.imageUrl;
+        report.illustrated++;
+      }
+    }
+
     const data = {
       source: source.key,
       title: item.title,
@@ -156,19 +247,13 @@ export async function ingestSource(
       brandSlug,
       modelSlug,
       categories: JSON.stringify(item.categories.slice(0, 8)),
-      imageUrl: item.imageUrl,
+      imageUrl,
       // Signature du flux quand il en publie une. Sinon `null`, et le
       // recoupement par flux d'auteur prendra le relais s'il existe.
       authorName: item.author?.slice(0, 120) ?? null,
-      excerpt: item.excerpt,
+      excerpt,
     };
 
-    // `upsert` sur l'URL : un média retouche régulièrement le titre d'un
-    // article publié. On veut la version à jour, pas deux lignes.
-    const before = await prisma.newsItem.findUnique({
-      where: { url: item.url },
-      select: { id: true, slug: true },
-    });
     await prisma.newsItem.upsert({
       where: { url: item.url },
       // Le slug n'est posé qu'à la création, et n'apparaît volontairement pas
@@ -246,13 +331,13 @@ export async function attachAuthors(): Promise<{ signed: number; sponsored: numb
   return { signed, sponsored };
 }
 
-export async function ingestAll(): Promise<IngestReport[]> {
+export async function ingestAll(budget: QuoteBudget | null = makeQuoteBudget()): Promise<IngestReport[]> {
   const catalogue = await buildModelCatalogue();
   const reports: IngestReport[] = [];
   // Séquentiel : quelques flux, aucune raison de taper en parallèle chez un
   // média qui nous rend service en publiant un flux ouvert.
   for (const source of NEWS_SOURCES) {
-    reports.push(await ingestSource(source, catalogue));
+    reports.push(await ingestSource(source, catalogue, budget));
   }
   return reports;
 }

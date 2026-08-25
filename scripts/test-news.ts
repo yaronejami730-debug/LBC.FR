@@ -25,6 +25,7 @@ import {
   sourceKeysOfSection,
 } from "../lib/news/sources";
 import { brandModelFromPriceSlug } from "../lib/news/select";
+import { extractArticleText, boundedQuote } from "../lib/news/fulltext";
 import { check, equal, section, report } from "./test-helpers";
 
 const FEED = `<?xml version="1.0" encoding="UTF-8"?>
@@ -96,8 +97,22 @@ const LONG = AVEC_AUTEUR.replace(
   "<p>" + "Phrase de remplissage bien réelle. ".repeat(60) + "</p>",
 );
 equal("le résumé reste le chapô du flux", avecAuteur[0].summary, "A Pomas, des toitures ont été arrachées.");
-check("le corps donne une citation bornée", (avecAuteur[0].excerpt ?? "").length > 0 && (avecAuteur[0].excerpt ?? "").length <= EXCERPT_CHARS);
-check("la citation ne dépasse jamais la borne", parseFeed(LONG).every((i) => (i.excerpt ?? "").length <= EXCERPT_CHARS + 6));
+// Un corps de deux lignes n'est pas un corps d'article : il est refusé, et
+// c'est ce refus qui déclenche la lecture de la page du média à la captation.
+check("un corps trop court ne donne pas de citation", avecAuteur[0].excerpt === null);
+const longs = parseFeed(LONG);
+check("un corps de vraie longueur donne une citation", (longs[0].excerpt ?? "").length > 0);
+check("la citation ne dépasse jamais la borne", longs.every((i) => (i.excerpt ?? "").length <= EXCERPT_CHARS + 6));
+// La cible affichée : une quinzaine de lignes, pas sept. C'est le reproche
+// exact qui a fait relever la borne de 30 % à 45 %.
+check("la citation d'un long article tient une quinzaine de lignes", (longs[0].excerpt ?? "").length >= 900);
+// Les paragraphes du média sont conservés : une citation de quinze lignes
+// rendue en un seul bloc est un mur que personne ne lit.
+const MULTI = AVEC_AUTEUR.replace(
+  "<p>Le corps complet de l'article, qui ne doit jamais être repris.</p>",
+  "<p>" + "Premier paragraphe bien réel. ".repeat(20) + "</p><p>" + "Second paragraphe bien réel. ".repeat(20) + "</p>",
+);
+check("les paragraphes du média sont conservés", (parseFeed(MULTI)[0].excerpt ?? "").includes("\n"));
 check("un flux sans corps ne fabrique pas de citation", items[0].excerpt === null);
 check("aucune signature là où le flux n'en publie pas", items[0].author === null);
 
@@ -225,5 +240,34 @@ equal("modèle", brandModelFromPriceSlug("renault-clio-occasion")?.modelSlug, "c
 equal("marque en deux mots", brandModelFromPriceSlug("alfa-romeo-giulia-occasion")?.brandSlug, "alfa-romeo");
 equal("… et son modèle", brandModelFromPriceSlug("alfa-romeo-giulia-occasion")?.modelSlug, "giulia");
 check("slug sans marque connue", brandModelFromPriceSlug("tondeuse-thermique-occasion") === null);
+
+section("Lecture de la page d'un article");
+// Voie 1 : le média désigne lui-même son texte dans un balisage schema.org.
+// C'est la source la plus sûre, et elle est essayée en premier.
+const PHRASE = "Une phrase d'article parfaitement ordinaire et bien réelle. ";
+const AVEC_LD = `<html><head><script type="application/ld+json">${JSON.stringify({
+  "@type": "NewsArticle",
+  headline: "Un titre",
+  articleBody: PHRASE.repeat(30),
+})}</script></head><body><p>Menu</p></body></html>`;
+check("le texte désigné par le média est retenu", (extractArticleText(AVEC_LD) ?? "").startsWith("Une phrase"));
+
+// Voie 2 : les paragraphes d'un conteneur d'article explicite.
+const AVEC_ARTICLE = `<html><body><nav><p>Accueil Rubriques Contact</p></nav><article>
+  <p>${PHRASE.repeat(5)}</p><p>${PHRASE.repeat(5)}</p></article></body></html>`;
+check("les paragraphes d'un <article> sont retenus", (extractArticleText(AVEC_ARTICLE) ?? "").length > 300);
+
+// Ce qui n'est pas un article ne doit rien produire : mieux vaut le chapô du
+// flux qu'un morceau de menu présenté comme une citation.
+check("une page sans article ne produit rien", extractArticleText("<html><body><p>Cookies</p></body></html>") === null);
+check("les scripts ne finissent jamais dans la citation", !(extractArticleText(AVEC_ARTICLE) ?? "").includes("<"));
+
+// La borne est la même que pour un corps livré par un flux : d'où qu'il
+// vienne, un texte n'est jamais repris au-delà de sa proportion.
+const court = "Phrase courte et bien réelle. ".repeat(10); // ~290 caractères
+check("un texte court n'est jamais repris en entier", (boundedQuote(court) ?? "").length < court.length);
+const long = PHRASE.repeat(80); // ~4 600 caractères
+check("un long article plafonne à la borne absolue", (boundedQuote(long) ?? "").length <= EXCERPT_CHARS + 6);
+check("… et tient une quinzaine de lignes", (boundedQuote(long) ?? "").length >= 1200);
 
 report("Veille presse");

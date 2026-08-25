@@ -56,6 +56,7 @@ export const INFO_SECTIONS = [
   { slug: "general", label: "À la une" },
   { slug: "societe", label: "Société" },
   { slug: "economie", label: "Économie" },
+  { slug: "emploi", label: "Emploi" },
   { slug: "tech", label: "High-Tech" },
   { slug: "sport", label: "Sport" },
 ] as const;
@@ -121,7 +122,57 @@ export const NEWS_SOURCES: NewsSource[] = [
   vingtMinutes("20minutes-economie", "rss-economie", "economie"),
   vingtMinutes("20minutes-high-tech", "rss-high-tech", "tech"),
   vingtMinutes("20minutes-sport", "rss-sport", "sport"),
+
+  // Emploi — voir le commentaire de `presse` ci-dessous pour ce qui a été
+  // essayé, écarté, et pourquoi.
+  presse("courriercadres", "Courrier Cadres", "https://courriercadres.com/feed/", "https://courriercadres.com/", "emploi"),
+  presse("myrhline", "myRHline", "https://www.myrhline.com/feed/", "https://www.myrhline.com/", "emploi"),
 ];
+
+/**
+ * Un média généraliste au format WordPress.
+ *
+ * ── Ce qui a été essayé pour la rubrique Emploi, et écarté ────────────────
+ *
+ * Mesuré le 25/08/2026. La demande était d'y mettre de **vraies offres**
+ * d'emploi captées par flux. Aucune ne l'est, et ce n'est pas faute d'avoir
+ * cherché : sur douze sites d'emploi testés, **zéro flux d'offres en service**.
+ *
+ *   · Keljob — celui de l'article invoqué — **n'existe plus**. `keljob.com`
+ *     renvoie un 301 vers `emploi.lefigaro.fr`, et son propre serveur sert une
+ *     page intitulée « Keljob c'est fini ! Keljob se transforme et devient Le
+ *     Figaro Emploi ». L'article de Meteojob décrit donc une fonctionnalité
+ *     d'un site fermé. Le successeur, `emploi.lefigaro.fr`, répond `403` à
+ *     toute requête serveur — jusqu'à son `robots.txt` ;
+ *   · Jobijoba répond `410 Gone` : retiré explicitement ;
+ *   · Meteojob, APEC, Indeed, HelloWork : `404`. Cadremploi, Welcome to the
+ *     Jungle : `403` ;
+ *   · `meteojob.com/rss.xml` répond bien, mais ne contient aucune offre : six
+ *     pages commerciales de Meteojob, deux publi-rédactionnels employeur, et
+ *     quatre fiches métiers — le tout vieux de sept semaines ;
+ *   · `dares.travail-emploi.gouv.fr` rejette toute requête serveur derrière un
+ *     pare-feu applicatif : 245 octets de refus, sur chacune de ses adresses.
+ *     Et la DARES publie des statistiques, pas des offres ;
+ *   · `travail-emploi.gouv.fr/rss.xml` répond, mais ses pages d'articles sont
+ *     derrière le même pare-feu : ni texte, ni visuel. Ses items n'auraient
+ *     jamais pu s'afficher.
+ *
+ * Le secteur est passé aux API. Les vraies offres viendront de l'API France
+ * Travail, qui l'autorise explicitement — c'est un autre chantier, avec ses
+ * identifiants.
+ *
+ * D'ici là, la rubrique porte l'actualité de l'emploi et des carrières, qui est
+ * ce que la presse publie réellement en flux ouvert.
+ */
+function presse(
+  key: string,
+  publisher: string,
+  url: string,
+  homepage: string,
+  section: SectionSlug,
+): NewsSource {
+  return { key, kind: "actualite", section, publisher, url, homepage };
+}
 
 /**
  * Un flux Motor1. Le nom affiché reste celui du média, jamais celui de la

@@ -7,8 +7,8 @@
  * seul tenant : « qu'est-ce qui se dit sur Renault, et qu'est-ce qu'on trouve
  * en occasion ? ». Le média a la première moitié, nous avons la seconde.
  *
- * Elles ne s'indexent qu'au-dessus d'un vrai volume : une page « revue de
- * presse » avec deux articles n'est pas une revue de presse.
+ * Elles s'indexent dès qu'elles ont des articles : chacun y arrive daté,
+ * signé, illustré et cité sur une dizaine de lignes, à côté du stock réel.
  */
 
 import type { Metadata } from "next";
@@ -18,27 +18,35 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ArticleCard from "@/components/news/ArticleCard";
 import { getNewsFeed, coveredBrands, countArticles } from "@/lib/news/articles";
+import { newsMetadata, collectionJsonLd, breadcrumbJsonLd } from "@/lib/news/seo";
+import { safeJsonLd } from "@/lib/json-ld";
 import { frDateTime } from "@/lib/news/format";
 import { CAR_BRANDS } from "@/lib/carBrands";
 import { normalizeToken } from "@/lib/seo/city";
 
-const BASE = "https://www.dealandcompany.fr";
-
-export const revalidate = 900;
+export const revalidate = 300;
 
 /**
- * En dessous, la page existe pour le visiteur mais ne demande pas l'index.
+ * Le seuil d'indexation a disparu, et son remplaçant est plus simple : une
+ * page de marque existe quand elle a des articles, et une page qui existe
+ * demande l'index. Le seuil de quatre articles qui vivait ici écartait des
+ * pages qui montrent déjà, dès le premier, un titre daté, signé, une photo et
+ * une dizaine de lignes de texte — plus le stock que nous en avons.
+ *
+ * `MIN_ARTICLES_TO_PRERENDER` ne concerne plus que le pré-rendu : au-dessus, la
+ * page est bâtie au build ; en dessous, à la demande. C'est une question de
+ * temps de build, pas de référencement.
  *
  * Non exporté : Next refuse tout export inattendu depuis un fichier `page.tsx`.
  */
-const MIN_ARTICLES_TO_INDEX = 4;
+const MIN_ARTICLES_TO_PRERENDER = 4;
 
 function brandName(slug: string): string | null {
   return CAR_BRANDS.find((b) => normalizeToken(b.name) === slug)?.name ?? null;
 }
 
 export async function generateStaticParams() {
-  const brands = await coveredBrands(MIN_ARTICLES_TO_INDEX);
+  const brands = await coveredBrands(MIN_ARTICLES_TO_PRERENDER);
   return brands.map((b) => ({ marque: b.brandSlug }));
 }
 
@@ -51,14 +59,18 @@ export async function generateMetadata({
   const name = brandName(marque);
   if (!name) return {};
 
-  const total = await countArticles(marque);
+  const [total, articles] = await Promise.all([
+    countArticles(marque),
+    getNewsFeed(marque, 1),
+  ]);
 
-  return {
-    title: `Actualité ${name} — essais, nouveautés et occasions`,
-    description: `Toute l'actualité ${name} suivie par Deal&Co : essais, nouveautés et vidéos de la presse spécialisée, et les ${name} d'occasion en vente entre particuliers.`,
-    alternates: { canonical: `${BASE}/actualites/marque/${marque}` },
-    robots: total >= MIN_ARTICLES_TO_INDEX ? undefined : { index: false, follow: true },
-  };
+  return newsMetadata({
+    title: `Actualité ${name} — essais, nouveautés et ${name} d'occasion`,
+    description: `Toute l'actualité ${name} suivie par Deal&Co : ${total} articles de la presse spécialisée, datés et signés, et les ${name} d'occasion en vente entre particuliers avec leur cote.`,
+    path: `/actualites/marque/${marque}`,
+    image: articles[0]?.imageUrl,
+    publishedAt: articles[0]?.publishedAt,
+  });
 }
 
 export default async function BrandNewsPage({
@@ -74,8 +86,23 @@ export default async function BrandNewsPage({
   // Aucune actualité : la page n'a rien à montrer, elle ne doit pas exister.
   if (articles.length === 0) notFound();
 
+  const jsonLd = collectionJsonLd({
+    name: `Actualité ${name}`,
+    description: `La revue de presse ${name} de Deal&Co, avec les ${name} d'occasion en vente.`,
+    path: `/actualites/marque/${marque}`,
+    articles,
+  });
+
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Accueil", path: "" },
+    { name: "Deal&Co Auto", path: "/actualites/auto" },
+    { name, path: `/actualites/marque/${marque}` },
+  ]);
+
   return (
     <div className="min-h-screen bg-surface text-on-surface">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }} />
       <Navbar />
 
       <main className="mx-auto max-w-6xl px-4 pt-32 pb-16">

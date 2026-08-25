@@ -50,12 +50,38 @@ export type FeedItem = {
 };
 
 /**
- * Longueur de la citation.
+ * Longueur de la citation — **proportionnelle**, pas fixe.
  *
- * Assez pour que la page ait de la matière et que le lecteur sache de quoi
- * parle l'article ; assez court pour rester une citation et non une reprise.
+ * ── Pourquoi la borne fixe précédente était mauvaise ──────────────────────
+ *
+ * 700 caractères, c'était sept lignes sur un long reportage — trop peu pour
+ * que la page dise quelque chose — et l'article entier sur une brève de dix
+ * lignes — beaucoup trop. La même valeur produisait les deux erreurs opposées.
+ *
+ * ── Ce que vise le réglage actuel ─────────────────────────────────────────
+ *
+ * Une **quinzaine de lignes** sur un article de longueur ordinaire. Mesuré sur
+ * le flux « une » de 20 Minutes le 24/08/2026 : corps médian de 2 450
+ * caractères, le plus long à 5 200. À 30 %, le médian rendait 735 caractères —
+ * sept lignes, soit le reproche exact fait à la page. À 45 %, il en rend 1 100,
+ * et un long reportage atteint le plafond de 1 500, soit une quinzaine de
+ * lignes réelles.
+ *
+ * Deux garde-fous, et ils comptent autant que le chiffre :
+ *
+ *   · `EXCERPT_MIN` relève les articles courts jusqu'à 1 000 caractères, pour
+ *     qu'une actualité de 1 500 signes donne autre chose que trois phrases ;
+ *   · `EXCERPT_HARD_RATIO` interdit de dépasser 60 % du corps **quoi qu'il
+ *     arrive**. C'est lui qui empêche le plancher de recopier une brève : sur
+ *     un texte de 800 caractères, la citation s'arrête à 480. Il n'existe aucun
+ *     moyen honnête de tirer quinze lignes d'une dépêche qui en fait huit.
+ *
+ * `EXCERPT_CHARS` reste exporté comme plafond absolu, utilisé par les tests.
  */
-export const EXCERPT_CHARS = 700;
+export const EXCERPT_CHARS = 1500;
+export const EXCERPT_MAX_RATIO = 0.45;
+export const EXCERPT_MIN = 1000;
+export const EXCERPT_HARD_RATIO = 0.6;
 
 /** Entités XML rencontrées dans les flux, plus les entités numériques. */
 function decodeEntities(input: string): string {
@@ -85,11 +111,18 @@ function text(block: string, tag: string): string | null {
 }
 
 /**
- * Citation tirée du corps de l'article.
+ * Citation tirée du corps de l'article, paragraphes compris.
  *
- * La coupe se fait sur une fin de phrase quand il y en a une assez loin :
- * une citation qui s'arrête au milieu d'un mot donne l'impression d'une page
- * cassée plutôt que d'un extrait.
+ * ── Pourquoi conserver les paragraphes ────────────────────────────────────
+ *
+ * Une citation de quinze lignes rendue en un seul bloc ne se lit pas : c'est
+ * un mur. Les fins de paragraphe du média sont donc converties en sauts de
+ * ligne avant que le balisage ne soit retiré, et la page les rend en autant de
+ * `<p>`. Le découpage reste celui du journaliste — nous n'en inventons aucun.
+ *
+ * La coupe finale se fait sur une fin de phrase quand il y en a une assez
+ * loin : une citation qui s'arrête au milieu d'un mot donne l'impression d'une
+ * page cassée plutôt que d'un extrait.
  */
 function excerptOf(block: string): string | null {
   const raw =
@@ -104,17 +137,41 @@ function excerptOf(block: string): string | null {
   const plain = decodeEntities(
     inner
       .replace(/<(script|style|iframe|figure|blockquote)[\s\S]*?<\/\1>/gi, " ")
+      // Fins de bloc → saut de ligne, avant le retrait du balisage : c'est la
+      // seule occasion de savoir où le média a terminé un paragraphe.
+      .replace(/<\/(p|h[1-6]|li|div)>/gi, "\n\n")
+      .replace(/<br\s*\/?>/gi, "\n")
       .replace(/<[^>]+>/g, " "),
   )
-    .replace(/\s+/g, " ")
+    // Espaces réduits **à l'intérieur** d'une ligne seulement : un `\s+`
+    // global écraserait les sauts qu'on vient de poser.
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/ ?\n ?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  if (plain.length === 0) return null;
-  if (plain.length <= EXCERPT_CHARS) return plain;
+  // Un corps de flux qui tient en deux lignes n'est pas un corps d'article :
+  // 20 Minutes en publie occasionnellement de six caractères. Le rendre `null`
+  // n'est pas une perte — c'est ce qui déclenche la lecture de la page à la
+  // captation, laquelle rend un vrai texte.
+  if (plain.length < 200) return null;
 
-  const cut = plain.slice(0, EXCERPT_CHARS);
-  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  return stop > EXCERPT_CHARS * 0.5 ? `${cut.slice(0, stop + 1)} […]` : `${cut.trimEnd()} […]`;
+  // Le budget vise une quinzaine de lignes sur un article de longueur
+  // ordinaire, sans jamais dépasser 60 % du corps — voir le commentaire des
+  // constantes. Les deux bornes se croisent : sur une brève, c'est la seconde
+  // qui gagne, et la citation reste courte.
+  const budget = Math.min(
+    EXCERPT_CHARS,
+    Math.max(
+      Math.floor(plain.length * EXCERPT_MAX_RATIO),
+      Math.min(EXCERPT_MIN, Math.floor(plain.length * EXCERPT_HARD_RATIO)),
+    ),
+  );
+  if (plain.length <= budget) return plain;
+
+  const cut = plain.slice(0, budget);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf(".\n"), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return stop > budget * 0.5 ? `${cut.slice(0, stop + 1).trim()} […]` : `${cut.trimEnd()} […]`;
 }
 
 function allText(block: string, tag: string): string[] {

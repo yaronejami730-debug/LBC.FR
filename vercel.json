@@ -59,7 +59,7 @@
     },
     {
       "path": "/api/cron/news-ingest",
-      "schedule": "15 * * * *"
+      "schedule": "*/15 * * * *"
     }
   ]
 }

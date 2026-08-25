@@ -42,8 +42,7 @@ export async function GET() {
     <id>${escape(url)}</id>
     <updated>${a.publishedAt.toISOString()}</updated>
     <published>${a.publishedAt.toISOString()}</published>
-    <author><name>${escape(a.authorName ?? a.publisher)}</name></author>
-    <source><title>${escape(a.publisher)}</title></source>${
+    <author><name>${escape(a.authorName ? `${a.authorName} (${a.publisher})` : a.publisher)}</name></author>${
       a.summary ? `\n    <summary type="text">${escape(a.summary)}</summary>` : ""
     }
   </entry>`;

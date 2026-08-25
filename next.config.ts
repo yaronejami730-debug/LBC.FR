@@ -130,6 +130,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "cdn.motor1.com" },
       { protocol: "https", hostname: "**.ytimg.com" },
       { protocol: "https", hostname: "img.20mn.fr" },
+      // Rubrique Emploi. Ces deux médias ne mettent aucune image dans leur flux :
+      // le visuel est relevé sur la page de l'article (`og:image`), donc servi
+      // depuis leur propre hébergement — d'où ces deux hôtes.
+      { protocol: "https", hostname: "courriercadres.com" },
+      { protocol: "https", hostname: "**.courriercadres.com" },
+      { protocol: "https", hostname: "myrhline.com" },
+      { protocol: "https", hostname: "**.myrhline.com" },
     ],
   },
   async headers() {

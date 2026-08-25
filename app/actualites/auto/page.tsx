@@ -20,29 +20,19 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ArticleCard from "@/components/news/ArticleCard";
 import { getNewsFeed, coveredBrands } from "@/lib/news/articles";
+import { newsMetadata, collectionJsonLd, breadcrumbJsonLd } from "@/lib/news/seo";
 import { frDateTime } from "@/lib/news/format";
 import { AUTO_SECTION } from "@/lib/news/sources";
 import { safeJsonLd } from "@/lib/json-ld";
 
-const BASE = "https://www.dealandcompany.fr";
+export const revalidate = 300;
 
-export const revalidate = 900;
-
-export const metadata: Metadata = {
+export const metadata: Metadata = newsMetadata({
   title: "Deal&Co Auto — essais, nouveautés et cotes d'occasion",
   description:
-    "Deal&Co Auto : l'actualité automobile — essais, nouveautés et vidéos de la presse spécialisée — avec, pour chaque modèle, sa cote d'occasion et les annonces entre particuliers.",
-  alternates: { canonical: `${BASE}/actualites/auto` },
-  openGraph: {
-    title: "Deal&Co Auto",
-    description:
-      "Essais, nouveautés et vidéos de la presse automobile, avec les cotes et les annonces d'occasion.",
-    url: `${BASE}/actualites/auto`,
-    siteName: "Deal&Co",
-    locale: "fr_FR",
-    type: "website",
-  },
-};
+    "L'actualité automobile captée sur les flux de la presse spécialisée — essais, duels, nouveautés, vidéos — et, pour chaque modèle, sa cote d'occasion et les annonces entre particuliers.",
+  path: "/actualites/auto",
+});
 
 export default async function AutoPage() {
   const [articles, videos, brands] = await Promise.all([
@@ -53,19 +43,24 @@ export default async function AutoPage() {
 
   const [lead, ...rest] = articles;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
+  const jsonLd = collectionJsonLd({
     name: "Deal&Co Auto",
-    url: `${BASE}/actualites/auto`,
     description:
       "Actualité automobile : essais, nouveautés et vidéos, avec les cotes et annonces d'occasion.",
-    ...(lead ? { dateModified: lead.publishedAt.toISOString() } : {}),
-  };
+    path: "/actualites/auto",
+    articles,
+  });
+
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Accueil", path: "" },
+    { name: "Deal&Co Info", path: "/actualites" },
+    { name: "Deal&Co Auto", path: "/actualites/auto" },
+  ]);
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }} />
       <Navbar />
 
       <main className="mx-auto max-w-6xl px-4 pt-32 pb-16">

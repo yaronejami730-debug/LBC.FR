@@ -8,20 +8,18 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ArticleCard from "@/components/news/ArticleCard";
 import { getNewsFeed } from "@/lib/news/articles";
-import { frDateTime } from "@/lib/news/format";
+import { newsMetadata, collectionJsonLd, breadcrumbJsonLd } from "@/lib/news/seo";
+import { safeJsonLd } from "@/lib/json-ld";
+import { byline, frDateTime, lede } from "@/lib/news/format";
 import { INFO_SECTIONS, sectionLabel } from "@/lib/news/sources";
 
-const BASE = "https://www.dealandcompany.fr";
-
-export const revalidate = 900;
-
-/** En dessous, la rubrique existe mais ne demande pas l'index. */
-const MIN_TO_INDEX = 6;
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   return INFO_SECTIONS.map((s) => ({ slug: s.slug }));
@@ -39,12 +37,19 @@ export async function generateMetadata({
 
   const articles = await getNewsFeed(null, 30, 0, slug);
 
-  return {
-    title: `${label} — Deal&Co Info`,
-    description: `L'actualité ${label.toLowerCase()} suivie par Deal&Co Info, mise à jour chaque heure à partir des flux de la presse.`,
-    alternates: { canonical: `${BASE}/actualites/rubrique/${slug}` },
-    robots: articles.length >= MIN_TO_INDEX ? undefined : { index: false, follow: true },
-  };
+  // Plus de seuil d'indexation. Il en existait un — six articles — et il
+  // écartait des pages qui, dès le premier article, montrent un titre daté,
+  // signé, une photo et une dizaine de lignes de texte. Une rubrique vide, elle,
+  // ne demande pas l'index : elle n'existe pas, `notFound()` s'en charge.
+  return newsMetadata({
+    // Le gabarit de `app/layout.tsx` ajoute déjà « | Deal&Co » : le répéter ici
+    // donnait « Sport — … | Deal&Co Info | Deal&Co » dans l'onglet et le SERP.
+    title: `Actualité ${label.toLowerCase()} — Deal&Co Info`,
+    description: `Toute l'actualité ${label.toLowerCase()} suivie par Deal&Co Info : ${articles.length} articles datés et signés, mis à jour tous les quarts d'heure à partir des flux de la presse.`,
+    path: `/actualites/rubrique/${slug}`,
+    image: articles[0]?.imageUrl,
+    publishedAt: articles[0]?.publishedAt,
+  });
 }
 
 export default async function SectionPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -56,8 +61,25 @@ export default async function SectionPage({ params }: { params: Promise<{ slug: 
   // Rubrique vide : rien à montrer, la page n'a pas lieu d'être.
   if (articles.length === 0) notFound();
 
+  const [lead, ...reste] = articles;
+
+  const jsonLd = collectionJsonLd({
+    name: `${label} — Deal&Co Info`,
+    description: `L'actualité ${label.toLowerCase()} du jour, captée sur les flux de la presse.`,
+    path: `/actualites/rubrique/${slug}`,
+    articles,
+  });
+
+  const breadcrumb = breadcrumbJsonLd([
+    { name: "Accueil", path: "" },
+    { name: "Deal&Co Info", path: "/actualites" },
+    { name: label, path: `/actualites/rubrique/${slug}` },
+  ]);
+
   return (
     <div className="min-h-screen bg-surface text-on-surface">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumb) }} />
       <Navbar />
 
       <main className="mx-auto max-w-6xl px-4 pt-32 pb-16">
@@ -98,9 +120,49 @@ export default async function SectionPage({ params }: { params: Promise<{ slug: 
           ))}
         </nav>
 
+        {/* L'ouverture de la rubrique : le plus récent, en grand, avec son
+            texte long. Une rubrique qui commence par une grille de vignettes
+            n'a pas de premier article — elle a trente articles égaux, et le
+            lecteur ne sait pas par où entrer. */}
+        <article className="mb-10 grid gap-6 border-b border-surface-container pb-10 md:grid-cols-[3fr_2fr]">
+          <div>
+            <Link href={`/actualites/${lead.slug}`} className="group block">
+              {lead.imageUrl && (
+                <div className="relative aspect-[16/9] overflow-hidden rounded-2xl bg-surface-container">
+                  <Image
+                    src={lead.imageUrl}
+                    alt=""
+                    fill
+                    sizes="(max-width: 768px) 100vw, 560px"
+                    quality={75}
+                    priority
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                </div>
+              )}
+            </Link>
+          </div>
+          <div>
+            <Link href={`/actualites/${lead.slug}`} className="group block">
+              <h2 className="text-2xl font-extrabold leading-tight tracking-tight text-on-surface group-hover:text-primary">
+                {lead.title}
+              </h2>
+            </Link>
+            <div className="mt-3 space-y-3 text-[15px] leading-[1.7] text-on-surface-variant">
+              {lede(lead, 800).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-outline">
+              {byline(lead.authorName, lead.publisher)} —{" "}
+              <time dateTime={lead.publishedAt.toISOString()}>{frDateTime(lead.publishedAt)}</time>
+            </p>
+          </div>
+        </article>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((a, i) => (
-            <ArticleCard key={a.slug} article={a} priority={i === 0} />
+          {reste.map((a) => (
+            <ArticleCard key={a.slug} article={a} />
           ))}
         </div>
       </main>

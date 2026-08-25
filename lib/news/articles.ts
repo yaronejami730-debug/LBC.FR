@@ -250,45 +250,73 @@ export async function relatedListings(article: Article, take = 8) {
 }
 
 /**
- * Cette page mérite-t-elle l'index ?
+ * Ce que la section propose au sitemap.
  *
- * ── L'arbitrage, en clair ─────────────────────────────────────────────────
+ * ── Ce qui a changé, et pourquoi ──────────────────────────────────────────
  *
- * Une page qui reprend le résumé d'un autre et rien d'autre est une page mince,
- * et Google la traite comme telle — pas seulement elle, mais le domaine qui en
- * publie beaucoup. C'est la règle que le site s'applique déjà à lui-même : 129
- * annonces importées sont hors index pour ce motif exact.
+ * Le sitemap ne portait que les hubs de marque au-dessus de quatre articles.
+ * Les pages d'article en étaient exclues, pour une raison qui se tenait à
+ * l'époque : elles répondaient `noindex`, et recommander à Google des pages qui
+ * refusent l'index abîme la confiance accordée à tout le fichier.
  *
- * La page devient indexable quand elle apporte ce que la source n'a pas : des
- * annonces réelles sur le sujet. En dessous, elle reste `noindex, follow` —
- * consultable, utile au visiteur, elle transmet ses liens, mais elle ne
- * demande pas à Google de la référencer.
+ * Ce motif a disparu avec la règle qui le produisait. Une page d'article de
+ * Deal&Co Info porte aujourd'hui une citation d'une quinzaine de lignes,
+ * attribuée et datée, ses articles voisins, et le rapprochement avec notre
+ * stock quand le sujet s'y prête. Elle demande l'index, donc elle entre au
+ * sitemap — et sa date de publication y sert de `lastmod`, jamais la date du
+ * jour recopiée.
  *
- * La fraîcheur, elle, ne passe pas par ces pages : elle passe par le fil
- * `/actualites`, ses hubs par marque et le flux Atom que nous publions.
+ * Les vidéos en sont exclues : la page n'est qu'un lecteur YouTube encadré,
+ * c'est chez YouTube que la vidéo mérite d'être trouvée.
  */
-export const MIN_LISTINGS_TO_INDEX = 3;
+export type NewsSitemapEntry = { path: string; lastAt: Date };
 
-export function isArticleIndexable(listingCount: number): boolean {
-  return listingCount >= MIN_LISTINGS_TO_INDEX;
-}
+export async function newsSitemapEntries(): Promise<NewsSitemapEntry[]> {
+  const { NEWS_SOURCES, INFO_SECTIONS, sourceKeysOfKind } = await import("@/lib/news/sources");
 
-/**
- * Hubs marque assez fournis pour être recommandés à Google, avec la date du
- * dernier article — un `lastmod` vrai, jamais la date du jour recopiée.
- */
-export async function indexableNewsBrands(
-  min = 4,
-): Promise<{ brandSlug: string; lastAt: Date }[]> {
-  const rows = await prisma.newsItem.groupBy({
-    by: ["brandSlug"],
-    where: { brandSlug: { not: null }, imageUrl: { not: null }, slug: { not: null } },
-    _count: { _all: true },
-    _max: { publishedAt: true },
+  const rows = await prisma.newsItem.findMany({
+    where: {
+      slug: { not: null },
+      imageUrl: { not: null },
+      source: { notIn: sourceKeysOfKind("video") },
+    },
+    orderBy: { publishedAt: "desc" },
+    select: { slug: true, publishedAt: true, brandSlug: true, source: true },
   });
-  return rows
-    .filter((r) => r._count._all >= min && r._max.publishedAt)
-    .map((r) => ({ brandSlug: r.brandSlug!, lastAt: r._max.publishedAt! }));
+  if (rows.length === 0) return [];
+
+  const entries: NewsSitemapEntry[] = rows.map((r) => ({
+    path: `/actualites/${r.slug}`,
+    lastAt: r.publishedAt,
+  }));
+
+  // Les deux unes et les rubriques, datées de leur article le plus récent :
+  // c'est la seule date qui décrive vraiment ce que la page contient.
+  const newestOf = (predicate: (row: (typeof rows)[number]) => boolean): Date | null =>
+    rows.find(predicate)?.publishedAt ?? null;
+
+  const sectionOf = new Map(NEWS_SOURCES.map((s) => [s.key, s.section]));
+
+  const home = newestOf(() => true);
+  if (home) entries.push({ path: "/actualites", lastAt: home });
+
+  const auto = newestOf((r) => sectionOf.get(r.source) === "auto");
+  if (auto) entries.push({ path: "/actualites/auto", lastAt: auto });
+
+  for (const section of INFO_SECTIONS) {
+    const last = newestOf((r) => sectionOf.get(r.source) === section.slug);
+    if (last) entries.push({ path: `/actualites/rubrique/${section.slug}`, lastAt: last });
+  }
+
+  const brands = new Map<string, Date>();
+  for (const row of rows) {
+    if (row.brandSlug && !brands.has(row.brandSlug)) brands.set(row.brandSlug, row.publishedAt);
+  }
+  for (const [brandSlug, lastAt] of brands) {
+    entries.push({ path: `/actualites/marque/${brandSlug}`, lastAt });
+  }
+
+  return entries;
 }
 
 /**
