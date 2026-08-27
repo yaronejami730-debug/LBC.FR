@@ -89,15 +89,7 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "*", allow: "/", disallow: PRIVATE_PATHS },
       ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/", disallow: PRIVATE_PATHS })),
     ],
-    // Deux fichiers, deux rôles. Le sitemap décrit le site ; le flux Atom ne
-    // liste que les vingt derniers articles et se réécrit à l'heure. Google a
-    // supprimé le ping de sitemap en 2023 et documente le flux comme le moyen
-    // de signaler du contenu qui change souvent — c'est donc lui qui porte la
-    // fraîcheur, pas un `lastmod` recopié sur tout le fichier.
-    sitemap: [
-      "https://www.dealandcompany.fr/sitemap.xml",
-      "https://www.dealandcompany.fr/actualites/feed.xml",
-    ],
+    sitemap: ["https://www.dealandcompany.fr/sitemap.xml"],
     host: "https://www.dealandcompany.fr",
   };
 }

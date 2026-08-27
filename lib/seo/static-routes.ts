@@ -57,11 +57,6 @@ export const STATIC_PAGES = [
   // d'achat : deux intentions, deux pages, un lien croisé entre elles.
   { path: "/vente-objets-occasion-particuliers", changeFrequency: "weekly", priority: 0.8 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.8 },
-  // Revue de presse. `hourly` est ici une description exacte, pas une
-  // formule : le cron capte les flux toutes les heures et la page change
-  // réellement à ce rythme.
-  { path: "/actualites", changeFrequency: "hourly", priority: 0.8 },
-  { path: "/actualites/auto", changeFrequency: "hourly", priority: 0.8 },
   // Offre fondateurs. Page indexable assumée (voir `app/early-adopter/layout.tsx`)
   // et pourtant absente d'ici : elle était donc indexable sans jamais être
   // soumise. Une page qu'on accepte d'indexer et qu'on ne recommande pas est

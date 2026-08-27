@@ -39,7 +39,6 @@ import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { getEditorialEligibility } from "@/lib/seo/editorial";
 import { getIndexablePriceSlugs } from "@/lib/seo/price";
 import { STATIC_PAGES } from "@/lib/seo/static-routes";
-import { newsSitemapEntries } from "@/lib/news/articles";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -47,11 +46,10 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 21600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [inv, editorial, priceSlugs, news] = await Promise.all([
+  const [inv, editorial, priceSlugs] = await Promise.all([
     getSeoInventory(),
     getEditorialEligibility(),
     getIndexablePriceSlugs(),
-    newsSitemapEntries(),
   ]);
 
   const now = new Date();
@@ -215,32 +213,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: stockLastMod,
       changeFrequency: "daily",
       priority: 0.6,
-    });
-  }
-
-  // --- Deal&Co Info ---------------------------------------------------------
-  //
-  // Toute la section y entre : les deux unes, les rubriques, les hubs de
-  // marque et **chaque page d'article**. C'est un renversement par rapport à
-  // l'état précédent, où seuls les hubs de marque au-dessus de quatre articles
-  // figuraient ici — les pages d'article en étaient exclues parce qu'elles
-  // répondaient `noindex`, et un sitemap qui recommande des pages qui refusent
-  // l'index abîme la confiance accordée à tout le fichier.
-  //
-  // Ce motif est tombé avec la règle qui le produisait : la section demande
-  // aujourd'hui l'index partout où elle a du contenu. Voir `lib/news/seo.ts`
-  // pour le raisonnement complet, et `newsSitemapEntries` pour ce qui reste
-  // écarté — les vidéos, dont la page n'est qu'un lecteur YouTube encadré.
-  //
-  // Le `lastmod` est la date de publication de l'article, jamais la date du
-  // jour : c'est elle qui décrit la page, et un `lastmod` faux se paie sur tout
-  // le fichier.
-  for (const entry of news) {
-    entries.push({
-      url: `${BASE}${entry.path}`,
-      lastModified: entry.lastAt,
-      changeFrequency: entry.path === "/actualites" ? "hourly" : "daily",
-      priority: entry.path === "/actualites" ? 0.9 : 0.6,
     });
   }
 

@@ -60,8 +60,6 @@ const COLUMNS: { title: string; links: { label: string; href: string; title: str
     links: [
       { label: "Qui sommes-nous", href: "/a-propos", title: "À propos de Deal&Co" },
       { label: "Le blog", href: "/blog", title: "Guides pratiques pour acheter et vendre" },
-      { label: "Deal&Co Info", href: "/actualites", title: "L'actualité du jour, mise à jour en continu" },
-      { label: "Deal&Co Auto", href: "/actualites/auto", title: "L'actualité automobile et les cotes d'occasion" },
     ],
   },
   {
@@ -93,7 +91,6 @@ const COLUMNS: { title: string; links: { label: string; href: string; title: str
       // ailleurs. Qui n'est pas connecté passe par « Nous contacter ».
       { label: "Nous contacter", href: "/contact", title: "Écrire à l'équipe Deal&Co" },
       { label: "API développeurs", href: "/api-doc", title: "Documentation de l'API Deal&Co" },
-      { label: "Flux d'actualité", href: "/actualites/feed.xml", title: "S'abonner au flux Atom de Deal&Co Info" },
     ],
   },
 ];
@@ -249,8 +246,8 @@ export default async function SiteFooter() {
             professionnels
           </p>
           <p className="text-[11px] text-slate-400">
-            Annonces publiées par leurs auteurs · Revue de presse attribuée à ses
-            sources
+            Annonces publiées par leurs auteurs · Positions de vol fournies par le
+            réseau OpenSky
           </p>
         </div>
       </div>

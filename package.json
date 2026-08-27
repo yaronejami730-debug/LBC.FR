@@ -34,7 +34,6 @@
     "test:city-category": "tsx scripts/test-city-category.ts",
     "seo:sweep": "tsx -r ./scripts/load-env.ts scripts/seo-http-sweep.ts",
     "seo:exclusions": "tsx -r ./scripts/load-env.ts scripts/seo-exclusion-report.ts",
-    "jobs:sync": "tsx -r ./scripts/load-env.ts scripts/sync-jobs.ts",
     "seo:audit": "tsx scripts/seo-audit.ts",
     "test:toponymes": "tsx scripts/test-classifier-toponyms.ts",
     "intent:backfill": "tsx scripts/backfill-offer-intent.ts",
@@ -62,7 +61,6 @@
     "seo:coverage": "tsx -r ./scripts/load-env.ts scripts/seo-sitemap-coverage.ts",
     "seo:ttfb": "tsx scripts/seo-ttfb.ts",
     "survey:attribution": "tsx -r ./scripts/load-env.ts scripts/send-attribution-survey.ts",
-    "news:ingest": "tsx -r ./scripts/load-env.ts scripts/news-ingest.ts",
     "test:news": "tsx scripts/test-news.ts"
   },
   "dependencies": {

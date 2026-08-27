@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { CATEGORIES } from "@/lib/categories";
-import { FRENCH_CITIES, slugToCity, citySlug as toCitySlug } from "@/lib/cities";
+import { FRENCH_CITIES, slugToCity, citySlug as toCitySlug, type FrenchCity } from "@/lib/cities";
+import { postcodesForCity, resolveCity } from "@/lib/seo/city";
 import { listingUrl } from "@/lib/listing-slug";
 import { getSeoInventory, isIndexable } from "@/lib/seo/inventory";
 import { isCityCategoryIndexable } from "@/lib/seo/city-category";
@@ -26,6 +27,33 @@ export async function generateStaticParams() {
     .map(([slug]) => ({ slug }));
 }
 
+/**
+ * Requête large qui ne peut rien rater : nom de la commune **ou** l'un de ses
+ * codes postaux réels. Elle sur-sélectionne volontairement — `resolveCity`
+ * tranche ensuite. Voir le commentaire du composant de page.
+ */
+function cityPrefilter(city: FrenchCity) {
+  return {
+    status: "APPROVED",
+    deletedAt: null,
+    shadowBanned: false,
+    OR: [
+      { location: { contains: city.name, mode: "insensitive" } },
+      ...postcodesForCity(city.slug).map((postcode) => ({
+        location: { contains: postcode },
+      })),
+    ],
+  } as any;
+}
+
+/** Le stock réel d'une ville, au sens du juge unique. */
+async function countListingsIn(city: FrenchCity): Promise<number> {
+  const rows = await prisma.listing
+    .findMany({ where: cityPrefilter(city), select: { location: true } })
+    .catch(() => [] as { location: string | null }[]);
+  return rows.filter((row) => resolveCity(row.location)?.slug === city.slug).length;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -35,16 +63,7 @@ export async function generateMetadata({
   const city = slugToCity(slug);
   if (!city) return {};
 
-  const total = await prisma.listing
-    .count({
-      where: {
-        status: "APPROVED",
-        deletedAt: null,
-        shadowBanned: false,
-        location: { contains: city.name, mode: "insensitive" },
-      } as any,
-    })
-    .catch(() => 0);
+  const total = await countListingsIn(city);
 
   const countLabel = `${total.toLocaleString("fr-FR")} annonce${total > 1 ? "s" : ""}`;
   const title = `Annonces à ${city.name} (${city.departmentCode}) — ${countLabel} gratuites`;
@@ -90,27 +109,41 @@ export default async function VillePage({
   const city = slugToCity(slug);
   if (!city) notFound();
 
-  const where = {
-    status: "APPROVED",
-    deletedAt: null,
-    shadowBanned: false,
-    location: { contains: city.name, mode: "insensitive" },
-  } as any;
+  /**
+   * Rattachement ville → annonces : `resolveCity`, comme partout ailleurs.
+   *
+   * Cette page appliquait sa propre règle — `location contains city.name` —
+   * alors que le sitemap, l'inventaire et le fil d'Ariane passent par
+   * `lib/seo/city.ts`. Deux juges pour la même question, et l'écart mesuré le
+   * 27/08/2026 se lisait directement dans le sweep HTTP :
+   *
+   *   - « 45000 » et « 75001 » ne contiennent pas le nom de la commune, donc
+   *     Orléans répondait 404 avec une annonce réelle et Paris en oubliait une ;
+   *   - « fort de france » sans traits d'union échappait aussi à la comparaison,
+   *     404 avec deux annonces.
+   *
+   * SQL ne peut pas exécuter `resolveCity`. On procède donc en deux temps :
+   * une requête large qui ne peut rien rater (nom de la commune **ou** l'un de
+   * ses codes postaux réels), puis le juge en mémoire qui tranche. La colonne
+   * `location` est étroite, la requête reste bon marché même quand le stock
+   * grandit.
+   */
+  const prefilter = cityPrefilter(city);
 
-  const [total, grouped, recent] = await Promise.all([
-    prisma.listing.count({ where }).catch(() => 0),
+  const belongsHere = (location: string | null) => resolveCity(location)?.slug === city.slug;
+
+  const [scope, candidates] = await Promise.all([
+    // Compte exact et répartition par catégorie. Deux colonnes seulement.
     prisma.listing
-      .groupBy({
-        by: ["category"],
-        where,
-        _count: { _all: true },
-      })
-      .catch(() => [] as { category: string; _count: { _all: number } }[]),
+      .findMany({ where: prefilter, select: { category: true, location: true } })
+      .catch(() => [] as { category: string; location: string | null }[]),
+    // Cartes affichées. On élargit la prise avant filtrage pour que le juge ait
+    // de quoi remplir les 60 emplacements même s'il écarte des candidats.
     prisma.listing
       .findMany({
-        where,
+        where: prefilter,
         orderBy: { createdAt: "desc" },
-        take: 60,
+        take: 240,
         select: {
           id: true,
           title: true,
@@ -125,11 +158,15 @@ export default async function VillePage({
       .catch(() => []),
   ]);
 
+  const inScope = scope.filter((row) => belongsHere(row.location));
+  const total = inScope.length;
+  const recent = candidates.filter((row) => belongsHere(row.location)).slice(0, 60);
+
   if (total === 0) notFound();
 
   const countsByCat = new Map<string, number>();
-  for (const row of grouped) {
-    countsByCat.set(row.category, row._count._all);
+  for (const row of inScope) {
+    countsByCat.set(row.category, (countsByCat.get(row.category) ?? 0) + 1);
   }
 
   const catsWithListings = CATEGORIES.filter(
@@ -163,8 +200,29 @@ export default async function VillePage({
     );
   }
 
+  /**
+   * Villes voisines — filtrées sur le stock, pas sur la géographie.
+   *
+   * Ce bloc listait douze villes de la région tirées du référentiel statique,
+   * sans regarder si elles avaient une annonce. Or la ligne `if (total === 0)
+   * notFound()` ci-dessus fait répondre 404 à toute ville sans stock : sur les
+   * 168 liens que l'ensemble des pages ville émettaient, **152 pointaient vers
+   * un 404** (relevé du 27/08/2026, 154 villes au référentiel, 20 avec du
+   * stock).
+   *
+   * Le coût n'est pas cosmétique. Googlebot suit ces liens avant de découvrir
+   * qu'ils ne mènent nulle part, et chaque exploration inutile est prise sur le
+   * budget des pages qui comptent — c'est la règle que
+   * `/annonces/[categorie]/[...slug]` applique déjà à ses propres blocs.
+   *
+   * `inv.byCity` ne compte que les annonces indexables : une ville qui n'a que
+   * du stock trop pauvre pour l'index perd donc son lien. C'est voulu — cette
+   * page-là existe, mais elle est `noindex`, et lui envoyer du budget
+   * d'exploration ne rapporte rien.
+   */
+  const stockByCity = (inv?.byCity ?? {}) as Record<string, number>;
   const nearbyCities = FRENCH_CITIES.filter(
-    (c) => c.region === city.region && c.slug !== city.slug,
+    (c) => c.region === city.region && c.slug !== city.slug && (stockByCity[c.slug] ?? 0) > 0,
   ).slice(0, 12);
 
   const pageUrl = `${BASE}/ville/${city.slug}`;

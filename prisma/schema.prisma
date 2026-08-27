@@ -115,10 +115,10 @@ model User {
   satisfactionCampaigns SatisfactionCampaign[]
 
   // Moteur de recommandation locale
-  locationProfiles UserLocationProfile[]
+  locationProfiles  UserLocationProfile[]
   categoryInterests UserCategoryInterest[]
   staffMemberships  StaffMembership[]
-  recommendations  ListingRecommendationLog[]
+  recommendations   ListingRecommendationLog[]
 
   @@index([watchedAt])
   @@index([bannedAt])
@@ -318,17 +318,17 @@ model Listing {
   // Les colonnes sont dénormalisées sur l'annonce plutôt que recalculées à la
   // volée : un envoi qui géocode 10 000 annonces à chaque exécution du CRON est
   // un envoi qui expire.
-  geoLat       Float?
-  geoLng       Float?
+  geoLat        Float?
+  geoLng        Float?
   /// COMMUNE | POSTAL | DEPARTMENT — finesse du point. Un point départemental
   /// ne permet pas de statuer à 20 km près et est écarté des recommandations.
-  geoPrecision String?
-  geoCity      String?
-  geoInsee     String?
+  geoPrecision  String?
+  geoCity       String?
+  geoInsee      String?
   geoResolvedAt DateTime?
 
   conversations    Conversation[]
-  user             User              @relation(fields: [userId], references: [id])
+  user             User                       @relation(fields: [userId], references: [id])
   favorites        Favorite[]
   listingImages    ListingImage[]
   reports          Report[]
@@ -526,7 +526,7 @@ model SupportTicket {
   userId String
   user   User   @relation("SupportTickets", fields: [userId], references: [id], onDelete: Cascade)
 
-  subject String
+  subject  String
   /// Rubrique déclarée par l'utilisateur : compte, annonce, paiement, autre.
   category String @default("autre")
   /// OPEN (à traiter) | WAITING_USER (balle dans son camp) | RESOLVED | CLOSED
@@ -545,12 +545,12 @@ model SupportTicket {
   /// Date du dernier message, quel qu'en soit l'auteur : c'est l'ordre de la
   /// file, et il ne se déduit pas de `updatedAt`, que tout changement de statut
   /// ferait remonter.
-  attachments   SupportAttachment[]
-  lastMessageAt DateTime @default(now())
+  attachments    SupportAttachment[]
+  lastMessageAt  DateTime            @default(now())
   /// Messages non lus de chaque côté. Compter à la volée coûterait une requête
   /// par ligne de liste.
-  unreadForUser  Int @default(0)
-  unreadForAdmin Int @default(0)
+  unreadForUser  Int                 @default(0)
+  unreadForAdmin Int                 @default(0)
 
   closedAt  DateTime?
   createdAt DateTime  @default(now())
@@ -590,8 +590,8 @@ model SupportMessage {
   ticketId String
   ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  senderId String
-  sender   User   @relation("SupportMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User    @relation("SupportMessages", fields: [senderId], references: [id], onDelete: Cascade)
   /// Vrai quand l'auteur écrit au nom de la plateforme. Le rôle de l'auteur ne
   /// suffit pas : un administrateur qui ouvre un ticket pour lui-même écrit en
   /// tant qu'utilisateur.
@@ -693,17 +693,17 @@ model AdminAuditLog {
 }
 
 model SavedSearch {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   userId         String
   name           String
-  filters        String   @default("{}") // JSON: { category, q, minPrice, maxPrice, location, ... }
-  lastNotifiedAt DateTime @default(now())
+  filters        String    @default("{}") // JSON: { category, q, minPrice, maxPrice, location, ... }
+  lastNotifiedAt DateTime  @default(now())
   /// Dernière ouverture des résultats depuis « Mes recherches ». Sert au
   /// compteur de nouveautés, qui retombe à zéro une fois les annonces vues.
   lastViewedAt   DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordResetToken {
@@ -991,10 +991,6 @@ model Draft {
   @@index([nudge1SentAt])
 }
 
-/// Événement d'email — envoi / ouverture / clic. Alimente le moteur
-/// comportemental : choix du canal et du timing (heures d'ouverture réelles).
-/// Pas de FK vers User (userId simple colonne) : les events survivent à la
-/// suppression du compte pour l'analyse agrégée.
 model EmailEvent {
   id        String   @id @default(cuid())
   userId    String?
@@ -1088,7 +1084,7 @@ model AdCampaign {
   advertiserId String
   advertiser   Advertiser @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
 
-  name String
+  name      String
   /// VISIBILITE | VISITES | CONTACTS | RESERVATIONS | ANNONCE
   /// L'objectif ne change pas la mécanique de diffusion : il change ce qu'on
   /// met en avant dans le créatif et ce qu'on compte comme conversion.
@@ -1170,12 +1166,12 @@ model AdCampaign {
   billingExemptBy     String?
 
   /// Motif de refus de modération, tel qu'il est montré à l'annonceur.
-  reviewNote     String?
-  reviewedAt     DateTime?
-  reviewedBy     String?
-  submittedAt    DateTime?
+  reviewNote   String?
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  submittedAt  DateTime?
   /// Dernier arrêt automatique : budget épuisé, plus de créatif valide…
-  pausedReason   String?
+  pausedReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1207,7 +1203,7 @@ model AdCampaignZone {
   lat        Float
   lng        Float
   /// 0 = la commune seule. Sinon, tout ce qui est à moins de N km.
-  radiusKm   Int   @default(0)
+  radiusKm   Int     @default(0)
 
   @@index([campaignId])
   @@index([citySlug])
@@ -1231,18 +1227,18 @@ model Ad {
   campaignId String
   campaign   AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
-  title       String
-  description String
-  imageUrl    String
+  title          String
+  description    String
+  imageUrl       String
   /// Variante large pour les bandeaux ; à défaut, `imageUrl` est recadrée.
-  imageUrlWide String?
+  imageUrlWide   String?
   /// Libellé du bouton : « En savoir plus », « Réserver »…
-  ctaLabel    String
+  ctaLabel       String
   /// Destination. Soit une URL externe, soit une annonce Deal&Co.
   destinationUrl String?
   listingId      String?
 
-  isActive  Boolean  @default(true)
+  isActive Boolean @default(true)
 
   /// Score qualité du créatif, 0–100.
   ///
@@ -1335,12 +1331,12 @@ model AdEvent {
   /// (impression visible puis clic) la partagent : c'est ce qui permet de
   /// facturer le clic au prix décidé au moment de la sélection, et non au prix
   /// du moment où l'on clique.
-  auctionId  String?
+  auctionId    String?
   /// Plafond de l'annonceur au moment de l'enchère, en centimes.
-  bidCents   Int?
+  bidCents     Int?
   /// Prix dégagé par l'enchère, en centimes. C'est lui qui est facturé, jamais
   /// une valeur envoyée par le navigateur.
-  priceCents Int?
+  priceCents   Int?
   /// Score qualité et rang au moment de l'enchère, figés : ils bougeront, la
   /// facture émise non.
   qualityScore Int?
@@ -1357,7 +1353,6 @@ model AdEvent {
   @@index([sessionHash, createdAt])
   @@index([createdAt])
 }
-
 
 /// Pièce justificative stockée en base, en dernier recours.
 ///
@@ -1378,7 +1373,6 @@ model KycDocument {
 
   @@index([userId])
 }
-
 
 /// Correction de catégorie par un utilisateur.
 ///
@@ -1407,7 +1401,6 @@ model CategoryFeedback {
   @@index([suggestedCategoryId, chosenCategoryId])
 }
 
-
 /// Journal des événements Stripe de la régie, et rempart d'idempotence.
 ///
 /// Stripe réémet un événement en cas de doute sur la réception. Sans ce
@@ -1415,8 +1408,8 @@ model CategoryFeedback {
 /// l'identifiant d'événement : la base refuse le doublon, aucune logique
 /// applicative n'a à s'en charger.
 model AdWebhookEvent {
-  id   String @id
-  type String
+  id       String  @id
+  type     String
   livemode Boolean @default(false)
 
   receivedAt  DateTime  @default(now())
@@ -1425,7 +1418,6 @@ model AdWebhookEvent {
 
   @@index([processedAt])
 }
-
 
 /// Mouvement du portefeuille prépayé d'un annonceur.
 ///
@@ -1447,7 +1439,7 @@ model AdWalletTransaction {
   type String
 
   /// Positif pour une entrée, négatif pour une sortie. En centimes.
-  amountCents Int
+  amountCents        Int
   /// Solde avant et après ce mouvement, figés : ils rendent l'historique
   /// lisible sans rejouer toute la suite, et rendent une divergence visible
   /// au lieu de silencieuse.
@@ -1460,11 +1452,11 @@ model AdWalletTransaction {
   idempotencyKey String? @unique
   /// Événement publicitaire à l'origine d'une dépense. Un euro dépensé doit
   /// pouvoir être remonté jusqu'au clic qui l'a produit.
-  adEventId String?
+  adEventId      String?
 
-  label String
+  label           String
   /// Campagne concernée, pour une dépense.
-  campaignId String?
+  campaignId      String?
   /// Référence Stripe d'une recharge.
   stripeSessionId String? @unique
 
@@ -1492,14 +1484,13 @@ model AdInvoice {
   vatCents       Int
   amountCentsTTC Int
   /// Taux appliqué, figé : il changera un jour, les factures émises non.
-  vatRate        Float  @default(0.2)
+  vatRate        Float @default(0.2)
 
-  stripeSessionId String? @unique
+  stripeSessionId String?  @unique
   issuedAt        DateTime @default(now())
 
   @@index([advertiserId, issuedAt])
 }
-
 
 /// Agrégat journalier des événements publicitaires.
 ///
@@ -1523,31 +1514,31 @@ model AdStatDaily {
   /// Pas `null` : PostgreSQL considère deux NULL comme distincts dans un index
   /// unique, ce qui autoriserait plusieurs lignes « ville inconnue » pour le
   /// même jour et le même emplacement — et le cumul serait faux.
-  citySlug   String   @default("")
+  citySlug   String     @default("")
 
   /// Impressions **visibles** : celles qui remplissent les critères de
   /// visibilité. C'est la seule qui compte dans un taux de clic honnête, et la
   /// seule facturable en CPM.
-  impressions Int @default(0)
+  impressions   Int @default(0)
   /// Publicités chargées, puis rendues. Elles ne sont jamais facturées : elles
   /// disent seulement quelle part de l'inventaire n'a jamais atteint l'écran.
-  loads       Int @default(0)
-  renders     Int @default(0)
-  clicks      Int @default(0)
-  conversions Int @default(0)
+  loads         Int @default(0)
+  renders       Int @default(0)
+  clicks        Int @default(0)
+  conversions   Int @default(0)
   /// Événements écartés — robots, doubles clics, visibilité insuffisante.
   /// Affichés à l'annonceur : un chiffre retiré sans explication passe pour
   /// une erreur de comptage.
   invalidEvents Int @default(0)
-  costCents   Int @default(0)
+  costCents     Int @default(0)
 
   /// Enchères disputées et gagnées sur ce jour, cet emplacement.
   ///
   /// Le taux de victoire est ce qui dit à un annonceur si son plafond est trop
   /// bas : « vous étiez en lice 4 000 fois, servi 300 fois » se comprend, « vos
   /// impressions ont baissé » ne se comprend pas.
-  auctionEntries Int @default(0)
-  auctionWins    Int @default(0)
+  auctionEntries Int   @default(0)
+  auctionWins    Int   @default(0)
   /// Somme des rangs des enchères gagnées, pour en tirer une moyenne lisible.
   adRankSum      Float @default(0)
 
@@ -1557,7 +1548,6 @@ model AdStatDaily {
   @@index([campaignId, day])
   @@index([day])
 }
-
 
 /// Tarif d'un emplacement publicitaire.
 ///
@@ -1573,9 +1563,9 @@ model AdPlacementPricing {
   /// Ne dicte plus le prix depuis les enchères : le modèle d'une campagne vient
   /// de son objectif. La colonne reste le tarif de repli des campagnes créées
   /// avant les enchères, qui n'ont pas de plafond à elles.
-  model String @default("CPC")
+  model      String @default("CPC")
   /// Prix en centimes : par clic en CPC, pour mille impressions en CPM.
-  priceCents Int @default(25)
+  priceCents Int    @default(25)
 
   /// Prix planchers de l'emplacement, en centimes.
   ///
@@ -1583,15 +1573,14 @@ model AdPlacementPricing {
   /// annonceur est en lice, le second prix vaut zéro, et l'inventaire part
   /// pour rien. Le plancher est ce en dessous de quoi Deal&Co ne vend pas —
   /// c'est aussi l'enchère minimale acceptée à la création d'une campagne.
-  floorCpcCents Int @default(15)
-  floorCpmCents Int @default(200)
+  floorCpcCents Int     @default(15)
+  floorCpmCents Int     @default(200)
   /// Emplacement ouvert à la vente. Fermé, il ne sert plus aucune campagne.
-  isOpen Boolean @default(true)
+  isOpen        Boolean @default(true)
 
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
-
 
 /// Une équipe interne — qui fait quoi dans l'administration.
 ///
@@ -1627,7 +1616,7 @@ model StaffMembership {
   id String @id @default(cuid())
 
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamId String
   team   StaffTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
@@ -1638,7 +1627,6 @@ model StaffMembership {
   @@unique([userId, teamId])
   @@index([teamId])
 }
-
 
 /// Réglage de la régie publicitaire.
 ///
@@ -1651,7 +1639,6 @@ model AdSetting {
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
-
 
 /// Un annonceur de la régie Deal&Co Ads.
 ///
@@ -1673,8 +1660,8 @@ model Advertiser {
 
   /// Facultatifs : un artisan qui veut trois bannières n'a pas à sortir son
   /// Kbis. Le SIRET n'est demandé que pour la facturation d'une société.
-  company    String?
-  siret      String?
+  company     String?
+  siret       String?
   addressLine String?
   city        String?
   postalCode  String?
@@ -2435,10 +2422,10 @@ model UserLocationProfile {
   lat        Float
   lng        Float
   /// COMMUNE | POSTAL | DEPARTMENT
-  precision  String @default("COMMUNE")
+  precision  String  @default("COMMUNE")
 
   /// LISTING_PUBLISHED | PROFILE_ADDRESS | LISTING_VIEWED | SEARCH
-  source String
+  source    String
   /// CERTAIN | ESTIMATED — dérivé de `source`, dupliqué pour filtrer sans
   /// réécrire la logique dans chaque requête.
   certainty String @default("ESTIMATED")
@@ -2484,11 +2471,11 @@ model UserCategoryInterest {
   /// 0 → 100.
   score Int @default(0)
 
-  publishedCount  Int @default(0)
-  favoriteCount   Int @default(0)
-  viewCount       Int @default(0)
-  searchCount     Int @default(0)
-  emailClickCount Int @default(0)
+  publishedCount    Int @default(0)
+  favoriteCount     Int @default(0)
+  viewCount         Int @default(0)
+  searchCount       Int @default(0)
+  emailClickCount   Int @default(0)
   /// Emails reçus sur cette catégorie et jamais ouverts. Signal négatif : au
   /// bout de plusieurs, le compte a répondu, même sans se désabonner.
   ignoredEmailCount Int @default(0)
@@ -2514,23 +2501,23 @@ model RecommendationCampaign {
   categoryLabel String
 
   /// Annonces neuves entrées dans le calcul.
-  listingCount Int @default(0)
+  listingCount   Int @default(0)
   /// Comptes examinés (pré-filtre géographique passé).
   candidateUsers Int @default(0)
   /// Comptes retenus après scoring, consentement et anti-doublon.
-  targetedUsers Int @default(0)
-  emailsSent    Int @default(0)
-  errors        Int @default(0)
+  targetedUsers  Int @default(0)
+  emailsSent     Int @default(0)
+  errors         Int @default(0)
 
   /// Simulation : tout est calculé et journalisé, rien n'est envoyé.
   dryRun Boolean @default(false)
   /// RUNNING | DONE | FAILED
-  status String @default("RUNNING")
+  status String  @default("RUNNING")
 
   windowStart DateTime
   windowEnd   DateTime
   /// Détail sérialisé : seuils utilisés, motifs d'exclusion agrégés.
-  meta        String @default("{}")
+  meta        String   @default("{}")
 
   startedAt  DateTime  @default(now())
   finishedAt DateTime?
@@ -2551,7 +2538,7 @@ model RecommendationCampaign {
 /// Les scores sont conservés pour pouvoir expliquer une décision six mois plus
 /// tard : « pourquoi ce compte a-t-il reçu ça ? » doit avoir une réponse.
 model ListingRecommendationLog {
-  id         String  @id @default(cuid())
+  id         String                  @id @default(cuid())
   campaignId String?
   campaign   RecommendationCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
@@ -2562,14 +2549,14 @@ model ListingRecommendationLog {
 
   /// 0 → 100.
   score         Int
-  categoryScore Int   @default(0)
-  locationScore Int   @default(0)
-  recencyScore  Int   @default(0)
+  categoryScore Int    @default(0)
+  locationScore Int    @default(0)
+  recencyScore  Int    @default(0)
   distanceKm    Float?
 
   /// CERTAIN | ESTIMATED — nature de la position utilisée pour décider. Pilote
   /// aussi l'affichage : on n'écrit « à 4,8 km » que sur une position certaine.
-  locationCertainty String @default("ESTIMATED")
+  locationCertainty String  @default("ESTIMATED")
   /// Zone de l'utilisateur retenue pour ce rapprochement.
   matchedZoneKey    String?
 
@@ -2618,7 +2605,7 @@ model ProProduct {
   profileId String
   profile   ProProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  name String
+  name        String
   /// Référence interne du professionnel : « BMW-001 », « TS-BLC-M ». Unique
   /// par établissement seulement — deux boutiques peuvent employer la même.
   sku         String?
@@ -2628,17 +2615,17 @@ model ProProduct {
 
   /// Prix de vente. Le prix affiché sur l'annonce reste celui de l'annonce :
   /// une promotion marketplace ne doit pas réécrire le tarif du magasin.
-  price Float
+  price        Float
   /// Prix barré, quand il y en a un.
   comparePrice Float?
 
   /// Quantité en magasin, hors variantes. Nulle quand le produit se décline :
   /// c'est alors la somme des variantes qui fait foi, et dupliquer ce total
   /// ici garantirait qu'il finisse faux.
-  quantity Int?
+  quantity   Int?
   /// Rien à décompter : prestation à la commande, article fabriqué à la
   /// demande, service illimité. `quantity` est alors ignoré.
-  unlimited Boolean @default(false)
+  unlimited  Boolean @default(false)
   /// Seuil d'alerte. Sous cette valeur, l'établissement est prévenu.
   lowStockAt Int?
 
@@ -2674,8 +2661,8 @@ model ProProductVariant {
   product   ProProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   /// Libellé affiché : « Taille M », « Noir », « 256 Go ».
-  label String
-  sku   String?
+  label      String
+  sku        String?
   /// Écart au prix du produit, en euros. Nul quand la variante coûte le même
   /// prix — le cas le plus fréquent.
   priceDelta Float?
@@ -2683,8 +2670,8 @@ model ProProductVariant {
   quantity Int @default(0)
   reserved Int @default(0)
 
-  position Int      @default(0)
-  isActive Boolean  @default(true)
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2708,7 +2695,7 @@ model ProStockMovement {
   variant   ProProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   /// Signé : positif pour une entrée, négatif pour une sortie.
-  delta Int
+  delta     Int
   /// Quantité après application, pour relire l'historique sans le rejouer.
   resulting Int
 
@@ -2770,7 +2757,7 @@ model SatisfactionCampaign {
   reason   String?
   /// Tentatives d'envoi. Au-delà d'un plafond, la campagne reste `FAILED` sans
   /// être retentée : un email qui échoue trois fois ne réussira pas la quatrième.
-  attempts Int @default(0)
+  attempts Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2798,8 +2785,8 @@ model SatisfactionResponse {
   /// 0 à 10 — recommanderiez-vous Deal&Co ? Base du Net Promoter Score.
   nps    Int?
 
-  likes       String?
-  improvements String?
+  likes         String?
+  improvements  String?
   wishedFeature String?
 
   createdAt DateTime @default(now())
@@ -2821,7 +2808,7 @@ model SatisfactionResponse {
 model SatisfactionSetting {
   id String @id @default("singleton")
 
-  enabled         Boolean? 
+  enabled         Boolean?
   periodicEnabled Boolean?
   activityEnabled Boolean?
 
@@ -2834,80 +2821,4 @@ model SatisfactionSetting {
 
   updatedAt DateTime @updatedAt
   updatedBy String?
-}
-
-/// Article de presse automobile, capté par flux RSS.
-///
-/// ── Ce que ce modèle est, et ce qu'il n'est pas ───────────────────────────
-///
-/// C'est un **signal**, jamais un contenu à republier. Deal&Co ne crée aucune
-/// page à partir de ces lignes : le texte appartient au média qui l'a écrit, et
-/// une page bâtie dessus serait du contenu syndiqué — exactement ce que Google
-/// écarte, et exactement le motif qui exclut déjà 129 annonces importées de
-/// notre propre index.
-///
-/// Ce qu'on en tire, en revanche, vaut cher :
-///
-///   - **la fraîcheur au bon endroit.** Trois titres datés sur `/prix/renault-clio-occasion`
-///     avec le lien vers la source : la page reste à jour sans qu'on écrive une
-///     ligne, et elle cite ses sources plutôt que de les recopier ;
-///   - **ce dont la presse parle.** Croisé avec notre stock, cela dit quel
-///     sujet éditorial écrire cette semaine — celui où l'intérêt monte et où
-///     nous avons des annonces à montrer.
-model NewsItem {
-  id String @id @default(cuid())
-
-  /// Flux d'origine, tel que déclaré dans `lib/news/sources.ts`.
-  source String
-  /// URL canonique de l'article : c'est elle qui fait l'unicité. Un flux
-  /// republie le même article quand son titre change, et deux lignes pour un
-  /// article fausseraient le comptage des sujets.
-  url   String @unique
-
-  title       String
-  /// Résumé du flux, conservé pour le classement interne — jamais affiché en
-  /// entier sur une page indexable.
-  summary     String?
-  publishedAt DateTime
-
-  /// Marque et modèle reconnus dans le titre, quand ils le sont. `null` pour
-  /// une actualité générale — elle reste stockée, elle n'est simplement
-  /// rattachée à aucune page.
-  brandSlug String?
-  modelSlug String?
-  /// Rubriques du flux, en JSON. Servent à écarter le sponsorisé.
-  categories String @default("[]")
-
-  /// Visuel fourni **par le flux lui-même** (`<enclosure>`), jamais récupéré
-  /// en aspirant la page. C'est la différence entre afficher ce qu'un média
-  /// publie pour être repris et se servir dans ce qu'il ne propose pas.
-  imageUrl String?
-
-  /// Extrait cité de l'article, quand le flux publie son corps.
-  ///
-  /// Volontairement borné (voir `EXCERPT_CHARS`). Certains flux livrent
-  /// l'article entier ; le livrer n'est pas le céder — les flux concernés
-  /// portent une mention de copyright explicite. Ce champ contient donc une
-  /// citation, présentée comme telle et attribuée, jamais l'article.
-  excerpt String?
-
-  /// Signature réelle de l'article, quand le média la publie.
-  ///
-  /// Les flux d'articles de Motor1 ne portent aucun auteur, mais le média
-  /// publie un flux par journaliste : les recouper redonne la signature. Sans
-  /// correspondance, la page affiche la rédaction — jamais rien d'inventé, et
-  /// jamais un nom Deal&Co.
-  authorName String?
-
-  /// Adresse de la page Deal&Co qui présente cet article.
-  /// Unique et stable : elle est construite une fois, à la première captation,
-  /// et ne bouge plus même si le média retouche son titre — sinon chaque
-  /// retouche créerait une URL de plus et casserait la précédente.
-  slug String? @unique
-
-  fetchedAt DateTime @default(now())
-
-  @@index([brandSlug, publishedAt])
-  @@index([brandSlug, modelSlug, publishedAt])
-  @@index([publishedAt])
 }

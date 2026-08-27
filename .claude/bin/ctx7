@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Interroge Context7 en HTTP. La clé vient de .env.local, jamais du code.
+#   ctx7 search <requête>
+#   ctx7 docs <libId> <topic> [tokens]
+set -euo pipefail
+KEY=$(grep '^CONTEXT7_API_KEY=' "$(dirname "$0")/../../.env.local" | cut -d= -f2)
+case "${1:-}" in
+  search) shift; curl -s -G "https://context7.com/api/v1/search" --data-urlencode "query=$*" -H "Authorization: Bearer $KEY" ;;
+  docs)   lib="$2"; topic="${3:-}"; tokens="${4:-4000}"
+          curl -s -G "https://context7.com/api/v1${lib}" --data-urlencode "topic=$topic" --data-urlencode "tokens=$tokens" --data-urlencode "type=txt" -H "Authorization: Bearer $KEY" ;;
+  *) echo "usage: ctx7 search <q> | ctx7 docs /org/lib <topic> [tokens]" >&2; exit 1 ;;
+esac

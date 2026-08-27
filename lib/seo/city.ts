@@ -23,6 +23,7 @@
  */
 
 import { FRENCH_CITIES, type FrenchCity } from "@/lib/cities";
+import communesDataset from "@/data/geo/communes.json";
 
 /** Normalisation commune : minuscules, sans accent, séparateurs unifiés. */
 export function normalizeToken(value: string): string {
@@ -67,26 +68,74 @@ for (const { slug, max } of ARRONDISSEMENT_PARENTS) {
 }
 
 /**
- * Codes postaux → ville, pour les 157 communes du référentiel.
+ * Codes postaux → ville, lus dans le référentiel INSEE / La Poste.
  *
- * Reconstruit depuis les données existantes : le code postal d'une grande ville
- * est `departmentCode` suivi de « 000 » dans l'immense majorité des cas
- * (Rennes 35000, Colmar 68000). Paris, Lyon et Marseille sont traités à part
- * car leurs arrondissements occupent une plage entière.
+ * ── Ce que faisait la version précédente, et pourquoi c'était faux ────────
  *
- * Ce n'est volontairement pas un référentiel postal complet : on ne rattache
- * que ce dont on est sûr. Un code inconnu ne produit aucune ville, donc aucun
- * lien — ce qui est le comportement voulu.
+ * Elle reconstruisait les codes par déduction : « le code postal d'une grande
+ * ville est `departmentCode` suivi de 000 », puis attribuait ce code à la
+ * première ville du département rencontrée dans `FRENCH_CITIES` — tableau trié
+ * par population décroissante. Les deux moitiés de la règle sont justes prises
+ * séparément et fausses ensemble : le code `NN000` appartient à la
+ * **préfecture**, qui n'est pas toujours la commune la plus peuplée de son
+ * département.
+ *
+ * Mesuré le 27/08/2026 contre `data/geo/communes.json` : **16 codes sur 16
+ * départements concernés étaient attribués à la mauvaise ville**.
+ *
+ *     68000  Colmar        → attribué à Mulhouse
+ *     76000  Rouen         → attribué au Havre
+ *     93000  Bobigny       → attribué à Saint-Denis
+ *     29000  Quimper       → attribué à Brest
+ *     92000  Nanterre      → attribué à Boulogne-Billancourt
+ *     …
+ *
+ * Conséquence observée en production : les deux annonces de Colmar écrites
+ * « 180 Rue du Ladhof, 68000 Colmar » étaient rattachées à Mulhouse. La page
+ * `/ville/colmar` sur-comptait, `/ville/mulhouse` répondait 404 avec du stock
+ * réel, et le fil d'Ariane de ces annonces envoyait le visiteur dans une autre
+ * ville — le tout dans le fichier censé être le juge unique du rattachement.
+ *
+ * ── Ce que fait cette version ────────────────────────────────────────────
+ *
+ * Elle ne déduit plus rien. `data/geo/communes.json` — déjà présent dans le
+ * dépôt, déjà chargé côté serveur par le moteur de recommandation — porte les
+ * codes postaux réels de 34 900 communes. On y lit ceux des villes du
+ * référentiel, tous leurs codes et pas seulement le `NN000` : Mulhouse récupère
+ * ainsi 68100 et 68200, que la règle déductive ignorait complètement.
+ *
+ * Un code absent du référentiel ne produit toujours aucune ville, donc aucun
+ * lien. C'est le comportement voulu : mieux vaut pas de rattachement qu'un
+ * rattachement faux.
  */
+type CommuneRow = [
+  name: string,
+  insee: string,
+  lat: number,
+  lng: number,
+  population: number,
+  department: string,
+];
+
+const COMMUNES = communesDataset.communes as unknown as CommuneRow[];
+const POSTAL_TO_COMMUNE = communesDataset.postal as Record<string, number>;
+
 const CITY_BY_POSTCODE = new Map<string, FrenchCity>();
 
-for (const city of FRENCH_CITIES) {
-  const dept = city.departmentCode;
-  // Codes à 2 chiffres uniquement (métropole). L'outre-mer utilise 3 chiffres
-  // et une numérotation différente : hors périmètre, donc ignoré.
-  if (dept.length !== 2) continue;
-  const canonical = `${dept}000`;
-  if (!CITY_BY_POSTCODE.has(canonical)) CITY_BY_POSTCODE.set(canonical, city);
+{
+  // Clé « nom normalisé | département » : le nom seul ne suffit pas, une
+  // trentaine de communes homonymes existent d'un département à l'autre.
+  const cityByNameDept = new Map<string, FrenchCity>();
+  for (const city of FRENCH_CITIES) {
+    cityByNameDept.set(`${normalizeToken(city.name)}|${city.departmentCode}`, city);
+  }
+
+  for (const [postcode, communeIndex] of Object.entries(POSTAL_TO_COMMUNE)) {
+    const commune = COMMUNES[communeIndex];
+    if (!commune) continue;
+    const city = cityByNameDept.get(`${normalizeToken(commune[0])}|${commune[5]}`);
+    if (city) CITY_BY_POSTCODE.set(postcode, city);
+  }
 }
 
 for (const [slug, range] of [
@@ -156,6 +205,23 @@ export function resolveCity(location: string | null | undefined): FrenchCity | n
   }
 
   return null;
+}
+
+/**
+ * Codes postaux réels d'une ville du référentiel.
+ *
+ * Sert à préfiltrer en base : `resolveCity` est la seule autorité, mais c'est
+ * une fonction TypeScript — SQL ne sait pas l'exécuter. Une requête qui ne
+ * cherche que le nom de la commune rate « 45000 » et « 75001 », qui ne
+ * contiennent pas le nom. On élargit donc la requête aux codes postaux de la
+ * ville, puis on tranche en mémoire avec le juge.
+ */
+export function postcodesForCity(slug: string): string[] {
+  const out: string[] = [];
+  for (const [postcode, city] of CITY_BY_POSTCODE) {
+    if (city.slug === slug) out.push(postcode);
+  }
+  return out;
 }
 
 /** Slug canonique d'une localisation, ou `null` si la ville est inconnue. */
