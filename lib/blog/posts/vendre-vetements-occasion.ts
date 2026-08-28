@@ -2,11 +2,11 @@ import type { BlogArticle } from "../types";
 
 export const article: BlogArticle = {
   slug: "comment-vendre-vetements-occasion-france",
-  title: "Comment vendre ses vêtements d'occasion en France en 2026",
+  title: "Comment vendre ses vêtements d'occasion en ligne, du basique au luxe et créateur",
   description:
-    "Guide pratique pour vendre vêtements, chaussures et accessoires de mode d'occasion : photos, prix, plateformes, expédition et conseils pour vendre vite.",
+    "Vendre vêtements, chaussures et accessoires d'occasion en ligne : photos, prix, plateformes, expédition. Et pour le luxe et les pièces de créateur, ce qui prouve vraiment l'authenticité et comment éviter la fraude vendeur.",
   publishedAt: "2026-04-22",
-  updatedAt: "2026-05-01",
+  updatedAt: "2026-08-27",
   category: "Mode",
   keywords: [
     "vendre vêtements occasion",
@@ -15,6 +15,10 @@ export const article: BlogArticle = {
     "vendre friperie en ligne",
     "sac chanel occasion",
     "vêtements de marque occasion",
+    "vendre luxe occasion en ligne",
+    "vendre vêtements de créateur occasion",
+    "comment vendre du luxe d'occasion",
+    "authentifier sac de luxe avant vente",
   ],
   relatedCategoryId: "mode",
   intro:
@@ -59,6 +63,18 @@ export const article: BlogArticle = {
       ],
     },
     {
+      h2: "Vendre du luxe et des pièces de créateur en ligne",
+      paragraphs: [
+        "Une pièce de luxe ne se vend pas comme un jean. L'acheteur ne se demande pas si l'article lui plaît — il se demande s'il est authentique. Tant que cette question reste ouverte, il ne paie pas le prix, ou il ne paie pas du tout. Tout le travail du vendeur consiste donc à la refermer avant même qu'elle soit posée.",
+        "Ce qui la referme, ce sont des preuves matérielles, et elles ne se valent pas toutes. La facture d'achat nominative du magasin est la plus forte. Viennent ensuite les éléments qui accompagnent la pièce d'origine : boîte, dustbag, carte d'entretien, cadenas et clochette pour un sac, maillon supplémentaire pour un bracelet de montre. Le code de série ou le date code, photographié net et lisible, permet à l'acheteur de vérifier lui-même. En revanche, un « certificat d'authenticité » émis par un site tiers inconnu ne prouve rien : n'importe qui peut en imprimer un, et les acheteurs avertis le savent.",
+        "Les créateurs indépendants et les marques de mode d'auteur suivent une logique différente. Il n'y a ni numéro de série ni carte, mais l'étiquette intérieure, la composition, la saison et le nom exact du modèle suffisent à identifier une pièce. Nommez-la précisément — « veste Lemaire, collection automne 2023, laine mélangée, taille 38 » — plutôt que « veste de créateur ». C'est ce nom exact que l'acheteur tape dans un moteur de recherche.",
+        "Toutes les marques ne tiennent pas la même cote. Les maisons dont les modèles restent au catalogue année après année conservent une part importante de leur prix neuf ; les collections capsule et les collaborations éphémères, très demandées à leur sortie, retombent souvent une fois l'engouement passé. Avant de fixer un prix, regardez ce que la même référence s'est réellement vendue récemment, et non ce que d'autres vendeurs en demandent : un prix affiché n'est pas un prix de vente.",
+        "Le choix de la plateforme est un arbitrage, pas une évidence. Les sites spécialisés authentifient la pièce et rassurent l'acheteur, mais prélèvent une commission qui se compte en dizaines voire en centaines d'euros sur une pièce chère. La vente directe, sans commission, vous laisse la totalité du prix — à condition d'assumer vous-même la charge de la preuve. Sur une pièce à 200 €, la vente directe s'impose ; sur une pièce à 3 000 € dont vous n'avez ni facture ni accessoires, l'authentification payante coûte moins cher que l'annonce qui ne se vend jamais.",
+        "Le montant attire aussi une fraude qui ne vise pas les vêtements courants. Les schémas reviennent toujours : un acheteur pressé qui propose de payer davantage pour couvrir un transporteur qu'il impose, une confirmation de virement envoyée par courriel avant que l'argent n'arrive réellement sur le compte, un paiement par un moyen que l'expéditeur peut annuler après réception du colis. La règle qui les neutralise tous tient en une phrase : on n'expédie rien avant d'avoir vu les fonds effectivement crédités sur son compte, et une remise en main propre dans un lieu public reste préférable pour toute pièce de valeur.",
+        "Un dernier point, souvent ignoré, et qui n'est pas négociable : vendre une contrefaçon est un délit en France, y compris de bonne foi et entre particuliers. Si vous avez le moindre doute sur une pièce achetée d'occasion, faites-la authentifier avant de la mettre en vente plutôt qu'après.",
+      ],
+    },
+    {
       h2: "Sources et méthodologie",
       paragraphs: [
         "Cet article s'appuie sur les rapports publics de l'ADEME relatifs au textile et à l'économie circulaire (ademe.fr), sur les baromètres de l'Institut français de la mode (IFM) consacrés à la seconde main, et sur les fiches pratiques de service-public.fr pour la vente entre particuliers.",
@@ -68,6 +84,10 @@ export const article: BlogArticle = {
     },
   ],
   faq: [
+    {
+      q: "Comment vendre des pièces de luxe et de créateur d'occasion en ligne ?",
+      a: "La question de l'acheteur n'est pas le goût mais l'authenticité : il faut la refermer avant qu'elle soit posée. Réunissez les preuves matérielles dans l'ordre de leur force — facture nominative du magasin, puis boîte, dustbag et accessoires d'origine, puis code de série photographié lisiblement. Un certificat émis par un site tiers inconnu ne prouve rien. Pour un créateur sans numéro de série, nommez la pièce exactement : marque, modèle, saison, matière, taille. Arbitrez ensuite entre plateforme spécialisée (authentification, mais commission) et vente directe sans commission, où la charge de la preuve vous revient.",
+    },
     {
       q: "Où vendre ses vêtements d'occasion en France sans commission ?",
       a: "Sur Deal&Co (dealandcompany.fr), la vente de vêtements est gratuite et sans commission. Publiez votre annonce dans la catégorie Mode, avec photos et description précise.",
