@@ -211,6 +211,24 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      /**
+       * Fiches pro — seule route de fiche du site sans règle jusqu'ici.
+       *
+       * Mesuré en production le 28/08/2026 : `private, no-cache, no-store`,
+       * `x-vercel-cache: MISS` systématique, TTFB 1,0-1,4 s contre 220-340 ms
+       * sur `/annonces`, `/ville`, `/annonce`. `s-maxage=1800` reprend le
+       * `revalidate` déclaré dans `app/pro/[slug]/page.tsx` — les deux couches
+       * de cache doivent expirer ensemble, voir le commentaire de ce fichier.
+       */
+      {
+        source: "/pro/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=1800, stale-while-revalidate=86400",
+          },
+        ],
+      },
       {
         source: "/sitemap.xml",
         headers: [

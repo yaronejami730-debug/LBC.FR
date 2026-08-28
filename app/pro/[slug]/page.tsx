@@ -9,10 +9,73 @@ import { listingUrl } from "@/lib/listing-slug";
 import { normalizeWebsite, websiteLabel } from "@/lib/pro/website";
 import { safeJsonLd } from "@/lib/json-ld";
 import { stockOf } from "@/lib/pro/inventory";
+import { getSeoInventory } from "@/lib/seo/inventory";
 
 const BASE = "https://www.dealandcompany.fr";
 
 const DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+
+/**
+ * Fenêtre de fraîcheur de la fiche.
+ *
+ * Sans elle, la route restait `ƒ (Dynamic)` : mesuré en production le
+ * 28/08/2026, `cache-control: private, no-cache, no-store` et
+ * `x-vercel-cache: MISS` sur chaque requête, TTFB 1,0-1,4 s contre 220-340 ms
+ * sur les routes sœurs (`/annonces`, `/ville`, `/annonce`) — chaque passage de
+ * crawler rejouait la requête Prisma complète (services + jusqu'à 60 produits
+ * avec variantes + membres).
+ *
+ * 1800 s plutôt que les 600 s de `/annonce/:path*` : une fiche pro change par
+ * nature plus lentement qu'une annonce (l'établissement, son adresse, sa carte
+ * de prestations sont stables au jour le jour) mais pas jamais — horaires et
+ * stock produits bougent. Aligné sur le `s-maxage=1800` déclaré pour
+ * `/pro/:path*` dans `next.config.ts` : les deux couches de cache expirent
+ * ensemble, les régler séparément fabriquerait une fenêtre où l'une sert ce
+ * que l'autre a déjà invalidé (voir `app/annonce/[id]/[slug]/page.tsx` pour le
+ * même raisonnement appliqué à 600 s).
+ *
+ * Ce n'est qu'un plafond : une modification depuis l'espace pro ou une
+ * décision de modération peut purger la fiche avant terme via
+ * `revalidatePath`/`revalidateTag` ailleurs dans le code ; cette borne ne
+ * couvre que ce qui ne passe pas par là.
+ */
+export const revalidate = 1800;
+
+/**
+ * Prérendu des fiches publiées — à la différence de `/annonce/[id]/[slug]` et
+ * `/prix/[slug]`, qui renvoient une liste vide.
+ *
+ * Sans `generateStaticParams`, la route reste `ƒ (Dynamic)` et ignore les
+ * en-têtes de `next.config.ts` : Next pose les siens (`private, no-cache,
+ * no-store`) après coup, quel que soit le `revalidate` déclaré ci-dessus — la
+ * même mesure qui a motivé le commentaire de `/annonce/[id]/[slug]/page.tsx`.
+ * Une liste vide suffirait à corriger cela (Next traiterait alors la route
+ * comme prérendable et la remplirait à la demande, comme `/prix/[slug]`).
+ *
+ * On va plus loin ici parce que le jeu de fiches pro n'a pas le profil de
+ * `/annonce` (catalogue de plusieurs milliers d'annonces, tournant plusieurs
+ * fois par jour — figer un lot au build servirait du contenu déjà périmé) ni
+ * de `/prix` (une cote par requête de marché possible, non bornée). Une fiche
+ * pro exige au contraire une habilitation professionnelle vérifiée à la main
+ * (voir `lib/seo/inventory.ts`, section « Fiches professionnelles ») : le jeu
+ * publié est petit et change lentement. `getSeoInventory()` l'expose déjà,
+ * dédupliqué avec le sitemap et la file d'indexation.
+ *
+ * Prérendre ces fiches au build suppose que le build puisse joindre la base —
+ * c'est déjà le cas ici : `package.json` exécute `prisma migrate deploy`
+ * avant `next build`, et `/ville/[slug]/page.tsx` interroge cette même
+ * fonction sans filet dans son `generateStaticParams`. Le risque n'est donc
+ * pas nouveau, seulement partagé avec une route qui fonctionne déjà ainsi.
+ *
+ * `dynamicParams` reste à sa valeur par défaut (`true`) : une fiche publiée
+ * après le dernier déploiement est rendue à la demande au premier accès, puis
+ * mise en cache jusqu'à expiration du `revalidate` ci-dessus — elle n'attend
+ * pas le prochain build pour exister.
+ */
+export async function generateStaticParams() {
+  const inv = await getSeoInventory();
+  return inv.proProfiles.map((p) => ({ slug: p.path.replace(/^\/pro\//, "") }));
+}
 
 const getProfile = (slug: string) =>
   prisma.proProfile

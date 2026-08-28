@@ -1084,7 +1084,7 @@ export async function ListingView({
             {listing.category === "Véhicules" && (vehicleMeta.consoUrbaine || vehicleMeta.consoExtraU || vehicleMeta.consoMixte) && (
               <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
                 <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-primary">local_gas_station</span>
+                  <Icon name="local_gas_station" className="text-[18px] text-primary" />
                   Consommations
                 </h2>
                 <div className="grid grid-cols-3 gap-3">
@@ -1130,7 +1130,7 @@ export async function ListingView({
             {listing.category === "Immobilier" && (immoMeta.prixHonorairesInclus || immoMeta.prixHonorairesExclus || immoMeta.honorairesAcquereur || immoMeta.taxeFonciere) && (
               <div className="bg-slate-50 rounded-2xl p-5 space-y-3">
                 <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-primary">account_balance</span>
+                  <Icon name="account_balance" className="text-[18px] text-primary" />
                   Honoraires &amp; taxes
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

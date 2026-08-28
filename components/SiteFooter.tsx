@@ -218,9 +218,11 @@ export default async function SiteFooter() {
         <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4">
           {columns.map((column) => (
             <nav key={column.title} aria-label={column.title}>
-              <h3 className="border-b border-slate-200 pb-2 font-['Manrope'] text-[13px] font-extrabold uppercase tracking-wider text-on-surface">
+              {/* h2 et non h3 : sur les pages sans h2 de contenu propre, ce titre de
+                  colonne de pied de page est le premier heading après le h1. */}
+              <h2 className="border-b border-slate-200 pb-2 font-['Manrope'] text-[13px] font-extrabold uppercase tracking-wider text-on-surface">
                 {column.title}
-              </h3>
+              </h2>
               <ul className="mt-3 space-y-2.5">
                 {column.links.map((link) => (
                   <li key={link.href}>
@@ -243,9 +245,9 @@ export default async function SiteFooter() {
           <div className="mt-10 space-y-3 border-t border-slate-100 pt-8">
             {seoGroups.map((group) => (
               <div key={group.title} className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline sm:gap-4">
-                <h3 className="shrink-0 font-['Manrope'] text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:w-40">
+                <h2 className="shrink-0 font-['Manrope'] text-[11px] font-bold uppercase tracking-wider text-slate-400 sm:w-40">
                   {group.title}
-                </h3>
+                </h2>
                 <ul className="flex flex-wrap items-baseline gap-x-1 gap-y-1.5">
                   {group.links.map((link, i) => (
                     <li key={link.href} className="flex items-baseline">

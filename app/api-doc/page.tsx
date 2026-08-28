@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
+import Icon from "@/components/Icon";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
@@ -162,7 +163,7 @@ export default async function ApiDocPage() {
         <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-5">
           <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">lock</span>
+              <Icon name="lock" className="text-[#2f6fb8] text-[16px]" />
             </span>
             Authentification
           </h2>
@@ -187,7 +188,7 @@ export default async function ApiDocPage() {
         <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-5">
           <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">rocket_launch</span>
+              <Icon name="rocket_launch" className="text-[#2f6fb8] text-[16px]" />
             </span>
             Démarrage rapide
           </h2>
@@ -206,7 +207,7 @@ export default async function ApiDocPage() {
         <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-4">
           <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">list_alt</span>
+              <Icon name="list_alt" className="text-[#2f6fb8] text-[16px]" />
             </span>
             Champs requis
           </h2>
@@ -246,7 +247,7 @@ export default async function ApiDocPage() {
         <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-5">
           <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">photo_library</span>
+              <Icon name="photo_library" className="text-[#2f6fb8] text-[16px]" />
             </span>
             Photos
           </h2>
@@ -275,7 +276,7 @@ export default async function ApiDocPage() {
         <div className="bg-white rounded-2xl p-8 shadow-[0_4px_24px_rgba(21,21,125,0.06)] space-y-4">
           <h2 className="text-lg font-extrabold text-slate-900 font-['Manrope'] flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-[#2f6fb8]/10 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#2f6fb8] text-[16px]">error</span>
+              <Icon name="error" className="text-[#2f6fb8] text-[16px]" />
             </span>
             Codes d'erreur
           </h2>

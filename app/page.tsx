@@ -296,6 +296,20 @@ export default async function Home() {
       />
       <Navbar active="accueil" />
 
+      {/*
+        `<main>` s'ouvre après la barre de navigation et se ferme avant le pied
+        de page. C'était le seul repère de contenu principal absent du site.
+
+        Le placement n'est pas cosmétique : `<main>` désigne le contenu propre à
+        *cette* page, à l'exclusion de ce qui se répète d'une page à l'autre. Y
+        enfermer la navigation et le pied de page — qui portent à eux seuls
+        plusieurs dizaines de liens de maillage — reviendrait à désigner comme
+        contenu principal ce qui est justement commun à tout le site, et à
+        annuler le bénéfice du repère pour les outils qui s'en servent pour
+        isoler le contenu (mode lecture, extraction pour les réponses génératives).
+      */}
+      <main>
+
       {/* Hero */}
       <header className="pt-[84px] md:pt-[132px] pb-4 px-4 max-w-7xl mx-auto">
         <AdvertiserLeadSection />
@@ -678,6 +692,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      </main>
 
       {/* Footer */}
       <SiteFooter />
