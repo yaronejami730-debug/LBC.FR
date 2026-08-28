@@ -28,6 +28,25 @@ const BASE = "https://www.dealandcompany.fr";
 
 export const revalidate = 3600;
 
+/**
+ * Sans `generateStaticParams`, la route reste `ƒ (Dynamic)` — et une route
+ * dynamique ignore les en-têtes de `next.config.ts` : Next pose les siens
+ * après, et `private, no-cache, no-store` l'emporte.
+ *
+ * La règle `/prix/:path*` existait pourtant depuis longtemps. Mesure du
+ * 28/08/2026 en production : `private, no-cache, no-store`,
+ * `x-vercel-cache: MISS`. Le `revalidate` ci-dessus ne s'appliquait pas
+ * davantage. La configuration promettait un cache que le rendu à la demande ne
+ * pouvait pas tenir, sans que rien ne le signale.
+ *
+ * Liste vide : les cotes suivent le stock et n'ont pas à être figées au build.
+ * `dynamicParams` reste par défaut, chaque page est rendue à la demande puis
+ * mise en cache jusqu'à expiration.
+ */
+export function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({
   params,
 }: {

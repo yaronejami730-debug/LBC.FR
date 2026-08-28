@@ -64,6 +64,42 @@ const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 600;
 
 /**
+ * Aucune fiche n'est prérendue à la construction — mais la route doit être
+ * *prérendable* pour que le CDN la garde.
+ *
+ * ── Ce que la mesure a montré ─────────────────────────────────────────────
+ *
+ * Retirer `auth()` du rendu suffisait en local : `next start` répondait
+ * `public, s-maxage=600`, l'en-tête déclaré pour `/annonce/:path*` dans
+ * `next.config.ts`. En production, la même URL répondait
+ * `private, no-cache, no-store` avec `x-vercel-cache: MISS` sur deux appels
+ * successifs — l'en-tête de configuration était écrasé.
+ *
+ * `/u/[id]` et `/prix/[slug]`, deux routes dynamiques qui portent elles aussi
+ * une règle d'en-tête depuis longtemps, répondaient exactement pareil. La règle
+ * n'était donc pas en cause : **une route marquée `ƒ (Dynamic)` ignore les
+ * en-têtes de `next.config.ts`**, parce que Next pose les siens après. Seules
+ * les routes prérendues les conservent. La configuration promettait un cache
+ * que le rendu à la demande ne pouvait pas tenir, et rien ne le signalait.
+ *
+ * ── Pourquoi une liste vide plutôt qu'une liste de fiches ─────────────────
+ *
+ * Déclarer `generateStaticParams` fait basculer la route du rendu à la demande
+ * vers la génération statique incrémentale : Next la traite comme prérendable,
+ * la rend à la première requête, puis la sert depuis le cache jusqu'à
+ * expiration du `revalidate` ci-dessus.
+ *
+ * La liste est vide parce qu'il n'y a rien à prérendre à la construction. Le
+ * catalogue change plusieurs fois par jour ; figer un lot de fiches au build
+ * allongerait chaque déploiement pour un contenu périmé avant d'être servi.
+ * `dynamicParams` reste à sa valeur par défaut — toute fiche demandée est
+ * rendue puis mise en cache, y compris celles publiées après le déploiement.
+ */
+export function generateStaticParams() {
+  return [];
+}
+
+/**
  * L'annonce et son vendeur, en une lecture partagée.
  *
  * `cache()` déduplique l'appel entre `generateMetadata` et le rendu : les deux

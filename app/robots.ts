@@ -48,6 +48,11 @@ const PRIVATE_PATHS = [
   "/preferences",
   "/annonce/*/edit",
   "/annonce/*/republier",
+  // Variante connectée de la fiche, servie par réécriture du middleware.
+  // L'URL n'est jamais émise nulle part, mais elle reste tapable, et elle rend
+  // exactement le même écran que la fiche publique : indexée, ce serait un
+  // doublon parfait de chaque annonce du site.
+  "/annonce/*/moi",
   // Espaces infinis — voir le commentaire ci-dessus.
   "/login",
   "/search",

@@ -36,6 +36,24 @@ import Parent, { generateMetadata as parentMetadata } from "../../page";
 export const revalidate = 3600;
 
 /**
+ * La route doit être *prérendable* pour que le CDN la garde.
+ *
+ * Une route marquée `ƒ (Dynamic)` ignore les en-têtes de `next.config.ts` :
+ * Next pose les siens après, et `private, no-cache, no-store` l'emporte.
+ * Mesuré en production le 28/08/2026 — la règle d'en-tête déclarée pour ces
+ * chemins ne s'appliquait qu'aux pages prérendues, sans que rien ne le dise.
+ *
+ * La liste est vide : il n'y a rien à prérendre à la construction, et figer
+ * des numéros de page au build reviendrait à figer la profondeur d'une liste
+ * qui bouge à chaque annonce publiée. `dynamicParams` reste à sa valeur par
+ * défaut : chaque page est rendue à la demande, puis mise en cache.
+ */
+export function generateStaticParams() {
+  return [];
+}
+
+
+/**
  * `/page/1` est une seconde adresse pour la page 1 : c'est du contenu dupliqué
  * que Google devrait canonicaliser lui-même. On tranche à la source, en 308 —
  * une redirection permanente qui préserve la méthode HTTP.

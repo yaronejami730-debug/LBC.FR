@@ -28,6 +28,23 @@ import { ListingView } from "../page";
  */
 export const dynamic = "force-dynamic";
 
+/**
+ * `noindex` — ceinture et bretelles avec le `Disallow` de `robots.ts`.
+ *
+ * Cette adresse rend le même écran que la fiche publique. Elle n'est émise
+ * nulle part et n'est atteinte que par réécriture du middleware, mais elle
+ * reste tapable : indexée, elle serait un doublon parfait de chaque annonce.
+ *
+ * Les deux protections ne se recouvrent pas. `robots.txt` empêche
+ * l'exploration mais pas l'indexation d'une URL découverte ailleurs — un lien
+ * externe, une barre d'adresse partagée. `noindex` ferme ce cas-là. Et comme
+ * une page interdite au crawl ne peut pas être lue, l'inverse est vrai aussi :
+ * il faut les deux pour couvrir les deux chemins.
+ */
+export const metadata = {
+  robots: { index: false, follow: true },
+};
+
 export default async function ListingPagePersonalised({
   params,
 }: {
