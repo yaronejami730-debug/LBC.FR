@@ -8,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 import { safeJsonLd } from "@/lib/json-ld";
-import { parsePageParam } from "@/lib/pagination";
+import { pagedPath, parsePageParam } from "@/lib/pagination";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -187,16 +187,20 @@ function buildWhere(cluster: ClusterDef): Record<string, unknown> {
   };
 }
 
+/**
+ * Le numéro de page arrive par le chemin (`/voiture/suv-occasion/page/2`),
+ * jamais par `?page=`. Lire `searchParams` ici rendrait la route dynamique, ce
+ * qui annulerait **sans le dire** le `revalidate` et le `dynamicParams = false`
+ * déclarés plus haut — voir `pagedPath`, `lib/pagination.ts`. Le segment est
+ * optionnel : son absence, c'est la page 1.
+ */
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ slug: string; numero?: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const { page: pageParam } = await searchParams;
-  const page = parsePageParam(pageParam);
+  const { slug, numero } = await params;
+  const page = parsePageParam(numero);
   const cluster = findCluster(slug);
   if (!cluster) return {};
 
@@ -206,7 +210,9 @@ export async function generateMetadata({
     return { title: cluster.label, robots: { index: false, follow: true } };
   }
 
-  const canonical = `${BASE}/voiture/${slug}`;
+  // Auto-référent, page 2 comprise : la rattacher à la page 1 tout en la
+  // marquant `noindex` enverrait deux ordres contradictoires.
+  const canonical = pagedPath(`${BASE}/voiture/${slug}`, page);
   // Sans « — Deal&Co » : le `template` du layout racine l'ajoute au titre de
   // page. Il reste écrit à la main dans l'Open Graph ci-dessous, où le
   // `template` ne s'applique pas.
@@ -234,19 +240,16 @@ const PER_PAGE = 24;
 
 export default async function VoitureClusterPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ slug: string; numero?: string }>;
 }) {
-  const { slug } = await params;
-  const { page: pageParam } = await searchParams;
+  const { slug, numero } = await params;
   const cluster = findCluster(slug);
   // Voisins réellement affichables — voir le commentaire des liens plus bas.
   const eligibleClusters = new Set((await getEditorialEligibility()).clusters);
   if (!cluster) notFound();
 
-  const page = parsePageParam(pageParam);
+  const page = parsePageParam(numero);
   const skip = (page - 1) * PER_PAGE;
 
   const where = buildWhere(cluster);
@@ -380,7 +383,7 @@ export default async function VoitureClusterPage({
             <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
               {page > 1 && (
                 <Link
-                  href={`/voiture/${slug}?page=${page - 1}`}
+                  href={pagedPath(`/voiture/${slug}`, page - 1)}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold hover:bg-slate-50"
                 >
                   ← Précédent
@@ -389,7 +392,7 @@ export default async function VoitureClusterPage({
               <span className="px-4 py-2 text-sm text-outline">Page {page} / {totalPages}</span>
               {page < totalPages && (
                 <Link
-                  href={`/voiture/${slug}?page=${page + 1}`}
+                  href={pagedPath(`/voiture/${slug}`, page + 1)}
                   className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold"
                 >
                   Suivant →

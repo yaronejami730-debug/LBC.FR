@@ -77,6 +77,19 @@ export type SeoListingEntry = {
   priority: number;
 };
 
+/**
+ * Fiche professionnelle publiée et vérifiée, telle que l'annuaire l'affiche.
+ *
+ * Le nom et la ville sont lus dans la même requête que le reste : l'annuaire
+ * `/pro` en a besoin pour rendre un lien lisible, et une seconde requête sur
+ * les mêmes lignes, six heures après l'instantané, aurait pu répondre autre
+ * chose — un lien vers une fiche que l'inventaire ne connaît plus.
+ */
+export type SeoProEntry = SeoListingEntry & {
+  name: string;
+  city: string | null;
+};
+
 /** Annonce écartée de l'index, avec le motif — alimente le tableau de bord. */
 export type SeoExcludedEntry = {
   id: string;
@@ -123,7 +136,7 @@ export type SeoInventory = {
   /** clé = `${marqueSlug}/${modeleSlug}` */
   byBrandModel: Record<string, number>;
   /** Fiches professionnelles publiées et vérifiées. */
-  proProfiles: SeoListingEntry[];
+  proProfiles: SeoProEntry[];
 };
 
 const EMPTY_INVENTORY: SeoInventory = {
@@ -351,7 +364,7 @@ async function buildInventory(): Promise<SeoInventory> {
         isPublished: true,
         user: { professionalStatus: "APPROVED", bannedAt: null },
       },
-      select: { slug: true, updatedAt: true },
+      select: { slug: true, name: true, city: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
       take: 5_000,
     })
@@ -360,6 +373,8 @@ async function buildInventory(): Promise<SeoInventory> {
   for (const pro of pros) {
     inv.proProfiles.push({
       path: `/pro/${pro.slug}`,
+      name: pro.name,
+      city: pro.city,
       lastModified: pro.updatedAt,
       // Une fiche vérifiée est une page de référence : adresse réelle, SIRET
       // contrôlé, contenu stable. Elle passe devant les annonces, qui vivent
@@ -410,6 +425,46 @@ export function subcategoryHasStock(
   subSlug: string,
 ): boolean {
   return (inv.byCategorySub[`${categoryId}/${subSlug}`] ?? 0) > 0;
+}
+
+/**
+ * Une marque a-t-elle de quoi être liée ?
+ *
+ * Même distinction que `subcategoryHasStock`, et pour la même raison :
+ * **exister** et **mériter l'index** sont deux questions différentes.
+ * `/annonces/vehicules/{marque}` ne renvoie 404 qu'à stock strictement nul
+ * (`app/annonces/vehicules/[marque]/page.tsx`) ; entre une et deux annonces,
+ * elle répond 200 avec sa propre balise `noindex, follow`.
+ *
+ * L'unique émetteur de liens marque filtrait pourtant sur `isIndexable`,
+ * c'est-à-dire trois annonces. Conséquence mesurée au crawl du 28/08 : Ford,
+ * Land Rover et Volvo — trois marques du référentiel, avec du stock, servies
+ * en 200 — n'étaient citées nulle part sur le site. Une page qu'aucun lien
+ * n'atteint n'est pas explorée, donc les annonces qu'elle porte ne le sont pas
+ * non plus par ce chemin.
+ *
+ * Pourquoi le seuil de trois est le bon pour les villes et le mauvais ici :
+ * l'espace ville × catégorie compte 12 555 URL pour quelques centaines
+ * d'annonces, et couper les liens y est le seul frein au gaspillage de budget
+ * d'exploration. L'espace marque est borné par `lib/carBrands.ts` — une
+ * quarantaine d'entrées, dont seules celles qui ont du stock passent ce test.
+ * Lier une marque à une annonce coûte un lien ; ne pas la lier coûte une page.
+ *
+ * Le compteur lu est celui des annonces **indexables**, plus strict que le
+ * comptage brut de la page : un compteur non nul garantit donc une page en 200,
+ * jamais l'inverse. C'est le sens d'erreur sûr.
+ *
+ * ⚠️ Second émetteur à migrer : le bloc « Voitures d'occasion par marque » de
+ * `app/annonces/[categorie]/page.tsx` filtre encore sur `isIndexable`. Il
+ * n'émet donc qu'un sous-ensemble de ce que ce juge autorise — aucun lien mort,
+ * mais deux règles pour une même famille d'URL, ce que ce dépôt refuse par
+ * ailleurs. Remplacer `isIndexable(count)` par `brandHasStock(inv, slug)`.
+ */
+export function brandHasStock(
+  inv: Pick<SeoInventory, "byBrand">,
+  brandSlug: string,
+): boolean {
+  return (inv.byBrand[brandSlug] ?? 0) > 0;
 }
 
 /** Une page de liste mérite-t-elle l'index ? */

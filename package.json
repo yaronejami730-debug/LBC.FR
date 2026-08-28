@@ -61,7 +61,9 @@
     "seo:coverage": "tsx -r ./scripts/load-env.ts scripts/seo-sitemap-coverage.ts",
     "seo:ttfb": "tsx scripts/seo-ttfb.ts",
     "survey:attribution": "tsx -r ./scripts/load-env.ts scripts/send-attribution-survey.ts",
-    "test:news": "tsx scripts/test-news.ts"
+    "test:news": "tsx scripts/test-news.ts",
+    "seo:404-triage": "tsx -r ./scripts/load-env.ts scripts/seo-404-triage.ts",
+    "seo:url-report": "tsx -r ./scripts/load-env.ts scripts/seo-url-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.89.0",

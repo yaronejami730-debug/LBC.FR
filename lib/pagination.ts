@@ -54,3 +54,44 @@ export function parsePageParam(raw: string | string[] | undefined | null): numbe
   if (!Number.isFinite(parsed) || parsed < 1) return 1;
   return Math.min(parsed, MAX_PAGE);
 }
+
+/**
+ * Chemin d'une liste paginée — la pagination est portée par le **chemin**, pas
+ * par une query.
+ *
+ * ── Ce que `?page=` coûtait ───────────────────────────────────────────────
+ *
+ * `await searchParams` dans un composant serveur bascule la route en
+ * dynamique. Silencieusement : `export const revalidate = 3600` et
+ * `export const dynamicParams = false` restent écrits deux lignes plus haut et
+ * cessent de s'appliquer. Next répond alors
+ * `cache-control: private, no-cache, no-store`, qui écrase le
+ * `public, s-maxage=3600` déclaré pour ces chemins dans `next.config.ts`.
+ *
+ * Relevé du 28/08/2026 sur les 362 URL du crawl d'audit : `MISS 284, HIT 75`.
+ * Une fois `auth()` retiré de la fiche d'annonce, les MISS restants se
+ * répartissaient en `/annonces/*` 55, `/voiture/*` 8, `/voiture-budget/*` 5 —
+ * exactement les routes qui lisaient `?page=`. Chaque passage de Googlebot y
+ * rejouait le rendu et ses requêtes Prisma, ce qui saturait le pool de
+ * connexions et produisait les délais d'attente relevés le 11/08.
+ *
+ * La preuve par le contraire est nette : `/ville/[slug]` et
+ * `/comparatif/[paire]`, qui ne lisent ni session ni `searchParams`,
+ * répondent `public, s-maxage=3600` en HIT à 250-280 ms.
+ *
+ * ── Ce que la forme en chemin change ──────────────────────────────────────
+ *
+ * La page 1 n'a plus rien à lire : son URL ne porte aucun paramètre, la route
+ * redevient prérendable, et le CDN sert le HTML sans réveiller Prisma. Les
+ * pages 2 et suivantes vivent sur `/page/N`, rendues à la demande puis mises
+ * en cache par le CDN comme n'importe quelle autre URL — elles restent
+ * `noindex, follow`, la pagination ne porte aucune intention de recherche
+ * propre.
+ *
+ * ⚠️ La page 1 n'est **jamais** `/page/1` : ce serait une seconde adresse pour
+ * le même écran. Les routes `/page/[numero]` renvoient cette forme en 308 vers
+ * l'URL de base.
+ */
+export function pagedPath(base: string, page: number): string {
+  return page > 1 ? `${base}/page/${page}` : base;
+}

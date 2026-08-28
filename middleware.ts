@@ -146,9 +146,74 @@ const withSession = auth((req: any) => {
   return withLandingIntent(req, nextWithPathname(req));
 });
 
+/**
+ * Aiguillage de la fiche d'annonce : anonyme au CDN, connecté à l'origine.
+ *
+ * ── Le problème qu'il résout ──────────────────────────────────────────────
+ *
+ * `/annonce/:id/:slug` appelait `auth()` pendant son rendu. Lire la session
+ * bascule la route en dynamique, et Next répond alors
+ * `cache-control: private, no-cache, no-store` — qui écrase l'en-tête
+ * `public, s-maxage=600` déclaré pour `/annonce/:path*` dans `next.config.ts`.
+ *
+ * Relevé du 28/08/2026 sur les 362 URL du crawl d'audit : `MISS 284, HIT 75`,
+ * dont **213 MISS sur `/annonce/*`**. Chaque visite de Googlebot sur chaque
+ * fiche rejouait le rendu et ses requêtes Prisma, pour un résultat identique
+ * d'un visiteur anonyme à l'autre.
+ *
+ * ── Pourquoi l'aiguillage se fait ici ─────────────────────────────────────
+ *
+ * Savoir s'il y a une session suppose de lire un cookie. Fait depuis la page,
+ * cela rend la route dynamique **pour tout le monde** — y compris pour le
+ * visiteur anonyme qu'on voulait épargner : la condition détruit ce qu'elle
+ * cherche à protéger. Le middleware, lui, lit les cookies sans engager le
+ * rendu. C'est le seul endroit où la question ne coûte rien.
+ *
+ * La réécriture ne change pas l'URL affichée : l'adresse canonique reste celle
+ * de la fiche, et rien de nouveau n'est exposé au crawl. Googlebot n'a jamais
+ * de cookie de session, donc il ne reçoit jamais que la version statique.
+ *
+ * ── La détection ──────────────────────────────────────────────────────────
+ *
+ * On teste la **présence** du cookie, pas sa validité : vérifier une signature
+ * ici coûterait la lecture de session qu'on cherche à éviter. Un cookie
+ * périmé fait donc rendre la variante dynamique pour rien — sans conséquence,
+ * `auth()` y renverra `null` et la page s'affichera comme pour un anonyme.
+ * L'inverse, lui, serait un vrai défaut : jamais de contenu personnalisé servi
+ * depuis le cache, puisque la branche cacheable ne reçoit aucune session.
+ */
+const SESSION_COOKIES = [
+  "authjs.session-token",
+  "__Secure-authjs.session-token",
+];
+
+/** Sous-chemins de la fiche qui ont leur propre route et ne sont pas réécrits. */
+const LISTING_SUBROUTES = new Set(["edit", "republier", "moi", "opengraph-image"]);
+
+function personalisedListingRewrite(req: NextRequest): NextResponse | null {
+  const { pathname } = req.nextUrl;
+  if (!pathname.startsWith("/annonce/")) return null;
+
+  // ["", "annonce", id, slug] — exactement la fiche, ni la route de
+  // redirection `/annonce/:id`, ni `/annonce/:id/:slug/edit`.
+  const parts = pathname.split("/");
+  if (parts.length !== 4) return null;
+  if (LISTING_SUBROUTES.has(parts[3])) return null;
+
+  const hasSession = SESSION_COOKIES.some((name) => req.cookies.has(name));
+  if (!hasSession) return null;
+
+  const url = req.nextUrl.clone();
+  url.pathname = `${pathname}/moi`;
+  return NextResponse.rewrite(url);
+}
+
 export default function middleware(req: NextRequest, ctx: any) {
   const common = commonRouting(req);
   if (common) return common;
+
+  const personalised = personalisedListingRewrite(req);
+  if (personalised) return personalised;
 
   if (needsSession(req.nextUrl.pathname)) {
     return (withSession as any)(req, ctx);

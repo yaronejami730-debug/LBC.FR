@@ -6,31 +6,25 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import { safeJsonLd } from "@/lib/json-ld";
 import { getIndexablePriceSlugs } from "@/lib/seo/price";
+import {
+  COMPARATIF_MATCH,
+  EDITORIAL_THRESHOLDS,
+  getEditorialEligibility,
+} from "@/lib/seo/editorial";
 
 const BASE = "https://www.dealandcompany.fr";
 
 export const revalidate = 3600;
 export const dynamicParams = false;
 
-interface ComparePair {
-  slug: string;
-  a: { marque: string; modele: string; label: string };
-  b: { marque: string; modele: string; label: string };
-}
-
-const PAIRS: ComparePair[] = [
-  { slug: "peugeot-208-vs-renault-clio",   a: { marque: "Peugeot",   modele: "208",     label: "Peugeot 208" },   b: { marque: "Renault",    modele: "Clio",    label: "Renault Clio" } },
-  { slug: "citroen-c3-vs-renault-clio",    a: { marque: "Citroën",   modele: "C3",      label: "Citroën C3" },    b: { marque: "Renault",    modele: "Clio",    label: "Renault Clio" } },
-  { slug: "peugeot-308-vs-renault-megane", a: { marque: "Peugeot",   modele: "308",     label: "Peugeot 308" },   b: { marque: "Renault",    modele: "Mégane",  label: "Renault Mégane" } },
-  { slug: "volkswagen-golf-vs-peugeot-308",a: { marque: "Volkswagen",modele: "Golf",    label: "Volkswagen Golf" },b: { marque: "Peugeot",   modele: "308",     label: "Peugeot 308" } },
-  { slug: "dacia-sandero-vs-renault-clio", a: { marque: "Dacia",     modele: "Sandero", label: "Dacia Sandero" }, b: { marque: "Renault",    modele: "Clio",    label: "Renault Clio" } },
-  { slug: "toyota-yaris-vs-renault-clio",  a: { marque: "Toyota",    modele: "Yaris",   label: "Toyota Yaris" },  b: { marque: "Renault",    modele: "Clio",    label: "Renault Clio" } },
-  { slug: "peugeot-3008-vs-renault-kadjar",a: { marque: "Peugeot",   modele: "3008",    label: "Peugeot 3008" },  b: { marque: "Renault",    modele: "Kadjar",  label: "Renault Kadjar" } },
-  { slug: "bmw-serie-3-vs-audi-a4",        a: { marque: "BMW",       modele: "Série 3", label: "BMW Série 3" },   b: { marque: "Audi",       modele: "A4",      label: "Audi A4" } },
-  { slug: "mercedes-classe-a-vs-bmw-serie-1", a: { marque: "Mercedes", modele: "Classe A", label: "Mercedes Classe A" }, b: { marque: "BMW", modele: "Série 1", label: "BMW Série 1" } },
-  { slug: "audi-a3-vs-bmw-serie-1",        a: { marque: "Audi",      modele: "A3",      label: "Audi A3" },       b: { marque: "BMW",        modele: "Série 1", label: "BMW Série 1" } },
-  { slug: "tesla-model-3-vs-peugeot-e-208",a: { marque: "Tesla",     modele: "Model 3", label: "Tesla Model 3" }, b: { marque: "Peugeot",    modele: "e-208",   label: "Peugeot e-208" } },
-];
+/**
+ * La liste des comparatifs vit dans `lib/seo/editorial.ts`.
+ *
+ * Elle était recopiée ici sous le nom `PAIRS`, et le sitemap lisait l'autre
+ * exemplaire. Un seul juge par famille d'URL : la page et le sitemap décrivent
+ * désormais les mêmes onze comparatifs, avec le même seuil de stock.
+ */
+const PAIRS = COMPARATIF_MATCH;
 
 export function generateStaticParams() {
   return PAIRS.map((p) => ({ paire: p.slug }));
@@ -126,7 +120,7 @@ export default async function ComparatifPage({
     getStats(pair.b.marque, pair.b.modele),
   ]);
 
-  if (a.count + b.count < 6) notFound();
+  if (a.count + b.count < EDITORIAL_THRESHOLDS.comparatif) notFound();
 
   const cheaper = a.avg && b.avg ? (a.avg < b.avg ? pair.a : pair.b) : null;
   const moreSupply = a.count >= b.count ? pair.a : pair.b;
@@ -134,6 +128,22 @@ export default async function ComparatifPage({
   // Pages de cote réellement servies. Le lien « Cote marché » pointait vers un
   // slug forgé à la volée, sans vérifier que la page existait.
   const availableQuotes = await getIndexablePriceSlugs().catch(() => [] as string[]);
+
+  /**
+   * Comparatifs qui répondront réellement 200 aujourd'hui.
+   *
+   * Le bloc « Autres comparatifs » listait `PAIRS` en entier. La page cible,
+   * elle, appelle `notFound()` en dessous de six annonces cumulées — si bien
+   * que chacune des quatre pages vivantes émettait cinq liens vers des 404
+   * (relevé du crawl du 28/08). Googlebot suit ces liens avant de découvrir
+   * qu'ils ne mènent nulle part, et chaque récupération perdue est prise sur le
+   * budget d'exploration des pages qui comptent.
+   *
+   * Même juge que le sitemap, et que la ligne `notFound()` ci-dessus.
+   */
+  const eligible = await getEditorialEligibility()
+    .then((e) => new Set(e.comparatif))
+    .catch(() => null);
   const quoteFor = (marque: string, modele: string) => {
     const slug = `${priceSlug(marque, modele)}-occasion`;
     return availableQuotes.includes(slug) ? slug : null;
@@ -257,7 +267,9 @@ export default async function ComparatifPage({
         <section className="bg-slate-50 rounded-2xl p-6">
           <h2 className="text-lg font-bold mb-3">Autres comparatifs</h2>
           <div className="flex flex-wrap gap-2">
-            {PAIRS.filter((p) => p.slug !== paire).slice(0, 8).map((p) => (
+            {PAIRS.filter((p) => p.slug !== paire && (eligible?.has(p.slug) ?? true))
+              .slice(0, 8)
+              .map((p) => (
               <Link
                 key={p.slug}
                 href={`/comparatif/${p.slug}`}

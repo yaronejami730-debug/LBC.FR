@@ -8,7 +8,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 import { safeJsonLd } from "@/lib/json-ld";
-import { parsePageParam } from "@/lib/pagination";
+import { pagedPath, parsePageParam } from "@/lib/pagination";
 
 const BASE = "https://www.dealandcompany.fr";
 
@@ -90,16 +90,21 @@ function findBudget(slug: string): BudgetDef | undefined {
   return BUDGETS.find((b) => b.slug === slug);
 }
 
+/**
+ * Le numéro de page arrive par le chemin
+ * (`/voiture-budget/moins-de-5000-euros/page/2`), jamais par `?page=`. Lire
+ * `searchParams` ici rendrait la route dynamique, ce qui annulerait **sans le
+ * dire** le `revalidate` et le `dynamicParams = false` déclarés plus haut —
+ * voir `pagedPath`, `lib/pagination.ts`. Le segment est optionnel : son
+ * absence, c'est la page 1.
+ */
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
-  params: Promise<{ tranche: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ tranche: string; numero?: string }>;
 }): Promise<Metadata> {
-  const { tranche } = await params;
-  const { page: pageParam } = await searchParams;
-  const page = parsePageParam(pageParam);
+  const { tranche, numero } = await params;
+  const page = parsePageParam(numero);
   const budget = findBudget(tranche);
   if (!budget) return {};
 
@@ -119,7 +124,9 @@ export async function generateMetadata({
     return { title: budget.label, robots: { index: false, follow: true } };
   }
 
-  const canonical = `${BASE}/voiture-budget/${tranche}`;
+  // Auto-référent, page 2 comprise : la rattacher à la page 1 tout en la
+  // marquant `noindex` enverrait deux ordres contradictoires.
+  const canonical = pagedPath(`${BASE}/voiture-budget/${tranche}`, page);
   const title = `${budget.label} d'occasion — ${count.toLocaleString("fr-FR")} annonces entre particuliers`;
   const description = `${count} annonces de ${budget.label.toLowerCase()} d'occasion entre particuliers en France. Sans commission sur Deal&Co.`;
 
@@ -137,18 +144,15 @@ const PER_PAGE = 24;
 
 export default async function VoitureBudgetPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ tranche: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ tranche: string; numero?: string }>;
 }) {
-  const { tranche } = await params;
-  const { page: pageParam } = await searchParams;
+  const { tranche, numero } = await params;
   const budget = findBudget(tranche);
   const eligibleBudgets = new Set((await getEditorialEligibility()).budgets);
   if (!budget) notFound();
 
-  const page = parsePageParam(pageParam);
+  const page = parsePageParam(numero);
   const skip = (page - 1) * PER_PAGE;
 
   const where = {
@@ -275,7 +279,7 @@ export default async function VoitureBudgetPage({
             <nav className="mt-8 flex items-center justify-center gap-2" aria-label="Pagination">
               {page > 1 && (
                 <Link
-                  href={`/voiture-budget/${tranche}?page=${page - 1}`}
+                  href={pagedPath(`/voiture-budget/${tranche}`, page - 1)}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold hover:bg-slate-50"
                 >
                   ← Précédent
@@ -284,7 +288,7 @@ export default async function VoitureBudgetPage({
               <span className="px-4 py-2 text-sm text-outline">Page {page} / {totalPages}</span>
               {page < totalPages && (
                 <Link
-                  href={`/voiture-budget/${tranche}?page=${page + 1}`}
+                  href={pagedPath(`/voiture-budget/${tranche}`, page + 1)}
                   className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-bold"
                 >
                   Suivant →

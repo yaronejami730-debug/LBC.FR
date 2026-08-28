@@ -170,6 +170,38 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      /**
+       * Les deux familles éditoriales véhicules n'avaient aucune règle.
+       *
+       * `/annonces`, `/ville`, `/prix`, `/annonce` et `/u` en ont une chacune ;
+       * `/voiture` et `/voiture-budget` ont été oubliées. Elles s'en tiraient
+       * parce que leur `revalidate` interne produit déjà un `s-maxage`, mais
+       * leurs pages paginées `/page/N`, rendues à la demande, n'héritaient de
+       * rien et sortaient en `private, no-cache, no-store` — mesuré le
+       * 28/08/2026 sur la version de production locale.
+       *
+       * Une page de pagination est `noindex`, mais Googlebot la parcourt
+       * quand même pour atteindre les annonces qu'elle liste : la laisser
+       * hors cache fait payer à l'origine chaque pas de cette traversée.
+       */
+      {
+        source: "/voiture/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/voiture-budget/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
       {
         source: "/u/:id",
         headers: [
@@ -243,6 +275,40 @@ const nextConfig: NextConfig = {
       { source: "/autos/:slug", destination: "/annonces/vehicules/:slug", permanent: true },
       // City shortcut alias
       { source: "/villes/:slug", destination: "/ville/:slug", permanent: true },
+
+      /**
+       * Section « actualités » retirée — ce qu'il en reste dans l'index Google.
+       *
+       * Le commit 41dd714 a supprimé tout `app/actualites/`, en même temps que
+       * la migration `20260826200000_drop_news`. Google, lui, garde les URL :
+       * elles lui avaient été soumises le 24/08, deux jours avant la
+       * suppression. Le relevé du 28/08 en compte **412 encore en 404**.
+       *
+       * Une seule des trois formes a un équivalent honnête. `/actualites/marque/audi`
+       * parlait des voitures Audi ; `/annonces/vehicules/audi` en vend. Même
+       * marque, même intention, page réelle : c'est une redirection, pas un
+       * repli. Dix-sept des vingt-six marques concernées ont du stock et
+       * répondent 200 ; les neuf autres (alpine, aston-martin, bentley,
+       * ferrari, honda, lamborghini, maserati, mazda, seat) répondent 404 faute
+       * d'annonces, ce qui est le même résultat qu'aujourd'hui — et se répare
+       * tout seul dès qu'une annonce arrive.
+       *
+       * Les 386 autres URL — 380 articles de presse syndiquée, 6 rubriques —
+       * n'ont aucun équivalent. Les rediriger vers une catégorie fabriquerait
+       * un soft-404 : Google compare la page d'arrivée à la requête, ne trouve
+       * rien du sujet demandé, et traite la redirection comme une erreur tout
+       * en la comptant contre nous. Elles sont traitées en 410 par
+       * `app/actualites/[[...slug]]/route.ts`.
+       *
+       * Cette règle est placée avant : une redirection de `next.config` est
+       * appliquée par la couche de routage, avant qu'aucune route ne soit
+       * atteinte.
+       */
+      {
+        source: "/actualites/marque/:marque",
+        destination: "/annonces/vehicules/:marque",
+        permanent: true,
+      },
     ];
   },
 };

@@ -35,18 +35,29 @@ export const EDITORIAL_THRESHOLDS = {
 
 export type ClusterKind = "fuel" | "body";
 
-/** Critère de rattachement d'un cluster véhicule (carburant ou carrosserie). */
-export type ClusterMatch = { slug: string; kind: ClusterKind; match: string[] };
+/**
+ * Critère de rattachement d'un cluster véhicule (carburant ou carrosserie).
+ *
+ * `label` vit ici pour la même raison que celui des comparatifs : une page
+ * *voisine* en a besoin pour émettre le lien. Les quatre clusters éligibles ne
+ * se liaient jusqu'ici qu'entre eux, depuis le bloc « Explorer d'autres types »
+ * de `/voiture/[slug]` — un circuit fermé sans porte d'entrée. Le crawl du
+ * 28/08 les a donc tous les quatre trouvés orphelins d'un coup. L'index
+ * `/voiture` qui les rattache lit ce libellé plutôt que d'en recopier une
+ * seconde liste, faute de quoi les deux divergent — c'est exactement ce qui
+ * était arrivé aux comparatifs.
+ */
+export type ClusterMatch = { slug: string; label: string; kind: ClusterKind; match: string[] };
 
 export const VOITURE_CLUSTER_MATCH: ClusterMatch[] = [
-  { slug: "electrique-occasion", kind: "fuel", match: ["Électrique", "Electrique", "Electric"] },
-  { slug: "hybride-occasion", kind: "fuel", match: ["Hybride", "Hybrid", "Hybride rechargeable", "PHEV", "HEV"] },
-  { slug: "diesel-occasion", kind: "fuel", match: ["Diesel", "Gazole"] },
-  { slug: "essence-occasion", kind: "fuel", match: ["Essence", "Sans plomb", "SP95", "SP98"] },
-  { slug: "suv-occasion", kind: "body", match: ["SUV", "Crossover", "4x4", "4X4"] },
-  { slug: "berline-occasion", kind: "body", match: ["Berline", "Sedan"] },
-  { slug: "citadine-occasion", kind: "body", match: ["Citadine", "Mini", "Petite"] },
-  { slug: "break-occasion", kind: "body", match: ["Break", "Estate", "Touring", "Variant", "Avant", "SW"] },
+  { slug: "electrique-occasion", label: "Voiture électrique occasion", kind: "fuel", match: ["Électrique", "Electrique", "Electric"] },
+  { slug: "hybride-occasion", label: "Voiture hybride occasion", kind: "fuel", match: ["Hybride", "Hybrid", "Hybride rechargeable", "PHEV", "HEV"] },
+  { slug: "diesel-occasion", label: "Voiture diesel occasion", kind: "fuel", match: ["Diesel", "Gazole"] },
+  { slug: "essence-occasion", label: "Voiture essence occasion", kind: "fuel", match: ["Essence", "Sans plomb", "SP95", "SP98"] },
+  { slug: "suv-occasion", label: "SUV occasion", kind: "body", match: ["SUV", "Crossover", "4x4", "4X4"] },
+  { slug: "berline-occasion", label: "Berline occasion", kind: "body", match: ["Berline", "Sedan"] },
+  { slug: "citadine-occasion", label: "Citadine occasion", kind: "body", match: ["Citadine", "Mini", "Petite"] },
+  { slug: "break-occasion", label: "Break occasion", kind: "body", match: ["Break", "Estate", "Touring", "Variant", "Avant", "SW"] },
 ];
 
 export type BudgetMatch = { slug: string; min: number; max: number };
@@ -59,24 +70,36 @@ export const VOITURE_BUDGET_MATCH: BudgetMatch[] = [
   { slug: "moins-de-20000-euros", min: 1, max: 20000 },
 ];
 
+/**
+ * Un comparatif : son slug, ses deux modèles, et leurs libellés d'affichage.
+ *
+ * Le libellé vit ici plutôt que dans la page parce que les pages *voisines* en
+ * ont besoin pour se lier entre elles. Il était auparavant recopié dans une
+ * seconde liste, `PAIRS`, interne à `app/comparatif/[paire]/page.tsx` : deux
+ * tableaux de onze entrées décrivant les mêmes onze comparatifs, l'un servant
+ * au sitemap, l'autre au rendu. Ils ont divergé exactement là où on pouvait le
+ * prévoir — le sitemap filtrait sur le stock, le bloc « Autres comparatifs »
+ * non — et le crawl du 28/08 a compté cinq liens internes vers des 404 émis par
+ * chacune des quatre pages vivantes.
+ */
 export type PairMatch = {
   slug: string;
-  a: { marque: string; modele: string };
-  b: { marque: string; modele: string };
+  a: { marque: string; modele: string; label: string };
+  b: { marque: string; modele: string; label: string };
 };
 
 export const COMPARATIF_MATCH: PairMatch[] = [
-  { slug: "peugeot-208-vs-renault-clio", a: { marque: "Peugeot", modele: "208" }, b: { marque: "Renault", modele: "Clio" } },
-  { slug: "citroen-c3-vs-renault-clio", a: { marque: "Citroën", modele: "C3" }, b: { marque: "Renault", modele: "Clio" } },
-  { slug: "peugeot-308-vs-renault-megane", a: { marque: "Peugeot", modele: "308" }, b: { marque: "Renault", modele: "Mégane" } },
-  { slug: "volkswagen-golf-vs-peugeot-308", a: { marque: "Volkswagen", modele: "Golf" }, b: { marque: "Peugeot", modele: "308" } },
-  { slug: "dacia-sandero-vs-renault-clio", a: { marque: "Dacia", modele: "Sandero" }, b: { marque: "Renault", modele: "Clio" } },
-  { slug: "toyota-yaris-vs-renault-clio", a: { marque: "Toyota", modele: "Yaris" }, b: { marque: "Renault", modele: "Clio" } },
-  { slug: "peugeot-3008-vs-renault-kadjar", a: { marque: "Peugeot", modele: "3008" }, b: { marque: "Renault", modele: "Kadjar" } },
-  { slug: "bmw-serie-3-vs-audi-a4", a: { marque: "BMW", modele: "Série 3" }, b: { marque: "Audi", modele: "A4" } },
-  { slug: "mercedes-classe-a-vs-bmw-serie-1", a: { marque: "Mercedes", modele: "Classe A" }, b: { marque: "BMW", modele: "Série 1" } },
-  { slug: "audi-a3-vs-bmw-serie-1", a: { marque: "Audi", modele: "A3" }, b: { marque: "BMW", modele: "Série 1" } },
-  { slug: "tesla-model-3-vs-peugeot-e-208", a: { marque: "Tesla", modele: "Model 3" }, b: { marque: "Peugeot", modele: "e-208" } },
+  { slug: "peugeot-208-vs-renault-clio", a: { marque: "Peugeot", modele: "208", label: "Peugeot 208" }, b: { marque: "Renault", modele: "Clio", label: "Renault Clio" } },
+  { slug: "citroen-c3-vs-renault-clio", a: { marque: "Citroën", modele: "C3", label: "Citroën C3" }, b: { marque: "Renault", modele: "Clio", label: "Renault Clio" } },
+  { slug: "peugeot-308-vs-renault-megane", a: { marque: "Peugeot", modele: "308", label: "Peugeot 308" }, b: { marque: "Renault", modele: "Mégane", label: "Renault Mégane" } },
+  { slug: "volkswagen-golf-vs-peugeot-308", a: { marque: "Volkswagen", modele: "Golf", label: "Volkswagen Golf" }, b: { marque: "Peugeot", modele: "308", label: "Peugeot 308" } },
+  { slug: "dacia-sandero-vs-renault-clio", a: { marque: "Dacia", modele: "Sandero", label: "Dacia Sandero" }, b: { marque: "Renault", modele: "Clio", label: "Renault Clio" } },
+  { slug: "toyota-yaris-vs-renault-clio", a: { marque: "Toyota", modele: "Yaris", label: "Toyota Yaris" }, b: { marque: "Renault", modele: "Clio", label: "Renault Clio" } },
+  { slug: "peugeot-3008-vs-renault-kadjar", a: { marque: "Peugeot", modele: "3008", label: "Peugeot 3008" }, b: { marque: "Renault", modele: "Kadjar", label: "Renault Kadjar" } },
+  { slug: "bmw-serie-3-vs-audi-a4", a: { marque: "BMW", modele: "Série 3", label: "BMW Série 3" }, b: { marque: "Audi", modele: "A4", label: "Audi A4" } },
+  { slug: "mercedes-classe-a-vs-bmw-serie-1", a: { marque: "Mercedes", modele: "Classe A", label: "Mercedes Classe A" }, b: { marque: "BMW", modele: "Série 1", label: "BMW Série 1" } },
+  { slug: "audi-a3-vs-bmw-serie-1", a: { marque: "Audi", modele: "A3", label: "Audi A3" }, b: { marque: "BMW", modele: "Série 1", label: "BMW Série 1" } },
+  { slug: "tesla-model-3-vs-peugeot-e-208", a: { marque: "Tesla", modele: "Model 3", label: "Tesla Model 3" }, b: { marque: "Peugeot", modele: "e-208", label: "Peugeot e-208" } },
 ];
 
 /** Clause Prisma d'un cluster — la page l'utilise pour lister ses annonces. */

@@ -79,6 +79,18 @@ const COLUMNS: { title: string; links: { label: string; href: string; title: str
       { label: "Vendre entre particuliers", href: "/vente-objets-occasion-particuliers", title: "Vendre ses objets d'occasion" },
       { label: "Comparatifs auto", href: "/comparatif", title: "Comparer deux modèles d'occasion" },
       { label: "Voiture par budget", href: "/voiture-budget", title: "Voitures d'occasion par tranche de prix" },
+      // Troisième porte de la famille voiture, et la seule qui manquait. Les
+      // pages `/voiture/{motorisation}-occasion` ne se liaient qu'entre elles :
+      // un cercle fermé, donc quatre pages orphelines au crawl du 28/08. Voir
+      // l'en-tête de `app/voiture/page.tsx`.
+      { label: "Voiture par type", href: "/voiture", title: "Voitures d'occasion par motorisation, carrosserie et marque" },
+      // Offre fondateurs. `lib/seo/static-routes.ts` l'a déclarée au sitemap au
+      // motif qu'« une page qu'on accepte d'indexer et qu'on ne recommande pas
+      // est une contradiction dans les deux sens ». Le raisonnement vaut aussi
+      // pour le maillage : elle était soumise à Google et atteignable par aucun
+      // lien. Le jour où les 50 places sont closes, retirer ce lien **et** son
+      // entrée de `STATIC_PAGES` — les deux ensemble, jamais l'un sans l'autre.
+      { label: "Offre fondateurs", href: "/early-adopter", title: "50 % sur vos publicités pendant 3 ans, 50 places" },
     ],
   },
   {
@@ -170,15 +182,32 @@ export default async function SiteFooter() {
     },
   ].filter((g) => g.links.length > 0);
 
+  /**
+   * Les liens de « Nos services » qui dépendent de l'état réel du site.
+   *
+   * Même règle que les villes et les cotes plus haut, appliquée aux colonnes
+   * fixes : ce pied de page ne promet pas ce que le site n'a pas.
+   *
+   *   - `/pet` suit le drapeau `PET_PUBLIC` — sans quoi le middleware renvoie
+   *     la rubrique sur `/_pet-disabled` depuis chaque page du site ;
+   *   - `/pro` suit le nombre de fiches vérifiées. L'annuaire répond 200 même
+   *     vide (il porte alors l'appel à créer une fiche) mais se déclare
+   *     `noindex` et sort du sitemap : le recommander sur chaque page du site
+   *     pendant qu'il refuse son propre index serait la contradiction que ce
+   *     dépôt corrige partout ailleurs.
+   */
+  const conditionalServices = [
+    ...(petPublic
+      ? [{ label: "Garde d'animaux", href: "/pet", title: "Trouver une garde pour son animal" }]
+      : []),
+    ...((inv?.proProfiles.length ?? 0) > 0
+      ? [{ label: "Annuaire des professionnels", href: "/pro", title: "Les établissements professionnels vérifiés" }]
+      : []),
+  ];
+
   const columns = COLUMNS.map((column) =>
-    column.title === "Nos services" && petPublic
-      ? {
-          ...column,
-          links: [
-            ...column.links,
-            { label: "Garde d'animaux", href: "/pet", title: "Trouver une garde pour son animal" },
-          ],
-        }
+    column.title === "Nos services" && conditionalServices.length > 0
+      ? { ...column, links: [...column.links, ...conditionalServices] }
       : column,
   );
 

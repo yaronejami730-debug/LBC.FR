@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateListing } from "@/lib/listing-cache";
 import { auth } from "@/lib/auth";
 import { getAuthUser } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
@@ -652,7 +653,7 @@ export async function deleteListingByAdmin(listingId: string) {
   revalidatePath("/admin");
   revalidatePath("/admin/crm/clients");
   revalidatePath(`/admin/clients/${listing.userId}`);
-  revalidatePath(`/annonce/${listingId}`);
+  await revalidateListing(listingId);
   revalidatePath("/", "layout");
 }
 
@@ -695,7 +696,7 @@ export async function updateListingByAdmin(
 
   revalidatePath("/admin/crm/clients");
   revalidatePath(`/admin/clients/${listing.userId}`);
-  revalidatePath(`/annonce/${listingId}`);
+  await revalidateListing(listingId);
 
   return { listingId };
 }
@@ -1082,7 +1083,7 @@ export async function setListingCategory(
 
     revalidatePath("/admin/listings");
     revalidatePath("/annonces", "layout");
-    revalidatePath(`/annonce/${id}`);
+    await revalidateListing(id);
     revalidatePath("/");
 
     return { ok: true };

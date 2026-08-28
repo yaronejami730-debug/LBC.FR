@@ -16,3 +16,4 @@ dev.db
 
 # Pièces justificatives déposées hors store Blob — jamais versionnées.
 .private-uploads/
+verif-output/

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getActiveAdsCached } from "@/lib/ads";
 import { auth } from "@/lib/auth";
+import type { Session } from "next-auth";
 import { formatDistanceToNow } from "@/lib/utils";
 import ListingHeader from "../ListingHeader";
 import AdRotator from "../AdRotator";
@@ -40,6 +41,27 @@ import { subcategoryToSlug } from "@/lib/seo-content";
 import { safeJsonLd } from "@/lib/json-ld";
 
 const BASE = "https://www.dealandcompany.fr";
+
+/**
+ * Fenêtre de fraîcheur de la fiche.
+ *
+ * Tant que la page appelait `auth()`, elle était rendue à chaque requête : la
+ * question de la péremption ne se posait pas. Maintenant qu'elle est rendue
+ * une fois puis servie depuis le cache, elle se pose — sans borne, une annonce
+ * dont le prix change, qui expire ou qui est retirée continuerait d'être
+ * servie telle qu'elle était au premier rendu, indéfiniment.
+ *
+ * Dix minutes, pour correspondre exactement au `s-maxage=600` déclaré pour
+ * `/annonce/:path*` dans `next.config.ts`. Les deux couches — cache de rendu
+ * de Next et cache du CDN — expirent alors ensemble ; les régler séparément
+ * fabrique une fenêtre où l'une sert ce que l'autre a déjà invalidé.
+ *
+ * C'est un plafond, pas le mécanisme principal : les décisions de modération
+ * appellent `revalidatePath` sur la fiche (`lib/moderation/listing-decisions.ts`),
+ * ce qui la purge immédiatement. La borne ne couvre que les changements qui ne
+ * passent pas par là.
+ */
+export const revalidate = 600;
 
 /**
  * L'annonce et son vendeur, en une lecture partagée.
@@ -233,16 +255,58 @@ export async function generateMetadata({
   };
 }
 
-export default async function ListingPage({
+/**
+ * La fiche d'annonce, rendue **sans lire la session**.
+ *
+ * ── Pourquoi la session est devenue un paramètre ──────────────────────────
+ *
+ * Cette page appelait `auth()` dans son corps. `auth()` lit les cookies, ce qui
+ * fait basculer la route en rendu dynamique : Next émet alors
+ * `cache-control: private, no-cache, no-store`, qui écrase l'en-tête
+ * `public, s-maxage=600` déclaré pour `/annonce/:path*` dans `next.config.ts`.
+ *
+ * Relevé du 28/08/2026 sur les 362 URL du crawl d'audit :
+ *
+ *     x-vercel-cache      MISS 284   HIT 75
+ *     dont /annonce/*     213 MISS
+ *
+ * Autrement dit : chaque passage de Googlebot sur chaque fiche rejouait le
+ * rendu complet et ses quatre requêtes Prisma, alors que la page est identique
+ * pour tous les visiteurs anonymes. C'est ce coût, multiplié par la
+ * concurrence d'un crawler, qui saturait le pool de connexions et produisait
+ * les délais d'attente relevés par l'audit du 11/08.
+ *
+ * `/ville/[slug]` et `/comparatif/[paire]`, qui ne lisent ni session ni
+ * `searchParams`, répondaient dans le même relevé en `HIT` à 250-280 ms. La
+ * différence ne tient qu'à ça.
+ *
+ * ── Comment les connectés gardent leur affichage ──────────────────────────
+ *
+ * La session n'est pas supprimée, elle est **injectée**. Deux entrées :
+ *
+ *   - `page.tsx` (celle-ci) passe `session: null`. Rendu identique pour tout
+ *     visiteur anonyme, donc mis en cache par le CDN et servi sans réveiller
+ *     l'origine ;
+ *   - `moi/page.tsx` appelle `auth()` et passe la session réelle. Le middleware
+ *     y réécrit les requêtes qui portent un cookie de session — l'URL affichée
+ *     ne change pas.
+ *
+ * Googlebot n'a jamais de cookie : il ne voit que la première branche.
+ *
+ * ⚠️ Ne pas réintroduire d'appel à `auth()`, `cookies()` ou `headers()` ici,
+ * ni dans un composant serveur appelé depuis ici. Un seul suffit à annuler
+ * tout le bénéfice, et le symptôme — un en-tête de cache — ne se voit pas en
+ * développement.
+ */
+export async function ListingView({
   params,
+  session,
 }: {
   params: Promise<{ id: string; slug: string }>;
+  session: Session | null;
 }) {
   const { id, slug } = await params;
-  const [listing, session] = await Promise.all([
-    getListing(id),
-    auth(),
-  ]);
+  const listing = await getListing(id);
 
   const currentUserId = session?.user?.id ?? null;
 
@@ -1513,4 +1577,20 @@ async function SimilarListings({
       )}
     </div>
   );
+}
+
+/**
+ * Entrée publique : rendu anonyme, donc cacheable par le CDN.
+ *
+ * Les annonces non publiques (statut différent d'`APPROVED`, ou supprimées)
+ * restent inaccessibles ici — `ListingView` appelle `notFound()` faute de
+ * session. Leur propriétaire et les administrateurs y accèdent par la
+ * réécriture du middleware vers `moi/`.
+ */
+export default async function ListingPage({
+  params,
+}: {
+  params: Promise<{ id: string; slug: string }>;
+}) {
+  return <ListingView params={params} session={null} />;
 }

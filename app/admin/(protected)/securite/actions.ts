@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateListing } from "@/lib/listing-cache";
 import { auth } from "@/lib/auth";
 import { getAuthUser } from "@/lib/auth-unified";
 import { prisma } from "@/lib/prisma";
@@ -102,7 +103,7 @@ export async function removeListingAction(listingId: string, reason: string) {
 
   revalidateSecurity();
   revalidatePath("/admin/listings");
-  revalidatePath(`/annonce/${listingId}`);
+  await revalidateListing(listingId);
   revalidatePath("/", "layout");
   return { permanentDeletionAt: res.permanentDeletionAt };
 }
@@ -170,7 +171,7 @@ export async function keepListingOnlineAction(listingId: string) {
 
   revalidateSecurity();
   revalidatePath("/admin/listings");
-  revalidatePath(`/annonce/${listingId}`);
+  await revalidateListing(listingId);
   return { dismissed: count };
 }
 
@@ -257,7 +258,7 @@ export async function reviewListingAction(listingId: string, reason: string) {
 
   revalidateSecurity();
   revalidatePath("/admin/listings");
-  revalidatePath(`/annonce/${listingId}`);
+  await revalidateListing(listingId);
   revalidatePath("/", "layout");
 }
 
@@ -295,7 +296,7 @@ export async function restoreListingAction(listingId: string) {
 
   revalidateSecurity();
   revalidatePath("/admin/listings");
-  revalidatePath(`/annonce/${listingId}`);
+  await revalidateListing(listingId);
   revalidatePath("/", "layout");
 }
 

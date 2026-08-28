@@ -16,7 +16,7 @@ import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
 import ListingCard from "@/components/home/ListingCard";
 import { safeJsonLd } from "@/lib/json-ld";
-import { parsePageParam } from "@/lib/pagination";
+import { pagedPath, parsePageParam } from "@/lib/pagination";
 
 const BASE = "https://www.dealandcompany.fr";
 export const revalidate = 3600;
@@ -68,16 +68,19 @@ export async function generateStaticParams() {
   return [...brandParams, ...subParams];
 }
 
+/**
+ * Le numéro de page arrive par le chemin (`/annonces/vehicules/bmw/page/2`),
+ * jamais par `?page=`. Lire `searchParams` ici rendrait la route dynamique et
+ * annulerait le `revalidate` déclaré plus haut — voir `pagedPath`,
+ * `lib/pagination.ts`. Le segment est optionnel : son absence, c'est la page 1.
+ */
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
-  params: Promise<{ marque: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ marque: string; numero?: string }>;
 }): Promise<Metadata> {
-  const { marque: marqueSlug } = await params;
-  const { page: pageParam } = await searchParams;
-  const page = parsePageParam(pageParam);
+  const { marque: marqueSlug, numero } = await params;
+  const page = parsePageParam(numero);
   const brand = BRAND_BY_SLUG.get(marqueSlug);
 
   if (!brand) {
@@ -85,9 +88,12 @@ export async function generateMetadata({
     // propre metadata, canonical compris.
     const city = cityDelegate(marqueSlug);
     if (city) {
+      // La page générique catégorie × ville lit encore la pagination en query :
+      // on lui repasse le numéro pris dans le chemin, sans jamais toucher à
+      // `searchParams` d'ici.
       return geoGenerateMetadata({
         params: Promise.resolve({ categorie: "vehicules", slug: [city] }),
-        searchParams: Promise.resolve({ page: pageParam }),
+        searchParams: Promise.resolve({ page: numero }),
       });
     }
     // Sous-catégorie véhicule (Motos, Caravaning, Utilitaires, Équipements auto).
@@ -99,7 +105,7 @@ export async function generateMetadata({
     return {
       title: `${subLabel} d'occasion entre particuliers — ${subCount} annonce${subCount !== 1 ? "s" : ""}`,
       description: `Achetez ou vendez ${subLabel.toLowerCase()} d'occasion entre particuliers en France. ${subCount} annonce${subCount !== 1 ? "s" : ""} disponible${subCount !== 1 ? "s" : ""} sur Deal&Co, sans commission.`,
-      alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
+      alternates: { canonical: pagedPath(`${BASE}/annonces/vehicules/${marqueSlug}`, page) },
       robots: listingPageRobots(subCount, page),
     };
   }
@@ -116,12 +122,14 @@ export async function generateMetadata({
   return {
     title: `${brand.name} occasion entre particuliers — ${count} annonce${count !== 1 ? "s" : ""}`,
     description: `Achetez une ${brand.name} d'occasion entre particuliers en France. ${count} annonce${count !== 1 ? "s" : ""} de particuliers sans commission. Toutes les ${brand.name} disponibles sur Deal&Co.`,
-    alternates: { canonical: `${BASE}/annonces/vehicules/${marqueSlug}` },
+    // Auto-référent, page 2 comprise : marquer une page `noindex` tout en la
+    // rattachant à une autre URL envoie deux ordres contradictoires.
+    alternates: { canonical: pagedPath(`${BASE}/annonces/vehicules/${marqueSlug}`, page) },
     robots: listingPageRobots(count, page),
     openGraph: {
       title: `${brand.name} occasion — Petites annonces particuliers`,
       description: `${count} ${brand.name} d'occasion entre particuliers en France. Sans frais d'agence, contact direct avec le vendeur.`,
-      url: `${BASE}/annonces/vehicules/${marqueSlug}`,
+      url: pagedPath(`${BASE}/annonces/vehicules/${marqueSlug}`, page),
       siteName: "Deal&Co",
       locale: "fr_FR",
       type: "website",
@@ -133,13 +141,10 @@ const PER_PAGE = 24;
 
 export default async function MarquePage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ marque: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ marque: string; numero?: string }>;
 }) {
-  const { marque: marqueSlug } = await params;
-  const { page: pageParam } = await searchParams;
+  const { marque: marqueSlug, numero } = await params;
 
   const brand = BRAND_BY_SLUG.get(marqueSlug);
 
@@ -152,14 +157,14 @@ export default async function MarquePage({
     if (city) {
       return GeoListingPage({
         params: Promise.resolve({ categorie: "vehicules", slug: [city] }),
-        searchParams: Promise.resolve({ page: pageParam }),
+        searchParams: Promise.resolve({ page: numero }),
       });
     }
   }
   const subLabel = !brand ? slugToSubcategoryLabel("vehicules", marqueSlug) : null;
   if (!brand && !subLabel) notFound();
 
-  const page = parsePageParam(pageParam);
+  const page = parsePageParam(numero);
 
   if (subLabel) {
     return renderSubcategoryPage({ subSlug: marqueSlug, subLabel, page });
@@ -351,14 +356,14 @@ export default async function MarquePage({
         {totalPages > 1 && (
           <nav className="flex items-center justify-center gap-2 mt-10" aria-label="Pagination">
             {page > 1 && (
-              <Link href={`/annonces/vehicules/${marqueSlug}?page=${page - 1}`} rel="prev"
+              <Link href={pagedPath(`/annonces/vehicules/${marqueSlug}`, page - 1)} rel="prev"
                 className="px-4 py-2 rounded-xl border border-surface-container bg-white text-on-surface hover:border-primary/40 text-sm font-semibold transition-colors">
                 ← Précédent
               </Link>
             )}
             <span className="text-sm text-outline">Page {page} / {totalPages}</span>
             {page < totalPages && (
-              <Link href={`/annonces/vehicules/${marqueSlug}?page=${page + 1}`} rel="next"
+              <Link href={pagedPath(`/annonces/vehicules/${marqueSlug}`, page + 1)} rel="next"
                 className="px-4 py-2 rounded-xl border border-surface-container bg-white text-on-surface hover:border-primary/40 text-sm font-semibold transition-colors">
                 Suivant →
               </Link>
@@ -529,7 +534,7 @@ async function renderSubcategoryPage({
           <nav aria-label="Pagination" className="flex items-center justify-center gap-2 mt-10">
             {page > 1 && (
               <Link
-                href={page === 2 ? `/annonces/vehicules/${subSlug}` : `/annonces/vehicules/${subSlug}?page=${page - 1}`}
+                href={pagedPath(`/annonces/vehicules/${subSlug}`, page - 1)}
                 rel="prev"
                 className="px-4 py-2 rounded-xl border border-surface-container bg-white text-on-surface hover:border-primary/40 text-sm font-semibold"
               >
@@ -541,7 +546,7 @@ async function renderSubcategoryPage({
             </span>
             {page < totalPages && (
               <Link
-                href={`/annonces/vehicules/${subSlug}?page=${page + 1}`}
+                href={pagedPath(`/annonces/vehicules/${subSlug}`, page + 1)}
                 rel="next"
                 className="px-4 py-2 rounded-xl border border-surface-container bg-white text-on-surface hover:border-primary/40 text-sm font-semibold"
               >

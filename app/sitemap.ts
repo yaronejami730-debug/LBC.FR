@@ -221,6 +221,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Priorité haute, et volontairement au-dessus des annonces : une fiche pro
   // est stable dans le temps, adossée à un SIRET vérifié et à une adresse
   // réelle, là où une annonce disparaît en quelques semaines.
+  //
+  // L'annuaire qui les rassemble n'est pas dans `STATIC_PAGES` : il n'existe
+  // vraiment qu'à partir d'une fiche, et se déclare `noindex` en dessous — une
+  // page vide annoncée au sitemap est précisément l'incohérence que
+  // `getEditorialEligibility()` corrige pour les pages éditoriales. Il entre
+  // donc ici, sous la même condition que ce qu'il liste.
+  if (inv.proProfiles.length > 0) {
+    entries.push({
+      url: `${BASE}/pro`,
+      lastModified: inv.proProfiles[0].lastModified,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    });
+  }
+
   for (const pro of inv.proProfiles) {
     entries.push({
       url: `${BASE}${pro.path}`,

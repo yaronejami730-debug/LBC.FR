@@ -10,6 +10,7 @@
  * une sortie de sitemap au premier changement.
  */
 import { revalidatePath } from "next/cache";
+import { revalidateListing } from "@/lib/listing-cache";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { listingApprovedEmail } from "@/lib/emails/listing-approved";
@@ -59,7 +60,7 @@ export async function approveListingCore(id: string) {
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath("/annonces", "layout");
-  revalidatePath(`/annonce/${listing.id}`);
+  await revalidateListing(listing.id, listing.title);
 
   await onListingPublished(listing.id);
   return listing;

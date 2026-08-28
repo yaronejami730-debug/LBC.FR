@@ -16,7 +16,7 @@ import StickyPublishFab from "@/components/StickyPublishFab";
 import ListingCard from "@/components/home/ListingCard";
 import { listingUrl } from "@/lib/listing-slug";
 import { safeJsonLd } from "@/lib/json-ld";
-import { parsePageParam } from "@/lib/pagination";
+import { pagedPath, parsePageParam } from "@/lib/pagination";
 
 export const revalidate = 3600;
 
@@ -32,21 +32,24 @@ export async function generateStaticParams() {
   return CATEGORIES.map((cat) => ({ categorie: cat.id }));
 }
 
+/**
+ * Le numéro de page arrive par le chemin (`/annonces/mode/page/2`), jamais par
+ * `?page=`. Lire `searchParams` ici rendrait la route dynamique et annulerait
+ * le `revalidate` déclaré plus haut — voir `pagedPath`, `lib/pagination.ts`.
+ * Le segment est optionnel : son absence, c'est la page 1.
+ */
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
-  params: Promise<{ categorie: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ categorie: string; numero?: string }>;
 }): Promise<Metadata> {
-  const { categorie } = await params;
-  const { page: pageParam } = await searchParams;
+  const { categorie, numero } = await params;
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) return {};
 
-  const page = parsePageParam(pageParam);
+  const page = parsePageParam(numero);
   const BASE = "https://www.dealandcompany.fr";
-  const canonical = page === 1 ? `${BASE}/annonces/${cat.id}` : `${BASE}/annonces/${cat.id}?page=${page}`;
+  const canonical = pagedPath(`${BASE}/annonces/${cat.id}`, page);
 
   const total = await getCategoryTotal(cat.label);
 
@@ -87,17 +90,14 @@ const PER_PAGE = 24;
 
 export default async function CategoryPage({
   params,
-  searchParams,
 }: {
-  params: Promise<{ categorie: string }>;
-  searchParams: Promise<{ page?: string }>;
+  params: Promise<{ categorie: string; numero?: string }>;
 }) {
-  const { categorie } = await params;
-  const { page: pageParam } = await searchParams;
+  const { categorie, numero } = await params;
   const cat = CATEGORIES.find((c) => c.id === categorie);
   if (!cat) notFound();
 
-  const page = parsePageParam(pageParam);
+  const page = parsePageParam(numero);
   const skip = (page - 1) * PER_PAGE;
 
   const [listings, total, priceAgg] = await Promise.all([
@@ -314,7 +314,7 @@ export default async function CategoryPage({
           <nav aria-label="Pagination" className="mt-10 flex justify-center items-center gap-3">
             {page > 1 && (
               <Link
-                href={page === 2 ? `/annonces/${cat.id}` : `/annonces/${cat.id}?page=${page - 1}`}
+                href={pagedPath(`/annonces/${cat.id}`, page - 1)}
                 rel="prev"
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-surface-container bg-white text-on-surface font-semibold text-sm hover:bg-slate-50 transition-colors"
               >
@@ -327,7 +327,7 @@ export default async function CategoryPage({
             </span>
             {page < totalPages && (
               <Link
-                href={`/annonces/${cat.id}?page=${page + 1}`}
+                href={pagedPath(`/annonces/${cat.id}`, page + 1)}
                 rel="next"
                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors"
               >
