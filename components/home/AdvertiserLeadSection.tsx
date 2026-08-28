@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import Icon from "@/components/Icon";
 import { ADVERTISER_BUDGETS } from "@/lib/advertiser-budgets";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -109,11 +110,7 @@ export default function AdvertiserLeadSection() {
 
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] sm:text-xs font-bold text-[#2f6fb8] shadow-sm ring-1 ring-inset ring-[#2f6fb8]/20 transition group-hover:bg-[#2f6fb8] group-hover:text-white">
             <span className="hidden sm:inline">{open ? "Réduire" : "Je veux en savoir plus"}</span>
-            <span
-              className={`material-symbols-outlined text-[18px] transition-transform ${open ? "rotate-180" : ""}`}
-            >
-              expand_more
-            </span>
+            <Icon name="expand_more" className={`material-symbols-outlined text-[18px] transition-transform ${open ? "rotate-180" : ""}`} />
           </span>
         </button>
 

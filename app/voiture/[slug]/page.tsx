@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Icon from "@/components/Icon";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
@@ -409,9 +410,7 @@ export default async function VoitureClusterPage({
               <details key={i} className="group p-5 open:bg-slate-50/40">
                 <summary className="flex items-center justify-between gap-3 cursor-pointer list-none">
                   <h3 className="font-bold text-on-surface text-[15px] leading-snug">{f.q}</h3>
-                  <span className="material-symbols-outlined text-slate-400 text-xl transition-transform group-open:rotate-180 shrink-0">
-                    expand_more
-                  </span>
+                  <Icon name="expand_more" className="material-symbols-outlined text-slate-400 text-xl transition-transform group-open:rotate-180 shrink-0" />
                 </summary>
                 <p className="mt-3 text-sm text-slate-600 leading-relaxed">{f.a}</p>
               </details>

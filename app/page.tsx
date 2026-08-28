@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Icon from "@/components/Icon";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { unstable_cache } from "next/cache";
@@ -637,7 +638,7 @@ export default async function Home() {
               <details key={i} className="border-b border-slate-100 pb-3 last:border-0 last:pb-0 group">
                 <summary className="cursor-pointer font-semibold text-on-surface flex justify-between items-center list-none">
                   {item.q}
-                  <span className="material-symbols-outlined text-outline text-base group-open:rotate-180 transition-transform">expand_more</span>
+                  <Icon name="expand_more" className="material-symbols-outlined text-outline text-base group-open:rotate-180 transition-transform" />
                 </summary>
                 <p className="mt-2 text-sm text-on-surface-variant leading-relaxed">{item.a}</p>
               </details>

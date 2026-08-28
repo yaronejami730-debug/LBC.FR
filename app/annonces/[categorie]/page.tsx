@@ -1,4 +1,5 @@
 import { cache } from "react";
+import Icon from "@/components/Icon";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -386,7 +387,7 @@ export default async function CategoryPage({
                 <details key={i} className="bg-white rounded-xl border border-surface-container p-4 group">
                   <summary className="cursor-pointer font-semibold text-on-surface flex justify-between items-center list-none">
                     {item.q}
-                    <span className="material-symbols-outlined text-outline group-open:rotate-180 transition-transform">expand_more</span>
+                    <Icon name="expand_more" className="material-symbols-outlined text-outline group-open:rotate-180 transition-transform" />
                   </summary>
                   <p className="mt-3 text-on-surface-variant leading-relaxed">{item.a}</p>
                 </details>

@@ -52,9 +52,13 @@ function PhotoCell({
       />
       {/* Logo — bottom-left of each cell */}
       <div className="absolute bottom-3 left-3 z-20 pointer-events-none select-none">
+        {/* Filigrane décoratif : `alt=""` et `aria-hidden` disent la même chose
+            à deux publics. Le nom de la marque est déjà partout sur la page ;
+            le faire annoncer une fois par photo serait du bruit. */}
         <img
           src="/logo.png"
           alt=""
+          aria-hidden
           className="h-5 md:h-6 w-auto brightness-0 invert opacity-60 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]"
         />
       </div>
@@ -183,9 +187,11 @@ export default function PhotoGallery({ images, title }: PhotoGalleryProps) {
                 }}
               />
               <div className="absolute bottom-3 right-3 pointer-events-none select-none">
+                {/* Même filigrane décoratif que sur les vignettes. */}
                 <img
                   src="/logo.png"
                   alt=""
+                  aria-hidden
                   className="h-6 w-auto brightness-0 invert opacity-65 drop-shadow-[0_1px_6px_rgba(0,0,0,0.9)]"
                 />
               </div>

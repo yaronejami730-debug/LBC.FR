@@ -110,6 +110,24 @@
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 
+/*
+ * Icônes dont le nom vit dans un attribut plutôt que dans le contenu.
+ *
+ * Le nom d'une ligature Material Symbols posé comme contenu de l'élément est
+ * un nœud texte ordinaire : la police en dessine le glyphe, mais tout ce qui
+ * lit la page le lit. Un audit du 28/08/2026 classait « expandmore » quatrième
+ * mot-clé de l'accueil — 21 occurrences dans le HTML servi, une par question
+ * fréquente.
+ *
+ * Le contenu généré par CSS, lui, n'appartient pas au DOM : il est dessiné et
+ * rien de plus. La substitution de ligature s'y applique exactement pareil.
+ *
+ * Voir `components/Icon.tsx`, qui pose l'attribut.
+ */
+.material-symbols-outlined[data-icon]::before {
+  content: attr(data-icon);
+}
+
 html:not([data-icons="ready"]) .material-symbols-outlined {
   display: inline-block;
   width: 1em;
