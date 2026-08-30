@@ -80,15 +80,6 @@ export const article: BlogArticle = {
         "Conserver tous les documents du contrôle pour pouvoir les transmettre rapidement à votre assurance, à votre avocat le cas échéant, et faire valoir vos droits. Ne signer aucun document dont vous ne comprenez pas la portée juridique sans avoir pris conseil.",
       ],
     },
-    {
-      h2: "Sources et méthodologie",
-      paragraphs: [
-        "Cet article s'appuie sur les textes officiels en vigueur en 2026 : décret n°2019-1082 du 23 octobre 2019 relatif à la réglementation des engins de déplacement personnel motorisés, articles R311-1 et R412-43-1 du Code de la route, loi n°2019-1428 d'orientation des mobilités (LOM), et article L211-1 du Code des assurances.",
-        "Les modalités pratiques (catégories de permis, démarches d'immatriculation, formations) sont issues des fiches officielles publiées sur service-public.fr et des informations diffusées par la Sécurité routière (securite-routiere.gouv.fr).",
-        "Les données accidentologiques mentionnées proviennent des rapports annuels de l'Observatoire national interministériel de la sécurité routière (ONISR) accessibles sur onisr.securite-routiere.gouv.fr. Les ordres de grandeur cités sont issus des bilans annuels les plus récents disponibles à la rédaction.",
-        "Les éléments relatifs aux contrats d'assurance EDPM s'appuient sur les conditions générales publiées par les principaux assureurs français spécialisés (notamment Maif, Macif, Assurpeople, Wizzas), dont les clauses d'exclusion concernant les engins modifiés sont strictement convergentes.",
-      ],
-    },
   ],
   faq: [
     {

@@ -60,6 +60,14 @@
     {
       "path": "/api/cron/alerts",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/external-sync",
+      "schedule": "25 */3 * * *"
+    },
+    {
+      "path": "/api/cron/external-revalidate",
+      "schedule": "55 */2 * * *"
     }
   ]
 }

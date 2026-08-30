@@ -66,14 +66,6 @@ export const article: BlogArticle = {
         "Pour une vente sous deux semaines à un particulier, baisser dès la mise en ligne le prix à -10 % de la cote, multiplier les plateformes (cinq plutôt que deux), activer la mise en avant payante, et libérer ses week-ends pour les visites. Avec une voiture présentable et un prix attractif, la vente sous quinze jours est statistiquement très accessible.",
       ],
     },
-    {
-      h2: "Sources et méthodologie",
-      paragraphs: [
-        "Cet article s'appuie sur les rapports annuels de l'Observatoire Cetelem de l'Automobile (cetelem.fr/observatoire-auto), notamment ses analyses récurrentes sur le marché de l'occasion en France et en Europe, et sur les statistiques de transactions diffusées par AAA-Data, organisme de référence pour les données du marché automobile français (aaa-data.fr).",
-        "Les retours sur les comportements d'annonceurs (impact du nombre de photos, du prix, du délai de réponse) reposent sur les baromètres et études publiés régulièrement par les principales plateformes d'annonces, notamment La Centrale (lacentrale.fr) et les communications de Leboncoin sur la catégorie automobile. Les ordres de grandeur cités correspondent aux convergences observées entre ces différentes sources.",
-        "Les éléments réglementaires (zones à faibles émissions, ZFE, Crit'Air) reposent sur la documentation officielle disponible sur certificat-air.gouv.fr et sur les arrêtés municipaux des principales métropoles concernées.",
-      ],
-    },
   ],
   faq: [
     {

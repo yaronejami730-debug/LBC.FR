@@ -9,6 +9,12 @@ export type BlogArticle = {
    */
   h1?: string;
   description: string;
+  /**
+   * Signature éditoriale affichée à côté des dates. Absent : le rendu retombe
+   * sur « La rédaction Deal&Co », ce qui reste honnête pour du contenu généré
+   * par IA puis relu — jamais de nom de personne inventé.
+   */
+  author?: string;
   publishedAt: string;
   updatedAt: string;
   category: string;

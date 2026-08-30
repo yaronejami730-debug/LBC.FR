@@ -370,7 +370,28 @@ export async function ListingView({
     notFound();
   }
 
-  if (listing.status !== "APPROVED" && !isOwner && !isAdmin) {
+  /**
+   * SOLD n'est pas un statut de modération : c'est l'aboutissement normal
+   * d'une vente, documenté comme tel dans `lib/external-revalidate.ts`
+   * (« pas une sanction », fiche conservée « comme historique de prix et de
+   * confiance »). Elle reste donc consultable par tout le monde — seuls
+   * PENDING, UNDER_REVIEW, REJECTED et REMOVED restent réservés à l'auteur et
+   * à l'administration.
+   *
+   * Avant ce correctif, une annonce vendue tombait dans la même branche
+   * `notFound()` qu'une annonce retirée par la modération : 404 pour tout
+   * visiteur non propriétaire. `generateMetadata` la passait déjà en
+   * `noindex` (ligne ~201) — c'est le bon signal —, mais 404 aussi, ce qui
+   * détruit en plus l'URL elle-même : liens externes, partages, historique de
+   * prix (`lib/seo/price.ts`) et de confiance (`lib/trust-score.ts`) qui
+   * s'appuient sur `status: "SOLD", deletedAt: null` pointaient tous vers une
+   * page morte. Un lot de bascule en masse vers SOLD est imminent côté
+   * annonces importées (cron `external-revalidate`) : sans ce correctif,
+   * chaque fiche vendue aurait perdu sa page au moment précis où elle avait le
+   * plus de valeur acquise à conserver.
+   */
+  const PUBLICLY_VIEWABLE_STATUSES = ["APPROVED", "SOLD"];
+  if (!PUBLICLY_VIEWABLE_STATUSES.includes(listing.status) && !isOwner && !isAdmin) {
     notFound();
   }
 
@@ -491,12 +512,18 @@ export async function ListingView({
   // « 59162 Ostricourt » là où la page affiche « Ostricourt ».
   const cityShort = displayCity(listing.location) || (listing.location ?? "");
 
+  // La page reste ouverte à `SOLD` (voir plus haut) : le JSON-LD ne doit donc
+  // plus prétendre que l'objet est disponible. Un `Offer` à `InStock` sur une
+  // annonce vendue est le type de donnée structurée mensongère que Search
+  // Console signale comme « non-conforme » — et à raison, l'objet ne se vend
+  // plus.
   const baseOffer = {
     "@type": "Offer",
     url: pageUrl,
     price: listing.price,
     priceCurrency: "EUR",
-    availability: "https://schema.org/InStock",
+    availability:
+      listing.status === "SOLD" ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
     itemCondition: listing.condition === "Neuf"
       ? "https://schema.org/NewCondition"
       : "https://schema.org/UsedCondition",
@@ -755,6 +782,34 @@ export async function ListingView({
             reason={listingData.rejectionReason}
             permanentDeletionAt={listingData.permanentDeletionAt}
           />
+        )}
+
+        {/*
+         * Bandeau « vendue », visible de tous — pas seulement du propriétaire,
+         * contrairement à `RemovedNotice` ci-dessus : la page reste ouverte au
+         * public sur ce statut (voir le garde-fou plus haut), donc n'importe
+         * quel visiteur peut l'atteindre depuis un favori, un partage ou un
+         * lien externe déjà indexé. Sans lui, rien ne distingue à l'écran une
+         * annonce vendue d'une annonce en vente : exactement ce que le JSON-LD
+         * (`availability: SoldOut` ci-dessus) et le `noindex` disent déjà côté
+         * machine, dit ici côté humain.
+         */}
+        {listing.status === "SOLD" && (
+          <div className="mx-4 md:mx-6 mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 flex items-start gap-3">
+            <span
+              className="material-symbols-outlined text-slate-500 text-[22px] shrink-0"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              sell
+            </span>
+            <div>
+              <h2 className="font-extrabold text-slate-900">Annonce vendue</h2>
+              <p className="text-sm text-slate-600 mt-1">
+                Cet article n&apos;est plus disponible : l&apos;annonce est conservée à titre
+                d&apos;archive et n&apos;accepte plus de nouveaux messages.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Breadcrumb visible — SEO + UX */}
@@ -1390,7 +1445,14 @@ export async function ListingView({
                   </div>
                 </div>
 
-                {!isOwner && (
+                {/*
+                 * Pas de bouton de contact sur une annonce vendue : l'objet
+                 * n'est plus à vendre, laisser « Contacter le vendeur »
+                 * inviterait à négocier un achat impossible — exactement la
+                 * fausse promesse que le bandeau ci-dessus et le JSON-LD
+                 * `SoldOut` retirent déjà par ailleurs.
+                 */}
+                {!isOwner && listing.status !== "SOLD" && (
                   <SellerActions
                     listingId={listing.id}
                     sellerId={listing.userId}
@@ -1398,6 +1460,11 @@ export async function ListingView({
                     hidePhone={(listing as any).hidePhone ?? false}
                     phoneOnWhatsapp={(listing as any).phoneOnWhatsapp ?? false}
                   />
+                )}
+                {!isOwner && listing.status === "SOLD" && (
+                  <p className="text-sm text-slate-500 italic text-center py-2">
+                    Cette annonce est vendue et n&apos;accepte plus de messages.
+                  </p>
                 )}
                 {isOwner && (
                   <OwnerActions
@@ -1617,10 +1684,14 @@ async function SimilarListings({
 /**
  * Entrée publique : rendu anonyme, donc cacheable par le CDN.
  *
- * Les annonces non publiques (statut différent d'`APPROVED`, ou supprimées)
- * restent inaccessibles ici — `ListingView` appelle `notFound()` faute de
- * session. Leur propriétaire et les administrateurs y accèdent par la
- * réécriture du middleware vers `moi/`.
+ * Les annonces en modération (PENDING, UNDER_REVIEW, REJECTED, REMOVED) ou
+ * supprimées restent inaccessibles ici — `ListingView` appelle `notFound()`
+ * faute de session. Leur propriétaire et les administrateurs y accèdent par
+ * la réécriture du middleware vers `moi/`.
+ *
+ * `SOLD` fait exception depuis le correctif de l'audit du 30/08/2026 : une
+ * annonce vendue n'est pas une sanction de modération, elle reste ouverte à
+ * tout visiteur anonyme (`noindex`, mais 200 — voir `ListingView`).
  */
 export default async function ListingPage({
   params,

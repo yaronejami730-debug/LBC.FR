@@ -74,14 +74,6 @@ export const article: BlogArticle = {
         "Cinquième erreur : confondre prix bas et bonne affaire. Un appartement très peu cher dans une ville en perte de population et au parc dégradé est rarement un bon investissement. La bonne affaire se mesure en rentabilité nette à dix ans, pas en prix d'acquisition.",
       ],
     },
-    {
-      h2: "Sources et méthodologie",
-      paragraphs: [
-        "Cet article s'appuie sur les données publiques de l'Insee (insee.fr) pour la démographie, la population active et les projections par commune, sur les indices et baromètres immobiliers publiés par le réseau des notaires de France (immobilier-notaires.fr et son observatoire pierre-immobilier-notaires.fr), sur l'Observatoire des loyers piloté par l'ANIL (anil.org/observatoires-locaux-loyers), ainsi que sur les baromètres prix au mètre carré publiés par SeLoger (seloger.com/baromètres) et Meilleurs Agents (meilleursagents.com/prix-immobilier).",
-        "Le cadre réglementaire (encadrement des loyers, calendrier passoires thermiques, loi Climat et Résilience) est issu des textes officiels disponibles sur legifrance.gouv.fr et sur service-public.fr. Les listes de communes appliquant l'encadrement à la date de publication ont été vérifiées sur service-public.fr et auprès de l'ANIL ; elles évoluent régulièrement et doivent être recoupées avant tout achat.",
-        "Les rendements bruts cités sont des fourchettes observées et publiées par les sources précitées. Ils varient fortement selon le quartier, l'état du bien et le type de location (vide ou meublée). Aucun rendement précis ne saurait être garanti sans étude détaillée du bien envisagé.",
-      ],
-    },
   ],
   faq: [
     {

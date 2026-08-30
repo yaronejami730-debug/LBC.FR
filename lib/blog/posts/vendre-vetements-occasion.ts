@@ -74,14 +74,6 @@ export const article: BlogArticle = {
         "Un dernier point, souvent ignoré, et qui n'est pas négociable : vendre une contrefaçon est un délit en France, y compris de bonne foi et entre particuliers. Si vous avez le moindre doute sur une pièce achetée d'occasion, faites-la authentifier avant de la mettre en vente plutôt qu'après.",
       ],
     },
-    {
-      h2: "Sources et méthodologie",
-      paragraphs: [
-        "Cet article s'appuie sur les rapports publics de l'ADEME relatifs au textile et à l'économie circulaire (ademe.fr), sur les baromètres de l'Institut français de la mode (IFM) consacrés à la seconde main, et sur les fiches pratiques de service-public.fr pour la vente entre particuliers.",
-        "Les éléments relatifs à la traçabilité et à l'authenticité s'appuient sur la documentation des marques officielles et sur les recommandations de la DGCCRF pour les achats à distance.",
-        "Les ordres de grandeur de prix et de cote des articles d'occasion cités reflètent les fourchettes observées sur les principales plateformes de revente à la date de rédaction et peuvent évoluer rapidement selon les tendances.",
-      ],
-    },
   ],
   faq: [
     {

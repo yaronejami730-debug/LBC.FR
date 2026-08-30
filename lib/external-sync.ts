@@ -4,20 +4,162 @@
  * Dispatch par `kind` (un connecteur par site source). Pour l'instant : `bsk`
  * (BSK Immobilier — pages agent). Ajouter un connecteur = exporter une nouvelle
  * fonction `syncXxx` et l'enregistrer dans le `switch` de `syncSource`.
+ *
+ * ── Détection de disparition ────────────────────────────────────────────────
+ * Un re-scrape qui ne revoit plus l'`externalId` d'une annonce déjà importée
+ * est un signal complémentaire à `lib/external-revalidate.ts` (qui vérifie
+ * chaque annonce individuellement via son `sourceUrl`) : ici, c'est la page
+ * de listing de la source elle-même qui ne mentionne plus le bien. Même
+ * prudence que partout ailleurs dans ce projet : jamais de retrait sur un
+ * seul passage manqué (`missingFromSourceStreak`, cf. `detectDisappeared`),
+ * et jamais de détection du tout si le scrape ramène trop peu d'annonces par
+ * rapport à ce qui est connu (page cassée plutôt que disparition de masse).
  */
 
 import type { PrismaClient } from "@prisma/client";
 import { extractListingFromUrl, fetchHtml } from "./external-extract";
 import { extractImages } from "./external-images";
 import { createExternalListing } from "./external-create";
+import { removeListing } from "./moderation/removal";
+import { onListingRemoved } from "./seo/lifecycle";
 
 export type SyncResult = {
   created: number;
   deduped: number;
   failed: number;
   total: number;
+  disappeared: number; // annonces retirées faute de réapparaître dans le scrape (cf. `detectDisappeared`)
   details: string[]; // 1 ligne par annonce — agrégé dans `ExternalSource.lastResult`
 };
+
+/**
+ * Nombre de passages consécutifs sans revoir l'externalId avant de traiter
+ * l'annonce comme disparue. Aligné sur `FAILURE_THRESHOLD` d'
+ * `external-revalidate.ts` : un aléa isolé (pagination, tri changé, page
+ * partiellement chargée) ne doit jamais suffire à lui seul.
+ */
+const MISSING_STREAK_THRESHOLD = 3;
+
+/**
+ * Couverture minimale (scrapé / connu) en dessous de laquelle on suppose que
+ * la page source est cassée plutôt que le stock réellement écoulé. Sous ce
+ * seuil, la détection de disparition est entièrement sautée pour ce passage
+ * — aucun compteur ne progresse, y compris pour les annonces réellement
+ * absentes : mieux vaut un cycle de retard qu'un retrait de masse sur un
+ * incident de scraping.
+ */
+const MIN_PLAUSIBLE_COVERAGE = 0.5;
+
+/** Fusionne des clés dans `metadata` (colonne `String`) sans écraser le reste. */
+function mergeMeta(current: Record<string, unknown>, patch: Record<string, unknown>): string {
+  return JSON.stringify({ ...current, ...patch });
+}
+
+/**
+ * Compare les `externalId` vus lors du scrape à ceux déjà importés pour cette
+ * source, et fait progresser (ou retombe à zéro) le compteur d'absences
+ * consécutives de chaque annonce manquante.
+ *
+ * Portée du "déjà importé pour cette source" : le compte propriétaire + le
+ * préfixe de kind (`bsk:` / `generic:`) + le même hostname que `source.url`
+ * (lu dans `metadata.sourceUrl`). Cette dernière condition évite de mélanger
+ * deux sources de même kind appartenant au même compte — imparfait si deux
+ * pages du même domaine listent des biens disjoints (pas de FK Listing →
+ * ExternalSource pour trancher plus finement), mais c'est la seule
+ * granularité disponible sans modifier le schéma d'import existant.
+ */
+async function detectDisappeared(
+  prisma: PrismaClient,
+  source: { id: string; ownerId: string; url: string },
+  kindPrefix: string,
+  scrapedIds: ReadonlySet<string>,
+): Promise<{ disappeared: number; details: string[] }> {
+  const details: string[] = [];
+  let domain: string | null = null;
+  try {
+    domain = new URL(source.url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    domain = null;
+  }
+
+  const rows = await prisma.listing.findMany({
+    where: {
+      userId: source.ownerId,
+      status: "APPROVED",
+      deletedAt: null,
+      metadata: { contains: `"externalId":"${kindPrefix}` },
+    },
+    select: { id: true, title: true, metadata: true },
+  });
+
+  type Known = { id: string; title: string; externalId: string; meta: Record<string, unknown> };
+  const known: Known[] = [];
+  for (const r of rows) {
+    let meta: Record<string, unknown>;
+    try {
+      meta = JSON.parse(r.metadata || "{}") as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const eid = typeof meta.externalId === "string" ? meta.externalId : null;
+    if (!eid || !eid.startsWith(kindPrefix)) continue;
+    if (domain) {
+      const su = typeof meta.sourceUrl === "string" ? meta.sourceUrl : "";
+      try {
+        if (new URL(su).hostname.replace(/^www\./, "").toLowerCase() !== domain) continue;
+      } catch {
+        continue; // sourceUrl illisible : impossible de confirmer l'appartenance à cette source, on ignore par prudence
+      }
+    }
+    known.push({ id: r.id, title: r.title, externalId: eid, meta });
+  }
+
+  if (known.length === 0) return { disappeared: 0, details };
+
+  // Garde-fou de plausibilité — voir MIN_PLAUSIBLE_COVERAGE.
+  if (scrapedIds.size < known.length * MIN_PLAUSIBLE_COVERAGE) {
+    details.push(
+      `Détection de disparition ignorée : scrape ${scrapedIds.size}/${known.length} annonces connues (page probablement cassée).`,
+    );
+    return { disappeared: 0, details };
+  }
+
+  let disappeared = 0;
+  for (const row of known) {
+    const present = scrapedIds.has(row.externalId);
+    const prevStreak =
+      typeof row.meta.missingFromSourceStreak === "number" ? row.meta.missingFromSourceStreak : 0;
+
+    if (present) {
+      if (prevStreak > 0) {
+        await prisma.listing
+          .update({ where: { id: row.id }, data: { metadata: mergeMeta(row.meta, { missingFromSourceStreak: 0 }) } })
+          .catch(() => {});
+      }
+      continue;
+    }
+
+    const streak = prevStreak + 1;
+    if (streak < MISSING_STREAK_THRESHOLD) {
+      await prisma.listing
+        .update({ where: { id: row.id }, data: { metadata: mergeMeta(row.meta, { missingFromSourceStreak: streak }) } })
+        .catch(() => {});
+      details.push(`${row.externalId} — absente du scrape (${streak}/${MISSING_STREAK_THRESHOLD}), conservée.`);
+      continue;
+    }
+
+    // Absente depuis MISSING_STREAK_THRESHOLD passages consécutifs : retrait
+    // réversible (21 j) — jamais une purge directe, jamais SOLD (on ne sait
+    // pas ici si le bien est vendu ou seulement dépublié de la page liste).
+    const reason = `Absente de la page source lors des ${streak} derniers passages du connecteur.`;
+    await removeListing({ listingId: row.id, reason, actor: "cron:external-sync" });
+    await onListingRemoved(row.id);
+    disappeared++;
+    details.push(`${row.externalId} — ${reason}`);
+  }
+
+  return { disappeared, details };
+}
 
 const BSK_LISTING_RE = /https?:\/\/bskimmobilier\.com\/bien\/[^"'\s?#]+\/(\d+)/g;
 
@@ -69,7 +211,7 @@ async function syncBsk(
   prisma: PrismaClient,
   source: { id: string; url: string; ownerId: string },
 ): Promise<SyncResult> {
-  const result: SyncResult = { created: 0, deduped: 0, failed: 0, total: 0, details: [] };
+  const result: SyncResult = { created: 0, deduped: 0, failed: 0, total: 0, disappeared: 0, details: [] };
 
   const html = await fetchHtml(source.url);
   if (!html) {
@@ -128,6 +270,14 @@ async function syncBsk(
       result.details.push(`bsk:${id} — créé (${r.status}, risk ${r.riskScore})`);
     }
   }
+
+  // Le scrape a réussi et ramené un lot non vide (garde déjà passée ci-dessus) :
+  // on peut comparer aux annonces déjà connues pour cette source.
+  const scrapedIds = new Set([...byId.keys()].map((id) => `bsk:${id}`));
+  const disappearance = await detectDisappeared(prisma, source, "bsk:", scrapedIds);
+  result.disappeared = disappearance.disappeared;
+  result.details.push(...disappearance.details);
+
   return result;
 }
 
@@ -148,7 +298,7 @@ async function syncGeneric(
   prisma: PrismaClient,
   source: { id: string; url: string; ownerId: string },
 ): Promise<SyncResult> {
-  const result: SyncResult = { created: 0, deduped: 0, failed: 0, total: 0, details: [] };
+  const result: SyncResult = { created: 0, deduped: 0, failed: 0, total: 0, disappeared: 0, details: [] };
 
   const html = await fetchHtml(source.url);
   if (!html) {
@@ -232,6 +382,14 @@ async function syncGeneric(
       result.details.push(`${url} — créé (${r.status})`);
     }
   }
+
+  // Même logique que le connecteur bsk : le scrape a réussi et ramené un lot
+  // non vide, on peut comparer aux annonces déjà connues pour cette source.
+  const scrapedIds = new Set([...list].map((u) => `generic:${new URL(u).pathname}`));
+  const disappearance = await detectDisappeared(prisma, source, "generic:", scrapedIds);
+  result.disappeared = disappearance.disappeared;
+  result.details.push(...disappearance.details);
+
   return result;
 }
 

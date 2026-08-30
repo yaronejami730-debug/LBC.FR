@@ -81,14 +81,6 @@ export const article: BlogArticle = {
         "Les exigences environnementales (mesures opacimétriques diesel, contrôle Crit'Air, dispositifs antipollution) se sont durcies progressivement, contribuant à un taux de contre-visite en hausse sur les véhicules anciens. Selon les chiffres publiés par l'organisme technique central, les principaux motifs de contre-visite restent les défauts de freinage, d'éclairage et de pneumatiques.",
       ],
     },
-    {
-      h2: "Sources et méthodologie",
-      paragraphs: [
-        "Cet article s'appuie sur les textes officiels en vigueur en 2026 : Code de la route (notamment articles R.323-22 et suivants), décret n°2018-1284 réformant le contrôle technique, arrêtés ministériels relatifs aux modalités de contrôle, et fiches pratiques publiées sur service-public.fr (rubrique « Contrôle technique d'un véhicule »).",
-        "Les données opérationnelles (procédures de contrôle, agrément des centres, statistiques de contre-visite) proviennent de l'organisme technique central UTAC OTC (utac-otc.com), désigné par l'État pour la centralisation des contrôles. Les modalités de cession, déclaration et certification de non-gage s'appuient sur les procédures officielles ANTS (ants.gouv.fr) et histovec.interieur.gouv.fr.",
-        "Les recours juridiques cités (vices cachés, non-conformité, pratique commerciale trompeuse) reposent sur les articles applicables du Code civil et du Code de la consommation, ainsi que sur la jurisprudence constante de la Cour de cassation en matière de vente entre particuliers de véhicules d'occasion.",
-      ],
-    },
   ],
   faq: [
     {

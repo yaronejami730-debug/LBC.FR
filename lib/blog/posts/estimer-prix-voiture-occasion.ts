@@ -67,13 +67,6 @@ export const article: BlogArticle = {
         "Cinquième erreur : photos médiocres. Les baromètres publiés par les principaux sites d'annonces (La Centrale, Leboncoin, Paruvendu) convergent sur un point : les annonces avec moins de cinq ou six photos en haute définition génèrent nettement moins de contacts que les annonces correctement illustrées. À prix égal, l'annonce gagnera ou perdra largement sur la qualité visuelle.",
       ],
     },
-    {
-      h2: "Sources et méthodologie",
-      paragraphs: [
-        "Cet article s'appuie sur les outils de cotation publics largus.fr, lacentrale.fr, autovisual.com, sur les statistiques du marché de l'occasion publiées par l'Observatoire Cetelem de l'Automobile (rapport annuel cetelem.fr/observatoire-auto), sur les données de transactions diffusées par AAA-Data (organisme officiel de statistiques automobiles), et sur la documentation officielle relative au contrôle technique disponible sur service-public.fr et auprès de l'UTAC (organisme central agréé).",
-        "Les écarts indiqués (kilométrage, options, historique) reflètent des plages observées sur le marché français entre 2024 et 2026. Les valeurs absolues peuvent évoluer sensiblement selon le segment, le modèle et la conjoncture. La méthode de triple cotation reste la plus robuste face aux variations.",
-      ],
-    },
   ],
   faq: [
     {

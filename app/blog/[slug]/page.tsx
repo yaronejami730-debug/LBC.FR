@@ -76,12 +76,14 @@ export default async function BlogArticlePage({
     description: article.description,
     datePublished: article.publishedAt,
     dateModified: article.updatedAt,
-    author: {
-      "@type": "Organization",
-      name: "Deal&Co",
-      url: BASE,
-      "@id": `${BASE}/#org`,
-    },
+    author: article.author
+      ? { "@type": "Person", name: article.author }
+      : {
+          "@type": "Organization",
+          name: "Deal&Co",
+          url: BASE,
+          "@id": `${BASE}/#org`,
+        },
     publisher: {
       "@type": "Organization",
       name: "Deal&Co",
@@ -157,6 +159,8 @@ export default async function BlogArticlePage({
               {article.h1 ?? article.title}
             </h1>
             <div className="mt-4 text-sm text-outline flex items-center gap-3">
+              <span>{article.author ?? "La rédaction Deal&Co"}</span>
+              <span>·</span>
               <time dateTime={article.publishedAt}>
                 Publié le{" "}
                 {new Date(article.publishedAt).toLocaleDateString("fr-FR", {

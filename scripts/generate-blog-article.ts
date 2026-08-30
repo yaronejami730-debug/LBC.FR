@@ -40,7 +40,8 @@ Génère un article de blog complet et original sur le sujet suivant :
 
 Contraintes éditoriales :
 - Français naturel, ton informatif, pas de langue de bois.
-- Pas de promesses chiffrées que tu ne peux pas sourcer (statistiques, classements).
+- Pas de promesses chiffrées que tu ne peux pas sourcer (statistiques, classements). Si un fait précis vient d'un organisme identifiable (ADEME, service-public.fr, INSEE, DGCCRF...), nomme-le dans la phrase même où il apparaît (« selon service-public.fr, ... »), pas ailleurs.
+- N'ajoute JAMAIS de section finale de type « Sources », « Méthodologie » ou « Sources et méthodologie », ni de paragraphe récapitulatif du type « Cet article s'appuie sur... ». Ce genre de bibliographie générique, détachée du corps du texte, n'est pas un vrai sourcing : c'est une béquille que le lecteur détecte immédiatement d'un article à l'autre. L'article s'arrête à la dernière section de contenu utile.
 - Tutoiement banni, vouvoiement obligatoire.
 - Aucune mention de concurrents par leur nom.
 - Pas d'emojis, pas de markdown, pas de liens externes dans le contenu.
@@ -85,6 +86,10 @@ export const article: BlogArticle = ${JSON.stringify(
       slug: article.slug,
       title: article.title,
       description: article.description,
+      // Signature constante : jamais de nom de personne inventé pour un
+      // article généré par IA. "La rédaction Deal&Co" est vrai, un auteur
+      // fictif ne le serait pas.
+      author: "La rédaction Deal&Co",
       publishedAt: today,
       updatedAt: today,
       category: article.category,
